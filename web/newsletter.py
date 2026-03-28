@@ -48,7 +48,9 @@ resend.api_key = os.getenv("RESEND_API_KEY", "")
 
 _base_url    = os.getenv("BASE_URL", "https://yourdomain.com")
 _domain      = _base_url.replace("https://", "").replace("http://", "").rstrip("/")
-FROM_ADDRESS = f"Posit+EV <noreply@{_domain}>"
+# Strip www. prefix so From address uses root domain (matches Resend verified domain)
+_email_domain = _domain[4:] if _domain.startswith("www.") else _domain
+FROM_ADDRESS = f"Posit+EV <noreply@{_email_domain}>"
 
 # JWT config (shares secret with auth.py; no new column needed)
 _JWT_SECRET    = os.getenv("JWT_SECRET", "change-me")
