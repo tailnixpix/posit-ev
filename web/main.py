@@ -51,7 +51,7 @@ _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
-from db.database import EVBetCache, SessionLocal, User, create_tables  # noqa: E402
+from db.database import EVBetCache, NewsletterSubscriber, SessionLocal, User, create_tables  # noqa: E402
 from web.auth import (                                                   # noqa: E402
     router as auth_router,
     create_access_token,
@@ -347,6 +347,47 @@ async def dashboard(
 # ---------------------------------------------------------------------------
 # Manual cache refresh (admin)
 # ---------------------------------------------------------------------------
+
+@app.get("/admin", response_class=HTMLResponse)
+async def admin_dashboard(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """
+    Admin dashboard — protected by ADMIN_PASSWORD env var.
+    Shows newsletter subscribers and registered users.
+    """
+    admin_password = os.getenv("ADMIN_PASSWORD", "")
+    provided = request.query_params.get("key", "")
+    if not admin_password or provided != admin_password:
+        return HTMLResponse(
+            "<html><body style='font-family:sans-serif;padding:60px;text-align:center;'>"
+            "<h2>Access denied</h2><p>Append <code>?key=YOUR_ADMIN_PASSWORD</code> to the URL.</p>"
+            "</body></html>",
+            status_code=403,
+        )
+
+    newsletter_subs = (
+        db.query(NewsletterSubscriber)
+        .order_by(NewsletterSubscriber.subscribed_at.desc())
+        .all()
+    )
+    users = db.query(User).order_by(User.id.desc()).all()
+
+    return templates.TemplateResponse(
+        request,
+        "admin.html",
+        {
+            "newsletter_subs": newsletter_subs,
+            "users":           users,
+            "nl_total":        len(newsletter_subs),
+            "nl_active":       sum(1 for s in newsletter_subs if s.is_active),
+            "user_total":      len(users),
+            "user_paid":       sum(1 for u in users if u.is_subscribed),
+            "now":             datetime.now(timezone.utc).strftime("%b %-d, %Y at %-I:%M %p UTC"),
+        },
+    )
+
 
 @app.post("/admin/refresh-cache")
 async def admin_refresh_cache(

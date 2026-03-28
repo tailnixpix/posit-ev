@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% block title %}Admin — Posit+EV{% endblock %}
+
+{% block head %}
+<style>
+main { max-width: none; padding: 0; }
+.admin-wrap { max-width: 1000px; margin: 0 auto; padding: 40px 24px 80px; }
+h1 { color: var(--brand-dark); font-size: 1.6rem; font-weight: 800; margin: 0 0 4px; }
+.subtitle { color: var(--text-muted); font-size: 0.88rem; margin: 0 0 40px; }
+
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 40px;
+}
+@media (max-width: 700px) { .stats-row { grid-template-columns: repeat(2, 1fr); } }
+.stat-box {
+  background: #fff;
+  border: 1px solid var(--brand-border);
+  border-radius: var(--radius-lg);
+  padding: 20px 24px;
+  box-shadow: var(--shadow-sm);
+}
+.stat-box .num { font-size: 2.2rem; font-weight: 900; color: var(--brand-primary); line-height: 1; }
+.stat-box .lbl { font-size: 0.78rem; color: var(--text-muted); margin-top: 4px;
+                 text-transform: uppercase; letter-spacing: 0.5px; }
+
+.section-card {
+  background: #fff;
+  border: 1px solid var(--brand-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 28px;
+  overflow: hidden;
+}
+.section-card-header {
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--brand-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.section-card-header h2 { font-size: 0.95rem; font-weight: 700; color: var(--brand-dark); margin: 0; }
+.badge { font-size: 0.72rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; }
+.badge-blue { background: var(--brand-light); color: var(--brand-primary); }
+.badge-green { background: rgba(15,110,86,0.1); color: #0F6E56; }
+
+table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+th { text-align: left; padding: 10px 24px; font-size: 0.72rem; font-weight: 700;
+     text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted);
+     border-bottom: 1px solid var(--brand-border); background: var(--brand-surface); }
+td { padding: 12px 24px; border-bottom: 1px solid #F3F4F6; color: var(--text-secondary); }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--brand-surface); }
+.tag { display: inline-block; font-size: 0.7rem; font-weight: 600; padding: 2px 8px;
+       border-radius: 20px; }
+.tag-active { background: rgba(15,110,86,0.1); color: #0F6E56; }
+.tag-inactive { background: #F3F4F6; color: var(--text-muted); }
+.tag-paid { background: rgba(83,74,183,0.1); color: var(--brand-primary); }
+.tag-free { background: #F3F4F6; color: var(--text-muted); }
+.empty { padding: 32px 24px; text-align: center; color: var(--text-muted); font-size: 0.88rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-wrap">
+  <h1>Admin Dashboard</h1>
+  <p class="subtitle">Last refreshed: {{ now }}</p>
+
+  {# ── Stats ── #}
+  <div class="stats-row">
+    <div class="stat-box">
+      <div class="num">{{ nl_total }}</div>
+      <div class="lbl">Newsletter signups</div>
+    </div>
+    <div class="stat-box">
+      <div class="num">{{ nl_active }}</div>
+      <div class="lbl">Active subscribers</div>
+    </div>
+    <div class="stat-box">
+      <div class="num">{{ user_total }}</div>
+      <div class="lbl">Registered users</div>
+    </div>
+    <div class="stat-box">
+      <div class="num">{{ user_paid }}</div>
+      <div class="lbl">Paid subscribers</div>
+    </div>
+  </div>
+
+  {# ── Newsletter subscribers ── #}
+  <div class="section-card">
+    <div class="section-card-header">
+      <h2>Newsletter Subscribers</h2>
+      <span class="badge badge-blue">{{ nl_total }} total</span>
+    </div>
+    {% if newsletter_subs %}
+    <table>
+      <thead>
+        <tr>
+          <th>Email</th>
+          <th>Status</th>
+          <th>Signed up</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in newsletter_subs %}
+        <tr>
+          <td>{{ s.email }}</td>
+          <td>
+            {% if s.is_active %}
+              <span class="tag tag-active">Active</span>
+            {% else %}
+              <span class="tag tag-inactive">Unsubscribed</span>
+            {% endif %}
+          </td>
+          <td>{{ s.subscribed_at.strftime('%b %-d, %Y') if s.subscribed_at else '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="empty">No newsletter subscribers yet.</p>
+    {% endif %}
+  </div>
+
+  {# ── Registered users ── #}
+  <div class="section-card">
+    <div class="section-card-header">
+      <h2>Registered Users</h2>
+      <span class="badge badge-green">{{ user_paid }} paid</span>
+    </div>
+    {% if users %}
+    <table>
+      <thead>
+        <tr>
+          <th>Email</th>
+          <th>Plan</th>
+          <th>Stripe customer</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td>{{ u.email }}</td>
+          <td>
+            {% if u.is_subscribed %}
+              <span class="tag tag-paid">Paid</span>
+            {% else %}
+              <span class="tag tag-free">Free</span>
+            {% endif %}
+          </td>
+          <td style="font-size:0.78rem; color:var(--text-muted);">
+            {{ u.stripe_customer_id or '—' }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="empty">No registered users yet.</p>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}
