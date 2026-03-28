@@ -137,6 +137,7 @@ tr:hover td { background: var(--brand-surface); }
           <th>Email</th>
           <th>Plan</th>
           <th>Stripe customer</th>
+          <th>Access</th>
         </tr>
       </thead>
       <tbody>
@@ -152,6 +153,26 @@ tr:hover td { background: var(--brand-surface); }
           </td>
           <td style="font-size:0.78rem; color:var(--text-muted);">
             {{ u.stripe_customer_id or '—' }}
+          </td>
+          <td>
+            {% if not u.is_subscribed %}
+            <form method="post" action="/admin/grant-access?key={{ admin_key }}">
+              <input type="hidden" name="user_id" value="{{ u.id }}" />
+              <button type="submit" style="font-size:0.75rem;padding:3px 10px;background:var(--brand-primary);
+                color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;">
+                Grant Access
+              </button>
+            </form>
+            {% else %}
+            <form method="post" action="/admin/revoke-access?key={{ admin_key }}">
+              <input type="hidden" name="user_id" value="{{ u.id }}" />
+              <button type="submit" style="font-size:0.75rem;padding:3px 10px;background:#F3F4F6;
+                color:var(--text-muted);border:1px solid var(--brand-border);border-radius:6px;
+                cursor:pointer;font-family:inherit;">
+                Revoke
+              </button>
+            </form>
+            {% endif %}
           </td>
         </tr>
         {% endfor %}

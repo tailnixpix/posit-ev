@@ -385,8 +385,45 @@ async def admin_dashboard(
             "user_total":      len(users),
             "user_paid":       sum(1 for u in users if u.is_subscribed),
             "now":             datetime.now(timezone.utc).strftime("%b %-d, %Y at %-I:%M %p UTC"),
+            "admin_key":       provided,
         },
     )
+
+
+@app.post("/admin/grant-access")
+async def admin_grant_access(
+    request: Request,
+    user_id: int = Form(...),
+    db: Session = Depends(get_db),
+):
+    admin_password = os.getenv("ADMIN_PASSWORD", "")
+    provided = request.query_params.get("key", "")
+    if not admin_password or provided != admin_password:
+        return JSONResponse({"error": "unauthorized"}, status_code=403)
+    user = db.query(User).filter(User.id == user_id).first()
+    if user:
+        user.is_subscribed = True
+        db.commit()
+        log.info("Admin granted access to %s", user.email)
+    return RedirectResponse(url=f"/admin?key={provided}", status_code=303)
+
+
+@app.post("/admin/revoke-access")
+async def admin_revoke_access(
+    request: Request,
+    user_id: int = Form(...),
+    db: Session = Depends(get_db),
+):
+    admin_password = os.getenv("ADMIN_PASSWORD", "")
+    provided = request.query_params.get("key", "")
+    if not admin_password or provided != admin_password:
+        return JSONResponse({"error": "unauthorized"}, status_code=403)
+    user = db.query(User).filter(User.id == user_id).first()
+    if user:
+        user.is_subscribed = False
+        db.commit()
+        log.info("Admin revoked access from %s", user.email)
+    return RedirectResponse(url=f"/admin?key={provided}", status_code=303)
 
 
 @app.post("/admin/refresh-cache")
