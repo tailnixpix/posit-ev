@@ -366,7 +366,7 @@ async def login(
         )
 
     token = create_access_token(user.id, user.email)
-    response = RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+    response = RedirectResponse(url="/welcome", status_code=status.HTTP_303_SEE_OTHER)
     _set_auth_cookie(response, token)
     log.info("Login: %s", user.email)
     return response

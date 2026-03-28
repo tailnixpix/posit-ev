@@ -269,7 +269,8 @@ class SubscriptionMiddleware(BaseHTTPMiddleware):
     """
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
-        if not request.url.path.startswith("/dashboard"):
+        protected = ("/dashboard", "/welcome")
+        if not any(request.url.path.startswith(p) for p in protected):
             return await call_next(request)
 
         token = get_token_from_request(request)
@@ -324,6 +325,19 @@ async def login_page(request: Request):
     if token and decode_access_token(token):
         return RedirectResponse(url="/dashboard", status_code=303)
     return templates.TemplateResponse(request, "login.html", {"error": None})
+
+
+@app.get("/welcome", response_class=HTMLResponse)
+async def welcome_page(
+    request: Request,
+    current_user: User = Depends(require_auth),
+):
+    """Onboarding walkthrough shown after first login."""
+    return templates.TemplateResponse(
+        request,
+        "welcome.html",
+        {"user": current_user},
+    )
 
 
 @app.get("/dashboard", response_class=HTMLResponse)

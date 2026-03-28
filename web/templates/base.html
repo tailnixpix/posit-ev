@@ -13,8 +13,15 @@
     <a href="/" class="nav-logo" aria-label="Posit+EV home">
       <img src="/static/logo.svg" height="32" alt="Posit+EV" />
     </a>
-    <a href="/pricing">Pricing</a>
-    <a href="/login">Sign In</a>
+    {% if user is defined and user %}
+      <a href="/dashboard" style="font-weight:600;">My Dashboard</a>
+      <form action="/logout" method="post" style="margin:0;">
+        <button type="submit" style="background:none;border:none;cursor:pointer;font-size:inherit;color:inherit;padding:0;font-family:inherit;font-weight:500;">Sign Out</button>
+      </form>
+    {% else %}
+      <a href="/pricing">Pricing</a>
+      <a href="/login">Sign In</a>
+    {% endif %}
   </nav>
   <main>{% block content %}{% endblock %}</main>
   <script src="/static/js/app.js"></script>

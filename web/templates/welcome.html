@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+{% block title %}Welcome — Posit+EV{% endblock %}
+
+{% block head %}
+<style>
+/* ── Page wrapper ───────────────────────────────────────────────────── */
+main { max-width: 860px; padding-top: var(--space-7); padding-bottom: var(--space-8); }
+
+/* ── Hero ───────────────────────────────────────────────────────────── */
+.welcome-hero {
+  text-align: center;
+  margin-bottom: var(--space-8);
+}
+.welcome-hero .wave { font-size: 3rem; line-height: 1; margin-bottom: var(--space-3); }
+.welcome-hero h1 {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--brand-dark);
+  margin-bottom: var(--space-2);
+  line-height: 1.2;
+}
+.welcome-hero h1 span { color: var(--brand-primary); }
+.welcome-hero p {
+  font-size: 1.05rem;
+  color: var(--text-secondary);
+  max-width: 520px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+/* ── Steps section ──────────────────────────────────────────────────── */
+.steps-title {
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  margin-bottom: var(--space-5);
+}
+
+.steps-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+  margin-bottom: var(--space-7);
+}
+@media (max-width: 640px) { .steps-grid { grid-template-columns: 1fr; } }
+
+.step-card {
+  background: #fff;
+  border: 1px solid var(--brand-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  position: relative;
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+.step-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+
+.step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--brand-primary);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 800;
+  flex-shrink: 0;
+  margin-bottom: var(--space-1);
+}
+.step-card h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--brand-dark);
+  margin: 0;
+}
+.step-card p {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.6;
+}
+
+/* ── Example card ───────────────────────────────────────────────────── */
+.example-wrap {
+  background: var(--brand-light);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  margin-top: var(--space-2);
+  font-size: 0.8rem;
+  color: var(--brand-dark);
+}
+.example-wrap .ex-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+.example-row { display: flex; justify-content: space-between; gap: var(--space-2); flex-wrap: wrap; }
+.example-row span { font-weight: 600; }
+.ex-ev { color: var(--brand-success); font-weight: 800; }
+
+/* ── Rule strip ─────────────────────────────────────────────────────── */
+.rules-strip {
+  background: linear-gradient(135deg, #0F6E56 0%, #1a9470 100%);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5) var(--space-6);
+  color: #fff;
+  margin-bottom: var(--space-7);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  justify-content: space-around;
+}
+.rule-item { text-align: center; min-width: 120px; }
+.rule-item .r-icon { font-size: 1.8rem; line-height: 1; margin-bottom: 6px; }
+.rule-item .r-title { font-size: 0.85rem; font-weight: 700; margin-bottom: 2px; }
+.rule-item .r-sub { font-size: 0.75rem; opacity: 0.82; }
+
+/* ── CTA ────────────────────────────────────────────────────────────── */
+.cta-block {
+  text-align: center;
+}
+.cta-block h2 { font-size: 1.4rem; font-weight: 800; color: var(--brand-dark); margin-bottom: var(--space-2); }
+.cta-block p { color: var(--text-secondary); margin-bottom: var(--space-5); font-size: 0.95rem; }
+.cta-block .btn-primary {
+  padding: 14px 40px;
+  font-size: 1rem;
+  font-weight: 700;
+  border-radius: var(--radius-lg);
+}
+.cta-skip {
+  display: block;
+  margin-top: var(--space-3);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+.cta-skip:hover { color: var(--brand-primary); }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{# ── Hero ─────────────────────────────────────────────────────────────── #}
+<div class="welcome-hero">
+  <div class="wave">👋</div>
+  <h1>Welcome to <span>Posit+EV</span></h1>
+  <p>You're in. Here's a quick walkthrough so you can start finding real edges in today's betting markets.</p>
+</div>
+
+{# ── How it works steps ───────────────────────────────────────────────── #}
+<p class="steps-title">How it works — 4 things to know</p>
+
+<div class="steps-grid">
+
+  {# Step 1 #}
+  <div class="step-card">
+    <div class="step-number">1</div>
+    <h3>What is +EV betting?</h3>
+    <p>Every sportsbook buries a commission (the "vig") into their odds. We strip that out to find the <strong>true probability</strong> of each outcome. When the true probability of winning is higher than what the odds imply, that's a +EV bet — a mathematical edge that wins you money long-term.</p>
+  </div>
+
+  {# Step 2 #}
+  <div class="step-card">
+    <div class="step-number">2</div>
+    <h3>Reading a bet card</h3>
+    <p>Each card tells you exactly what to bet and where. Here's a sample:</p>
+    <div class="example-wrap">
+      <div class="ex-label">Example card</div>
+      <div class="example-row">
+        <span>Over 6.5 &nbsp;·&nbsp; NHL Total</span>
+        <span class="ex-ev">+7.2% EV</span>
+      </div>
+      <div class="example-row" style="margin-top:6px; font-size:0.75rem; color:var(--text-secondary);">
+        <span>FanDuel &nbsp;·&nbsp; -115 odds</span>
+        <span>True prob: 54.8%</span>
+      </div>
+    </div>
+    <p style="margin-top:var(--space-2);">The <strong>EV%</strong> is your edge. Anything above 3% is flagged. Higher is better.</p>
+  </div>
+
+  {# Step 3 #}
+  <div class="step-card">
+    <div class="step-number">3</div>
+    <h3>Using the filters</h3>
+    <p>Use the <strong>League</strong> filter to narrow down to sports you follow — NHL, NBA, MLB, EPL, and more. Use the <strong>Market</strong> filter to focus on bet types you're comfortable with: Moneyline (who wins), Spread (win by how much), or Total (combined score over/under).</p>
+    <p>Start with one league and one market type until you're confident, then expand.</p>
+  </div>
+
+  {# Step 4 #}
+  <div class="step-card">
+    <div class="step-number">4</div>
+    <h3>½ Kelly staking</h3>
+    <p>Each card shows a <strong>½ Kelly</strong> percentage — a conservative, math-backed stake size relative to your bankroll. If your bankroll is $1,000 and Kelly shows 2.5%, bet $25.</p>
+    <p>This keeps you in the game during variance while maximizing long-run growth. Never bet more than Kelly suggests.</p>
+  </div>
+
+</div>
+
+{# ── Golden rules strip ───────────────────────────────────────────────── #}
+<div class="rules-strip">
+  <div class="rule-item">
+    <div class="r-icon">📐</div>
+    <div class="r-title">Trust the math</div>
+    <div class="r-sub">EV wins long-term, not single bets</div>
+  </div>
+  <div class="rule-item">
+    <div class="r-icon">🏦</div>
+    <div class="r-title">Manage your bankroll</div>
+    <div class="r-sub">Stick to ½ Kelly stakes</div>
+  </div>
+  <div class="rule-item">
+    <div class="r-icon">🔄</div>
+    <div class="r-title">Stay consistent</div>
+    <div class="r-sub">Bet every +EV edge you find</div>
+  </div>
+  <div class="rule-item">
+    <div class="r-icon">⚡</div>
+    <div class="r-title">Act fast</div>
+    <div class="r-sub">Lines move — edges close quickly</div>
+  </div>
+</div>
+
+{# ── CTA ──────────────────────────────────────────────────────────────── #}
+<div class="cta-block">
+  <h2>Ready to find your edge?</h2>
+  <p>Today's +EV picks are live and refreshed every 30 minutes.</p>
+  <a href="/dashboard" class="btn btn-primary">Go to My Dashboard &rarr;</a>
+  <a href="/dashboard" class="cta-skip">Skip intro, take me to the dashboard</a>
+</div>
+
+{% endblock %}
