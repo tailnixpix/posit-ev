@@ -17,8 +17,8 @@ jinja2
 stripe
 resend
 python-jose
-passlib
-bcrypt
+passlib[bcrypt]
+bcrypt==4.0.1
 sqlalchemy
 python-multipart
 apscheduler>=3.10.0
