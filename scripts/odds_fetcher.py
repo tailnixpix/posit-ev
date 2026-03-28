@@ -230,6 +230,15 @@ def get_odds_df(
     df["last_update"] = pd.to_datetime(df["last_update"], utc=True)
     df["price"] = pd.to_numeric(df["price"], errors="coerce")
     df["point"] = pd.to_numeric(df["point"], errors="coerce")
+
+    # Drop any game that has already started — live odds skew EV artificially
+    now = pd.Timestamp.now(tz="UTC")
+    before = len(df)
+    df = df[df["commence_time"] > now]
+    dropped = before - len(df)
+    if dropped:
+        log.info("Filtered out %d rows belonging to live/started game(s).", dropped)
+
     return df
 
 
