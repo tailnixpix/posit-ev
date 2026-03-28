@@ -502,6 +502,7 @@ main { max-width: 1200px; padding-top: var(--space-5); }
 {% endblock %}
 
 {# ─── JavaScript ──────────────────────────────────────────────────────────── #}
+{% block scripts %}
 <script>
 // ── Today's date ─────────────────────────────────────────────────────────
 document.getElementById('today-date').textContent =
@@ -618,3 +619,4 @@ async function triggerRefresh() {
   }
 }
 </script>
+{% endblock %}
