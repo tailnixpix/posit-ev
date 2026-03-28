@@ -285,7 +285,7 @@ app.add_middleware(SubscriptionMiddleware)
 
 @app.get("/", response_class=HTMLResponse)
 async def landing(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(request, "index.html")
 
 
 @app.get("/register", response_class=HTMLResponse)
@@ -293,12 +293,12 @@ async def register_page(request: Request):
     token = get_token_from_request(request)
     if token and decode_access_token(token):
         return RedirectResponse(url="/dashboard", status_code=303)
-    return templates.TemplateResponse("register.html", {"request": request, "error": None})
+    return templates.TemplateResponse(request, "register.html", {"error": None})
 
 
 @app.get("/pricing", response_class=HTMLResponse)
 async def pricing(request: Request):
-    return templates.TemplateResponse("pricing.html", {"request": request})
+    return templates.TemplateResponse(request, "pricing.html")
 
 
 @app.get("/login", response_class=HTMLResponse)
@@ -306,7 +306,7 @@ async def login_page(request: Request):
     token = get_token_from_request(request)
     if token and decode_access_token(token):
         return RedirectResponse(url="/dashboard", status_code=303)
-    return templates.TemplateResponse("login.html", {"request": request, "error": None})
+    return templates.TemplateResponse(request, "login.html", {"error": None})
 
 
 @app.get("/dashboard", response_class=HTMLResponse)
@@ -331,9 +331,9 @@ async def dashboard(
     next_refresh: Optional[datetime] = job.next_run_time if job else None
 
     return templates.TemplateResponse(
+        request,
         "dashboard.html",
         {
-            "request":      request,
             "user":         current_user,
             "bets":         bets,
             "bet_count":    len(bets),
