@@ -31,7 +31,6 @@ from sqlalchemy import (
     String,
     create_engine,
 )
-from sqlalchemy.engine import make_url
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 load_dotenv()
@@ -42,20 +41,12 @@ load_dotenv()
 
 _raw_url: str = os.getenv("DATABASE_URL") or "sqlite:///./sports_ev.db"
 
-# Railway / Heroku provide postgres:// or postgresql:// — force pg8000 dialect
-# Use SQLAlchemy's make_url so dialect rewriting is reliable regardless of URL shape
-try:
-    _u = make_url(_raw_url)
-    if _u.drivername in ("postgresql", "postgres", "postgresql+psycopg2"):
-        _u = _u.set(drivername="postgresql+pg8000")
-    DATABASE_URL: str = str(_u)
-except Exception:
-    # Fallback: simple string replacement
-    DATABASE_URL = _raw_url
-    if DATABASE_URL.startswith("postgres://"):
-        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+pg8000://", 1)
-    elif DATABASE_URL.startswith("postgresql://"):
-        DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+pg8000://", 1)
+# Railway / Heroku return postgres:// or postgresql:// — normalise to psycopg2 dialect
+DATABASE_URL: str = _raw_url
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+psycopg2://", 1)
+elif DATABASE_URL.startswith("postgresql://") and "+psycopg2" not in DATABASE_URL:
+    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg2://", 1)
 
 # SQLite needs check_same_thread=False for FastAPI's threaded request handling
 connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
