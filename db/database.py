@@ -41,6 +41,12 @@ load_dotenv()
 
 DATABASE_URL: str = os.getenv("DATABASE_URL") or "sqlite:///./sports_ev.db"
 
+# Railway / Heroku provide postgres:// or postgresql:// — rewrite to use pg8000 driver
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+pg8000://", 1)
+elif DATABASE_URL.startswith("postgresql://") and "+pg8000" not in DATABASE_URL:
+    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+pg8000://", 1)
+
 # SQLite needs check_same_thread=False for FastAPI's threaded request handling
 connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
 
