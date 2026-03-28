@@ -11,10 +11,9 @@ ipykernel==6.29.2
 rich>=13.7.0
 schedule>=1.2.0
 python-telegram-bot>=22.0
-fastapi==0.109.2
+fastapi
 uvicorn[standard]
 jinja2
-starlette==0.35.1
 stripe
 resend
 python-jose
