@@ -11,3 +11,5 @@ build/
 reports/*.html
 reports/*.pdf
 data/raw/
+venv/
+venv/

@@ -56,3 +56,5 @@ reports/
 
 # Stripe CLI auth (local only)
 .stripe/
+venv/
+venv/
