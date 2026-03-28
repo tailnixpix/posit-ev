@@ -378,7 +378,7 @@ async def logout():
     Clear the JWT cookie and redirect to the landing page.
     Uses POST (not GET) to prevent CSRF via embedded links.
     """
-    response = RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
+    response = RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
     response.delete_cookie(
         key=COOKIE_NAME,
         httponly=True,
