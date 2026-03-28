@@ -301,25 +301,22 @@ async def register(
 
     if not _valid_email(email):
         return _templates.TemplateResponse(
-            request,
             "register.html",
-            {"error": "Please enter a valid email address."},
+            {"request": request, "error": "Please enter a valid email address."},
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         )
 
     if len(password) < MIN_PASSWORD_LENGTH:
         return _templates.TemplateResponse(
-            request,
             "register.html",
-            {"error": f"Password must be at least {MIN_PASSWORD_LENGTH} characters."},
+            {"request": request, "error": f"Password must be at least {MIN_PASSWORD_LENGTH} characters."},
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         )
 
     if db.query(User).filter(User.email == email).first():
         return _templates.TemplateResponse(
-            request,
             "register.html",
-            {"error": "An account with that email already exists."},
+            {"request": request, "error": "An account with that email already exists."},
             status_code=status.HTTP_409_CONFLICT,
         )
 
@@ -359,9 +356,8 @@ async def login(
 
     if not user or not verify_password(password, user.hashed_password):
         return _templates.TemplateResponse(
-            request,
             "login.html",
-            {"error": "Invalid email or password."},
+            {"request": request, "error": "Invalid email or password."},
             status_code=status.HTTP_401_UNAUTHORIZED,
         )
 
