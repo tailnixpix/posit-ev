@@ -228,7 +228,7 @@ async def on_startup() -> None:
     # Schedule refresh every 30 minutes, starting immediately (next_run_time=now)
     scheduler.add_job(
         refresh_ev_cache,
-        trigger=IntervalTrigger(minutes=30),
+        trigger=IntervalTrigger(minutes=60),
         id="ev_cache_refresh",
         name="Refresh EV bet cache",
         next_run_time=datetime.now(timezone.utc),   # run once at startup
