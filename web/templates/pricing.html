@@ -465,9 +465,14 @@ document.getElementById('newsletter-form').addEventListener('submit', async func
     });
 
     if (res.ok) {
-      form.innerHTML = `<p style="color:#4ADE80; font-weight:600; margin:0; font-size:1rem;">
-        ✓ You're in! Check your inbox tomorrow morning.
-      </p>`;
+      form.innerHTML = `
+        <p style="color:#4ADE80; font-weight:700; margin:0 0 8px; font-size:1rem;">
+          ✓ You're in! Welcome email is on its way.
+        </p>
+        <p style="color:rgba(255,255,255,0.6); margin:0; font-size:0.82rem; line-height:1.6;">
+          📬 Don't see it? <strong style="color:rgba(255,255,255,0.85);">Check your spam or junk folder</strong>
+          and mark us as "Not Spam" so future picks land in your inbox.
+        </p>`;
     } else {
       btn.disabled = false;
       btn.textContent = 'Get Free Picks';
