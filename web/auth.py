@@ -36,7 +36,10 @@ import os
 import sys
 import logging
 import re
+import time
+from collections import defaultdict
 from datetime import datetime, timedelta, timezone
+from threading import Lock
 from typing import Optional
 
 import stripe
@@ -72,6 +75,30 @@ JWT_EXPIRE_MINUTES: int = 60 * 24 * 7   # 7 days
 
 COOKIE_NAME          = "access_token"
 MIN_PASSWORD_LENGTH  = 8
+
+# ---------------------------------------------------------------------------
+# In-memory rate limiter (per IP, per route)
+# ---------------------------------------------------------------------------
+
+_rate_store: dict[str, list[float]] = defaultdict(list)
+_rate_lock = Lock()
+
+
+def _is_rate_limited(ip: str, max_calls: int, window_sec: int = 60) -> bool:
+    """
+    Return True if *ip* has exceeded *max_calls* within the last *window_sec*.
+    Thread-safe. Works fine for a single-process Railway deployment.
+    """
+    now = time.time()
+    key = ip
+    with _rate_lock:
+        calls = [t for t in _rate_store[key] if now - t < window_sec]
+        _rate_store[key] = calls
+        if len(calls) >= max_calls:
+            return True
+        _rate_store[key].append(now)
+        return False
+
 
 # ---------------------------------------------------------------------------
 # Promo / referral codes
@@ -320,6 +347,14 @@ async def register(
            - promo granted  → /welcome
            - no promo       → /pricing
     """
+    client_ip = request.client.host if request.client else "unknown"
+    if _is_rate_limited(f"register:{client_ip}", max_calls=5, window_sec=60):
+        return _templates.TemplateResponse(
+            request, "register.html",
+            {"error": "Too many attempts. Please wait a minute and try again."},
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        )
+
     email      = email.lower().strip()
     promo_code = promo_code.strip().upper()
     promo_ok   = is_valid_promo(promo_code)
@@ -410,6 +445,14 @@ async def login(
     On success:  redirect → /dashboard
     On failure:  re-render login.html with an error message (HTTP 401).
     """
+    client_ip = request.client.host if request.client else "unknown"
+    if _is_rate_limited(f"login:{client_ip}", max_calls=10, window_sec=60):
+        return _templates.TemplateResponse(
+            request, "login.html",
+            {"error": "Too many attempts. Please wait a minute and try again."},
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        )
+
     user = db.query(User).filter(User.email == email.lower().strip()).first()
 
     if not user or not verify_password(password, user.hashed_password):

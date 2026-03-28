@@ -273,12 +273,21 @@ async def stripe_webhook(request: Request):
 
     # ── invoice.payment_failed ─────────────────────────────────────────────
     elif event_type == "invoice.payment_failed":
-        customer_id = data.get("customer", "")
-        attempt     = data.get("attempt_count", "?")
+        customer_id     = data.get("customer", "")
+        attempt         = data.get("attempt_count", 0)
+        subscription_id = data.get("subscription", "")
         log.warning(
-            "Payment failed for customer %s (attempt %s) — access retained until subscription cancels.",
+            "Payment failed for customer %s (attempt %s).",
             customer_id, attempt,
         )
+        # Revoke access after 3 consecutive failures — by this point Stripe
+        # has retried over several days with no success.
+        if isinstance(attempt, int) and attempt >= 3:
+            _set_subscribed(customer_id, subscription_id, subscribed=False)
+            log.warning(
+                "Access revoked for customer %s after %d failed payment attempts.",
+                customer_id, attempt,
+            )
 
     else:
         log.debug("Stripe event ignored: %s", event_type)

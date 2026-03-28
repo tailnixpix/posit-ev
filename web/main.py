@@ -26,13 +26,16 @@ Run:
 
 import logging
 import os
+import secrets
 import sys
 from datetime import datetime, timezone
 from typing import Optional
 
+import sentry_sdk
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, Form, Request, status
+from fastapi import Depends, FastAPI, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -70,6 +73,46 @@ from web.stripe_webhook import router as stripe_router                   # noqa:
 load_dotenv()
 
 log = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Sentry — error monitoring (no-op if SENTRY_DSN is not set)
+# ---------------------------------------------------------------------------
+
+_sentry_dsn = os.getenv("SENTRY_DSN", "")
+if _sentry_dsn:
+    sentry_sdk.init(
+        dsn=_sentry_dsn,
+        traces_sample_rate=0.05,   # 5% of requests for performance tracing
+        send_default_pii=False,
+    )
+    log.info("Sentry initialised.")
+
+# ---------------------------------------------------------------------------
+# Admin auth — HTTP Basic (credentials never appear in URLs or logs)
+# ---------------------------------------------------------------------------
+
+_admin_basic = HTTPBasic(auto_error=False)
+
+
+def _require_admin(credentials: Optional[HTTPBasicCredentials] = Depends(_admin_basic)):
+    """Dependency that enforces HTTP Basic Auth for admin routes."""
+    admin_pw = os.getenv("ADMIN_PASSWORD", "")
+    ok = (
+        admin_pw
+        and credentials is not None
+        and secrets.compare_digest(
+            credentials.password.encode("utf-8"),
+            admin_pw.encode("utf-8"),
+        )
+    )
+    if not ok:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            headers={"WWW-Authenticate": "Basic realm='Posit+EV Admin'"},
+            detail="Invalid admin credentials",
+        )
+    return credentials
+
 
 # ---------------------------------------------------------------------------
 # App
@@ -301,6 +344,12 @@ app.add_middleware(SubscriptionMiddleware)
 # Page routes
 # ---------------------------------------------------------------------------
 
+@app.get("/health")
+async def health():
+    """Railway / uptime-monitor health check — returns 200 while app is alive."""
+    return {"status": "ok", "timestamp": datetime.now(timezone.utc).isoformat()}
+
+
 @app.get("/", response_class=HTMLResponse)
 async def landing(request: Request):
     return templates.TemplateResponse(request, "index.html")
@@ -383,21 +432,13 @@ async def dashboard(
 async def admin_dashboard(
     request: Request,
     db: Session = Depends(get_db),
+    _: HTTPBasicCredentials = Depends(_require_admin),
 ):
     """
-    Admin dashboard — protected by ADMIN_PASSWORD env var.
-    Shows newsletter subscribers and registered users.
+    Admin dashboard — protected by HTTP Basic Auth (ADMIN_PASSWORD env var).
+    Visit /admin — browser will prompt for username + password.
+    Username: admin   Password: value of ADMIN_PASSWORD
     """
-    admin_password = os.getenv("ADMIN_PASSWORD", "")
-    provided = request.query_params.get("key", "")
-    if not admin_password or provided != admin_password:
-        return HTMLResponse(
-            "<html><body style='font-family:sans-serif;padding:60px;text-align:center;'>"
-            "<h2>Access denied</h2><p>Append <code>?key=YOUR_ADMIN_PASSWORD</code> to the URL.</p>"
-            "</body></html>",
-            status_code=403,
-        )
-
     newsletter_subs = (
         db.query(NewsletterSubscriber)
         .order_by(NewsletterSubscriber.subscribed_at.desc())
@@ -416,45 +457,37 @@ async def admin_dashboard(
             "user_total":      len(users),
             "user_paid":       sum(1 for u in users if u.is_subscribed),
             "now":             datetime.now(timezone.utc).strftime("%b %-d, %Y at %-I:%M %p UTC"),
-            "admin_key":       provided,
+            "admin_key":       "",   # no longer used
         },
     )
 
 
 @app.post("/admin/grant-access")
 async def admin_grant_access(
-    request: Request,
     user_id: int = Form(...),
     db: Session = Depends(get_db),
+    _: HTTPBasicCredentials = Depends(_require_admin),
 ):
-    admin_password = os.getenv("ADMIN_PASSWORD", "")
-    provided = request.query_params.get("key", "")
-    if not admin_password or provided != admin_password:
-        return JSONResponse({"error": "unauthorized"}, status_code=403)
     user = db.query(User).filter(User.id == user_id).first()
     if user:
         user.is_subscribed = True
         db.commit()
         log.info("Admin granted access to %s", user.email)
-    return RedirectResponse(url=f"/admin?key={provided}", status_code=303)
+    return RedirectResponse(url="/admin", status_code=303)
 
 
 @app.post("/admin/revoke-access")
 async def admin_revoke_access(
-    request: Request,
     user_id: int = Form(...),
     db: Session = Depends(get_db),
+    _: HTTPBasicCredentials = Depends(_require_admin),
 ):
-    admin_password = os.getenv("ADMIN_PASSWORD", "")
-    provided = request.query_params.get("key", "")
-    if not admin_password or provided != admin_password:
-        return JSONResponse({"error": "unauthorized"}, status_code=403)
     user = db.query(User).filter(User.id == user_id).first()
     if user:
         user.is_subscribed = False
         db.commit()
         log.info("Admin revoked access from %s", user.email)
-    return RedirectResponse(url=f"/admin?key={provided}", status_code=303)
+    return RedirectResponse(url="/admin", status_code=303)
 
 
 @app.post("/admin/refresh-cache")
