@@ -42,7 +42,7 @@ from typing import Optional
 import stripe
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -56,7 +56,7 @@ _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
-from db.database import SessionLocal, User  # noqa: E402
+from db.database import SessionLocal, User, NewsletterSubscriber  # noqa: E402
 
 load_dotenv()
 
@@ -72,6 +72,18 @@ JWT_EXPIRE_MINUTES: int = 60 * 24 * 7   # 7 days
 
 COOKIE_NAME          = "access_token"
 MIN_PASSWORD_LENGTH  = 8
+
+# ---------------------------------------------------------------------------
+# Promo / referral codes
+# ---------------------------------------------------------------------------
+# Comma-separated list of valid codes in env var PROMO_CODES.
+# Default includes POSI2. Add more: PROMO_CODES=POSI2,BETA50,FRIEND
+def _load_promo_codes() -> set:
+    raw = os.getenv("PROMO_CODES", "POSI2")
+    return {c.strip().upper() for c in raw.split(",") if c.strip()}
+
+def is_valid_promo(code: str) -> bool:
+    return code.strip().upper() in _load_promo_codes()
 
 _PLACEHOLDER_KEYS = {"sk_live_xxx", "sk_test_xxx", "", None}
 
@@ -279,12 +291,19 @@ def _valid_email(email: str) -> bool:
 router = APIRouter()
 
 
+@router.get("/check-promo")
+async def check_promo(code: str = ""):
+    """AJAX endpoint — returns {valid: bool} for live promo code feedback."""
+    return JSONResponse({"valid": is_valid_promo(code)})
+
+
 @router.post("/register", response_class=HTMLResponse)
 async def register(
     request: Request,
-    email: str    = Form(...),
-    password: str = Form(...),
-    db: Session   = Depends(get_db),
+    email: str      = Form(...),
+    password: str   = Form(...),
+    promo_code: str = Form(""),
+    db: Session     = Depends(get_db),
 ):
     """
     Create a new user account.
@@ -295,9 +314,15 @@ async def register(
       3. Hash password with bcrypt.
       4. Create Stripe Customer (graceful no-op if Stripe not configured).
       5. Persist User to DB.
-      6. Issue JWT cookie and redirect to /pricing (subscription prompt).
+      6. If valid promo code → grant is_subscribed = True immediately.
+      7. Auto-subscribe to newsletter + send welcome email.
+      8. Issue JWT cookie and redirect:
+           - promo granted  → /welcome
+           - no promo       → /pricing
     """
-    email = email.lower().strip()
+    email      = email.lower().strip()
+    promo_code = promo_code.strip().upper()
+    promo_ok   = is_valid_promo(promo_code)
 
     if not _valid_email(email):
         return _templates.TemplateResponse(
@@ -319,8 +344,18 @@ async def register(
         return _templates.TemplateResponse(
             request,
             "register.html",
-            {"error": "An account with that email already exists."},
+            {"error": "An account with that email already exists.",
+             "prefill_email": email},
             status_code=status.HTTP_409_CONFLICT,
+        )
+
+    if promo_code and not promo_ok:
+        return _templates.TemplateResponse(
+            request,
+            "register.html",
+            {"error": "That promo code is invalid. Leave it blank or enter a valid code.",
+             "prefill_email": email},
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         )
 
     stripe_customer_id = _create_stripe_customer(email)
@@ -328,17 +363,37 @@ async def register(
     user = User(
         email=email,
         hashed_password=hash_password(password),
-        is_subscribed=False,
+        is_subscribed=promo_ok,   # grant access immediately if promo is valid
         stripe_customer_id=stripe_customer_id,
     )
     db.add(user)
     db.commit()
     db.refresh(user)
-    log.info("Registered: %s  stripe_customer=%s", email, stripe_customer_id or "none")
+    log.info(
+        "Registered: %s  stripe_customer=%s  promo=%s",
+        email, stripe_customer_id or "none", promo_code or "none",
+    )
 
-    token = create_access_token(user.id, user.email)
-    # New users are not yet subscribed → send to /pricing to complete signup
-    response = RedirectResponse(url="/pricing", status_code=status.HTTP_303_SEE_OTHER)
+    # Auto-subscribe to newsletter (idempotent — skip if already subscribed)
+    try:
+        existing_sub = (
+            db.query(NewsletterSubscriber)
+            .filter(NewsletterSubscriber.email == email)
+            .first()
+        )
+        if not existing_sub:
+            db.add(NewsletterSubscriber(email=email, is_active=True))
+            db.commit()
+            log.info("Auto-subscribed %s to newsletter on registration.", email)
+        # Send newsletter welcome email (non-blocking)
+        from web.newsletter import send_newsletter_welcome  # lazy import avoids circular
+        send_newsletter_welcome(email)
+    except Exception as exc:
+        log.error("Auto-newsletter signup failed for %s: %s", email, exc)
+
+    token    = create_access_token(user.id, user.email)
+    redirect = "/welcome" if promo_ok else "/pricing"
+    response = RedirectResponse(url=redirect, status_code=status.HTTP_303_SEE_OTHER)
     _set_auth_cookie(response, token)
     return response
 

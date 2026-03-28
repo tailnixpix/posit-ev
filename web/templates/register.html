@@ -1,12 +1,149 @@
 {% extends "base.html" %}
 {% block title %}Create Account — Posit+EV{% endblock %}
+
+{% block head %}
+<style>
+main { max-width: 460px; padding-top: var(--space-7); }
+
+.auth-header { text-align: center; margin-bottom: var(--space-5); }
+.auth-header h1 { font-size: 1.6rem; margin-bottom: var(--space-1); }
+.auth-header p  { font-size: 0.9rem; color: var(--text-muted); margin: 0; }
+
+.auth-card {
+  background: #fff;
+  border: 1px solid var(--brand-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-md);
+}
+
+.auth-card form { gap: var(--space-4); }
+
+.input-wrap { position: relative; }
+.input-wrap input { padding-right: 72px; }
+.promo-status {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.72rem;
+  font-weight: 700;
+  display: none;
+  white-space: nowrap;
+}
+
+.promo-hint {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin: 4px 0 0;
+}
+
+.success-banner {
+  background: #F0FDF4;
+  border: 1px solid #86EFAC;
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-4);
+  font-size: 0.875rem;
+  color: #15803D;
+  margin-bottom: var(--space-3);
+}
+
+.auth-footer {
+  text-align: center;
+  font-size: 0.875rem;
+  margin-top: var(--space-4);
+  color: var(--text-muted);
+}
+.auth-footer a { font-weight: 600; }
+</style>
+{% endblock %}
+
 {% block content %}
-<h1>Create your Posit+EV account</h1>
-{% if error %}<p class="error">{{ error }}</p>{% endif %}
-<form method="post" action="/register">
-  <label>Email <input type="email" name="email" required /></label>
-  <label>Password <input type="password" name="password" minlength="8" required /></label>
-  <button type="submit">Create Account</button>
-</form>
-<p>Already have an account? <a href="/login">Sign in</a></p>
+
+<div class="auth-header">
+  <h1>Create your account</h1>
+  <p>Join Posit+EV and start finding your edge</p>
+</div>
+
+{% if error %}
+<p class="error">{{ error }}</p>
+{% endif %}
+
+{% if promo_success %}
+<div class="success-banner">&#10003; Promo code applied — you have full dashboard access!</div>
+{% endif %}
+
+<div class="auth-card">
+  <form method="post" action="/register">
+
+    <label>
+      Email address
+      <input type="email" name="email" placeholder="you@example.com"
+             value="{{ prefill_email or '' }}" required />
+    </label>
+
+    <label>
+      Password
+      <input type="password" name="password" minlength="8"
+             placeholder="At least 8 characters" required />
+    </label>
+
+    <div>
+      <label style="margin-bottom:0;">
+        Promo / referral code
+        <div class="input-wrap">
+          <input type="text" name="promo_code" id="promoInput"
+                 placeholder="Optional — enter code for free access"
+                 style="text-transform:uppercase;"
+                 oninput="this.value=this.value.toUpperCase()" />
+          <span class="promo-status" id="promoStatus"></span>
+        </div>
+      </label>
+      <p class="promo-hint">Have a promo code? Enter it above to unlock free dashboard access.</p>
+    </div>
+
+    <button type="submit">Create Account &rarr;</button>
+
+  </form>
+</div>
+
+<p class="auth-footer">
+  Already have an account? <a href="/login">Sign in</a>
+</p>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Client-side promo feedback — server does the real validation
+const promoInput  = document.getElementById('promoInput');
+const promoStatus = document.getElementById('promoStatus');
+
+promoInput.addEventListener('input', () => {
+  const val = promoInput.value.trim();
+  if (!val) {
+    promoStatus.style.display = 'none';
+    promoInput.style.borderColor = '';
+    return;
+  }
+  promoStatus.style.display = 'inline';
+  // Optimistic check — just shows feedback; server validates for real
+  fetch('/check-promo?code=' + encodeURIComponent(val))
+    .then(r => r.json())
+    .then(data => {
+      if (data.valid) {
+        promoStatus.textContent  = '✓ Valid — free access unlocked';
+        promoStatus.style.color  = 'var(--brand-success)';
+        promoInput.style.borderColor = 'var(--brand-success)';
+        promoInput.style.boxShadow   = '0 0 0 3px rgba(15,110,86,0.12)';
+      } else {
+        promoStatus.textContent  = '✕ Invalid code';
+        promoStatus.style.color  = '#C53030';
+        promoInput.style.borderColor = '#FEB2B2';
+        promoInput.style.boxShadow   = 'none';
+      }
+    })
+    .catch(() => { promoStatus.style.display = 'none'; });
+});
+</script>
 {% endblock %}
