@@ -496,18 +496,44 @@ def send_newsletter_welcome(to_email: str) -> bool:
     unsub_url   = f"{_base_url}/newsletter/unsubscribe?token={unsub_token}"
 
     body = f"""
-    <h2>You&rsquo;re subscribed to Posit+EV Daily Picks!</h2>
+    <h2>You&rsquo;re in &mdash; free picks start tomorrow!</h2>
     <p>
-      Starting tomorrow at 8&nbsp;AM&nbsp;CT, we&rsquo;ll send you our
-      single highest +EV bet of the day &mdash; complete with an expert
-      breakdown of why it has edge.
+      Every morning at 8&nbsp;AM&nbsp;CT you&rsquo;ll get our single
+      highest +EV bet of the day, with an AI-written breakdown of exactly
+      why the edge exists.
     </p>
     <p class="tag-success">&#10003; Free subscription confirmed.</p>
-    <p>
-      Want the full dashboard? EV Pro unlocks every pick, real-time
-      Telegram alerts, and half-Kelly sizing across all leagues and markets.
+
+    <!-- What they're missing -->
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+           style="background:#F7F6FE; border:1px solid #D6D2F8; border-radius:10px;
+                  margin:4px 0 20px;">
+      <tr>
+        <td style="padding:18px 22px;">
+          <p style="margin:0 0 10px; font-size:13px; font-weight:700;
+                     color:#26215C; letter-spacing:0.3px;">
+            &#128274;&nbsp; EV Pro members also get:
+          </p>
+          <p style="margin:0; font-size:13px; line-height:1.9; color:#555270;">
+            &#10003;&nbsp; <strong>Every +EV bet</strong> from the full daily scan
+              (usually 10&ndash;30 picks)<br>
+            &#10003;&nbsp; <strong>EV % and True Probability</strong> shown on each pick<br>
+            &#10003;&nbsp; <strong>&frac12; Kelly stake sizing</strong> &mdash;
+              exact bankroll % to risk<br>
+            &#10003;&nbsp; <strong>League &amp; market filters</strong> &mdash;
+              NHL, NBA, MLB, spreads, totals &amp; more<br>
+            &#10003;&nbsp; <strong>Live dashboard</strong> refreshed every 30 minutes
+          </p>
+        </td>
+      </tr>
+    </table>
+
+    <a class="cta-btn" href="{_base_url}/pricing">
+      Unlock All Today&rsquo;s Picks &mdash; $29/month &rarr;
+    </a>
+    <p style="font-size:12px; color:#AFA9EC; margin-top:6px;">
+      Cancel any time. No contracts.
     </p>
-    <a class="cta-btn" href="{_base_url}/pricing">View EV Pro &rarr;</a>
     <hr class="divider" />
     <p style="font-size:13px; color:#8E8BAA;">
       Didn&rsquo;t subscribe?
