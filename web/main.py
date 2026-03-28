@@ -169,10 +169,18 @@ def refresh_ev_cache() -> int:
             except (ValueError, TypeError):
                 odds_val = 0
 
+            point_val = row.get("point")
+            try:
+                point_val = float(point_val) if point_val is not None else None
+            except (ValueError, TypeError):
+                point_val = None
+
             rows.append(EVBetCache(
                 league     = str(row.get("sport_key",      "")),
                 market     = str(row.get("market",         "")),
                 team       = str(row.get("outcome_name",   "")),
+                game       = str(row.get("game",           "")) or None,
+                point      = point_val,
                 book       = str(row.get("bookmaker",      "")),
                 ev_percent = float(row.get("effective_ev_pct", row.get("ev_pct", 0))),
                 true_prob  = float(row.get("true_prob",    0)),
@@ -207,6 +215,15 @@ def refresh_ev_cache() -> int:
 @app.on_event("startup")
 async def on_startup() -> None:
     create_tables()
+    # Migrate: add game and point columns if they don't exist yet
+    from sqlalchemy import text
+    with SessionLocal() as _db:
+        try:
+            _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS game VARCHAR"))
+            _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS point FLOAT"))
+            _db.commit()
+        except Exception:
+            _db.rollback()
 
     # Schedule refresh every 30 minutes, starting immediately (next_run_time=now)
     scheduler.add_job(

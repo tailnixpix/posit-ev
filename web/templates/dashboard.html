@@ -389,6 +389,19 @@ main { max-width: 1200px; padding-top: var(--space-5); }
       {% if bet.odds > 0 %}{% set odds_str = "+" ~ bet.odds %}
       {% else %}{% set odds_str = bet.odds | string %}{% endif %}
 
+      {# Team + line display #}
+      {% if bet.market == "totals" and bet.point %}
+        {% set team_display = bet.team ~ " " ~ bet.point %}
+      {% elif bet.market == "spreads" and bet.point %}
+        {% if bet.point > 0 %}
+          {% set team_display = bet.team ~ " +" ~ bet.point %}
+        {% else %}
+          {% set team_display = bet.team ~ " " ~ bet.point %}
+        {% endif %}
+      {% else %}
+        {% set team_display = bet.team %}
+      {% endif %}
+
       {# Market filter key: collapse any props variant to "props" #}
       {% if bet.market in ["h2h", "spreads", "totals"] %}
         {% set market_key = bet.market %}
@@ -402,7 +415,12 @@ main { max-width: 1200px; padding-top: var(--space-5); }
 
         {# Header: team name + EV badge #}
         <div class="card-header">
-          <div class="card-team">{{ bet.team }}</div>
+          <div>
+            <div class="card-team">{{ team_display }}</div>
+            {% if bet.game %}
+            <div style="font-size:0.78rem; color:var(--text-muted); margin-top:2px;">{{ bet.game }}</div>
+            {% endif %}
+          </div>
           <div class="card-ev-badge {{ tier }}">{{ "%.1f"|format(bet.ev_percent) }}%</div>
         </div>
 

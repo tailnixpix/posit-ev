@@ -109,6 +109,8 @@ class EVBetCache(Base):
     league     = Column(String, index=True, nullable=False)   # e.g. "icehockey_nhl"
     market     = Column(String, nullable=False)               # e.g. "h2h", "spreads"
     team       = Column(String, nullable=False)               # outcome_name
+    game       = Column(String, nullable=True)                # e.g. "Bruins @ Maple Leafs"
+    point      = Column(Float, nullable=True)                 # spread/total line value
     book       = Column(String, nullable=False)               # bookmaker
     ev_percent = Column(Float, nullable=False)                # EV% (effective_ev_pct if available)
     true_prob  = Column(Float, nullable=False)                # no-vig true probability
