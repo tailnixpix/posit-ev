@@ -39,17 +39,23 @@ load_dotenv()
 # Engine
 # ---------------------------------------------------------------------------
 
-_raw_url: str = os.getenv("DATABASE_URL") or "sqlite:///./sports_ev.db"
+_raw_url = os.getenv("DATABASE_URL")
 
-# Railway / Heroku return postgres:// or postgresql:// — normalise to psycopg2 dialect
-DATABASE_URL: str = _raw_url
-if DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+psycopg2://", 1)
-elif DATABASE_URL.startswith("postgresql://") and "+psycopg2" not in DATABASE_URL:
-    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg2://", 1)
+if _raw_url:
+    # Normalise any postgres:// or postgresql:// to postgresql+psycopg2://
+    DATABASE_URL = _raw_url
+    if DATABASE_URL.startswith("postgres://"):
+        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+psycopg2://", 1)
+    elif DATABASE_URL.startswith("postgresql://"):
+        DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg2://", 1)
+    # Replace any stale pg8000 driver reference
+    DATABASE_URL = DATABASE_URL.replace("+pg8000", "+psycopg2")
+    connect_args = {}
+else:
+    DATABASE_URL = "sqlite:///./positplusev.db"
+    connect_args = {"check_same_thread": False}
 
-# SQLite needs check_same_thread=False for FastAPI's threaded request handling
-connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+print(f"[db] DATABASE_URL: {DATABASE_URL[:30]}...")
 
 engine = create_engine(DATABASE_URL, connect_args=connect_args)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
