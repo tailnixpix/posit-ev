@@ -240,49 +240,6 @@ main { max-width: none; padding: 0; }
   letter-spacing: 0.3px;
 }
 
-/* ── Testimonials ─────────────────────────────────────────────────── */
-.testi-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-4);
-}
-@media (max-width: 800px) { .testi-grid { grid-template-columns: 1fr; } }
-.testi-card {
-  background: #fff;
-  border: 1px solid var(--brand-border);
-  border-radius: var(--radius-lg);
-  padding: var(--space-5);
-  box-shadow: var(--shadow-sm);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-.testi-stars { color: #FAC775; font-size: 0.95rem; letter-spacing: 2px; }
-.testi-quote {
-  font-size: 0.92rem;
-  color: var(--text-secondary);
-  line-height: 1.7;
-  flex: 1;
-  margin: 0;
-  font-style: italic;
-}
-.testi-quote::before { content: '\201C'; }
-.testi-quote::after  { content: '\201D'; }
-.testi-author { display: flex; align-items: center; gap: var(--space-3); }
-.testi-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 0.9rem;
-  color: #fff;
-  flex-shrink: 0;
-}
-.testi-name  { font-size: 0.85rem; font-weight: 700; color: var(--brand-dark); margin: 0; }
-.testi-role  { font-size: 0.75rem; color: var(--text-muted); margin: 0; }
 
 /* ── Final CTA ────────────────────────────────────────────────────── */
 .cta-section {
@@ -555,72 +512,6 @@ main { max-width: none; padding: 0; }
   </div>
 </section>
 
-{# ── Testimonials ──────────────────────────────────────────────────────── #}
-<section class="section section-alt">
-  <div class="container">
-    <p class="section-label" style="text-align:center;">What bettors say</p>
-    <h2 class="section-title" style="text-align:center; margin:0 auto var(--space-6);">
-      Built for serious bettors
-    </h2>
-    <div class="testi-grid">
-
-      <div class="testi-card">
-        <div class="testi-stars">★★★★★</div>
-        <p class="testi-quote">
-          I used to spend two hours every morning line shopping manually.
-          Posit+EV surfaces every edge before I've had my coffee. The Kelly
-          sizing alone has improved my bankroll management massively.
-        </p>
-        <div class="testi-author">
-          <div class="testi-avatar" style="background:var(--brand-primary);">MR</div>
-          <div>
-            <p class="testi-name">Marcus R.</p>
-            <p class="testi-role">Recreational bettor &mdash; Chicago, IL</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="testi-card">
-        <div class="testi-stars">★★★★★</div>
-        <p class="testi-quote">
-          The sport-specific adjustments are what sold me. Most EV tools just
-          give you raw math. Posit+EV flags goalie uncertainty and B2B schedules,
-          which saves you from taking edges that aren't real edges.
-        </p>
-        <div class="testi-author">
-          <div class="testi-avatar" style="background:var(--brand-success);">JT</div>
-          <div>
-            <p class="testi-name">Jordan T.</p>
-            <p class="testi-role">NHL sharp &mdash; Toronto, ON</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="testi-card">
-        <div class="testi-stars">★★★★★</div>
-        <p class="testi-quote">
-          Started with the free daily pick to test the model. Within two weeks
-          I was 7 for 9 on the recommended bets. Subscribed immediately. The
-          Telegram alerts are a game changer for in-play timing.
-        </p>
-        <div class="testi-author">
-          <div class="testi-avatar" style="background:var(--brand-accent); color:var(--brand-dark);">AK</div>
-          <div>
-            <p class="testi-name">Aisha K.</p>
-            <p class="testi-role">Soccer bettor &mdash; London, UK</p>
-          </div>
-        </div>
-      </div>
-
-    </div>
-
-    <p style="text-align:center; font-size:0.75rem; color:var(--text-muted);
-              margin-top:var(--space-5);">
-      Testimonials are representative of early user feedback. Individual results vary.
-      Past edge detection does not guarantee future profitability.
-    </p>
-  </div>
-</section>
 
 {# ── Newsletter signup ─────────────────────────────────────────────────── #}
 <section class="section section-white" style="padding-top:var(--space-8); padding-bottom:var(--space-8);">
@@ -716,7 +607,7 @@ main { max-width: none; padding: 0; }
       30 minutes, with Kelly sizing and sport-specific confidence adjustments.
     </p>
     <div style="display:flex; gap:var(--space-3); justify-content:center; flex-wrap:wrap;">
-      <a href="/subscribe" class="btn-hero-primary">Start for $10/month &rarr;</a>
+      <a href="/subscribe" class="btn-hero-primary">Start for $29/month &rarr;</a>
       <a href="/register" class="btn-hero-ghost">Create free account</a>
     </div>
     <p style="margin-top:var(--space-5); font-size:0.8rem; color:rgba(255,255,255,0.45);">
