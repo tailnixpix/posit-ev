@@ -1,0 +1,3 @@
+bookmaker,outcome_name,american_odds,true_prob,implied_prob,decimal_odds,profit_if_win,ev,ev_pct,positive_ev,game_id,game,market,sport_key,commence_time,sharp_book,sharp_vig_pct,adjusted_prob,confidence_mult,adj_flags,adj_warnings,effective_ev_pct
+fanduel,Chicago Bulls,1400,0.0803,0.0667,15.0,1400.0,20.44,20.438,True,e1036e62b7cea2b7bade60f85bc0c1b1,Chicago Bulls @ Oklahoma City Thunder,h2h,basketball_nba,2026-03-28 00:10:00+00:00,draftkings,3.65,0.0803,1.0,,Not enough probs for NBA,20.438
+fanduel,Utah Jazz,1200,0.0803,0.0769,13.0,1200.0,4.38,4.3796,True,a2b709618069c3dd7c15f6192c11e93c,Utah Jazz @ Denver Nuggets,h2h,basketball_nba,2026-03-28 01:10:00+00:00,draftkings,3.65,0.0803,1.0,,Not enough probs for NBA,4.3796

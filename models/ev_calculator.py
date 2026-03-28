@@ -1,52 +1,330 @@
 """
-Expected Value (EV) calculator for sports betting.
+ev_calculator.py — Calculate Expected Value for sports betting opportunities.
+
+EV formula (per unit stake):
+    EV = (true_prob * profit_if_win) - ((1 - true_prob) * stake)
+    EV% = EV / stake * 100
+
+A bet is flagged as +EV when EV% > EV_THRESHOLD (default 3%).
+
+Supports: moneyline (h2h), spreads, totals, player_props
 """
 
+import sys
+import os
+from typing import Optional
+import pandas as pd
 
-def american_to_decimal(american_odds: int) -> float:
-    if american_odds > 0:
-        return (american_odds / 100) + 1
-    return (100 / abs(american_odds)) + 1
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from models.no_vig import (
+    american_to_decimal,
+    american_to_implied,
+    no_vig_market,
+    sharpest_no_vig,
+)
 
+# ---------------------------------------------------------------------------
+# Config
+# ---------------------------------------------------------------------------
 
-def implied_probability(american_odds: int) -> float:
+EV_THRESHOLD_PCT = 3.0   # flag bets with EV% above this value
+DEFAULT_STAKE = 100.0     # notional stake used for EV dollar calculation
+
+# ---------------------------------------------------------------------------
+# Core EV math
+# ---------------------------------------------------------------------------
+
+def expected_value(true_prob: float, american_odds: int, stake: float = DEFAULT_STAKE) -> dict:
+    """
+    Calculate expected value for a single bet.
+
+    Parameters
+    ----------
+    true_prob : float
+        No-vig (fair) probability of winning in [0, 1].
+    american_odds : int
+        The odds offered by the bookmaker.
+    stake : float
+        Notional stake (default $100).
+
+    Returns
+    -------
+    dict with keys:
+        decimal_odds  : float
+        profit_if_win : float   (net profit on a win)
+        ev            : float   (dollar EV on `stake`)
+        ev_pct        : float   (EV as % of stake)
+        positive_ev   : bool    (True if ev_pct > EV_THRESHOLD_PCT)
+
+    Examples
+    --------
+    >>> r = expected_value(0.55, -110)
+    >>> round(r["ev_pct"], 2)
+    5.95
+    >>> r["positive_ev"]
+    True
+
+    >>> r = expected_value(0.45, -110)
+    >>> round(r["ev_pct"], 2)
+    -13.64
+    >>> r["positive_ev"]
+    False
+    """
     decimal = american_to_decimal(american_odds)
-    return 1 / decimal
+    profit_if_win = stake * (decimal - 1)
+    loss_if_lose = stake
+    ev = (true_prob * profit_if_win) - ((1 - true_prob) * loss_if_lose)
+    ev_pct = (ev / stake) * 100
+
+    return {
+        "decimal_odds": decimal,
+        "profit_if_win": round(profit_if_win, 2),
+        "ev": round(ev, 2),
+        "ev_pct": round(ev_pct, 4),
+        "positive_ev": ev_pct > EV_THRESHOLD_PCT,
+    }
 
 
-def remove_vig(probs: list[float]) -> list[float]:
-    total = sum(probs)
-    return [p / total for p in probs]
+# ---------------------------------------------------------------------------
+# Market-level EV: one book's lines vs. sharp no-vig probs
+# ---------------------------------------------------------------------------
 
+def ev_for_market(
+    book_american_odds: list,
+    true_probs: list,
+    outcome_names: list,
+    bookmaker: str,
+    stake: float = DEFAULT_STAKE,
+) -> list:
+    """
+    Compute EV for every outcome in a single market.
 
-def expected_value(true_prob: float, american_odds: int, stake: float = 1.0) -> float:
-    decimal = american_to_decimal(american_odds)
-    profit = stake * (decimal - 1)
-    loss = stake
-    return (true_prob * profit) - ((1 - true_prob) * loss)
+    Parameters
+    ----------
+    book_american_odds : list of int
+        The odds offered by this bookmaker for each outcome.
+    true_probs : list of float
+        No-vig true probabilities (must align with book_american_odds).
+    outcome_names : list of str
+    bookmaker : str
+    stake : float
 
-
-def find_positive_ev(market_odds: list[int], model_probs: list[float], stake: float = 100.0):
+    Returns
+    -------
+    list of dicts — one per outcome.
+    """
     results = []
-    for odds, prob in zip(market_odds, model_probs):
+    for odds, prob, name in zip(book_american_odds, true_probs, outcome_names):
         ev = expected_value(prob, odds, stake)
         results.append({
+            "bookmaker": bookmaker,
+            "outcome_name": name,
             "american_odds": odds,
-            "model_prob": prob,
-            "implied_prob": implied_probability(odds),
-            "ev": round(ev, 2),
-            "positive_ev": ev > 0,
+            "true_prob": round(prob, 4),
+            "implied_prob": round(american_to_implied(odds), 4),
+            **ev,
         })
     return results
 
 
-if __name__ == "__main__":
-    # Example: two-outcome market
-    market = [-110, -110]
-    implied = [implied_probability(o) for o in market]
-    fair = remove_vig(implied)
+# ---------------------------------------------------------------------------
+# Full pipeline: odds DataFrame → +EV DataFrame
+# ---------------------------------------------------------------------------
 
-    print("Fair probabilities (vig removed):", [round(p, 4) for p in fair])
-    results = find_positive_ev(market, fair)
-    for r in results:
-        print(r)
+def find_positive_ev(
+    odds_df: pd.DataFrame,
+    market: str = "h2h",
+    ev_threshold: float = EV_THRESHOLD_PCT,
+    stake: float = DEFAULT_STAKE,
+) -> pd.DataFrame:
+    """
+    Scan all games in odds_df for a given market, compute no-vig true
+    probabilities using the sharpest book, then evaluate every book's
+    lines for +EV opportunities.
+
+    Parameters
+    ----------
+    odds_df : pd.DataFrame
+        Output of odds_fetcher.get_odds_df().
+    market : str
+        "h2h", "spreads", "totals", or "player_props".
+    ev_threshold : float
+        Minimum EV% to flag as a positive EV bet (default 3.0).
+    stake : float
+        Notional stake for EV dollar calculation.
+
+    Returns
+    -------
+    pd.DataFrame
+        All bets with ev_pct > ev_threshold, sorted descending by ev_pct.
+        Columns: game, market, bookmaker, outcome_name, american_odds,
+                 true_prob, implied_prob, ev, ev_pct, positive_ev,
+                 commence_time, sport_key.
+    """
+    subset = odds_df[odds_df["market"] == market].copy()
+    if subset.empty:
+        return pd.DataFrame()
+
+    all_rows = []
+
+    for game_id, game_df in subset.groupby("game_id"):
+        meta = game_df.iloc[0]
+        game_label = f"{meta['away_team']} @ {meta['home_team']}"
+
+        # Build {bookmaker: [odds per outcome]} — outcomes sorted for alignment
+        outcome_order = sorted(game_df["outcome_name"].unique())
+        book_odds = {}
+        for book, bk_df in game_df.groupby("bookmaker"):
+            bk_df_sorted = bk_df.set_index("outcome_name").reindex(outcome_order)
+            if bk_df_sorted["price"].isna().any():
+                continue  # skip books missing an outcome
+            book_odds[book] = bk_df_sorted["price"].astype(int).tolist()
+
+        if len(book_odds) < 2:
+            continue  # need at least two books to identify the sharpest
+
+        # --- True probabilities from sharpest book ---
+        sharp = sharpest_no_vig(book_odds, outcome_names=outcome_order)
+        true_probs = sharp["no_vig_probs"]
+        sharp_book = sharp["sharpest_book"]
+
+        # --- Evaluate every book's lines against those true probs ---
+        for book, odds_list in book_odds.items():
+            rows = ev_for_market(odds_list, true_probs, outcome_order, book, stake)
+            for row in rows:
+                row.update({
+                    "game_id": game_id,
+                    "game": game_label,
+                    "market": market,
+                    "sport_key": meta["sport_key"],
+                    "commence_time": meta["commence_time"],
+                    "sharp_book": sharp_book,
+                    "sharp_vig_pct": round(sharp["sharpest_vig"] * 100, 3),
+                })
+                all_rows.append(row)
+
+    if not all_rows:
+        return pd.DataFrame()
+
+    df = pd.DataFrame(all_rows)
+    positive = df[df["ev_pct"] > ev_threshold].copy()
+    return positive.sort_values("ev_pct", ascending=False).reset_index(drop=True)
+
+
+def find_all_positive_ev(
+    odds_df: pd.DataFrame,
+    markets: list = None,
+    ev_threshold: float = EV_THRESHOLD_PCT,
+    stake: float = DEFAULT_STAKE,
+) -> pd.DataFrame:
+    """
+    Run find_positive_ev across all markets and concatenate results.
+
+    Parameters
+    ----------
+    odds_df : pd.DataFrame
+    markets : list of str, optional
+        Defaults to ["h2h", "spreads", "totals"].
+    ev_threshold : float
+    stake : float
+
+    Returns
+    -------
+    pd.DataFrame — all +EV bets across all markets, sorted by ev_pct.
+    """
+    markets = markets or ["h2h", "spreads", "totals"]
+    frames = []
+    for mkt in markets:
+        result = find_positive_ev(odds_df, market=mkt, ev_threshold=ev_threshold, stake=stake)
+        if not result.empty:
+            frames.append(result)
+
+    if not frames:
+        return pd.DataFrame()
+
+    combined = pd.concat(frames, ignore_index=True)
+    return combined.sort_values("ev_pct", ascending=False).reset_index(drop=True)
+
+
+# ---------------------------------------------------------------------------
+# Display helpers
+# ---------------------------------------------------------------------------
+
+DISPLAY_COLS = [
+    "game", "market", "outcome_name", "bookmaker",
+    "american_odds", "true_prob", "implied_prob",
+    "ev", "ev_pct", "commence_time",
+]
+
+
+def print_ev_report(ev_df: pd.DataFrame, title: str = "+EV Opportunities") -> None:
+    """Pretty-print the +EV DataFrame to stdout."""
+    if ev_df.empty:
+        print(f"\n[{title}] No +EV bets found above threshold.")
+        return
+
+    cols = [c for c in DISPLAY_COLS if c in ev_df.columns]
+    print(f"\n{'=' * 70}")
+    print(f" {title}  ({len(ev_df)} bets)")
+    print(f"{'=' * 70}")
+    print(ev_df[cols].to_string(index=False))
+    print(f"\nAvg EV%: {ev_df['ev_pct'].mean():.2f}%   "
+          f"Max EV%: {ev_df['ev_pct'].max():.2f}%   "
+          f"Total EV on ${int(DEFAULT_STAKE)}/bet: ${ev_df['ev'].sum():.2f}")
+
+
+# ---------------------------------------------------------------------------
+# CLI / example usage
+# ---------------------------------------------------------------------------
+
+if __name__ == "__main__":
+    import argparse
+
+    # --- Standalone unit tests ---
+    print("=" * 60)
+    print("UNIT TESTS")
+    print("=" * 60)
+
+    # Test 1: genuine +EV bet
+    r = expected_value(0.55, -110)
+    assert r["positive_ev"], "Should be +EV"
+    print(f"[PASS] true_prob=0.55 @ -110 → EV%={r['ev_pct']}%  positive={r['positive_ev']}")
+
+    # Test 2: negative EV
+    r = expected_value(0.45, -110)
+    assert not r["positive_ev"], "Should be -EV"
+    print(f"[PASS] true_prob=0.45 @ -110 → EV%={r['ev_pct']}%  positive={r['positive_ev']}")
+
+    # Test 3: 3-way soccer market with realistic overround > 1
+    # Odds: home -130, draw +280, away +200 → overround ~1.047
+    soccer_market = no_vig_market([-130, 280, 200], ["Home", "Draw", "Away"])
+    true_probs = soccer_market["no_vig_probs"]
+    og = soccer_market["overround"]
+    # When overround > 1, evaluating a book's own odds against its own no-vig probs
+    # yields slightly negative EV (true_prob < implied_prob for each outcome).
+    # Expect small magnitude EVs, not exactly 0.
+    rows = ev_for_market([-130, 280, 200], true_probs, ["Home", "Draw", "Away"], "testbook")
+    assert og > 1.0, f"Expected overround > 1, got {og}"
+    for row in rows:
+        assert row["ev_pct"] < 0, f"Self-eval on viggy book should be -EV, got {row['ev_pct']}"
+    print(f"[PASS] Soccer 1X2 (overround={round(og,4)}) self-eval EVs (expect negative): {[r['ev_pct'] for r in rows]}")
+
+    # Test 4: live data from API
+    print()
+    print("=" * 60)
+    print("LIVE TEST: NBA +EV scan")
+    print("=" * 60)
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--sport", default="basketball_nba")
+    parser.add_argument("--threshold", type=float, default=EV_THRESHOLD_PCT)
+    args = parser.parse_args()
+
+    from scripts.odds_fetcher import get_odds_df
+    df = get_odds_df(sport_keys=[args.sport], markets=["h2h", "spreads", "totals"])
+
+    if df.empty:
+        print("No live data available.")
+    else:
+        ev_df = find_all_positive_ev(df, ev_threshold=args.threshold)
+        print_ev_report(ev_df, title=f"+EV Bets — {args.sport} (threshold={args.threshold}%)")

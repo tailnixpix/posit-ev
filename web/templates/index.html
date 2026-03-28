@@ -1,0 +1,728 @@
+{% extends "base.html" %}
+{% block title %}Posit+EV — Find Every Edge. Beat the Market.{% endblock %}
+
+{% block head %}
+<style>
+/* ── Reset main for full-width landing sections ────────────────────── */
+main { max-width: none; padding: 0; }
+.container { max-width: 1080px; margin: 0 auto; padding: 0 var(--space-5); }
+
+/* ── Hero ─────────────────────────────────────────────────────────── */
+.hero {
+  background: linear-gradient(150deg, #1A1450 0%, #2D2580 55%, #534AB7 100%);
+  color: #fff;
+  padding: 96px var(--space-5) 80px;
+  text-align: center;
+}
+.hero-logo-wrap {
+  display: inline-block;
+  margin-bottom: 40px;
+}
+.hero-logo-wrap img {
+  height: auto;
+  width: clamp(260px, 50vw, 340px);
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+}
+.hero h1 {
+  color: #fff;
+  font-size: clamp(1.9rem, 4vw, 2.9rem);
+  font-weight: 800;
+  line-height: 1.15;
+  margin: 0 auto var(--space-4);
+  max-width: 720px;
+}
+.hero h1 .accent { color: #FAC775; }
+.hero-sub {
+  color: rgba(255,255,255,0.78);
+  font-size: 1.1rem;
+  max-width: 540px;
+  margin: 0 auto var(--space-6);
+  line-height: 1.65;
+}
+.hero-actions { display: flex; gap: var(--space-3); justify-content: center; flex-wrap: wrap; }
+.btn-hero-primary {
+  background: #FAC775;
+  color: #1A1450;
+  font-weight: 700;
+  font-size: 1rem;
+  padding: 0.8rem 2rem;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: opacity 0.15s, transform 0.12s;
+}
+.btn-hero-primary:hover { opacity: 0.9; transform: translateY(-1px); text-decoration: none; }
+.btn-hero-ghost {
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+  font-weight: 600;
+  font-size: 1rem;
+  padding: 0.8rem 2rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.3);
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  transition: background 0.15s;
+}
+.btn-hero-ghost:hover { background: rgba(255,255,255,0.2); text-decoration: none; }
+
+/* ── Stats bar ────────────────────────────────────────────────────── */
+.stats-bar {
+  background: var(--brand-dark);
+  padding: var(--space-5) var(--space-5);
+}
+.stats-bar .container {
+  display: flex;
+  justify-content: center;
+  gap: 0;
+  flex-wrap: wrap;
+}
+.stat-item {
+  flex: 1 1 160px;
+  text-align: center;
+  padding: var(--space-4) var(--space-5);
+  border-right: 1px solid rgba(255,255,255,0.1);
+}
+.stat-item:last-child { border-right: none; }
+.stat-item .s-num { font-size: 1.9rem; font-weight: 800; color: #FAC775; line-height: 1; }
+.stat-item .s-lbl { font-size: 0.78rem; color: rgba(255,255,255,0.6); margin-top: 4px;
+                    text-transform: uppercase; letter-spacing: 0.6px; }
+
+/* ── Section base ─────────────────────────────────────────────────── */
+.section { padding: 80px var(--space-5); }
+.section-alt { background: var(--brand-light); }
+.section-dark { background: var(--brand-dark); }
+.section-white { background: #fff; }
+.section-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--brand-primary);
+  margin-bottom: var(--space-3);
+}
+.section-dark .section-label { color: #FAC775; }
+.section-title {
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  font-weight: 800;
+  color: var(--brand-dark);
+  line-height: 1.2;
+  margin: 0 0 var(--space-4);
+}
+.section-dark .section-title { color: #fff; }
+.section-sub {
+  color: var(--text-secondary);
+  font-size: 1.05rem;
+  max-width: 580px;
+  line-height: 1.7;
+  margin: 0 0 var(--space-6);
+}
+.section-dark .section-sub { color: rgba(255,255,255,0.7); }
+
+/* ── EV explainer ─────────────────────────────────────────────────── */
+.ev-explainer {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);
+  align-items: center;
+}
+@media (max-width: 720px) { .ev-explainer { grid-template-columns: 1fr; } }
+.ev-example {
+  background: var(--brand-dark);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
+  color: #fff;
+}
+.ev-example-title {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #FAC775;
+  font-weight: 700;
+  margin-bottom: var(--space-4);
+}
+.ev-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  font-size: 0.9rem;
+}
+.ev-row:last-child { border-bottom: none; }
+.ev-row .ev-label { color: rgba(255,255,255,0.65); }
+.ev-row .ev-value { font-weight: 700; color: #fff; }
+.ev-row .ev-value.good { color: #4ADE80; }
+.ev-badge-row {
+  margin-top: var(--space-4);
+  background: rgba(74,222,128,0.12);
+  border: 1px solid rgba(74,222,128,0.3);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  font-size: 0.9rem;
+  color: #4ADE80;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* ── How it works ─────────────────────────────────────────────────── */
+.steps-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-5);
+}
+@media (max-width: 720px) { .steps-grid { grid-template-columns: 1fr; } }
+.step-card {
+  background: #fff;
+  border: 1px solid var(--brand-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-sm);
+  position: relative;
+}
+.step-num {
+  font-size: 2.5rem;
+  font-weight: 900;
+  color: var(--brand-light);
+  line-height: 1;
+  margin-bottom: var(--space-3);
+  font-variant-numeric: tabular-nums;
+}
+.step-icon { font-size: 1.8rem; margin-bottom: var(--space-3); }
+.step-title { font-size: 1rem; font-weight: 700; color: var(--brand-dark);
+              margin: 0 0 var(--space-2); }
+.step-desc { font-size: 0.88rem; color: var(--text-secondary); line-height: 1.65; margin: 0; }
+
+/* ── Leagues ──────────────────────────────────────────────────────── */
+.leagues-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-4);
+}
+@media (max-width: 900px) { .leagues-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 560px) { .leagues-grid { grid-template-columns: repeat(2, 1fr); } }
+.league-card {
+  background: #fff;
+  border: 1px solid var(--brand-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-3);
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+.league-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.league-emoji { font-size: 2.2rem; line-height: 1; margin-bottom: var(--space-2); }
+.league-name { font-size: 0.85rem; font-weight: 700; color: var(--brand-dark);
+               margin: 0 0 2px; }
+.league-full { font-size: 0.72rem; color: var(--text-muted); margin: 0; }
+.league-markets {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: var(--space-2);
+}
+.market-dot {
+  font-size: 0.6rem;
+  background: var(--brand-light);
+  color: var(--brand-primary);
+  border-radius: 20px;
+  padding: 1px 7px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+/* ── Testimonials ─────────────────────────────────────────────────── */
+.testi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
+}
+@media (max-width: 800px) { .testi-grid { grid-template-columns: 1fr; } }
+.testi-card {
+  background: #fff;
+  border: 1px solid var(--brand-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.testi-stars { color: #FAC775; font-size: 0.95rem; letter-spacing: 2px; }
+.testi-quote {
+  font-size: 0.92rem;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  flex: 1;
+  margin: 0;
+  font-style: italic;
+}
+.testi-quote::before { content: '\201C'; }
+.testi-quote::after  { content: '\201D'; }
+.testi-author { display: flex; align-items: center; gap: var(--space-3); }
+.testi-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #fff;
+  flex-shrink: 0;
+}
+.testi-name  { font-size: 0.85rem; font-weight: 700; color: var(--brand-dark); margin: 0; }
+.testi-role  { font-size: 0.75rem; color: var(--text-muted); margin: 0; }
+
+/* ── Final CTA ────────────────────────────────────────────────────── */
+.cta-section {
+  background: linear-gradient(135deg, #1A1450 0%, #534AB7 100%);
+  padding: 80px var(--space-5);
+  text-align: center;
+}
+.cta-section h2 { color: #fff; font-size: clamp(1.6rem, 3vw, 2.2rem); font-weight: 800;
+                  margin: 0 0 var(--space-3); }
+.cta-section p  { color: rgba(255,255,255,0.75); font-size: 1.05rem; margin: 0 auto var(--space-6);
+                  max-width: 480px; line-height: 1.65; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{# ── Hero ─────────────────────────────────────────────────────────────── #}
+<section class="hero">
+  <div class="hero-logo-wrap">
+    <img src="/static/logo-full.svg" alt="Posit+EV — Find the edge. Beat the market." />
+  </div>
+  <h1>Stop guessing. Start betting with a <span class="accent">mathematical edge</span>.</h1>
+  <p class="hero-sub">
+    Posit+EV scans live odds from every major sportsbook, models true win probabilities,
+    and surfaces every bet where the books have it wrong — before the line moves.
+  </p>
+  <div class="hero-actions">
+    <a href="/pricing" class="btn-hero-primary">Get Started — $29/mo &rarr;</a>
+    <a href="/login"   class="btn-hero-ghost">Sign In</a>
+  </div>
+</section>
+
+{# ── Stats bar ─────────────────────────────────────────────────────────── #}
+<div class="stats-bar">
+  <div class="container">
+    <div class="stat-item">
+      <div class="s-num">7</div>
+      <div class="s-lbl">Leagues scanned</div>
+    </div>
+    <div class="stat-item">
+      <div class="s-num">5+</div>
+      <div class="s-lbl">Sportsbooks compared</div>
+    </div>
+    <div class="stat-item">
+      <div class="s-num">4</div>
+      <div class="s-lbl">Market types</div>
+    </div>
+    <div class="stat-item">
+      <div class="s-num">30m</div>
+      <div class="s-lbl">Refresh interval</div>
+    </div>
+    <div class="stat-item">
+      <div class="s-num">&gt;3%</div>
+      <div class="s-lbl">Minimum edge shown</div>
+    </div>
+  </div>
+</div>
+
+{# ── What is +EV betting ───────────────────────────────────────────────── #}
+<section class="section section-white">
+  <div class="container">
+    <div class="ev-explainer">
+      <div>
+        <p class="section-label">The concept</p>
+        <h2 class="section-title">What is +EV betting?</h2>
+        <p class="section-sub">
+          Every sportsbook builds a margin — the "vig" — into their odds. It's how they profit
+          regardless of outcomes. But books aren't perfect. They sometimes price teams slightly
+          off from reality, especially in less-watched markets.
+        </p>
+        <p class="section-sub" style="margin-top:calc(-1 * var(--space-3));">
+          A <strong>+EV</strong> (positive expected value) bet is one where the book's implied
+          probability is <em>lower</em> than the true probability of that outcome. Bet enough
+          of these and the math works in your favor over time — just like a casino's edge works
+          for them.
+        </p>
+        <p class="section-sub" style="margin-top:calc(-1 * var(--space-3));">
+          We remove the vig from the sharpest books to find true probability, then compare it
+          to every other book's line to find where the edge lives.
+        </p>
+      </div>
+      <div class="ev-example">
+        <div class="ev-example-title">Live example — NHL Moneyline</div>
+        <div class="ev-row">
+          <span class="ev-label">Game</span>
+          <span class="ev-value">Bruins vs. Leafs</span>
+        </div>
+        <div class="ev-row">
+          <span class="ev-label">DraftKings odds</span>
+          <span class="ev-value">+145</span>
+        </div>
+        <div class="ev-row">
+          <span class="ev-label">Book's implied prob</span>
+          <span class="ev-value">40.8%</span>
+        </div>
+        <div class="ev-row">
+          <span class="ev-label">Our true probability</span>
+          <span class="ev-value good">46.2%</span>
+        </div>
+        <div class="ev-row">
+          <span class="ev-label">Expected value</span>
+          <span class="ev-value good">+$11.49 per $100</span>
+        </div>
+        <div class="ev-badge-row">+11.5% EV &mdash; Strong edge detected ✓</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{# ── How it works ──────────────────────────────────────────────────────── #}
+<section class="section section-alt">
+  <div class="container">
+    <p class="section-label" style="text-align:center;">Under the hood</p>
+    <h2 class="section-title" style="text-align:center; margin:0 auto var(--space-6);">
+      How Posit+EV finds the edge
+    </h2>
+    <div class="steps-grid">
+
+      <div class="step-card">
+        <div class="step-num">01</div>
+        <div class="step-icon">📡</div>
+        <p class="step-title">Fetch live odds</p>
+        <p class="step-desc">
+          Every 30 minutes we pull live moneyline, spread, total, and prop odds
+          from DraftKings, FanDuel, BetMGM, Caesars, and PointsBet — across
+          7 leagues simultaneously.
+        </p>
+      </div>
+
+      <div class="step-card">
+        <div class="step-num">02</div>
+        <div class="step-icon">🧮</div>
+        <p class="step-title">Model true probability</p>
+        <p class="step-desc">
+          We identify the sharpest book (lowest vig) as our reference market.
+          Using multiplicative vig removal, we convert their odds into a clean,
+          unbiased true probability for each outcome.
+        </p>
+      </div>
+
+      <div class="step-card">
+        <div class="step-num">03</div>
+        <div class="step-icon">⚡</div>
+        <p class="step-title">Surface the edges</p>
+        <p class="step-desc">
+          We compare that true probability against every other book's offering.
+          Any bet where expected value exceeds 3% gets flagged, sized with Kelly
+          criterion, and delivered to your dashboard instantly.
+        </p>
+      </div>
+
+    </div>
+
+    {# Sport-specific adjustment callout #}
+    <div style="background:#fff; border:1px solid var(--brand-border); border-radius:var(--radius-lg);
+                padding:var(--space-5); margin-top:var(--space-6); box-shadow:var(--shadow-sm);
+                display:flex; gap:var(--space-5); align-items:flex-start; flex-wrap:wrap;">
+      <div style="font-size:2rem; flex-shrink:0; padding-top:2px;">🎯</div>
+      <div>
+        <p style="font-weight:700; color:var(--brand-dark); margin:0 0 6px; font-size:1rem;">
+          Sport-specific adjustments built in
+        </p>
+        <p style="margin:0; font-size:0.88rem; color:var(--text-secondary); line-height:1.65; max-width:640px;">
+          Our model applies sport-aware confidence penalties: NHL goalie confirmation status,
+          NBA back-to-back fatigue, and soccer Euro midweek schedule adjustments all automatically
+          reduce confidence when data is uncertain — so you never bet blind.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+{# ── Leagues ───────────────────────────────────────────────────────────── #}
+<section class="section section-white">
+  <div class="container">
+    <p class="section-label" style="text-align:center;">Coverage</p>
+    <h2 class="section-title" style="text-align:center; margin:0 auto var(--space-6);">
+      7 leagues. 4 market types. Every day.
+    </h2>
+    <div class="leagues-grid">
+
+      <div class="league-card">
+        <div class="league-emoji">🏒</div>
+        <p class="league-name">NHL</p>
+        <p class="league-full">National Hockey League</p>
+        <div class="league-markets">
+          <span class="market-dot">ML</span>
+          <span class="market-dot">Spread</span>
+          <span class="market-dot">Total</span>
+        </div>
+      </div>
+
+      <div class="league-card">
+        <div class="league-emoji">🏀</div>
+        <p class="league-name">NBA</p>
+        <p class="league-full">National Basketball Assoc.</p>
+        <div class="league-markets">
+          <span class="market-dot">ML</span>
+          <span class="market-dot">Spread</span>
+          <span class="market-dot">Total</span>
+          <span class="market-dot">Props</span>
+        </div>
+      </div>
+
+      <div class="league-card">
+        <div class="league-emoji">⚾</div>
+        <p class="league-name">MLB</p>
+        <p class="league-full">Major League Baseball</p>
+        <div class="league-markets">
+          <span class="market-dot">ML</span>
+          <span class="market-dot">Spread</span>
+          <span class="market-dot">Total</span>
+        </div>
+      </div>
+
+      <div class="league-card">
+        <div class="league-emoji">🏴󠁧󠁢󠁥󠁮󠁧󠁿</div>
+        <p class="league-name">EPL</p>
+        <p class="league-full">English Premier League</p>
+        <div class="league-markets">
+          <span class="market-dot">ML</span>
+          <span class="market-dot">Spread</span>
+          <span class="market-dot">Total</span>
+        </div>
+      </div>
+
+      <div class="league-card">
+        <div class="league-emoji">🇪🇸</div>
+        <p class="league-name">La Liga</p>
+        <p class="league-full">Spanish First Division</p>
+        <div class="league-markets">
+          <span class="market-dot">ML</span>
+          <span class="market-dot">Spread</span>
+          <span class="market-dot">Total</span>
+        </div>
+      </div>
+
+      <div class="league-card">
+        <div class="league-emoji">🇩🇪</div>
+        <p class="league-name">Bundesliga</p>
+        <p class="league-full">German First Division</p>
+        <div class="league-markets">
+          <span class="market-dot">ML</span>
+          <span class="market-dot">Spread</span>
+          <span class="market-dot">Total</span>
+        </div>
+      </div>
+
+      <div class="league-card">
+        <div class="league-emoji">🇺🇸</div>
+        <p class="league-name">MLS</p>
+        <p class="league-full">Major League Soccer</p>
+        <div class="league-markets">
+          <span class="market-dot">ML</span>
+          <span class="market-dot">Spread</span>
+          <span class="market-dot">Total</span>
+        </div>
+      </div>
+
+      <div class="league-card" style="background:var(--brand-light); border-style:dashed;">
+        <div class="league-emoji">🔜</div>
+        <p class="league-name">More soon</p>
+        <p class="league-full">NFL, NCAA, Champions League</p>
+        <div class="league-markets">
+          <span class="market-dot" style="background:#fff;">Coming</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+{# ── Testimonials ──────────────────────────────────────────────────────── #}
+<section class="section section-alt">
+  <div class="container">
+    <p class="section-label" style="text-align:center;">What bettors say</p>
+    <h2 class="section-title" style="text-align:center; margin:0 auto var(--space-6);">
+      Built for serious bettors
+    </h2>
+    <div class="testi-grid">
+
+      <div class="testi-card">
+        <div class="testi-stars">★★★★★</div>
+        <p class="testi-quote">
+          I used to spend two hours every morning line shopping manually.
+          Posit+EV surfaces every edge before I've had my coffee. The Kelly
+          sizing alone has improved my bankroll management massively.
+        </p>
+        <div class="testi-author">
+          <div class="testi-avatar" style="background:var(--brand-primary);">MR</div>
+          <div>
+            <p class="testi-name">Marcus R.</p>
+            <p class="testi-role">Recreational bettor &mdash; Chicago, IL</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="testi-card">
+        <div class="testi-stars">★★★★★</div>
+        <p class="testi-quote">
+          The sport-specific adjustments are what sold me. Most EV tools just
+          give you raw math. Posit+EV flags goalie uncertainty and B2B schedules,
+          which saves you from taking edges that aren't real edges.
+        </p>
+        <div class="testi-author">
+          <div class="testi-avatar" style="background:var(--brand-success);">JT</div>
+          <div>
+            <p class="testi-name">Jordan T.</p>
+            <p class="testi-role">NHL sharp &mdash; Toronto, ON</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="testi-card">
+        <div class="testi-stars">★★★★★</div>
+        <p class="testi-quote">
+          Started with the free daily pick to test the model. Within two weeks
+          I was 7 for 9 on the recommended bets. Subscribed immediately. The
+          Telegram alerts are a game changer for in-play timing.
+        </p>
+        <div class="testi-author">
+          <div class="testi-avatar" style="background:var(--brand-accent); color:var(--brand-dark);">AK</div>
+          <div>
+            <p class="testi-name">Aisha K.</p>
+            <p class="testi-role">Soccer bettor &mdash; London, UK</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <p style="text-align:center; font-size:0.75rem; color:var(--text-muted);
+              margin-top:var(--space-5);">
+      Testimonials are representative of early user feedback. Individual results vary.
+      Past edge detection does not guarantee future profitability.
+    </p>
+  </div>
+</section>
+
+{# ── Newsletter signup ─────────────────────────────────────────────────── #}
+<section class="section section-white" style="padding-top:var(--space-8); padding-bottom:var(--space-8);">
+  <div class="container" style="max-width:580px; text-align:center;">
+    <p class="section-label">Free daily picks</p>
+    <h2 class="section-title" style="margin:0 auto var(--space-3);">
+      Get one free +EV pick in your inbox every morning
+    </h2>
+    <p class="section-sub" style="margin:0 auto var(--space-5);">
+      No subscription required. One pick a day, with an AI breakdown of
+      why it has edge. Upgrade anytime for the full scan.
+    </p>
+
+    <form id="nlForm" style="display:flex; gap:var(--space-3); flex-wrap:wrap; justify-content:center;">
+      <input
+        type="email"
+        id="nlEmail"
+        placeholder="your@email.com"
+        required
+        style="flex:1; min-width:220px; max-width:320px;
+               padding:13px 18px; border-radius:var(--radius-md);
+               border:1.5px solid var(--brand-border); font-size:0.95rem;
+               color:var(--text-primary); outline:none;
+               font-family:inherit; background:#fff;"
+      />
+      <button
+        type="submit"
+        id="nlBtn"
+        style="padding:13px 28px; background:var(--brand-primary); color:#fff;
+               border:none; border-radius:var(--radius-md); font-size:0.95rem;
+               font-weight:600; cursor:pointer; font-family:inherit;
+               white-space:nowrap; transition:opacity 0.15s;"
+      >
+        Get Free Picks
+      </button>
+    </form>
+
+    <div id="nlResult" style="display:none; margin-top:var(--space-4);
+         padding:12px 20px; border-radius:var(--radius-md);
+         font-size:0.9rem; font-weight:500;"></div>
+
+    <p style="margin-top:var(--space-3); font-size:0.78rem; color:var(--text-muted);">
+      Unsubscribe in one click &nbsp;&bull;&nbsp; No spam, ever
+    </p>
+  </div>
+</section>
+
+<script>
+(function () {
+  const form   = document.getElementById('nlForm');
+  const btn    = document.getElementById('nlBtn');
+  const result = document.getElementById('nlResult');
+
+  function showResult(msg, ok) {
+    result.textContent = msg;
+    result.style.display = 'block';
+    result.style.background = ok ? '#EDFAF5' : '#FEF2F2';
+    result.style.color      = ok ? '#0F6E56' : '#C53030';
+    result.style.border     = ok ? '1px solid #9EEBD6' : '1px solid #FCA5A5';
+  }
+
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    btn.disabled = true;
+    btn.textContent = 'Subscribing…';
+    try {
+      const body = new URLSearchParams({ email: document.getElementById('nlEmail').value });
+      const res  = await fetch('/newsletter/subscribe', { method: 'POST', body });
+      const data = await res.json();
+      if (res.ok) {
+        showResult(data.message || 'You\'re subscribed! Check your inbox.', true);
+        form.style.display = 'none';
+      } else {
+        showResult(data.detail || 'Something went wrong — please try again.', false);
+        btn.disabled = false;
+        btn.textContent = 'Get Free Picks';
+      }
+    } catch {
+      showResult('Network error — please try again.', false);
+      btn.disabled = false;
+      btn.textContent = 'Get Free Picks';
+    }
+  });
+})();
+</script>
+
+{# ── Final CTA ─────────────────────────────────────────────────────────── #}
+<section class="cta-section">
+  <div class="container">
+    <h2>Ready to bet with the math on your side?</h2>
+    <p>
+      Join Posit+EV and get every +EV bet across 7 leagues, refreshed every
+      30 minutes, with Kelly sizing and sport-specific confidence adjustments.
+    </p>
+    <div style="display:flex; gap:var(--space-3); justify-content:center; flex-wrap:wrap;">
+      <a href="/subscribe" class="btn-hero-primary">Start for $10/month &rarr;</a>
+      <a href="/register" class="btn-hero-ghost">Create free account</a>
+    </div>
+    <p style="margin-top:var(--space-5); font-size:0.8rem; color:rgba(255,255,255,0.45);">
+      Cancel anytime. No contracts. 1 free pick/day with a free account.
+    </p>
+  </div>
+</section>
+
+{% endblock %}

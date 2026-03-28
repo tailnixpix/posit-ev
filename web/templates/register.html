@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Create Account — Posit+EV{% endblock %}
+{% block content %}
+<h1>Create your Posit+EV account</h1>
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
+<form method="post" action="/register">
+  <label>Email <input type="email" name="email" required /></label>
+  <label>Password <input type="password" name="password" minlength="8" required /></label>
+  <button type="submit">Create Account</button>
+</form>
+<p>Already have an account? <a href="/login">Sign in</a></p>
+{% endblock %}

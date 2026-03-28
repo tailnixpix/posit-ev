@@ -1,0 +1,68 @@
+services:
+
+  # ── FastAPI application ────────────────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime           # skip builder stage in compose
+
+    container_name: posit-ev
+
+    restart: unless-stopped
+
+    # Load all env vars from .env — never bake secrets into the image
+    env_file:
+      - .env
+
+    # Override DATABASE_URL to point at the mounted volume path.
+    # This takes precedence over the value in .env so the DB file is always
+    # persisted outside the container, even if .env says something different.
+    environment:
+      DATABASE_URL: sqlite:////data/sports_ev.db
+
+    ports:
+      - "${PORT:-8000}:8000"    # host:container — change host port via PORT= in .env
+
+    volumes:
+      # Named volume for the SQLite DB — survives container rebuilds/restarts
+      - db_data:/data
+
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8000/')"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  # ── Nginx reverse proxy (optional, recommended for VPS) ───────────────────
+  # Uncomment this service if you're running on a VPS without an existing
+  # reverse proxy. It terminates HTTPS (via Certbot) and forwards to the app.
+  #
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: posit-ev-nginx
+  #   restart: unless-stopped
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./nginx/posit-ev.conf:/etc/nginx/conf.d/default.conf:ro
+  #     - /etc/letsencrypt:/etc/letsencrypt:ro
+  #     - /var/www/certbot:/var/www/certbot:ro
+  #   depends_on:
+  #     app:
+  #       condition: service_healthy
+
+
+# ── Named volumes ─────────────────────────────────────────────────────────────
+volumes:
+  db_data:
+    driver: local

@@ -1,0 +1,58 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environment — deps are installed fresh in the builder stage
+venv/
+.venv/
+env/
+
+# Local database — persisted via Docker volume, never baked into image
+*.db
+*.sqlite
+*.sqlite3
+
+# Environment secrets — injected at runtime via env_file, never in image
+.env
+.env.*
+!.env.example
+
+# Dev / test artefacts
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+*.log
+logs/
+
+# Data / report outputs
+data/
+reports/
+
+# macOS
+.DS_Store
+
+# Git
+.git/
+.gitignore
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Stripe CLI auth (local only)
+.stripe/

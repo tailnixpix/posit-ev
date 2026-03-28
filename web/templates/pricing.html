@@ -1,0 +1,490 @@
+{% extends "base.html" %}
+{% block title %}Pricing — Posit+EV{% endblock %}
+
+{% block head %}
+<style>
+/* ── Layout ───────────────────────────────────────────────────────── */
+main { max-width: none; padding: 0; }
+.container { max-width: 960px; margin: 0 auto; padding: 0 var(--space-5); }
+
+/* ── Page header ──────────────────────────────────────────────────── */
+.pricing-hero {
+  background: linear-gradient(150deg, #1A1450 0%, #2D2580 60%, #534AB7 100%);
+  color: #fff;
+  text-align: center;
+  padding: 64px var(--space-5) 96px;
+}
+.pricing-hero h1 { color: #fff; font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 800;
+                   margin: 0 0 var(--space-3); }
+.pricing-hero p  { color: rgba(255,255,255,0.72); font-size: 1.05rem; margin: 0 auto;
+                   max-width: 500px; line-height: 1.65; }
+
+/* ── Card pull-up ─────────────────────────────────────────────────── */
+.pricing-body {
+  background: var(--brand-surface);
+  padding: 0 var(--space-5) 80px;
+  position: relative;
+}
+.cards-wrap {
+  display: grid;
+  grid-template-columns: 1fr 1.15fr;  /* free | pro */
+  gap: var(--space-5);
+  margin-top: -56px;  /* pull up over hero gradient */
+  align-items: start;
+}
+@media (max-width: 720px) {
+  .cards-wrap { grid-template-columns: 1fr; margin-top: -40px; }
+}
+
+/* ── Plan card base ───────────────────────────────────────────────── */
+.plan-card {
+  background: #fff;
+  border: 1.5px solid var(--brand-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-md);
+  position: relative;
+}
+.plan-card.featured {
+  border-color: var(--brand-primary);
+  box-shadow: 0 8px 40px rgba(83,74,183,0.22);
+}
+
+/* Featured badge */
+.featured-badge {
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--brand-primary);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 4px 18px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+/* Plan header */
+.plan-name { font-size: 0.78rem; font-weight: 700; text-transform: uppercase;
+             letter-spacing: 0.8px; color: var(--brand-muted); margin: 0 0 var(--space-3); }
+.plan-price {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  margin-bottom: var(--space-2);
+}
+.plan-price .currency { font-size: 1.4rem; font-weight: 700; color: var(--brand-dark);
+                        line-height: 1.8; }
+.plan-price .amount   { font-size: 3.5rem; font-weight: 900; color: var(--brand-dark);
+                        line-height: 1; letter-spacing: -2px; }
+.plan-price .period   { font-size: 0.9rem; color: var(--text-muted); padding-bottom: 6px; }
+.plan-tagline { font-size: 0.88rem; color: var(--text-secondary); margin: 0 0 var(--space-5);
+                line-height: 1.5; }
+
+/* Divider */
+.plan-divider { border: none; border-top: 1px solid var(--brand-light);
+                margin: var(--space-4) 0; }
+
+/* Feature list */
+.feature-list { list-style: none; margin: 0 0 var(--space-5); padding: 0;
+                display: flex; flex-direction: column; gap: var(--space-2); }
+.feature-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+.feature-list li .check {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+  margin-top: 1px;
+}
+.check-yes { background: rgba(15,110,86,0.12); color: var(--brand-success); }
+.check-no  { background: #F3F4F6; color: var(--text-muted); }
+.feature-list .feature-strong { color: var(--brand-dark); font-weight: 600; }
+
+/* CTA button full-width */
+.plan-cta {
+  display: block;
+  width: 100%;
+  text-align: center;
+  padding: 0.8rem;
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  text-decoration: none;
+  transition: opacity 0.15s, transform 0.12s;
+}
+.plan-cta:hover { opacity: 0.88; transform: translateY(-1px); text-decoration: none; }
+.plan-cta-primary { background: var(--brand-primary); color: #fff;
+                    box-shadow: 0 4px 14px rgba(83,74,183,0.35); }
+.plan-cta-ghost { background: transparent; color: var(--brand-primary);
+                  border: 1.5px solid var(--brand-border); font-weight: 600; }
+.plan-cta-ghost:hover { background: var(--brand-light); }
+.plan-guarantee { text-align: center; font-size: 0.75rem; color: var(--text-muted);
+                  margin-top: var(--space-3); }
+
+/* ── Comparison note ──────────────────────────────────────────────── */
+.compare-note {
+  background: #fff;
+  border: 1px solid var(--brand-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  margin-top: var(--space-5);
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+  flex-wrap: wrap;
+  box-shadow: var(--shadow-sm);
+}
+
+/* ── Newsletter section ───────────────────────────────────────────── */
+.newsletter-section {
+  background: var(--brand-dark);
+  padding: 72px var(--space-5);
+  text-align: center;
+}
+.newsletter-section h2 { color: #fff; font-size: clamp(1.5rem, 3vw, 2rem);
+                          font-weight: 800; margin: 0 0 var(--space-3); }
+.newsletter-section p  { color: rgba(255,255,255,0.7); font-size: 1rem;
+                          max-width: 480px; margin: 0 auto var(--space-5); line-height: 1.65; }
+.newsletter-form {
+  display: flex;
+  max-width: 440px;
+  margin: 0 auto;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.newsletter-form input[type="email"] {
+  flex: 1 1 220px;
+  padding: 0.72rem 1rem;
+  border-radius: var(--radius-md);
+  border: 1.5px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.newsletter-form input[type="email"]::placeholder { color: rgba(255,255,255,0.45); }
+.newsletter-form input[type="email"]:focus { border-color: rgba(255,255,255,0.6); }
+.newsletter-form button {
+  background: #FAC775;
+  color: var(--brand-dark);
+  font-weight: 700;
+  font-size: 0.95rem;
+  padding: 0.72rem 1.4rem;
+  border-radius: var(--radius-md);
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  width: auto;
+  margin: 0;
+  transition: opacity 0.15s;
+}
+.newsletter-form button:hover { opacity: 0.88; }
+.newsletter-perks {
+  display: flex;
+  gap: var(--space-4);
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: var(--space-4);
+}
+.newsletter-perk { font-size: 0.78rem; color: rgba(255,255,255,0.55); display: flex;
+                   align-items: center; gap: 5px; }
+.newsletter-perk::before { content: '✓'; color: #4ADE80; font-weight: 700; }
+
+/* ── FAQ strip ────────────────────────────────────────────────────── */
+.faq-section { padding: 64px var(--space-5); background: var(--brand-surface); }
+.faq-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-5) var(--space-7);
+  margin-top: var(--space-5);
+}
+@media (max-width: 640px) { .faq-grid { grid-template-columns: 1fr; } }
+.faq-item h3 { font-size: 0.95rem; font-weight: 700; color: var(--brand-dark);
+               margin: 0 0 var(--space-2); }
+.faq-item p  { font-size: 0.88rem; color: var(--text-secondary); margin: 0; line-height: 1.65; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{# ── Page hero ─────────────────────────────────────────────────────────── #}
+<div class="pricing-hero">
+  <h1>Simple, transparent pricing</h1>
+  <p>One plan. Everything included. Cancel anytime.</p>
+</div>
+
+{# ── Plan cards ────────────────────────────────────────────────────────── #}
+<div class="pricing-body">
+  <div class="container">
+    <div class="cards-wrap">
+
+      {# ── Free plan ─────────────────────────────────────────────── #}
+      <div class="plan-card">
+        <p class="plan-name">Free</p>
+        <div class="plan-price">
+          <span class="currency">$</span>
+          <span class="amount">0</span>
+          <span class="period">/ month</span>
+        </div>
+        <p class="plan-tagline">One free +EV pick delivered to your inbox every morning.</p>
+        <hr class="plan-divider" />
+        <ul class="feature-list">
+          <li>
+            <span class="check check-yes">✓</span>
+            <span><span class="feature-strong">1 pick/day</span> — top +EV bet of the morning</span>
+          </li>
+          <li>
+            <span class="check check-yes">✓</span>
+            <span>Covers all 7 leagues</span>
+          </li>
+          <li>
+            <span class="check check-yes">✓</span>
+            <span>Delivered by email before 9 AM CT</span>
+          </li>
+          <li>
+            <span class="check check-no">–</span>
+            <span style="color:var(--text-muted);">Full dashboard access</span>
+          </li>
+          <li>
+            <span class="check check-no">–</span>
+            <span style="color:var(--text-muted);">All picks across all markets</span>
+          </li>
+          <li>
+            <span class="check check-no">–</span>
+            <span style="color:var(--text-muted);">Kelly bet sizing</span>
+          </li>
+          <li>
+            <span class="check check-no">–</span>
+            <span style="color:var(--text-muted);">Telegram real-time alerts</span>
+          </li>
+          <li>
+            <span class="check check-no">–</span>
+            <span style="color:var(--text-muted);">30-minute live refresh</span>
+          </li>
+        </ul>
+        <a href="/register" class="plan-cta plan-cta-ghost">Create free account</a>
+      </div>
+
+      {# ── EV Pro plan ───────────────────────────────────────────── #}
+      <div class="plan-card featured">
+        <div class="featured-badge">Most Popular</div>
+        <p class="plan-name">EV Pro</p>
+        <div class="plan-price">
+          <span class="currency">$</span>
+          <span class="amount">29</span>
+          <span class="period">/ month</span>
+        </div>
+        <p class="plan-tagline">
+          Every edge, every league, every market — refreshed every 30 minutes.
+        </p>
+        <hr class="plan-divider" />
+        <ul class="feature-list">
+          <li>
+            <span class="check check-yes">✓</span>
+            <span><span class="feature-strong">Unlimited picks</span> — all +EV bets above 3% edge</span>
+          </li>
+          <li>
+            <span class="check check-yes">✓</span>
+            <span><span class="feature-strong">7 leagues</span> — NHL, NBA, MLB, EPL, La Liga, Bundesliga, MLS</span>
+          </li>
+          <li>
+            <span class="check check-yes">✓</span>
+            <span><span class="feature-strong">4 market types</span> — Moneyline, Spread, Total, Props</span>
+          </li>
+          <li>
+            <span class="check check-yes">✓</span>
+            <span><span class="feature-strong">Kelly bet sizing</span> — half-Kelly stake % for every pick</span>
+          </li>
+          <li>
+            <span class="check check-yes">✓</span>
+            <span><span class="feature-strong">Live dashboard</span> — filterable by league &amp; market, refreshed every 30 min</span>
+          </li>
+          <li>
+            <span class="check check-yes">✓</span>
+            <span><span class="feature-strong">Early morning delivery</span> — full daily scan in your inbox before 8 AM CT</span>
+          </li>
+          <li>
+            <span class="check check-yes">✓</span>
+            <span><span class="feature-strong">Telegram alerts</span> — instant push for bets with EV &gt; 8%</span>
+          </li>
+          <li>
+            <span class="check check-yes">✓</span>
+            <span><span class="feature-strong">Sport-specific adjustments</span> — goalie, B2B, and Euro schedule factors</span>
+          </li>
+          <li>
+            <span class="check check-yes">✓</span>
+            <span>5+ sportsbooks compared per bet</span>
+          </li>
+          <li>
+            <span class="check check-yes">✓</span>
+            <span>Cancel anytime — no contracts</span>
+          </li>
+        </ul>
+        <a href="/subscribe" class="plan-cta plan-cta-primary">Subscribe Now — $10/month &rarr;</a>
+        <p class="plan-guarantee">🔒 Secured by Stripe &nbsp;&bull;&nbsp; Cancel anytime &nbsp;&bull;&nbsp; No hidden fees</p>
+      </div>
+
+    </div>
+
+    {# ── Comparison callout ──────────────────────────────────────────── #}
+    <div class="compare-note">
+      <div style="font-size:1.8rem; flex-shrink:0;">💡</div>
+      <div>
+        <p style="font-weight:700; color:var(--brand-dark); margin:0 0 4px; font-size:0.95rem;">
+          How does $29/month compare to a single winning bet?
+        </p>
+        <p style="margin:0; font-size:0.88rem; color:var(--text-secondary); line-height:1.65;">
+          If Posit+EV surfaces just one bet per week with a $100 stake and 5% EV,
+          that's $5 expected profit. Four weeks = $20 in expected edge just from one bet type.
+          Across 30+ picks per day with edges between 3–15%, the math compounds quickly.
+          We let the model do the work — you decide how much to stake.
+        </p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{# ── Free newsletter signup ────────────────────────────────────────────── #}
+<section class="newsletter-section">
+  <div class="container">
+    <h2>Or get 1 free pick per day via email</h2>
+    <p>
+      Not ready to subscribe? No problem. Sign up for our free daily newsletter
+      and we&rsquo;ll send you our highest-EV pick every morning — no card required.
+    </p>
+
+    <form class="newsletter-form" action="/newsletter/subscribe" method="post"
+          id="newsletter-form">
+      <input type="email" name="email" placeholder="your@email.com"
+             required autocomplete="email" />
+      <button type="submit">Get Free Picks</button>
+    </form>
+
+    <div class="newsletter-perks">
+      <span class="newsletter-perk">1 top +EV pick daily</span>
+      <span class="newsletter-perk">Delivered before 9 AM CT</span>
+      <span class="newsletter-perk">No spam, ever</span>
+      <span class="newsletter-perk">Unsubscribe in one click</span>
+    </div>
+  </div>
+</section>
+
+{# ── FAQ ──────────────────────────────────────────────────────────────── #}
+<section class="faq-section">
+  <div class="container">
+    <h2 style="text-align:center; margin-bottom:0;">Frequently asked questions</h2>
+    <div class="faq-grid">
+
+      <div class="faq-item">
+        <h3>What is expected value (EV) betting?</h3>
+        <p>
+          +EV betting means placing bets where the true probability of winning is higher
+          than what the sportsbook's odds imply. Over a large sample of bets, this
+          results in a mathematical profit — similar to how a casino earns consistently
+          because the math is in their favor.
+        </p>
+      </div>
+
+      <div class="faq-item">
+        <h3>Which sportsbooks do you compare?</h3>
+        <p>
+          We currently compare odds from DraftKings, FanDuel, BetMGM, Caesars,
+          and PointsBet. We use the sharpest book as our true probability reference
+          and surface edges at all others.
+        </p>
+      </div>
+
+      <div class="faq-item">
+        <h3>How is the Kelly criterion used?</h3>
+        <p>
+          Each pick includes a Half-Kelly stake recommendation — a fraction of your
+          total bankroll to wager. We use half-Kelly rather than full-Kelly to reduce
+          variance, which is the industry standard for recreational bettors.
+        </p>
+      </div>
+
+      <div class="faq-item">
+        <h3>How often are picks updated?</h3>
+        <p>
+          The full pipeline runs every 30 minutes throughout the day. Lines can move
+          quickly when sharp money comes in, so the dashboard shows you the most
+          current edges available. High-EV bets (above 8%) also trigger a
+          real-time Telegram alert.
+        </p>
+      </div>
+
+      <div class="faq-item">
+        <h3>Can I cancel anytime?</h3>
+        <p>
+          Yes. Your subscription is month-to-month with no contracts. Cancel from
+          your account settings and you retain access until the end of the billing period.
+          We process payments through Stripe — your card details are never stored on our servers.
+        </p>
+      </div>
+
+      <div class="faq-item">
+        <h3>Is this legal?</h3>
+        <p>
+          Posit+EV provides sports betting analysis and information only. Sports betting
+          is legal in many US states and internationally. Always check local laws before
+          placing any wager. We do not take bets or hold funds.
+        </p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+{% endblock %}
+
+<script>
+// Newsletter form — inline success state
+document.getElementById('newsletter-form').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const form = e.target;
+  const email = form.email.value;
+  const btn = form.querySelector('button');
+  btn.disabled = true;
+  btn.textContent = 'Subscribing…';
+
+  try {
+    const res = await fetch('/newsletter/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ email }),
+    });
+
+    if (res.ok) {
+      form.innerHTML = `<p style="color:#4ADE80; font-weight:600; margin:0; font-size:1rem;">
+        ✓ You're in! Check your inbox tomorrow morning.
+      </p>`;
+    } else {
+      btn.disabled = false;
+      btn.textContent = 'Get Free Picks';
+      alert('Something went wrong — please try again.');
+    }
+  } catch {
+    btn.disabled = false;
+    btn.textContent = 'Get Free Picks';
+  }
+});
+</script>

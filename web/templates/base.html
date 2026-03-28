@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Posit+EV{% endblock %}</title>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg" />
+  <link rel="stylesheet" href="/static/styles.css" />
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <nav>
+    <a href="/" class="nav-logo" aria-label="Posit+EV home">
+      <img src="/static/logo.svg" height="32" alt="Posit+EV" />
+    </a>
+    <a href="/pricing">Pricing</a>
+    <a href="/login">Sign In</a>
+  </nav>
+  <main>{% block content %}{% endblock %}</main>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

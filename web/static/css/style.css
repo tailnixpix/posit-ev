@@ -1,0 +1,5 @@
+/* Posit+EV — base styles */
+body { font-family: system-ui, sans-serif; margin: 0; padding: 1rem 2rem; }
+nav { display: flex; gap: 1rem; margin-bottom: 2rem; }
+nav a { text-decoration: none; font-weight: 600; }
+.error { color: red; }

@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<!--
+  Posit+EV Daily Newsletter — newsletter_template.html
+  Jinja2 variables:
+    {{ date_str }}        — e.g. "March 27, 2026"
+    {{ league }}          — e.g. "NHL"
+    {{ team }}            — outcome name, e.g. "Boston Bruins"
+    {{ market }}          — e.g. "Moneyline"
+    {{ book }}            — e.g. "DraftKings"
+    {{ odds }}            — pre-formatted, e.g. "+145"
+    {{ synopsis }}        — 4-5 sentence AI-generated text
+    {{ base_url }}        — e.g. "https://www.posit-ev.com"
+    {{ unsubscribe_url }} — full URL with signed token
+  EV% is intentionally omitted — shown only to paid subscribers on the dashboard.
+-->
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
+  <meta name="x-apple-disable-message-reformatting" />
+  <title>Posit+EV | Your Free Pick — {{ date_str }}</title>
+
+  <!--[if mso]>
+  <noscript>
+    <xml><o:OfficeDocumentSettings>
+      <o:PixelsPerInch>96</o:PixelsPerInch>
+    </o:OfficeDocumentSettings></xml>
+  </noscript>
+  <![endif]-->
+
+  <style type="text/css">
+    /* ── Reset ────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; }
+    body, table, td, th, p, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+    table, td { border-collapse: collapse; mso-table-lspace: 0; mso-table-rspace: 0; }
+    img { border: 0; outline: none; text-decoration: none; -ms-interpolation-mode: bicubic; }
+    a { color: inherit; }
+
+    /* ── Responsive overrides (clients that support <style>) ─────── */
+    @media only screen and (max-width: 620px) {
+      .email-container  { width: 100% !important; }
+      .content-cell     { padding: 28px 20px !important; }
+      .header-cell      { padding: 28px 20px 24px !important; }
+      .pick-grid        { display: block !important; }
+      .pick-label,
+      .pick-value       { display: block !important; width: 100% !important;
+                          padding: 0 !important; }
+      .pick-label       { padding-top: 10px !important; }
+      .pick-value       { padding-bottom: 4px !important; }
+      .cta-table        { width: 100% !important; }
+      .cta-td           { width: 100% !important; border-radius: 10px !important; }
+      .logo-svg         { width: 240px !important; height: 90px !important; }
+    }
+
+    /* ── Link colour resets ───────────────────────────────────────── */
+    a[x-apple-data-detectors]          { color: inherit !important; text-decoration: none !important; }
+    u + #body a                        { color: inherit; text-decoration: none; }
+    #MessageViewBody a                 { color: inherit; text-decoration: none; }
+  </style>
+</head>
+
+<body id="body" style="margin:0; padding:0; background-color:#ECEAFE; width:100%; -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%;">
+
+<!-- ─────────────────────────────────────────────────────────────────────
+     PREVIEW TEXT (hidden — shows in inbox snippet, not in email body)
+     ──────────────────────────────────────────────────────────────────── -->
+<div style="display:none; font-size:1px; color:#ECEAFE; line-height:1px; max-height:0px; max-width:0px; opacity:0; overflow:hidden;">
+  Today's free +EV pick: {{ team }} · {{ market }} · {{ book }} · {{ odds }}
+  &zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;
+</div>
+
+<!-- ─────────────────────────────────────────────────────────────────────
+     OUTER WRAPPER TABLE
+     ──────────────────────────────────────────────────────────────────── -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+       style="background-color:#ECEAFE; width:100%;">
+  <tr>
+    <td align="center" style="padding:32px 12px 40px;">
+
+      <!-- ── INNER EMAIL CONTAINER (600px) ─────────────────────────── -->
+      <table role="presentation" class="email-container" width="600" cellpadding="0" cellspacing="0" border="0"
+             style="width:600px; max-width:600px;">
+
+
+        <!-- ╔══════════════════════════════════════════════════════════╗
+             ║  HEADER — dark indigo gradient, logo, date              ║
+             ╚══════════════════════════════════════════════════════════╝ -->
+        <tr>
+          <td class="header-cell" align="center"
+              style="background-color:#1E1A47;
+                     background-image:linear-gradient(135deg,#1E1A47 0%,#34288A 55%,#534AB7 100%);
+                     border-radius:16px 16px 0 0;
+                     padding:36px 36px 30px;">
+
+            <!-- Logo — inline SVG (renders in Gmail, Apple Mail, Outlook.com) -->
+            <!--[if mso]>
+            <p style="font-family:Arial,sans-serif; font-size:30px; font-weight:bold; color:#ffffff; margin:0 0 6px;">
+              Posit<span style="color:#9B8EFF;">+</span>EV
+            </p>
+            <![endif]-->
+            <!--[if !mso]><!-->
+            <div class="logo-svg" style="display:inline-block; width:280px; height:105px;">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 120"
+                   width="280" height="105" role="img" aria-label="Posit+EV logo"
+                   style="display:block;">
+                <title>Posit+EV</title>
+                <rect x="1" y="1" width="318" height="118" rx="14" ry="14"
+                      fill="#EEEDFE" stroke="#AFA9EC" stroke-width="1.5"/>
+                <g transform="translate(18,23)">
+                  <path d="M 40.75,19.75 C 54.5,19.75 69,31.5 78,55 L 40.75,55 Z"
+                        fill="#534AB7" fill-opacity="0.08"/>
+                  <path d="M 8,55 C 20,8 60,8 78,55"
+                        fill="none" stroke="#534AB7" stroke-width="3.5" stroke-linecap="round"/>
+                  <circle cx="40.75" cy="19.75" r="4.5" fill="#534AB7"/>
+                </g>
+                <text x="112" y="65"
+                      font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+                      font-size="36" font-weight="500">
+                  <tspan fill="#26215C">Posit</tspan>
+                  <tspan fill="#534AB7">+</tspan>
+                  <tspan fill="#26215C">EV</tspan>
+                </text>
+                <text x="113" y="83"
+                      font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+                      font-size="12" fill="#7F77DD">Find the edge. Beat the market.</text>
+              </svg>
+            </div>
+            <!--<![endif]-->
+
+            <!-- Date badge -->
+            <p style="margin:18px 0 0; padding:0;
+                       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+                       font-size:12px; font-weight:600; letter-spacing:1.5px;
+                       text-transform:uppercase; color:rgba(255,255,255,0.55);">
+              {{ date_str }}
+            </p>
+
+          </td>
+        </tr>
+
+
+        <!-- ╔══════════════════════════════════════════════════════════╗
+             ║  BODY CARD                                              ║
+             ╚══════════════════════════════════════════════════════════╝ -->
+        <tr>
+          <td class="content-cell"
+              style="background-color:#ffffff;
+                     border-left:1px solid #DDD9FB;
+                     border-right:1px solid #DDD9FB;
+                     padding:40px 40px 36px;">
+
+
+            <!-- ── Section label ───────────────────────────────────── -->
+            <p style="margin:0 0 20px; padding:0;
+                       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+                       font-size:11px; font-weight:700; letter-spacing:2px;
+                       text-transform:uppercase; color:#7F77DD;">
+              Today's Free Pick
+            </p>
+
+
+            <!-- ── Pick card ───────────────────────────────────────── -->
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                   style="background-color:#F7F6FE;
+                            border:1px solid #D6D2F8;
+                            border-radius:12px;
+                            margin-bottom:28px;">
+              <tr>
+                <td style="padding:24px 28px;">
+
+                  <!-- League badge -->
+                  <p style="margin:0 0 16px; padding:0;">
+                    <span style="display:inline-block;
+                                  background-color:#EEEDFE;
+                                  color:#534AB7;
+                                  border:1px solid #AFA9EC;
+                                  border-radius:20px;
+                                  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+                                  font-size:11px;
+                                  font-weight:700;
+                                  letter-spacing:1.5px;
+                                  text-transform:uppercase;
+                                  padding:4px 14px;">
+                      {{ league }}
+                    </span>
+                  </p>
+
+                  <!-- Pick details grid -->
+                  <table role="presentation" class="pick-grid" width="100%"
+                         cellpadding="0" cellspacing="0" border="0">
+
+                    <!-- Outcome / team -->
+                    <tr>
+                      <td class="pick-label"
+                          style="width:40%; padding:7px 16px 7px 0; vertical-align:middle;
+                                  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+                                  font-size:11px; font-weight:700; letter-spacing:1px;
+                                  text-transform:uppercase; color:#AFA9EC; white-space:nowrap;">
+                        Outcome
+                      </td>
+                      <td class="pick-value"
+                          style="width:60%; padding:7px 0; vertical-align:middle;
+                                  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+                                  font-size:16px; font-weight:700; color:#26215C;">
+                        {{ team }}
+                      </td>
+                    </tr>
+
+                    <!-- 1px divider row -->
+                    <tr>
+                      <td colspan="2" style="padding:0;">
+                        <div style="height:1px; background-color:#E4E2FA; font-size:0; line-height:0;">&nbsp;</div>
+                      </td>
+                    </tr>
+
+                    <!-- Market -->
+                    <tr>
+                      <td class="pick-label"
+                          style="width:40%; padding:7px 16px 7px 0; vertical-align:middle;
+                                  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+                                  font-size:11px; font-weight:700; letter-spacing:1px;
+                                  text-transform:uppercase; color:#AFA9EC; white-space:nowrap;">
+                        Market
+                      </td>
+                      <td class="pick-value"
+                          style="width:60%; padding:7px 0; vertical-align:middle;
+                                  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+                                  font-size:14px; font-weight:500; color:#3D3860;">
+                        {{ market }}
+                      </td>
+                    </tr>
+
+                    <!-- 1px divider row -->
+                    <tr>
+                      <td colspan="2" style="padding:0;">
+                        <div style="height:1px; background-color:#E4E2FA; font-size:0; line-height:0;">&nbsp;</div>
+                      </td>
+                    </tr>
+
+                    <!-- Sportsbook -->
+                    <tr>
+                      <td class="pick-label"
+                          style="width:40%; padding:7px 16px 7px 0; vertical-align:middle;
+                                  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+                                  font-size:11px; font-weight:700; letter-spacing:1px;
+                                  text-transform:uppercase; color:#AFA9EC; white-space:nowrap;">
+                        Sportsbook
+                      </td>
+                      <td class="pick-value"
+                          style="width:60%; padding:7px 0; vertical-align:middle;
+                                  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+                                  font-size:14px; font-weight:500; color:#3D3860;">
+                        {{ book }}
+                      </td>
+                    </tr>
+
+                    <!-- 1px divider row -->
+                    <tr>
+                      <td colspan="2" style="padding:0;">
+                        <div style="height:1px; background-color:#E4E2FA; font-size:0; line-height:0;">&nbsp;</div>
+                      </td>
+                    </tr>
+
+                    <!-- Odds -->
+                    <tr>
+                      <td class="pick-label"
+                          style="width:40%; padding:7px 16px 7px 0; vertical-align:middle;
+                                  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+                                  font-size:11px; font-weight:700; letter-spacing:1px;
+                                  text-transform:uppercase; color:#AFA9EC; white-space:nowrap;">
+                        Odds
+                      </td>
+                      <td class="pick-value"
+                          style="width:60%; padding:7px 0; vertical-align:middle;">
+                        <span style="display:inline-block;
+                                      background-color:#534AB7;
+                                      color:#ffffff;
+                                      border-radius:6px;
+                                      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+                                      font-size:15px;
+                                      font-weight:700;
+                                      padding:3px 12px;
+                                      letter-spacing:0.5px;">
+                          {{ odds }}
+                        </span>
+                      </td>
+                    </tr>
+
+                  </table><!-- /pick-grid -->
+
+                  <!-- Subtle "EV% for subscribers" teaser -->
+                  <p style="margin:16px 0 0; padding:10px 14px;
+                              background-color:#EEEDFE; border-radius:6px;
+                              font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+                              font-size:12px; color:#7F77DD; text-align:center;">
+                    &#128274;&nbsp; Expected value edge visible to
+                    <a href="{{ base_url }}/pricing"
+                       style="color:#534AB7; font-weight:700; text-decoration:none;">
+                      EV Pro subscribers
+                    </a>
+                  </p>
+
+                </td>
+              </tr>
+            </table><!-- /pick card -->
+
+
+            <!-- ── Divider ──────────────────────────────────────────── -->
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                   style="margin-bottom:28px;">
+              <tr>
+                <td style="height:1px; background-color:#EEEDFE; font-size:0; line-height:0;">&nbsp;</td>
+              </tr>
+            </table>
+
+
+            <!-- ── Synopsis section ────────────────────────────────── -->
+            <p style="margin:0 0 10px; padding:0;
+                       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+                       font-size:11px; font-weight:700; letter-spacing:2px;
+                       text-transform:uppercase; color:#7F77DD;">
+              Why this bet has edge
+            </p>
+
+            <!-- Blockquote-style synopsis -->
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                   style="margin-bottom:32px;">
+              <tr>
+                <!-- Left accent border (4px wide column) -->
+                <td style="width:4px; background-color:#534AB7; border-radius:4px 0 0 4px;">&nbsp;</td>
+                <!-- Synopsis text -->
+                <td style="background-color:#F7F6FE; border-radius:0 10px 10px 0;
+                            padding:18px 22px;">
+                  <p style="margin:0; padding:0;
+                              font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Georgia,serif;
+                              font-size:15px; line-height:1.75; color:#3D3860;
+                              font-style:italic;">
+                    {{ synopsis }}
+                  </p>
+                </td>
+              </tr>
+            </table>
+
+
+            <!-- ── CTA button ──────────────────────────────────────── -->
+            <table role="presentation" class="cta-table" align="center"
+                   cellpadding="0" cellspacing="0" border="0"
+                   style="margin:0 auto 8px;">
+              <tr>
+                <td class="cta-td" align="center"
+                    style="border-radius:10px; background-color:#FAC775;">
+
+                  <!--[if mso]>
+                  <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml"
+                               xmlns:w="urn:schemas-microsoft-com:office:word"
+                               href="{{ base_url }}/pricing"
+                               style="height:52px; v-text-anchor:middle; width:340px;"
+                               arcsize="19%"
+                               stroke="f"
+                               fillcolor="#FAC775">
+                    <w:anchorlock/>
+                    <center style="color:#26215C; font-family:Arial,sans-serif;
+                                   font-size:15px; font-weight:bold;">
+                      See All of Today&#8217;s +EV Bets &#8594;
+                    </center>
+                  </v:roundrect>
+                  <![endif]-->
+
+                  <!--[if !mso]><!-->
+                  <a href="{{ base_url }}/pricing"
+                     style="display:inline-block; padding:15px 36px;
+                             font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+                             font-size:15px; font-weight:700; color:#26215C;
+                             text-decoration:none; border-radius:10px;
+                             background-color:#FAC775; letter-spacing:0.2px;
+                             mso-hide:all;">
+                    See All of Today&#8217;s +EV Bets &rarr;
+                  </a>
+                  <!--<![endif]-->
+
+                </td>
+              </tr>
+            </table>
+
+            <p style="margin:10px 0 0; padding:0; text-align:center;
+                       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+                       font-size:11px; color:#AFA9EC;">
+              {{ base_url }}/pricing
+            </p>
+
+
+            <!-- ── Upgrade callout ─────────────────────────────────── -->
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                   style="margin-top:32px;">
+              <tr>
+                <td style="background-color:#1E1A47; border-radius:10px; padding:20px 24px;">
+                  <p style="margin:0 0 6px; padding:0;
+                              font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+                              font-size:13px; font-weight:700; color:#ffffff;">
+                    Want the full edge breakdown?
+                  </p>
+                  <p style="margin:0; padding:0;
+                              font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+                              font-size:13px; line-height:1.6; color:rgba(255,255,255,0.65);">
+                    EV Pro shows the expected value %, true probability, half-Kelly
+                    sizing, and <em>every</em> +EV bet from today&#8217;s full scan
+                    &mdash; not just the top pick.
+                  </p>
+                </td>
+              </tr>
+            </table>
+
+          </td>
+        </tr><!-- /body card -->
+
+
+        <!-- ╔══════════════════════════════════════════════════════════╗
+             ║  FOOTER                                                 ║
+             ╚══════════════════════════════════════════════════════════╝ -->
+        <tr>
+          <td align="center"
+              style="background-color:#2B2560;
+                     border-radius:0 0 16px 16px;
+                     padding:24px 36px 28px;
+                     border-left:1px solid #1E1A47;
+                     border-right:1px solid #1E1A47;
+                     border-bottom:1px solid #1E1A47;">
+
+            <!-- Wordmark -->
+            <p style="margin:0 0 10px; padding:0;
+                       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+                       font-size:14px; font-weight:600; color:rgba(255,255,255,0.55);
+                       letter-spacing:0.5px;">
+              Posit<span style="color:#9B8EFF;">+</span>EV
+            </p>
+
+            <!-- Legal -->
+            <p style="margin:0 0 12px; padding:0;
+                       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+                       font-size:11px; line-height:1.7; color:rgba(255,255,255,0.35);">
+              You&#8217;re receiving this because you subscribed to free daily picks
+              from Posit+EV. This is not financial advice.
+              Past expected value does not guarantee future results.
+            </p>
+
+            <!-- Unsubscribe -->
+            <p style="margin:0; padding:0;
+                       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+                       font-size:11px; color:rgba(255,255,255,0.30);">
+              &copy; 2026 Posit+EV &nbsp;&middot;&nbsp;
+              <a href="{{ base_url }}/pricing"
+                 style="color:rgba(255,255,255,0.40); text-decoration:underline;">
+                Upgrade to Pro
+              </a>
+              &nbsp;&middot;&nbsp;
+              <a href="{{ unsubscribe_url }}"
+                 style="color:rgba(255,255,255,0.40); text-decoration:underline;">
+                Unsubscribe
+              </a>
+            </p>
+
+          </td>
+        </tr><!-- /footer -->
+
+      </table><!-- /email-container -->
+
+    </td>
+  </tr>
+</table><!-- /outer wrapper -->
+
+</body>
+</html>

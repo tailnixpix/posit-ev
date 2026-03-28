@@ -1,0 +1,294 @@
+/* ============================================================
+   Posit+EV — Design System
+   web/static/styles.css
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   Brand palette
+   ------------------------------------------------------------ */
+:root {
+  --brand-primary:  #534AB7;   /* purple — arc, CTA, links */
+  --brand-dark:     #26215C;   /* deep indigo — headings, wordmark */
+  --brand-light:    #EEEDFE;   /* lavender tint — card bg, hover fills */
+  --brand-accent:   #FAC775;   /* gold — highlights, badges */
+  --brand-success:  #0F6E56;   /* green — positive EV, success states */
+
+  /* Derived */
+  --brand-border:   #AFA9EC;
+  --brand-muted:    #7F77DD;
+  --brand-surface:  #F7F6FE;   /* page background */
+  --text-primary:   #1A1733;
+  --text-secondary: #555270;
+  --text-muted:     #8E8BAA;
+
+  /* Spacing scale */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  24px;
+  --space-6:  32px;
+  --space-7:  48px;
+  --space-8:  64px;
+
+  /* Radius */
+  --radius-sm:  6px;
+  --radius-md:  10px;
+  --radius-lg:  14px;
+  --radius-xl:  20px;
+
+  /* Shadow */
+  --shadow-sm:  0 1px 3px rgba(83, 74, 183, 0.08);
+  --shadow-md:  0 4px 16px rgba(83, 74, 183, 0.12);
+  --shadow-lg:  0 8px 32px rgba(83, 74, 183, 0.16);
+}
+
+/* ------------------------------------------------------------
+   Reset & base
+   ------------------------------------------------------------ */
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  background: var(--brand-surface);
+  color: var(--text-primary);
+  margin: 0;
+  padding: 0;
+  line-height: 1.6;
+}
+
+h1, h2, h3, h4 {
+  color: var(--brand-dark);
+  line-height: 1.25;
+  margin: 0 0 var(--space-4);
+}
+
+h1 { font-size: 2rem;    font-weight: 700; }
+h2 { font-size: 1.5rem;  font-weight: 600; }
+h3 { font-size: 1.125rem; font-weight: 600; }
+
+p { margin: 0 0 var(--space-4); color: var(--text-secondary); }
+
+a {
+  color: var(--brand-primary);
+  text-decoration: none;
+}
+a:hover { text-decoration: underline; }
+
+img, svg { display: block; }
+
+/* ------------------------------------------------------------
+   Nav
+   ------------------------------------------------------------ */
+nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-4) var(--space-6);
+  background: #ffffff;
+  border-bottom: 1px solid var(--brand-border);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.nav-logo {
+  display: flex;
+  align-items: center;
+  margin-right: auto;   /* push nav links to the right */
+  flex-shrink: 0;
+}
+
+.nav-logo img {
+  height: 32px;
+  width: auto;
+}
+
+nav a {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  padding: var(--space-2) var(--space-1);
+  border-radius: var(--radius-sm);
+  transition: color 0.15s;
+}
+
+nav a:hover {
+  color: var(--brand-primary);
+  text-decoration: none;
+}
+
+/* ------------------------------------------------------------
+   Main content wrapper
+   ------------------------------------------------------------ */
+main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--space-7) var(--space-5);
+}
+
+/* ------------------------------------------------------------
+   Hero (landing page)
+   ------------------------------------------------------------ */
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: var(--space-8) var(--space-5);
+  gap: var(--space-5);
+}
+
+.hero-logo {
+  max-width: 320px;
+  width: 100%;
+  height: auto;
+}
+
+.hero p {
+  max-width: 480px;
+  font-size: 1.1rem;
+}
+
+.hero-actions {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* ------------------------------------------------------------
+   Buttons
+   ------------------------------------------------------------ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.6rem 1.4rem;
+  border-radius: var(--radius-md);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: opacity 0.15s, box-shadow 0.15s;
+  text-decoration: none;
+}
+
+.btn:hover { opacity: 0.88; text-decoration: none; }
+
+.btn-primary {
+  background: var(--brand-primary);
+  color: #ffffff;
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-secondary {
+  background: var(--brand-light);
+  color: var(--brand-dark);
+  border: 1px solid var(--brand-border);
+}
+
+button.btn-primary,
+button[type="submit"] {
+  background: var(--brand-primary);
+  color: #ffffff;
+  padding: 0.65rem 1.5rem;
+  border-radius: var(--radius-md);
+  font-size: 0.95rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  margin-top: var(--space-4);
+  transition: opacity 0.15s;
+}
+
+button[type="submit"]:hover { opacity: 0.88; }
+
+/* ------------------------------------------------------------
+   Cards
+   ------------------------------------------------------------ */
+.card {
+  background: #ffffff;
+  border: 1px solid var(--brand-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ------------------------------------------------------------
+   Forms
+   ------------------------------------------------------------ */
+.form-card {
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+input[type="email"],
+input[type="password"],
+input[type="text"] {
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--brand-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.95rem;
+  background: #ffffff;
+  color: var(--text-primary);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+input:focus {
+  outline: none;
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 3px rgba(83, 74, 183, 0.12);
+}
+
+/* ------------------------------------------------------------
+   Alerts
+   ------------------------------------------------------------ */
+.error {
+  background: #FFF0F0;
+  border: 1px solid #FFBDBD;
+  color: #C0392B;
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-4);
+  font-size: 0.875rem;
+  margin-bottom: var(--space-2);
+}
+
+/* ------------------------------------------------------------
+   EV badges
+   ------------------------------------------------------------ */
+.ev-high   { color: var(--brand-primary); font-weight: 700; }
+.ev-medium { color: var(--brand-success);  font-weight: 600; }
+.ev-low    { color: var(--brand-accent);   font-weight: 600; }
+
+/* ------------------------------------------------------------
+   Footer / tagline
+   ------------------------------------------------------------ */
+.tagline {
+  color: var(--brand-muted);
+  font-size: 0.85rem;
+  text-align: center;
+  margin-top: var(--space-7);
+}

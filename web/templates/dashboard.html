@@ -1,0 +1,602 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Posit+EV{% endblock %}
+
+{# ─── Dashboard-scoped styles ──────────────────────────────────────────── #}
+{% block head %}
+<style>
+/* ── Layout ───────────────────────────────────────────────────────────── */
+main { max-width: 1200px; padding-top: var(--space-5); }
+
+/* ── Top bar ──────────────────────────────────────────────────────────── */
+.db-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+  flex-wrap: wrap;
+}
+.db-title { margin: 0; font-size: 1.5rem; font-weight: 700; }
+.db-meta  { margin: 4px 0 0; font-size: 0.82rem; color: var(--brand-muted); }
+.db-actions { display: flex; gap: var(--space-2); align-items: center; flex-shrink: 0; }
+
+/* ── Stat pills ───────────────────────────────────────────────────────── */
+.stat-row {
+  display: flex;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+  flex-wrap: wrap;
+}
+.stat-pill {
+  background: #fff;
+  border: 1px solid var(--brand-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3) var(--space-5);
+  min-width: 110px;
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+}
+.stat-pill .val  { font-size: 1.75rem; font-weight: 700; line-height: 1.1; }
+.stat-pill .lbl  { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;
+                   letter-spacing: 0.6px; margin-top: 2px; }
+
+/* ── Filter bar ───────────────────────────────────────────────────────── */
+.filter-bar {
+  background: #fff;
+  border: 1px solid var(--brand-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-5);
+  box-shadow: var(--shadow-sm);
+}
+.filter-row { display: flex; gap: var(--space-2); flex-wrap: wrap; align-items: center; }
+.filter-row + .filter-row { margin-top: var(--space-2); padding-top: var(--space-2);
+                             border-top: 1px solid var(--brand-light); }
+.filter-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.6px;
+                color: var(--text-muted); font-weight: 600; margin-right: var(--space-1);
+                flex-shrink: 0; padding-top: 2px; }
+.filter-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 20px;
+  padding: 4px 14px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  width: auto;
+  margin: 0;
+}
+.filter-btn:hover { background: var(--brand-light); color: var(--brand-primary); }
+.filter-btn.active {
+  background: var(--brand-primary);
+  color: #fff;
+  border-color: var(--brand-primary);
+}
+#bet-count-badge {
+  font-size: 0.75rem;
+  background: var(--brand-light);
+  color: var(--brand-primary);
+  border-radius: 20px;
+  padding: 2px 10px;
+  font-weight: 600;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* ── Cards grid ───────────────────────────────────────────────────────── */
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
+}
+@media (max-width: 1024px) { .cards-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 640px)  { .cards-grid { grid-template-columns: 1fr; } }
+
+/* ── Bet card ─────────────────────────────────────────────────────────── */
+.bet-card {
+  background: #fff;
+  border: 1px solid var(--brand-border);
+  border-left: 4px solid var(--brand-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  transition: transform 0.12s, box-shadow 0.12s;
+  position: relative;
+}
+.bet-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.bet-card.ev-high   { border-left-color: var(--brand-success); }
+.bet-card.ev-medium { border-left-color: var(--brand-accent); }
+
+/* Card header */
+.card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-2); }
+.card-team   { font-size: 1rem; font-weight: 700; color: var(--brand-dark); line-height: 1.3; }
+.card-ev-badge {
+  flex-shrink: 0;
+  font-size: 1.1rem;
+  font-weight: 800;
+  padding: 2px 10px;
+  border-radius: var(--radius-md);
+  line-height: 1.4;
+}
+.card-ev-badge.ev-high   { background: rgba(15,110,86,0.1);  color: var(--brand-success); }
+.card-ev-badge.ev-medium { background: rgba(250,199,117,0.2); color: #9A6B00; }
+
+/* Card badges row */
+.card-badges { display: flex; gap: var(--space-1); flex-wrap: wrap; }
+.badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+.badge-league  { background: var(--brand-light); color: var(--brand-dark); }
+.badge-market  { background: #EEF2FF; color: var(--brand-primary); }
+.badge-book    { background: #F3F4F6; color: #374151; }
+
+/* Stats row inside card */
+.card-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--brand-light);
+}
+.card-stat .s-val { font-size: 0.92rem; font-weight: 700; color: var(--brand-dark); }
+.card-stat .s-lbl { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.4px;
+                    color: var(--text-muted); margin-top: 1px; }
+
+/* ── Empty state ──────────────────────────────────────────────────────── */
+.empty-state {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: var(--space-8) var(--space-5);
+  background: #fff;
+  border: 1px solid var(--brand-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+}
+.empty-icon { font-size: 3.5rem; margin-bottom: var(--space-4); line-height: 1; }
+.empty-state h2 { color: var(--brand-dark); margin-bottom: var(--space-3); }
+.empty-state p  { max-width: 380px; margin: 0 auto var(--space-5); }
+
+/* ── Error banner ─────────────────────────────────────────────────────── */
+.error-banner {
+  background: #FFF5F5;
+  border: 1px solid #FED7D7;
+  border-radius: var(--radius-md);
+  color: #C53030;
+  padding: var(--space-3) var(--space-4);
+  font-size: 0.85rem;
+  margin-bottom: var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* ── Refresh button states ────────────────────────────────────────────── */
+#refreshBtn { font-size: 0.82rem; padding: 7px 14px; }
+#refreshBtn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* ── Countdown ────────────────────────────────────────────────────────── */
+#countdown { font-variant-numeric: tabular-nums; }
+
+/* ── Legend ───────────────────────────────────────────────────────────── */
+.legend {
+  display: flex;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: var(--space-6);
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+.legend-item { display: flex; align-items: center; gap: 6px; }
+.legend-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── Welcome banner ────────────────────────────────────────────────────── */
+.welcome-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  background: linear-gradient(135deg, #0F6E56 0%, #1a9470 100%);
+  color: #fff;
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
+  margin-bottom: var(--space-5);
+  box-shadow: 0 4px 20px rgba(15,110,86,0.25);
+  animation: slideDown 0.4s ease;
+}
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.welcome-banner-body { display: flex; align-items: center; gap: var(--space-3); }
+.welcome-banner-icon { font-size: 1.8rem; line-height: 1; flex-shrink: 0; }
+.welcome-banner h3   { margin: 0 0 2px; font-size: 1rem; font-weight: 700; }
+.welcome-banner p    { margin: 0; font-size: 0.85rem; opacity: 0.88; }
+.welcome-banner-close {
+  background: rgba(255,255,255,0.2);
+  border: none; border-radius: 50%;
+  color: #fff; cursor: pointer;
+  width: 28px; height: 28px;
+  font-size: 1rem; line-height: 1;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s;
+}
+.welcome-banner-close:hover { background: rgba(255,255,255,0.35); }
+</style>
+{% endblock %}
+
+{# ─── Page content ────────────────────────────────────────────────────────── #}
+{% block content %}
+
+{# ── Top bar ───────────────────────────────────────────────────────────── #}
+<div class="db-topbar">
+  <div>
+    <h1 class="db-title">Today&rsquo;s +EV Picks</h1>
+    <p class="db-meta">
+      <span id="today-date"></span>
+      &nbsp;&bull;&nbsp;
+      {% if cache_status and cache_status.last_run %}
+        Updated {{ cache_status.last_run.strftime('%-I:%M %p') }} UTC
+      {% elif cache_status and cache_status.running %}
+        Scanning now&hellip;
+      {% else %}
+        Awaiting first scan
+      {% endif %}
+      {% if next_refresh %}
+        &nbsp;&bull;&nbsp; Next refresh <span id="countdown" data-ts="{{ next_refresh.isoformat() }}">…</span>
+      {% endif %}
+    </p>
+  </div>
+  <div class="db-actions">
+    {% if cache_status and cache_status.last_error %}
+    <span style="font-size:0.78rem; color:#C53030;">&#9888; Pipeline error</span>
+    {% endif %}
+    <button id="refreshBtn" class="btn btn-secondary" onclick="triggerRefresh()">
+      &#8635; Refresh
+    </button>
+    <a href="/logout" class="btn btn-secondary">Sign Out</a>
+  </div>
+</div>
+
+{# ── Welcome banner (shown once after successful checkout) ──────────────── #}
+{% if show_welcome %}
+<div class="welcome-banner" id="welcomeBanner">
+  <div class="welcome-banner-body">
+    <div class="welcome-banner-icon">🎉</div>
+    <div>
+      <h3>You're subscribed to EV Pro — welcome!</h3>
+      <p>Every +EV bet below is live. Refreshes every 30 min. Happy hunting.</p>
+    </div>
+  </div>
+  <button class="welcome-banner-close" onclick="document.getElementById('welcomeBanner').remove()" aria-label="Dismiss">&#10005;</button>
+</div>
+{% endif %}
+
+{# ── Error banner (if last pipeline run failed) ─────────────────────────── #}
+{% if cache_status and cache_status.last_error %}
+<div class="error-banner">
+  <span>&#9888;</span>
+  <span>Last pipeline run failed: <code>{{ cache_status.last_error[:120] }}</code>
+  &mdash; showing previous results.</span>
+</div>
+{% endif %}
+
+{# ── Stat pills ────────────────────────────────────────────────────────── #}
+<div class="stat-row">
+  <div class="stat-pill">
+    <div class="val" style="color:var(--brand-primary);" id="stat-total">{{ bet_count }}</div>
+    <div class="lbl">+EV Bets</div>
+  </div>
+  {% if bets %}
+  <div class="stat-pill">
+    <div class="val" style="color:var(--brand-success);">{{ "%.1f"|format(bets[0].ev_percent) }}%</div>
+    <div class="lbl">Best EV</div>
+  </div>
+  {% set total_ev = namespace(v=0) %}
+  {% for b in bets %}{% set total_ev.v = total_ev.v + b.ev_percent %}{% endfor %}
+  <div class="stat-pill">
+    <div class="val" style="color:var(--brand-primary);">{{ "%.1f"|format(total_ev.v / bet_count) }}%</div>
+    <div class="lbl">Avg EV</div>
+  </div>
+  {% set high_ev = bets | selectattr('ev_percent', 'ge', 5) | list %}
+  <div class="stat-pill">
+    <div class="val" style="color:var(--brand-success);">{{ high_ev | length }}</div>
+    <div class="lbl">EV &ge; 5%</div>
+  </div>
+  {% endif %}
+</div>
+
+{# ── Filter bar ────────────────────────────────────────────────────────── #}
+<div class="filter-bar">
+  {# League tabs #}
+  <div class="filter-row">
+    <span class="filter-label">League</span>
+    <button class="filter-btn active" data-filter="league" data-value="all">All</button>
+    <button class="filter-btn" data-filter="league" data-value="icehockey_nhl">NHL</button>
+    <button class="filter-btn" data-filter="league" data-value="basketball_nba">NBA</button>
+    <button class="filter-btn" data-filter="league" data-value="baseball_mlb">MLB</button>
+    <button class="filter-btn" data-filter="league" data-value="soccer_epl">EPL</button>
+    <button class="filter-btn" data-filter="league" data-value="soccer_spain_la_liga">La Liga</button>
+    <button class="filter-btn" data-filter="league" data-value="soccer_germany_bundesliga">Bundesliga</button>
+    <button class="filter-btn" data-filter="league" data-value="soccer_usa_mls">MLS</button>
+    <span id="bet-count-badge">{{ bet_count }} bets</span>
+  </div>
+  {# Market filter #}
+  <div class="filter-row">
+    <span class="filter-label">Market</span>
+    <button class="filter-btn active" data-filter="market" data-value="all">All</button>
+    <button class="filter-btn" data-filter="market" data-value="h2h">Moneyline</button>
+    <button class="filter-btn" data-filter="market" data-value="spreads">Spread</button>
+    <button class="filter-btn" data-filter="market" data-value="totals">Total</button>
+    <button class="filter-btn" data-filter="market" data-value="props">Props</button>
+  </div>
+</div>
+
+{# ── Cards grid ────────────────────────────────────────────────────────── #}
+<div class="cards-grid" id="cards-grid">
+
+  {% if bets %}
+    {% for bet in bets %}
+
+      {# EV tier classification #}
+      {% if bet.ev_percent >= 5 %}
+        {% set tier = "ev-high" %}
+      {% else %}
+        {% set tier = "ev-medium" %}
+      {% endif %}
+
+      {# League display name #}
+      {% set league_map = {
+        "icehockey_nhl":              "NHL",
+        "basketball_nba":             "NBA",
+        "baseball_mlb":               "MLB",
+        "soccer_epl":                 "EPL",
+        "soccer_spain_la_liga":       "La Liga",
+        "soccer_germany_bundesliga":  "Bundesliga",
+        "soccer_usa_mls":             "MLS",
+        "basketball_ncaab":           "NCAAB",
+        "americanfootball_nfl":       "NFL",
+        "mma_mixed_martial_arts":     "MMA",
+        "basketball_wnba":            "WNBA"
+      } %}
+      {% set league_display = league_map.get(bet.league, bet.league | upper) %}
+
+      {# Market display name #}
+      {% set market_map = {
+        "h2h":    "Moneyline",
+        "spreads": "Spread",
+        "totals":  "Total"
+      } %}
+      {% set market_display = market_map.get(bet.market, bet.market | title) %}
+
+      {# Odds display #}
+      {% if bet.odds > 0 %}{% set odds_str = "+" ~ bet.odds %}
+      {% else %}{% set odds_str = bet.odds | string %}{% endif %}
+
+      {# Market filter key: collapse any props variant to "props" #}
+      {% if bet.market in ["h2h", "spreads", "totals"] %}
+        {% set market_key = bet.market %}
+      {% else %}
+        {% set market_key = "props" %}
+      {% endif %}
+
+      <div class="bet-card {{ tier }}"
+           data-league="{{ bet.league }}"
+           data-market="{{ market_key }}">
+
+        {# Header: team name + EV badge #}
+        <div class="card-header">
+          <div class="card-team">{{ bet.team }}</div>
+          <div class="card-ev-badge {{ tier }}">{{ "%.1f"|format(bet.ev_percent) }}%</div>
+        </div>
+
+        {# Badges: league, market, book #}
+        <div class="card-badges">
+          <span class="badge badge-league">{{ league_display }}</span>
+          <span class="badge badge-market">{{ market_display }}</span>
+          <span class="badge badge-book">{{ bet.book | title }}</span>
+        </div>
+
+        {# Stats: odds | true prob | EV% | kelly #}
+        <div class="card-stats">
+          <div class="card-stat">
+            <div class="s-val">{{ odds_str }}</div>
+            <div class="s-lbl">Odds</div>
+          </div>
+          <div class="card-stat">
+            <div class="s-val">{{ "%.1f"|format(bet.true_prob * 100) }}%</div>
+            <div class="s-lbl">True Prob</div>
+          </div>
+          <div class="card-stat">
+            <div class="s-val" style="color:{% if bet.ev_percent >= 5 %}var(--brand-success){% else %}#9A6B00{% endif %};">
+              {{ "%.1f"|format(bet.ev_percent) }}%
+            </div>
+            <div class="s-lbl">EV</div>
+          </div>
+          <div class="card-stat">
+            <div class="s-val kelly-val"
+                 data-prob="{{ bet.true_prob }}"
+                 data-odds="{{ bet.odds }}">—</div>
+            <div class="s-lbl">½ Kelly</div>
+          </div>
+        </div>
+
+      </div>
+    {% endfor %}
+
+  {% else %}
+    {# ── Empty state ─────────────────────────────────────────────────── #}
+    <div class="empty-state" id="no-bets-static">
+      <div class="empty-icon">📊</div>
+      <h2>No +EV bets right now</h2>
+      <p>The pipeline scans odds every 30 minutes across NHL, NBA, MLB, EPL, and more.
+         Check back soon or run a manual scan.</p>
+      <button onclick="triggerRefresh()" class="btn btn-primary">Run Scan Now</button>
+    </div>
+  {% endif %}
+
+  {# Empty state shown by JS when filters produce zero results #}
+  <div class="empty-state" id="no-results-filtered" style="display:none;">
+    <div class="empty-icon">🔍</div>
+    <h2>No bets match this filter</h2>
+    <p>Try selecting a different league or market, or clear all filters.</p>
+    <button onclick="clearFilters()" class="btn btn-secondary">Clear Filters</button>
+  </div>
+
+</div><!-- /cards-grid -->
+
+{# ── Legend ────────────────────────────────────────────────────────────── #}
+{% if bets %}
+<div class="legend">
+  <div class="legend-item">
+    <div class="legend-dot" style="background:var(--brand-success);"></div>
+    EV &ge; 5% (strong edge)
+  </div>
+  <div class="legend-item">
+    <div class="legend-dot" style="background:var(--brand-accent);"></div>
+    EV 3–5% (solid edge)
+  </div>
+  <div class="legend-item" style="color:var(--text-muted);">
+    ½ Kelly = recommended stake as % of bankroll
+  </div>
+  <div class="legend-item" style="color:var(--text-muted);">
+    Auto-refreshes every 30 min
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{# ─── JavaScript ──────────────────────────────────────────────────────────── #}
+<script>
+// ── Today's date ─────────────────────────────────────────────────────────
+document.getElementById('today-date').textContent =
+  new Date().toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
+
+// ── Half-Kelly criterion ─────────────────────────────────────────────────
+// Full Kelly: f* = (p·b − q) / b   where b = profit per unit at given odds
+// We show half-Kelly (divide by 2) as a conservative bankroll % rec.
+function halfKelly(prob, americanOdds) {
+  const odds = parseInt(americanOdds, 10);
+  const b = odds > 0 ? odds / 100 : 100 / Math.abs(odds);
+  const q = 1 - prob;
+  const k = (prob * b - q) / b;
+  return Math.max(0, k / 2);          // half-Kelly, floored at 0
+}
+
+document.querySelectorAll('.kelly-val').forEach(el => {
+  const pct = halfKelly(parseFloat(el.dataset.prob), el.dataset.odds);
+  el.textContent = pct > 0 ? (pct * 100).toFixed(1) + '%' : '—';
+});
+
+// ── Countdown to next refresh ────────────────────────────────────────────
+(function () {
+  const el = document.getElementById('countdown');
+  if (!el) return;
+  const target = new Date(el.dataset.ts);
+  function tick() {
+    const diff = Math.max(0, Math.round((target - Date.now()) / 1000));
+    if (diff === 0) { el.textContent = 'refreshing…'; return; }
+    const m = Math.floor(diff / 60);
+    const s = diff % 60;
+    el.textContent = m + 'm ' + String(s).padStart(2, '0') + 's';
+    setTimeout(tick, 1000);
+  }
+  tick();
+})();
+
+// ── Filter logic ─────────────────────────────────────────────────────────
+let activeLeague = 'all';
+let activeMarket = 'all';
+
+function applyFilters() {
+  const cards = document.querySelectorAll('.bet-card');
+  let visible = 0;
+
+  cards.forEach(card => {
+    const leagueMatch = activeLeague === 'all' || card.dataset.league === activeLeague;
+    const marketMatch = activeMarket === 'all' || card.dataset.market === activeMarket;
+    const show = leagueMatch && marketMatch;
+    card.style.display = show ? '' : 'none';
+    if (show) visible++;
+  });
+
+  // Update badge count
+  const badge = document.getElementById('bet-count-badge');
+  if (badge) badge.textContent = visible + ' bet' + (visible !== 1 ? 's' : '');
+
+  // Show/hide "no results" empty state
+  const noResults = document.getElementById('no-results-filtered');
+  if (noResults) noResults.style.display = (visible === 0 && cards.length > 0) ? '' : 'none';
+
+  // Update stat pill total
+  const statTotal = document.getElementById('stat-total');
+  if (statTotal) statTotal.textContent = visible;
+}
+
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const filterType = btn.dataset.filter;   // 'league' or 'market'
+    const value      = btn.dataset.value;
+
+    // Deactivate siblings, activate clicked
+    document.querySelectorAll(`.filter-btn[data-filter="${filterType}"]`)
+      .forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    if (filterType === 'league') activeLeague = value;
+    if (filterType === 'market') activeMarket = value;
+    applyFilters();
+  });
+});
+
+function clearFilters() {
+  document.querySelectorAll('.filter-btn[data-value="all"]').forEach(b => {
+    b.click();  // triggers the event listener above
+  });
+}
+
+// ── Manual refresh ────────────────────────────────────────────────────────
+async function triggerRefresh() {
+  const btn = document.getElementById('refreshBtn');
+  if (!btn || btn.disabled) return;
+  btn.disabled = true;
+  btn.textContent = '⏳ Queuing…';
+
+  try {
+    const res = await fetch('/admin/refresh-cache', { method: 'POST' });
+    if (res.ok) {
+      btn.textContent = '✓ Queued — reloading in 20s';
+      let secs = 20;
+      const iv = setInterval(() => {
+        secs--;
+        if (secs <= 0) { clearInterval(iv); location.reload(); }
+        else btn.textContent = `✓ Reloading in ${secs}s`;
+      }, 1000);
+    } else {
+      btn.disabled = false;
+      btn.textContent = '↻ Refresh';
+      alert('Refresh failed — check server logs.');
+    }
+  } catch {
+    btn.disabled = false;
+    btn.textContent = '↻ Refresh';
+  }
+}
+</script>
