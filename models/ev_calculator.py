@@ -192,6 +192,20 @@ def find_positive_ev(
         for book, odds_list in book_odds.items():
             rows = ev_for_market(odds_list, true_probs, outcome_order, book, stake)
             for row in rows:
+                # Carry the spread/total line value through from the raw odds data
+                outcome_match = game_df[
+                    (game_df["bookmaker"] == book) &
+                    (game_df["outcome_name"] == row["outcome_name"])
+                ]
+                point_val = None
+                if not outcome_match.empty and "point" in outcome_match.columns:
+                    raw_point = outcome_match["point"].iloc[0]
+                    if raw_point is not None and str(raw_point) not in ("nan", "None", ""):
+                        try:
+                            point_val = float(raw_point)
+                        except (ValueError, TypeError):
+                            pass
+
                 row.update({
                     "game_id": game_id,
                     "game": game_label,
@@ -200,6 +214,7 @@ def find_positive_ev(
                     "commence_time": meta["commence_time"],
                     "sharp_book": sharp_book,
                     "sharp_vig_pct": round(sharp["sharpest_vig"] * 100, 3),
+                    "point": point_val,
                 })
                 all_rows.append(row)
 
