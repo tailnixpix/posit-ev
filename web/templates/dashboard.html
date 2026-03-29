@@ -188,6 +188,57 @@ main { max-width: 1200px; padding-top: var(--space-5); }
 /* ── Countdown ────────────────────────────────────────────────────────── */
 #countdown { font-variant-numeric: tabular-nums; }
 
+/* ── Bankroll input ───────────────────────────────────────────────────── */
+.bankroll-row { align-items: center; gap: var(--space-3); }
+.bankroll-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: #fff;
+  border: 1px solid var(--brand-border);
+  border-radius: 20px;
+  overflow: hidden;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.bankroll-wrap:focus-within {
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 3px rgba(83,74,183,0.12);
+}
+.bankroll-prefix {
+  padding: 5px 10px 5px 14px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--brand-primary);
+  background: var(--brand-light);
+  border-right: 1px solid var(--brand-border);
+  line-height: 1;
+  user-select: none;
+}
+#bankrollInput {
+  width: 110px;
+  padding: 5px 14px 5px 10px;
+  border: none;
+  outline: none;
+  font-size: 0.85rem;
+  font-family: inherit;
+  background: transparent;
+  color: var(--brand-dark);
+}
+#bankrollInput::placeholder { color: var(--text-muted); }
+.bankroll-hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+/* Dollar amount shown on each card */
+.kelly-dollar {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--brand-success);
+  display: block;
+  margin-top: 1px;
+}
+
 /* ── Legend ───────────────────────────────────────────────────────────── */
 .legend {
   display: flex;
@@ -345,6 +396,16 @@ main { max-width: 1200px; padding-top: var(--space-5); }
     <button type="button" class="filter-btn" data-filter="market" data-value="totals">Total</button>
     <button type="button" class="filter-btn" data-filter="market" data-value="props">Props</button>
   </div>
+  {# Bankroll input #}
+  <div class="filter-row bankroll-row">
+    <span class="filter-label">Bankroll</span>
+    <div class="bankroll-wrap">
+      <span class="bankroll-prefix">$</span>
+      <input type="number" id="bankrollInput" placeholder="e.g. 1000"
+             min="0" step="1" autocomplete="off" />
+    </div>
+    <span class="bankroll-hint" id="bankrollHint">Enter your bankroll → unit sizes appear on each pick</span>
+  </div>
 </div>
 
 {# ── Cards grid ────────────────────────────────────────────────────────── #}
@@ -456,6 +517,7 @@ main { max-width: 1200px; padding-top: var(--space-5); }
             <div class="s-val kelly-val"
                  data-prob="{{ bet.true_prob }}"
                  data-odds="{{ bet.odds }}">—</div>
+            <span class="kelly-dollar" style="display:none;"></span>
             <div class="s-lbl">½ Kelly</div>
           </div>
         </div>
@@ -496,7 +558,7 @@ main { max-width: 1200px; padding-top: var(--space-5); }
     EV 3–5% (solid edge)
   </div>
   <div class="legend-item" style="color:var(--text-muted);">
-    ½ Kelly = recommended stake as % of bankroll
+    ½ Kelly = recommended stake % — enter bankroll above for $ amounts
   </div>
   <div class="legend-item" style="color:var(--text-muted);">
     Auto-refreshes every hour
@@ -545,10 +607,56 @@ function halfKelly(prob, americanOdds) {
   return Math.max(0, k / 2);          // half-Kelly, floored at 0
 }
 
-document.querySelectorAll('.kelly-val').forEach(el => {
-  const pct = halfKelly(parseFloat(el.dataset.prob), el.dataset.odds);
-  el.textContent = pct > 0 ? (pct * 100).toFixed(1) + '%' : '—';
+// ── Bankroll input + Kelly dollar amounts ────────────────────────────────
+const bankrollInput = document.getElementById('bankrollInput');
+const bankrollHint  = document.getElementById('bankrollHint');
+
+// Restore saved bankroll from localStorage
+const _savedBankroll = localStorage.getItem('positplusev_bankroll');
+if (_savedBankroll) bankrollInput.value = _savedBankroll;
+
+function updateKellyDisplays() {
+  const bankroll = parseFloat(bankrollInput.value);
+  const hasBankroll = bankroll > 0;
+
+  document.querySelectorAll('.kelly-val').forEach(el => {
+    const pct     = halfKelly(parseFloat(el.dataset.prob), el.dataset.odds);
+    const dollarEl = el.nextElementSibling; // .kelly-dollar span
+
+    if (pct > 0) {
+      el.textContent = (pct * 100).toFixed(1) + '%';
+      if (hasBankroll && dollarEl) {
+        const dollars = (bankroll * pct).toFixed(0);
+        dollarEl.textContent = '$' + parseInt(dollars, 10).toLocaleString();
+        dollarEl.style.display = 'block';
+      } else if (dollarEl) {
+        dollarEl.style.display = 'none';
+      }
+    } else {
+      el.textContent = '—';
+      if (dollarEl) dollarEl.style.display = 'none';
+    }
+  });
+
+  // Update hint text
+  if (hasBankroll && bankrollHint) {
+    bankrollHint.textContent = '→ unit sizes shown in green on each pick (½ Kelly)';
+  } else if (bankrollHint) {
+    bankrollHint.textContent = 'Enter your bankroll → unit sizes appear on each pick';
+  }
+}
+
+bankrollInput.addEventListener('input', () => {
+  const val = bankrollInput.value;
+  if (val && parseFloat(val) > 0) {
+    localStorage.setItem('positplusev_bankroll', val);
+  } else {
+    localStorage.removeItem('positplusev_bankroll');
+  }
+  updateKellyDisplays();
 });
+
+updateKellyDisplays(); // run on page load with saved value
 
 // ── Countdown to next refresh ────────────────────────────────────────────
 (function () {
