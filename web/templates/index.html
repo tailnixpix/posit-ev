@@ -272,6 +272,93 @@ main { max-width: none; padding: 0; }
   </div>
 </section>
 
+{# ── Newsletter signup ─────────────────────────────────────────────────── #}
+<section class="section section-white" style="padding-top:var(--space-6); padding-bottom:var(--space-6); border-bottom:1px solid var(--brand-border);">
+  <div class="container" style="max-width:580px; text-align:center;">
+    <p class="section-label">Free daily picks</p>
+    <h2 class="section-title" style="margin:0 auto var(--space-3);">
+      Get one free +EV pick in your inbox every morning
+    </h2>
+    <p class="section-sub" style="margin:0 auto var(--space-5);">
+      No subscription required. One pick a day, with an AI breakdown of
+      why it has edge. Upgrade anytime for the full scan.
+    </p>
+
+    <form id="nlForm" style="display:flex; gap:var(--space-3); flex-wrap:wrap; justify-content:center;">
+      <input
+        type="email"
+        id="nlEmail"
+        placeholder="your@email.com"
+        required
+        style="flex:1; min-width:220px; max-width:320px;
+               padding:13px 18px; border-radius:var(--radius-md);
+               border:1.5px solid var(--brand-border); font-size:0.95rem;
+               color:var(--text-primary); outline:none;
+               font-family:inherit; background:#fff;"
+      />
+      <button
+        type="submit"
+        id="nlBtn"
+        style="padding:13px 28px; background:var(--brand-primary); color:#fff;
+               border:none; border-radius:var(--radius-md); font-size:0.95rem;
+               font-weight:600; cursor:pointer; font-family:inherit;
+               white-space:nowrap; transition:opacity 0.15s;"
+      >
+        Get Free Picks
+      </button>
+    </form>
+
+    <div id="nlResult" style="display:none; margin-top:var(--space-4);
+         padding:12px 20px; border-radius:var(--radius-md);
+         font-size:0.9rem; font-weight:500;"></div>
+
+    <p style="margin-top:var(--space-3); font-size:0.78rem; color:var(--text-muted);">
+      Unsubscribe in one click &nbsp;&bull;&nbsp; No spam, ever
+    </p>
+  </div>
+</section>
+
+<script>
+(function () {
+  const form   = document.getElementById('nlForm');
+  const btn    = document.getElementById('nlBtn');
+  const result = document.getElementById('nlResult');
+
+  function showResult(ok) {
+    result.innerHTML = ok
+      ? '<strong>✓ You\'re in! Welcome email is on its way.</strong><br>'
+        + '<span style="font-size:0.82rem;">📬 Don\'t see it? Check your <strong>spam or junk folder</strong> and mark us as "Not Spam".</span>'
+      : 'Something went wrong — please try again.';
+    result.style.display = 'block';
+    result.style.background = ok ? '#EDFAF5' : '#FEF2F2';
+    result.style.color      = ok ? '#0F6E56' : '#C53030';
+    result.style.border     = ok ? '1px solid #9EEBD6' : '1px solid #FCA5A5';
+  }
+
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    btn.disabled = true;
+    btn.textContent = 'Subscribing…';
+    try {
+      const body = new URLSearchParams({ email: document.getElementById('nlEmail').value });
+      const res  = await fetch('/newsletter/subscribe', { method: 'POST', body });
+      if (res.ok) {
+        showResult(true);
+        form.style.display = 'none';
+      } else {
+        showResult(false);
+        btn.disabled = false;
+        btn.textContent = 'Get Free Picks';
+      }
+    } catch {
+      showResult(false);
+      btn.disabled = false;
+      btn.textContent = 'Get Free Picks';
+    }
+  });
+})();
+</script>
+
 {# ── Stats bar ─────────────────────────────────────────────────────────── #}
 <div class="stats-bar">
   <div class="container">
@@ -288,7 +375,7 @@ main { max-width: none; padding: 0; }
       <div class="s-lbl">Market types</div>
     </div>
     <div class="stat-item">
-      <div class="s-num">30m</div>
+      <div class="s-num">1hr</div>
       <div class="s-lbl">Refresh interval</div>
     </div>
     <div class="stat-item">
@@ -352,7 +439,7 @@ main { max-width: none; padding: 0; }
 {# ── How it works ──────────────────────────────────────────────────────── #}
 <section class="section section-alt">
   <div class="container">
-    <p class="section-label" style="text-align:center;">Under the hood</p>
+    <p class="section-label" style="text-align:center;">How it works</p>
     <h2 class="section-title" style="text-align:center; margin:0 auto var(--space-6);">
       How Posit+EV finds the edge
     </h2>
@@ -361,33 +448,32 @@ main { max-width: none; padding: 0; }
       <div class="step-card">
         <div class="step-num">01</div>
         <div class="step-icon">📡</div>
-        <p class="step-title">Fetch live odds</p>
+        <p class="step-title">Odds across every major book, every hour</p>
         <p class="step-desc">
-          Every 30 minutes we pull live moneyline, spread, total, and prop odds
-          from DraftKings, FanDuel, BetMGM, Caesars, and PointsBet — across
-          7 leagues simultaneously.
+          We monitor moneylines, spreads, and totals across DraftKings, FanDuel,
+          BetMGM, Caesars, and more — updated every hour across 7 leagues.
         </p>
       </div>
 
       <div class="step-card">
         <div class="step-num">02</div>
         <div class="step-icon">🧮</div>
-        <p class="step-title">Model true probability</p>
+        <p class="step-title">We find where the price is wrong</p>
         <p class="step-desc">
-          We identify the sharpest book (lowest vig) as our reference market.
-          Using multiplicative vig removal, we convert their odds into a clean,
-          unbiased true probability for each outcome.
+          Our model calculates the true probability of each outcome using
+          sharp-market consensus. When a book's implied probability is
+          meaningfully lower than the true probability, that's your edge.
         </p>
       </div>
 
       <div class="step-card">
         <div class="step-num">03</div>
         <div class="step-icon">⚡</div>
-        <p class="step-title">Surface the edges</p>
+        <p class="step-title">You get the bet, sized and ready</p>
         <p class="step-desc">
-          We compare that true probability against every other book's offering.
-          Any bet where expected value exceeds 3% gets flagged, sized with Kelly
-          criterion, and delivered to your dashboard instantly.
+          Every edge above our threshold is surfaced on your dashboard with
+          the exact book, odds, and a conservative stake recommendation.
+          No guesswork — just act.
         </p>
       </div>
 
@@ -400,12 +486,11 @@ main { max-width: none; padding: 0; }
       <div style="font-size:2rem; flex-shrink:0; padding-top:2px;">🎯</div>
       <div>
         <p style="font-weight:700; color:var(--brand-dark); margin:0 0 6px; font-size:1rem;">
-          Sport-specific adjustments built in
+          Built-in intelligence for each sport
         </p>
         <p style="margin:0; font-size:0.88rem; color:var(--text-secondary); line-height:1.65; max-width:640px;">
-          Our model applies sport-aware confidence penalties: NHL goalie confirmation status,
-          NBA back-to-back fatigue, and soccer Euro midweek schedule adjustments all automatically
-          reduce confidence when data is uncertain — so you never bet blind.
+          The model accounts for conditions that move lines — roster confirmations,
+          fatigue, scheduling — so edges are filtered for quality, not just raw math.
         </p>
       </div>
     </div>
@@ -512,91 +597,6 @@ main { max-width: none; padding: 0; }
   </div>
 </section>
 
-
-{# ── Newsletter signup ─────────────────────────────────────────────────── #}
-<section class="section section-white" style="padding-top:var(--space-8); padding-bottom:var(--space-8);">
-  <div class="container" style="max-width:580px; text-align:center;">
-    <p class="section-label">Free daily picks</p>
-    <h2 class="section-title" style="margin:0 auto var(--space-3);">
-      Get one free +EV pick in your inbox every morning
-    </h2>
-    <p class="section-sub" style="margin:0 auto var(--space-5);">
-      No subscription required. One pick a day, with an AI breakdown of
-      why it has edge. Upgrade anytime for the full scan.
-    </p>
-
-    <form id="nlForm" style="display:flex; gap:var(--space-3); flex-wrap:wrap; justify-content:center;">
-      <input
-        type="email"
-        id="nlEmail"
-        placeholder="your@email.com"
-        required
-        style="flex:1; min-width:220px; max-width:320px;
-               padding:13px 18px; border-radius:var(--radius-md);
-               border:1.5px solid var(--brand-border); font-size:0.95rem;
-               color:var(--text-primary); outline:none;
-               font-family:inherit; background:#fff;"
-      />
-      <button
-        type="submit"
-        id="nlBtn"
-        style="padding:13px 28px; background:var(--brand-primary); color:#fff;
-               border:none; border-radius:var(--radius-md); font-size:0.95rem;
-               font-weight:600; cursor:pointer; font-family:inherit;
-               white-space:nowrap; transition:opacity 0.15s;"
-      >
-        Get Free Picks
-      </button>
-    </form>
-
-    <div id="nlResult" style="display:none; margin-top:var(--space-4);
-         padding:12px 20px; border-radius:var(--radius-md);
-         font-size:0.9rem; font-weight:500;"></div>
-
-    <p style="margin-top:var(--space-3); font-size:0.78rem; color:var(--text-muted);">
-      Unsubscribe in one click &nbsp;&bull;&nbsp; No spam, ever
-    </p>
-  </div>
-</section>
-
-<script>
-(function () {
-  const form   = document.getElementById('nlForm');
-  const btn    = document.getElementById('nlBtn');
-  const result = document.getElementById('nlResult');
-
-  function showResult(msg, ok) {
-    result.textContent = msg;
-    result.style.display = 'block';
-    result.style.background = ok ? '#EDFAF5' : '#FEF2F2';
-    result.style.color      = ok ? '#0F6E56' : '#C53030';
-    result.style.border     = ok ? '1px solid #9EEBD6' : '1px solid #FCA5A5';
-  }
-
-  form.addEventListener('submit', async function (e) {
-    e.preventDefault();
-    btn.disabled = true;
-    btn.textContent = 'Subscribing…';
-    try {
-      const body = new URLSearchParams({ email: document.getElementById('nlEmail').value });
-      const res  = await fetch('/newsletter/subscribe', { method: 'POST', body });
-      const data = await res.json();
-      if (res.ok) {
-        showResult(data.message || 'You\'re subscribed! Check your inbox.', true);
-        form.style.display = 'none';
-      } else {
-        showResult(data.detail || 'Something went wrong — please try again.', false);
-        btn.disabled = false;
-        btn.textContent = 'Get Free Picks';
-      }
-    } catch {
-      showResult('Network error — please try again.', false);
-      btn.disabled = false;
-      btn.textContent = 'Get Free Picks';
-    }
-  });
-})();
-</script>
 
 {# ── Final CTA ─────────────────────────────────────────────────────────── #}
 <section class="cta-section">
