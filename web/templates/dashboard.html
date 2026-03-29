@@ -188,6 +188,42 @@ main { max-width: 1200px; padding-top: var(--space-5); }
 /* ── Countdown ────────────────────────────────────────────────────────── */
 #countdown { font-variant-numeric: tabular-nums; }
 
+/* ── Day toggle ───────────────────────────────────────────────────────── */
+.day-toggle {
+  display: inline-flex;
+  background: var(--brand-light);
+  border-radius: 24px;
+  padding: 3px;
+  gap: 2px;
+}
+.day-toggle-btn {
+  border: none;
+  border-radius: 20px;
+  padding: 6px 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: inherit;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+  white-space: nowrap;
+}
+.day-toggle-btn.active {
+  background: #fff;
+  color: var(--brand-primary);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+}
+.day-toggle-btn:hover:not(.active) { color: var(--brand-primary); }
+#day-badge {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-left: auto;
+  flex-shrink: 0;
+  align-self: center;
+}
+
 /* ── Bankroll input ───────────────────────────────────────────────────── */
 .bankroll-row { align-items: center; gap: var(--space-3); }
 .bankroll-wrap {
@@ -374,6 +410,14 @@ main { max-width: 1200px; padding-top: var(--space-5); }
 
 {# ── Filter bar ────────────────────────────────────────────────────────── #}
 <div class="filter-bar">
+  {# Day toggle #}
+  <div class="filter-row" style="margin-bottom:var(--space-1);">
+    <div class="day-toggle">
+      <button type="button" class="day-toggle-btn active" id="dayToday">📅 Today</button>
+      <button type="button" class="day-toggle-btn" id="dayTomorrow">Tomorrow</button>
+    </div>
+    <span id="day-badge"></span>
+  </div>
   {# League tabs #}
   <div class="filter-row">
     <span class="filter-label">League</span>
@@ -678,6 +722,16 @@ updateKellyDisplays(); // run on page load with saved value
 // ── Filter logic ─────────────────────────────────────────────────────────
 let activeLeague = 'all';
 let activeMarket = 'all';
+let activeDay    = 'today';   // 'today' | 'tomorrow'
+
+// Returns the local date string (CT) for a given Date object
+function ctDateStr(date) {
+  return date.toLocaleDateString('en-US', { timeZone: _CT, year: 'numeric', month: '2-digit', day: '2-digit' });
+}
+
+// Reference dates in CT
+const _todayCT    = ctDateStr(new Date());
+const _tomorrowCT = ctDateStr(new Date(Date.now() + 86400000));
 
 function applyFilters() {
   const cards = document.querySelectorAll('.bet-card');
@@ -686,7 +740,20 @@ function applyFilters() {
   cards.forEach(card => {
     const leagueMatch = activeLeague === 'all' || card.dataset.league === activeLeague;
     const marketMatch = activeMarket === 'all' || card.dataset.market === activeMarket;
-    const show = leagueMatch && marketMatch;
+
+    // Day filter — compare commence_time date in CT to today/tomorrow
+    let dayMatch = true;
+    const commenceIso = card.dataset.commence;
+    if (commenceIso) {
+      const cardDateCT = ctDateStr(new Date(commenceIso));
+      if (activeDay === 'today')    dayMatch = (cardDateCT === _todayCT);
+      if (activeDay === 'tomorrow') dayMatch = (cardDateCT === _tomorrowCT);
+    } else {
+      // No commence_time — only show under "today"
+      dayMatch = (activeDay === 'today');
+    }
+
+    const show = leagueMatch && marketMatch && dayMatch;
     card.style.display = show ? '' : 'none';
     if (show) visible++;
   });
@@ -702,8 +769,16 @@ function applyFilters() {
   // Update stat pill total
   const statTotal = document.getElementById('stat-total');
   if (statTotal) statTotal.textContent = visible;
+
+  // Update day badge hint
+  const dayBadge = document.getElementById('day-badge');
+  if (dayBadge) {
+    const label = activeDay === 'today' ? _todayCT : _tomorrowCT;
+    dayBadge.textContent = visible + ' pick' + (visible !== 1 ? 's' : '') + ' — ' + label;
+  }
 }
 
+// League / Market filter buttons
 document.querySelectorAll('.filter-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     const filterType = btn.dataset.filter;   // 'league' or 'market'
@@ -720,11 +795,29 @@ document.querySelectorAll('.filter-btn').forEach(btn => {
   });
 });
 
+// Day toggle buttons
+document.getElementById('dayToday').addEventListener('click', () => {
+  activeDay = 'today';
+  document.getElementById('dayToday').classList.add('active');
+  document.getElementById('dayTomorrow').classList.remove('active');
+  applyFilters();
+});
+document.getElementById('dayTomorrow').addEventListener('click', () => {
+  activeDay = 'tomorrow';
+  document.getElementById('dayTomorrow').classList.add('active');
+  document.getElementById('dayToday').classList.remove('active');
+  applyFilters();
+});
+
 function clearFilters() {
-  document.querySelectorAll('.filter-btn[data-value="all"]').forEach(b => {
-    b.click();  // triggers the event listener above
-  });
+  activeDay = 'today';
+  document.getElementById('dayToday').classList.add('active');
+  document.getElementById('dayTomorrow').classList.remove('active');
+  document.querySelectorAll('.filter-btn[data-value="all"]').forEach(b => b.click());
 }
+
+// Run on load so the day badge populates immediately
+applyFilters();
 
 // ── Manual refresh ────────────────────────────────────────────────────────
 async function triggerRefresh() {
