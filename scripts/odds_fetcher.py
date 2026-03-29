@@ -31,6 +31,7 @@ log = logging.getLogger(__name__)
 SPORT_KEYS = [
     "icehockey_nhl",
     "basketball_nba",
+    "basketball_ncaab",
     "baseball_mlb",
     "soccer_epl",
     "soccer_spain_la_liga",
