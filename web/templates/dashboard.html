@@ -275,6 +275,150 @@ main { max-width: 1200px; padding-top: var(--space-5); }
   margin-top: 1px;
 }
 
+/* ── Why +EV button ───────────────────────────────────────────────────── */
+.why-ev-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: var(--space-2);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--brand-primary);
+  background: var(--brand-light);
+  border: none;
+  border-radius: 6px;
+  padding: 5px 11px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.12s, color 0.12s;
+}
+.why-ev-btn:hover { background: #DDD8F8; color: var(--brand-dark); }
+
+/* ── EV explanation modal ─────────────────────────────────────────────── */
+.ev-modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(15,12,50,0.55);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.ev-modal-overlay.open { display: flex; }
+.ev-modal {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 24px 64px rgba(15,12,50,0.22);
+  width: 100%;
+  max-width: 460px;
+  overflow: hidden;
+  animation: modal-in 0.18s ease;
+}
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.97); }
+  to   { opacity: 1; transform: none; }
+}
+.ev-modal-header {
+  background: linear-gradient(120deg, #1E1A47 0%, #534AB7 100%);
+  padding: 20px 24px 18px;
+  position: relative;
+}
+.ev-modal-header h3 {
+  margin: 0 0 2px;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #fff;
+}
+.ev-modal-header .modal-game {
+  font-size: 0.78rem;
+  color: rgba(255,255,255,0.65);
+  margin: 0;
+}
+.ev-modal-close {
+  position: absolute;
+  top: 14px; right: 16px;
+  background: rgba(255,255,255,0.15);
+  border: none;
+  color: #fff;
+  font-size: 1rem;
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  line-height: 1;
+}
+.ev-modal-close:hover { background: rgba(255,255,255,0.28); }
+.ev-modal-body { padding: 22px 24px 26px; }
+
+/* probability comparison bar */
+.prob-compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.prob-box {
+  border-radius: 10px;
+  padding: 12px 14px;
+  text-align: center;
+}
+.prob-box.book  { background: #F3F4F6; }
+.prob-box.model { background: rgba(83,74,183,0.08); border: 1px solid rgba(83,74,183,0.2); }
+.prob-box .pb-val {
+  font-size: 1.5rem;
+  font-weight: 900;
+  line-height: 1;
+  margin-bottom: 3px;
+}
+.prob-box.book  .pb-val { color: #374151; }
+.prob-box.model .pb-val { color: var(--brand-primary); }
+.prob-box .pb-lbl {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.ev-edge-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(15,110,86,0.07);
+  border: 1px solid rgba(15,110,86,0.2);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 18px;
+}
+.ev-edge-row .edge-num {
+  font-size: 1.2rem;
+  font-weight: 900;
+  color: var(--brand-success);
+  white-space: nowrap;
+}
+.ev-edge-row .edge-desc {
+  font-size: 0.8rem;
+  color: #374151;
+  line-height: 1.4;
+}
+.ev-explain-text {
+  font-size: 0.83rem;
+  color: var(--text-secondary);
+  line-height: 1.65;
+  margin: 0 0 16px;
+}
+.ev-formula-box {
+  background: #FAFAFE;
+  border: 1px solid var(--brand-border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+.ev-formula-box strong { color: var(--brand-dark); }
+
 /* ── Legend ───────────────────────────────────────────────────────────── */
 .legend {
   display: flex;
@@ -453,6 +597,35 @@ main { max-width: 1200px; padding-top: var(--space-5); }
 </div>
 
 {# ── Cards grid ────────────────────────────────────────────────────────── #}
+<!-- ── EV Explanation Modal ──────────────────────────────────────────── -->
+<div class="ev-modal-overlay" id="evModalOverlay" onclick="closeEvModal(event)">
+  <div class="ev-modal" role="dialog" aria-modal="true" aria-labelledby="evModalTitle">
+    <div class="ev-modal-header">
+      <h3 id="evModalTitle">Why is this +EV?</h3>
+      <p class="modal-game" id="evModalGame"></p>
+      <button class="ev-modal-close" onclick="closeEvModal()" aria-label="Close">✕</button>
+    </div>
+    <div class="ev-modal-body">
+      <div class="prob-compare">
+        <div class="prob-box book">
+          <div class="pb-val" id="evModalBookProb">—</div>
+          <div class="pb-lbl">Book's implied odds</div>
+        </div>
+        <div class="prob-box model">
+          <div class="pb-val" id="evModalTrueProb">—</div>
+          <div class="pb-lbl">Our true probability</div>
+        </div>
+      </div>
+      <div class="ev-edge-row">
+        <div class="edge-num" id="evModalEdge">—</div>
+        <div class="edge-desc" id="evModalEdgeDesc">percentage point edge in your favor</div>
+      </div>
+      <p class="ev-explain-text" id="evModalExplain"></p>
+      <div class="ev-formula-box" id="evModalFormula"></div>
+    </div>
+  </div>
+</div>
+
 <div class="cards-grid" id="cards-grid">
 
   {% if bets %}
@@ -516,6 +689,12 @@ main { max-width: 1200px; padding-top: var(--space-5); }
       <div class="bet-card {{ tier }}"
            data-league="{{ bet.league }}"
            data-market="{{ market_key }}"
+           data-ev="{{ '%.2f'|format(bet.ev_percent) }}"
+           data-true-prob="{{ '%.4f'|format(bet.true_prob) }}"
+           data-odds="{{ bet.odds }}"
+           data-team="{{ team_display }}"
+           data-game="{{ bet.game or '' }}"
+           data-market-display="{{ market_display }}"
            {% if bet.commence_time %}data-commence="{{ bet.commence_time.isoformat() }}"{% endif %}>
 
         {# Header: team name + EV badge #}
@@ -565,6 +744,10 @@ main { max-width: 1200px; padding-top: var(--space-5); }
             <div class="s-lbl">½ Kelly</div>
           </div>
         </div>
+
+        <button class="why-ev-btn" onclick="openEvModal(this.closest('.bet-card'))">
+          📐 Why is this +EV?
+        </button>
 
       </div>
     {% endfor %}
@@ -638,6 +821,85 @@ document.querySelectorAll('[data-commence-fmt]').forEach(el => {
   } catch (e) {
     el.textContent = '';
   }
+});
+
+// ── EV Explanation Modal ─────────────────────────────────────────────────
+
+function impliedProb(americanOdds) {
+  const o = parseInt(americanOdds, 10);
+  return o < 0 ? Math.abs(o) / (Math.abs(o) + 100)
+               : 100 / (o + 100);
+}
+
+function openEvModal(card) {
+  const odds      = parseInt(card.dataset.odds, 10);
+  const trueProb  = parseFloat(card.dataset.trueProb);
+  const ev        = parseFloat(card.dataset.ev);
+  const team      = card.dataset.team;
+  const game      = card.dataset.game;
+  const market    = card.dataset.marketDisplay;
+
+  const bookProb  = impliedProb(odds);
+  const edgePp    = trueProb - bookProb;           // percentage-point edge
+  const oddsStr   = odds > 0 ? '+' + odds : String(odds);
+
+  // Payout per $1 wagered
+  const payout    = odds > 0 ? odds / 100 : 100 / Math.abs(odds);
+  // EV per $100
+  const evPerHundo = ((trueProb * payout) - (1 - trueProb)) * 100;
+
+  // Populate header
+  document.getElementById('evModalGame').textContent =
+    game ? game + ' · ' + team : team;
+
+  // Probability boxes
+  document.getElementById('evModalBookProb').textContent =
+    (bookProb * 100).toFixed(1) + '%';
+  document.getElementById('evModalTrueProb').textContent =
+    (trueProb * 100).toFixed(1) + '%';
+
+  // Edge row
+  document.getElementById('evModalEdge').textContent =
+    '+' + (edgePp * 100).toFixed(1) + ' pp';
+
+  // Plain-English explanation
+  const marketContext = {
+    'Moneyline': 'win outright',
+    'Spread':    'cover the spread',
+    'Total':     'hit the total',
+  }[market] || 'hit this outcome';
+
+  document.getElementById('evModalExplain').innerHTML =
+    `To price odds of <strong>${oddsStr}</strong>, the book implies a ` +
+    `<strong>${(bookProb * 100).toFixed(1)}%</strong> chance this outcome occurs. ` +
+    `Our model — built on sharp-market consensus across the highest-volume books — ` +
+    `puts the true probability at <strong>${(trueProb * 100).toFixed(1)}%</strong>. ` +
+    `That <strong>${(edgePp * 100).toFixed(1)} percentage point gap</strong> is the edge: ` +
+    `the book is underpricing the probability that this ${marketContext}.`;
+
+  // Formula breakdown
+  document.getElementById('evModalFormula').innerHTML =
+    `<strong>EV calculation (per $100 wagered)</strong><br>` +
+    `(${(trueProb * 100).toFixed(1)}% × $${(payout * 100).toFixed(2)} profit) ` +
+    `− (${((1 - trueProb) * 100).toFixed(1)}% × $100 loss) ` +
+    `= <strong style="color:var(--brand-success);">+$${evPerHundo.toFixed(2)} expected profit</strong><br>` +
+    `<span style="font-size:0.72rem; margin-top:4px; display:block;">` +
+    `EV doesn't guarantee a win on any single bet — it means this wager is ` +
+    `mathematically profitable over a large sample of similar edges.</span>`;
+
+  document.getElementById('evModalOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeEvModal(e) {
+  // Close on overlay click (not on modal itself) or explicit call
+  if (e && e.target !== document.getElementById('evModalOverlay')) return;
+  document.getElementById('evModalOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeEvModal();
 });
 
 // ── Half-Kelly criterion ─────────────────────────────────────────────────
