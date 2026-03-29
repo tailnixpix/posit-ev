@@ -14,10 +14,12 @@
       <img src="/static/logo.svg" height="32" alt="Posit+EV" />
     </a>
     {% if user is defined and user %}
-      <a href="/dashboard" style="font-weight:600;">My Dashboard</a>
-      <form action="/logout" method="post" style="margin:0;">
-        <button type="submit" style="background:none;border:none;cursor:pointer;font-size:inherit;color:inherit;padding:0;font-family:inherit;font-weight:500;">Sign Out</button>
-      </form>
+      <div class="nav-btn-group">
+        <a href="/dashboard" class="nav-btn nav-btn-primary">Dashboard</a>
+        <form action="/logout" method="post" style="margin:0;">
+          <button type="submit" class="nav-btn nav-btn-ghost">Sign Out</button>
+        </form>
+      </div>
     {% else %}
       <a href="/pricing">Pricing</a>
       <a href="/login">Sign In</a>

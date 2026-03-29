@@ -105,7 +105,7 @@ nav {
 }
 
 .nav-logo img {
-  height: 32px;
+  height: 40px;
   width: auto;
 }
 
@@ -121,6 +121,49 @@ nav a {
 nav a:hover {
   color: var(--brand-primary);
   text-decoration: none;
+}
+
+/* ── Logged-in nav buttons ───────────────────────────────────────────── */
+.nav-btn-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nav-btn {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 8px 18px;
+  cursor: pointer;
+  font-family: inherit;
+  text-decoration: none !important;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.nav-btn-primary {
+  background: var(--brand-primary);
+  color: #ffffff !important;
+  border: 1.5px solid var(--brand-primary);
+}
+.nav-btn-primary:hover {
+  background: var(--brand-dark);
+  border-color: var(--brand-dark);
+  color: #ffffff !important;
+}
+
+.nav-btn-ghost {
+  background: transparent;
+  color: var(--text-secondary) !important;
+  border: 1.5px solid var(--brand-border);
+}
+.nav-btn-ghost:hover {
+  background: var(--brand-light);
+  border-color: var(--brand-primary);
+  color: var(--brand-primary) !important;
 }
 
 /* ------------------------------------------------------------
