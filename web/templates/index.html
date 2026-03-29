@@ -11,42 +11,70 @@ main { max-width: none; padding: 0; }
 .hero {
   background: linear-gradient(150deg, #1A1450 0%, #2D2580 55%, #534AB7 100%);
   color: #fff;
-  padding: 96px var(--space-5) 80px;
-  text-align: center;
+  padding: 72px var(--space-5) 72px;
 }
-.hero-logo-wrap {
-  display: inline-block;
-  margin-bottom: 40px;
+.hero-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 56px;
+  align-items: center;
 }
-.hero-logo-wrap img {
-  height: auto;
-  width: clamp(260px, 50vw, 340px);
-  border-radius: 16px;
-  box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+@media (max-width: 920px) {
+  .hero-inner { grid-template-columns: 1fr; text-align: center; }
+  .hero-actions { justify-content: center; }
+  .hero-trust   { justify-content: center; }
+  .hero-mockup-col { display: none; }
+}
+.hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #FAC775;
+  background: rgba(250,199,117,0.12);
+  border: 1px solid rgba(250,199,117,0.28);
+  border-radius: 20px;
+  padding: 4px 14px;
+  margin-bottom: 20px;
 }
 .hero h1 {
   color: #fff;
-  font-size: clamp(1.9rem, 4vw, 2.9rem);
+  font-size: clamp(1.9rem, 3.5vw, 2.8rem);
   font-weight: 800;
   line-height: 1.15;
-  margin: 0 auto var(--space-4);
-  max-width: 720px;
+  margin: 0 0 var(--space-4);
 }
 .hero h1 .accent { color: #FAC775; }
 .hero-sub {
   color: rgba(255,255,255,0.78);
-  font-size: 1.1rem;
-  max-width: 540px;
-  margin: 0 auto var(--space-6);
-  line-height: 1.65;
+  font-size: 1.05rem;
+  margin: 0 0 var(--space-6);
+  line-height: 1.7;
 }
-.hero-actions { display: flex; gap: var(--space-3); justify-content: center; flex-wrap: wrap; }
+.hero-actions { display: flex; gap: var(--space-3); flex-wrap: wrap; }
+.hero-trust {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+.hero-trust span {
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.6);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.hero-trust .ht-check { color: #4ADE80; font-weight: 700; }
 .btn-hero-primary {
   background: #FAC775;
   color: #1A1450;
   font-weight: 700;
   font-size: 1rem;
-  padding: 0.8rem 2rem;
+  padding: 0.85rem 2rem;
   border-radius: 10px;
   border: none;
   cursor: pointer;
@@ -62,7 +90,7 @@ main { max-width: none; padding: 0; }
   color: #fff;
   font-weight: 600;
   font-size: 1rem;
-  padding: 0.8rem 2rem;
+  padding: 0.85rem 2rem;
   border-radius: 10px;
   border: 1px solid rgba(255,255,255,0.3);
   cursor: pointer;
@@ -72,6 +100,133 @@ main { max-width: none; padding: 0; }
   transition: background 0.15s;
 }
 .btn-hero-ghost:hover { background: rgba(255,255,255,0.2); text-decoration: none; }
+
+/* ── Dashboard mockup ──────────────────────────────────────────────── */
+.hero-mockup {
+  background: #fff;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 28px 72px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.1);
+}
+.mockup-chrome {
+  background: #F3F4F6;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid #E5E7EB;
+}
+.mockup-dots { display: flex; gap: 5px; }
+.mockup-dots span { width: 10px; height: 10px; border-radius: 50%; background: #D1D5DB; }
+.mockup-dots span:nth-child(1) { background: #FC8181; }
+.mockup-dots span:nth-child(2) { background: #F6AD55; }
+.mockup-dots span:nth-child(3) { background: #68D391; }
+.mockup-url {
+  flex: 1;
+  background: #fff;
+  border: 1px solid #E5E7EB;
+  border-radius: 5px;
+  padding: 3px 10px;
+  font-size: 0.68rem;
+  color: #6B7280;
+  text-align: center;
+  font-family: monospace;
+}
+.mockup-body { background: #EEEDFB; padding: 14px; display: flex; flex-direction: column; gap: 9px; }
+.mock-filter-bar { display: flex; gap: 5px; }
+.mock-filter-pill {
+  font-size: 0.62rem; font-weight: 600; padding: 3px 9px; border-radius: 20px;
+  background: rgba(255,255,255,0.65); color: #6B7280; border: 1px solid #E5E7EB;
+}
+.mock-filter-pill.active { background: #534AB7; color: #fff; border-color: #534AB7; }
+.mock-card {
+  background: #fff; border-radius: 10px; padding: 11px 13px;
+  border-left: 3px solid; box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+.mock-ev-high { border-left-color: #0F6E56; }
+.mock-ev-med  { border-left-color: #D97706; }
+.mock-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 7px; }
+.mock-team { font-size: 0.8rem; font-weight: 700; color: #26215C; }
+.mock-game-line { font-size: 0.64rem; color: #9CA3AF; margin-top: 2px; }
+.mock-ev-badge { font-size: 0.74rem; font-weight: 800; padding: 2px 7px; border-radius: 5px; flex-shrink: 0; }
+.mock-ev-high .mock-ev-badge { background: rgba(15,110,86,0.1); color: #0F6E56; }
+.mock-ev-med  .mock-ev-badge { background: rgba(250,199,117,0.2); color: #9A6B00; }
+.mock-badges { display: flex; gap: 4px; margin-bottom: 9px; }
+.mock-badges span {
+  font-size: 0.58rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.3px; padding: 1px 6px; border-radius: 3px;
+  background: #EEEDFE; color: #534AB7;
+}
+.mock-stats-row {
+  display: grid; grid-template-columns: repeat(4,1fr);
+  padding-top: 8px; border-top: 1px solid #F3F4F6; text-align: center;
+}
+.msv { font-size: 0.73rem; font-weight: 700; color: #26215C; }
+.msv-green { color: #0F6E56; }
+.msl { font-size: 0.56rem; text-transform: uppercase; color: #9CA3AF; letter-spacing: 0.3px; margin-top: 1px; }
+.mock-more {
+  text-align: center; font-size: 0.7rem; font-weight: 600; color: #534AB7;
+  background: rgba(83,74,183,0.07); border: 1px dashed rgba(83,74,183,0.3);
+  border-radius: 7px; padding: 7px;
+}
+
+/* ── Free vs Pro comparison table ─────────────────────────────────── */
+.compare-section { background: #fff; }
+.compare-wrap {
+  max-width: 680px;
+  margin: 0 auto;
+}
+.compare-table {
+  width: 100%;
+  border-collapse: collapse;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--brand-border);
+}
+.compare-table thead th {
+  padding: 16px 24px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-align: center;
+  border-bottom: 1px solid var(--brand-border);
+}
+.compare-table thead th:first-child { text-align: left; background: var(--brand-surface); }
+.compare-table thead .th-free { background: var(--brand-light); color: var(--brand-primary); width: 22%; }
+.compare-table thead .th-pro  {
+  background: var(--brand-primary); color: #fff; width: 22%;
+  position: relative;
+}
+.compare-table tbody tr:nth-child(odd)  td { background: #fff; }
+.compare-table tbody tr:nth-child(even) td { background: var(--brand-surface); }
+.compare-table tbody tr:last-child td { border-bottom: none; }
+.compare-table td {
+  padding: 13px 24px;
+  font-size: 0.875rem;
+  border-bottom: 1px solid var(--brand-border);
+  text-align: center;
+  color: var(--text-secondary);
+}
+.compare-table td:first-child { text-align: left; font-weight: 500; color: var(--brand-dark); }
+.compare-table .c-check { color: #0F6E56; font-weight: 800; font-size: 1rem; }
+.compare-table .c-dash  { color: #D1D5DB; font-weight: 700; font-size: 1.1rem; }
+.compare-table .c-price { font-weight: 800; font-size: 0.95rem; color: var(--brand-dark); }
+.compare-table tfoot td {
+  padding: 18px 24px;
+  border-top: 2px solid var(--brand-border);
+  border-bottom: none;
+}
+.compare-cta {
+  display: inline-block;
+  background: var(--brand-primary);
+  color: #fff !important;
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 10px 22px;
+  border-radius: 8px;
+  text-decoration: none !important;
+}
+.compare-cta:hover { background: var(--brand-dark); }
 
 /* ── Stats bar ────────────────────────────────────────────────────── */
 .stats-bar {
@@ -258,21 +413,85 @@ main { max-width: none; padding: 0; }
 
 {# ── Hero ─────────────────────────────────────────────────────────────── #}
 <section class="hero">
-  <div class="hero-logo-wrap">
-    <img src="/static/logo-full.svg" alt="Posit+EV — Find the edge. Beat the market." />
+  <div class="hero-inner">
+
+    {# ── Left: copy ── #}
+    <div class="hero-copy">
+      <div class="hero-eyebrow">⚡ Live odds &nbsp;&bull;&nbsp; 8 leagues &nbsp;&bull;&nbsp; Updated every hour</div>
+      <h1>Stop guessing. Start betting with a <span class="accent">mathematical edge</span>.</h1>
+      <p class="hero-sub">
+        Posit+EV scans every major sportsbook, finds where the books have the price wrong,
+        and surfaces every +EV bet before the line moves.
+      </p>
+      <div class="hero-actions">
+        <a href="/register" class="btn-hero-primary">Start Free — No card needed &rarr;</a>
+        <a href="/pricing"  class="btn-hero-ghost">See EV Pro &mdash; $29/mo</a>
+      </div>
+      <div class="hero-trust">
+        <span><span class="ht-check">✓</span> 1 free pick/day by email</span>
+        <span><span class="ht-check">✓</span> No credit card required</span>
+        <span><span class="ht-check">✓</span> Upgrade anytime</span>
+      </div>
+      <p style="margin-top:14px; font-size:0.78rem; color:rgba(255,255,255,0.4);">
+        <a href="/login" style="color:rgba(255,255,255,0.5); text-decoration:underline;">Already have an account?</a>
+      </p>
+    </div>
+
+    {# ── Right: dashboard mockup ── #}
+    <div class="hero-mockup-col">
+      <div class="hero-mockup">
+        <div class="mockup-chrome">
+          <div class="mockup-dots"><span></span><span></span><span></span></div>
+          <div class="mockup-url">posit-ev.com/dashboard</div>
+        </div>
+        <div class="mockup-body">
+          <div class="mock-filter-bar">
+            <span class="mock-filter-pill active">All</span>
+            <span class="mock-filter-pill">NHL</span>
+            <span class="mock-filter-pill">NBA</span>
+            <span class="mock-filter-pill">NCAAB</span>
+          </div>
+
+          <div class="mock-card mock-ev-high">
+            <div class="mock-card-header">
+              <div>
+                <div class="mock-team">Boston Bruins</div>
+                <div class="mock-game-line">Bruins @ Maple Leafs &middot; Tonight 7:00 PM CT</div>
+              </div>
+              <div class="mock-ev-badge">+11.5%</div>
+            </div>
+            <div class="mock-badges"><span>NHL</span><span>Moneyline</span><span>DraftKings</span></div>
+            <div class="mock-stats-row">
+              <div><div class="msv">+145</div><div class="msl">Odds</div></div>
+              <div><div class="msv">46.2%</div><div class="msl">True Prob</div></div>
+              <div><div class="msv msv-green">+11.5%</div><div class="msl">EV</div></div>
+              <div><div class="msv">4.1%</div><div class="msl">½ Kelly</div></div>
+            </div>
+          </div>
+
+          <div class="mock-card mock-ev-med">
+            <div class="mock-card-header">
+              <div>
+                <div class="mock-team">OKC Thunder &minus;4.5</div>
+                <div class="mock-game-line">Thunder @ Lakers &middot; Tonight 9:30 PM CT</div>
+              </div>
+              <div class="mock-ev-badge">+7.2%</div>
+            </div>
+            <div class="mock-badges"><span>NBA</span><span>Spread</span><span>BetMGM</span></div>
+            <div class="mock-stats-row">
+              <div><div class="msv">&minus;110</div><div class="msl">Odds</div></div>
+              <div><div class="msv">56.9%</div><div class="msl">True Prob</div></div>
+              <div><div class="msv msv-green">+7.2%</div><div class="msl">EV</div></div>
+              <div><div class="msv">3.8%</div><div class="msl">½ Kelly</div></div>
+            </div>
+          </div>
+
+          <div class="mock-more">+ 16 more picks today across 6 leagues</div>
+        </div>
+      </div>
+    </div>
+
   </div>
-  <h1>Stop guessing. Start betting with a <span class="accent">mathematical edge</span>.</h1>
-  <p class="hero-sub">
-    Posit+EV scans live odds from every major sportsbook, models true win probabilities,
-    and surfaces every bet where the books have it wrong — before the line moves.
-  </p>
-  <div class="hero-actions">
-    <a href="/pricing"  class="btn-hero-primary">Get Started — $29/mo &rarr;</a>
-    <a href="/register" class="btn-hero-ghost">Start Free &rarr;</a>
-  </div>
-  <p style="margin-top:var(--space-3); font-size:0.8rem; color:rgba(255,255,255,0.45);">
-    Free account — 1 pick/day by email &nbsp;&bull;&nbsp; Upgrade anytime &nbsp;&bull;&nbsp; <a href="/login" style="color:rgba(255,255,255,0.55); text-decoration:underline;">Already have an account?</a>
-  </p>
 </section>
 
 {# ── Newsletter / Free account signup ──────────────────────────────────── #}
@@ -422,27 +641,10 @@ main { max-width: none; padding: 0; }
 <section class="section section-white">
   <div class="container">
     <div class="ev-explainer">
-      <div>
-        <p class="section-label">The concept</p>
-        <h2 class="section-title">What is +EV betting?</h2>
-        <p class="section-sub">
-          Every sportsbook builds a margin — the "vig" — into their odds. It's how they profit
-          regardless of outcomes. But books aren't perfect. They sometimes price teams slightly
-          off from reality, especially in less-watched markets.
-        </p>
-        <p class="section-sub" style="margin-top:calc(-1 * var(--space-3));">
-          A <strong>+EV</strong> (positive expected value) bet is one where the book's implied
-          probability is <em>lower</em> than the true probability of that outcome. Bet enough
-          of these and the math works in your favor over time — just like a casino's edge works
-          for them.
-        </p>
-        <p class="section-sub" style="margin-top:calc(-1 * var(--space-3));">
-          We remove the vig from the sharpest books to find true probability, then compare it
-          to every other book's line to find where the edge lives.
-        </p>
-      </div>
+
+      {# Example card first — concrete before abstract #}
       <div class="ev-example">
-        <div class="ev-example-title">Live example — NHL Moneyline</div>
+        <div class="ev-example-title">Real example — NHL Moneyline</div>
         <div class="ev-row">
           <span class="ev-label">Game</span>
           <span class="ev-value">Bruins vs. Leafs</span>
@@ -461,10 +663,28 @@ main { max-width: none; padding: 0; }
         </div>
         <div class="ev-row">
           <span class="ev-label">Expected value</span>
-          <span class="ev-value good">+$11.49 per $100</span>
+          <span class="ev-value good">+$11.49 per $100 wagered</span>
         </div>
         <div class="ev-badge-row">+11.5% EV &mdash; Strong edge detected ✓</div>
       </div>
+
+      {# Explanation second #}
+      <div>
+        <p class="section-label">The concept</p>
+        <h2 class="section-title">What is +EV betting?</h2>
+        <p class="section-sub">
+          Every sportsbook builds a margin — the "vig" — into their odds. But books aren't perfect.
+          When a book's implied probability is <em>lower</em> than the true probability of an
+          outcome, that gap is your edge. Bet enough of these and the math works in your favor —
+          the same way a casino's edge works for them.
+        </p>
+        <p class="section-sub" style="margin-top:calc(-1 * var(--space-3));">
+          Posit+EV removes the vig from the sharpest books to calculate true probability, then
+          flags every line across every other book where the price is wrong.
+          <strong>The example on the left is what that looks like in practice.</strong>
+        </p>
+      </div>
+
     </div>
   </div>
 </section>
@@ -527,6 +747,82 @@ main { max-width: none; padding: 0; }
         </p>
       </div>
     </div>
+  </div>
+</section>
+
+{# ── Free vs Pro comparison ────────────────────────────────────────────── #}
+<section class="section compare-section" style="padding-top:60px; padding-bottom:72px;">
+  <div class="container compare-wrap">
+    <p class="section-label" style="text-align:center;">Plans</p>
+    <h2 class="section-title" style="text-align:center; margin:0 auto var(--space-6);">
+      Start free. Upgrade when you're ready.
+    </h2>
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th></th>
+          <th class="th-free">Free</th>
+          <th class="th-pro">EV Pro</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Daily +EV pick by email</td>
+          <td><span class="c-check">✓</span></td>
+          <td><span class="c-check">✓</span></td>
+        </tr>
+        <tr>
+          <td>Full live dashboard</td>
+          <td><span class="c-dash">—</span></td>
+          <td><span class="c-check">✓</span></td>
+        </tr>
+        <tr>
+          <td>All picks (10–30 per day)</td>
+          <td><span class="c-dash">—</span></td>
+          <td><span class="c-check">✓</span></td>
+        </tr>
+        <tr>
+          <td>All 8 leagues &amp; market types</td>
+          <td><span class="c-dash">—</span></td>
+          <td><span class="c-check">✓</span></td>
+        </tr>
+        <tr>
+          <td>Kelly stake sizing</td>
+          <td><span class="c-dash">—</span></td>
+          <td><span class="c-check">✓</span></td>
+        </tr>
+        <tr>
+          <td>+EV math explainer per pick</td>
+          <td><span class="c-dash">—</span></td>
+          <td><span class="c-check">✓</span></td>
+        </tr>
+        <tr>
+          <td>Today &amp; tomorrow filter</td>
+          <td><span class="c-dash">—</span></td>
+          <td><span class="c-check">✓</span></td>
+        </tr>
+      </tbody>
+      <tfoot>
+        <tr>
+          <td><strong>Price</strong></td>
+          <td style="text-align:center;"><span class="c-price">Free</span></td>
+          <td style="text-align:center; background:rgba(83,74,183,0.04);">
+            <span class="c-price" style="color:var(--brand-primary);">$29/mo</span>
+          </td>
+        </tr>
+        <tr>
+          <td></td>
+          <td style="text-align:center; padding-top:12px; padding-bottom:20px;">
+            <a href="/register" style="font-size:0.82rem; color:var(--brand-primary); font-weight:600; text-decoration:none;">
+              Create free account &rarr;
+            </a>
+          </td>
+          <td style="text-align:center; padding-top:12px; padding-bottom:20px; background:rgba(83,74,183,0.04);">
+            <a href="/subscribe" class="compare-cta">Get EV Pro &rarr;</a>
+          </td>
+        </tr>
+      </tfoot>
+    </table>
   </div>
 </section>
 
@@ -637,16 +933,20 @@ main { max-width: none; padding: 0; }
   <div class="container">
     <h2>Ready to bet with the math on your side?</h2>
     <p>
-      Join Posit+EV and get every +EV bet across 8 leagues — including March Madness —
-      refreshed every hour, with Kelly sizing and sport-specific confidence adjustments.
+      Get every +EV bet across 8 leagues refreshed every hour — with Kelly sizing,
+      a +EV math explainer on every pick, and edges that close fast.
     </p>
     <div style="display:flex; gap:var(--space-3); justify-content:center; flex-wrap:wrap;">
-      <a href="/subscribe" class="btn-hero-primary">Start for $29/month &rarr;</a>
-      <a href="/register" class="btn-hero-ghost">Create free account</a>
+      <a href="/register" class="btn-hero-primary">Start Free — No card needed &rarr;</a>
+      <a href="/subscribe" class="btn-hero-ghost">Get EV Pro &mdash; $29/mo</a>
     </div>
-    <p style="margin-top:var(--space-5); font-size:0.8rem; color:rgba(255,255,255,0.45);">
-      Cancel anytime. No contracts. 1 free pick/day with a free account.
-    </p>
+    <div style="margin-top:var(--space-4); display:flex; gap:20px; justify-content:center;
+                flex-wrap:wrap; font-size:0.78rem; color:rgba(255,255,255,0.5);">
+      <span>🔒 Secure checkout via Stripe</span>
+      <span>✓ Cancel anytime</span>
+      <span>✓ No contracts</span>
+      <span>✓ Access for full 30 days if cancelled early</span>
+    </div>
   </div>
 </section>
 
