@@ -88,8 +88,7 @@ img, svg { display: block; }
 nav {
   display: flex;
   align-items: center;
-  gap: var(--space-5);
-  padding: var(--space-4) var(--space-6);
+  padding: var(--space-3) var(--space-6);
   background: #ffffff;
   border-bottom: 1px solid var(--brand-border);
   position: sticky;
@@ -100,7 +99,6 @@ nav {
 .nav-logo {
   display: flex;
   align-items: center;
-  margin-right: auto;   /* push nav links to the right */
   flex-shrink: 0;
 }
 
@@ -156,16 +154,18 @@ nav a:hover {
   box-shadow: 0 1px 3px rgba(83,74,183,0.35);
 }
 
-/* ── Nav right-side group (TZ picker + auth buttons) ────────────────── */
+/* ── Nav right-side group: TZ on top, auth buttons below ─────────────── */
 .nav-right {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 20px;          /* wider gap separates TZ picker from auth buttons */
+  gap: 8px;
+  margin-left: auto;    /* push entire right group to far right */
 }
 .nav-auth {
   display: flex;
   align-items: center;
-  gap: 10px;          /* tighter gap keeps the two buttons together */
+  gap: 10px;
 }
 .nav-link {
   font-size: 0.9rem;
@@ -190,27 +190,33 @@ nav a:hover {
   text-decoration: none !important;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
   white-space: nowrap;
+  /* reset globals that bleed into nav buttons */
+  width: auto !important;
+  margin-top: 0 !important;
 }
 
 .nav-btn-primary {
-  background: var(--brand-primary);
+  background: var(--brand-primary) !important;
   color: #ffffff !important;
-  border: 1.5px solid var(--brand-primary);
+  border: 1.5px solid var(--brand-primary) !important;
 }
 .nav-btn-primary:hover {
-  background: var(--brand-dark);
-  border-color: var(--brand-dark);
+  background: var(--brand-dark) !important;
+  border-color: var(--brand-dark) !important;
   color: #ffffff !important;
 }
 
+/* Use high-specificity selector to beat button[type="submit"] global rule */
+button.nav-btn-ghost,
 .nav-btn-ghost {
-  background: var(--brand-dark);
+  background: var(--brand-dark) !important;
   color: #ffffff !important;
-  border: 1.5px solid var(--brand-dark);
+  border: 1.5px solid var(--brand-dark) !important;
 }
+button.nav-btn-ghost:hover,
 .nav-btn-ghost:hover {
-  background: #0e0b2e;
-  border-color: #0e0b2e;
+  background: #0e0b2e !important;
+  border-color: #0e0b2e !important;
   color: #ffffff !important;
 }
 
