@@ -13,24 +13,24 @@
     <a href="/" class="nav-logo" aria-label="Posit+EV home">
       <img src="/static/logo.svg" height="32" alt="Posit+EV" />
     </a>
-    <div class="tz-picker" aria-label="Time zone">
-      <button class="tz-btn" data-tz="America/New_York"  title="Eastern Time">ET</button>
-      <button class="tz-btn" data-tz="America/Chicago"   title="Central Time">CT</button>
-      <button class="tz-btn" data-tz="America/Denver"    title="Mountain Time">MT</button>
-      <button class="tz-btn" data-tz="America/Los_Angeles" title="Pacific Time">PT</button>
-    </div>
+    <div class="nav-right">
+      <div class="tz-picker" aria-label="Time zone">
+        <button class="tz-btn" data-tz="America/New_York"  title="Eastern Time">ET</button>
+        <button class="tz-btn" data-tz="America/Chicago"   title="Central Time">CT</button>
+        <button class="tz-btn" data-tz="America/Denver"    title="Mountain Time">MT</button>
+        <button class="tz-btn" data-tz="America/Los_Angeles" title="Pacific Time">PT</button>
+      </div>
 
-    {% if user is defined and user %}
-      <div class="nav-btn-group">
+      {% if user is defined and user %}
         <a href="/dashboard" class="nav-btn nav-btn-primary">Dashboard</a>
         <form action="/logout" method="post" style="margin:0;">
           <button type="submit" class="nav-btn nav-btn-ghost">Sign Out</button>
         </form>
-      </div>
-    {% else %}
-      <a href="/pricing">Pricing</a>
-      <a href="/login">Sign In</a>
-    {% endif %}
+      {% else %}
+        <a href="/pricing" class="nav-link">Pricing</a>
+        <a href="/login" class="nav-link">Sign In</a>
+      {% endif %}
+    </div>
   </nav>
   <main>{% block content %}{% endblock %}</main>
   <script src="/static/js/app.js"></script>

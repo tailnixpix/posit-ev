@@ -156,12 +156,22 @@ nav a:hover {
   box-shadow: 0 1px 3px rgba(83,74,183,0.35);
 }
 
-/* ── Logged-in nav buttons ───────────────────────────────────────────── */
-.nav-btn-group {
+/* ── Nav right-side group (TZ picker + auth buttons) ────────────────── */
+.nav-right {
   display: flex;
   align-items: center;
   gap: 10px;
 }
+.nav-link {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  padding: var(--space-2) var(--space-1);
+  border-radius: var(--radius-sm);
+  transition: color 0.15s;
+  text-decoration: none;
+}
+.nav-link:hover { color: var(--brand-primary); text-decoration: none; }
 
 .nav-btn {
   display: inline-flex;
@@ -190,13 +200,13 @@ nav a:hover {
 
 .nav-btn-ghost {
   background: transparent;
-  color: var(--text-secondary) !important;
-  border: 1.5px solid var(--brand-border);
+  color: var(--brand-primary) !important;
+  border: 1.5px solid var(--brand-primary);
 }
 .nav-btn-ghost:hover {
   background: var(--brand-light);
-  border-color: var(--brand-primary);
-  color: var(--brand-primary) !important;
+  border-color: var(--brand-dark);
+  color: var(--brand-dark) !important;
 }
 
 /* ------------------------------------------------------------
