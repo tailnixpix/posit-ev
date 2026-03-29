@@ -123,6 +123,39 @@ nav a:hover {
   text-decoration: none;
 }
 
+/* ── Timezone picker ─────────────────────────────────────────────────── */
+.tz-picker {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--brand-surface);
+  border: 1px solid var(--brand-border);
+  border-radius: 8px;
+  padding: 3px;
+  flex-shrink: 0;
+}
+
+.tz-btn {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  padding: 4px 8px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.12s, color 0.12s;
+  line-height: 1;
+}
+.tz-btn:hover { background: var(--brand-light); color: var(--brand-primary); }
+.tz-btn.tz-btn-active {
+  background: var(--brand-primary);
+  color: #ffffff;
+  box-shadow: 0 1px 3px rgba(83,74,183,0.35);
+}
+
 /* ── Logged-in nav buttons ───────────────────────────────────────────── */
 .nav-btn-group {
   display: flex;

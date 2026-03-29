@@ -798,29 +798,38 @@ main { max-width: 1200px; padding-top: var(--space-5); }
 {# ─── JavaScript ──────────────────────────────────────────────────────────── #}
 {% block scripts %}
 <script>
-// ── Today's date + current CT time ───────────────────────────────────────
-const _CT = 'America/Chicago';
-const _now = new Date();
-const _datePart = _now.toLocaleDateString('en-US', { timeZone: _CT, weekday:'long', month:'long', day:'numeric', year:'numeric' });
-const _timePart = _now.toLocaleTimeString('en-US', { timeZone: _CT, hour:'numeric', minute:'2-digit', timeZoneName:'short' });
-document.getElementById('today-date').textContent = _datePart + ' · ' + _timePart;
+// ── Timezone helper (reads live from global set by app.js + tz picker) ───
+function _tz() { return window.PEV_TZ || 'America/Chicago'; }
 
-// ── Format event commence times in Central time ───────────────────────────
-document.querySelectorAll('[data-commence-fmt]').forEach(el => {
-  const iso = el.dataset.commenceFmt;
-  if (!iso) return;
-  try {
-    const d = new Date(iso);
-    const datePart = d.toLocaleDateString('en-US', {
-      timeZone: _CT, weekday: 'short', month: 'short', day: 'numeric'
-    });
-    const timePart = d.toLocaleTimeString('en-US', {
-      timeZone: _CT, hour: 'numeric', minute: '2-digit', timeZoneName: 'short'
-    });
-    el.textContent = datePart + ' · ' + timePart;
-  } catch (e) {
-    el.textContent = '';
-  }
+// ── Render header date + all commence times in the selected TZ ────────────
+function renderHeaderDate() {
+  const now = new Date();
+  const dp = now.toLocaleDateString('en-US', { timeZone: _tz(), weekday:'long', month:'long', day:'numeric', year:'numeric' });
+  const tp = now.toLocaleTimeString('en-US', { timeZone: _tz(), hour:'numeric', minute:'2-digit', timeZoneName:'short' });
+  const el = document.getElementById('today-date');
+  if (el) el.textContent = dp + ' · ' + tp;
+}
+
+function renderAllTimes() {
+  renderHeaderDate();
+  document.querySelectorAll('[data-commence-fmt]').forEach(el => {
+    const iso = el.dataset.commenceFmt;
+    if (!iso) return;
+    try {
+      const d = new Date(iso);
+      const dp = d.toLocaleDateString('en-US', { timeZone: _tz(), weekday:'short', month:'short', day:'numeric' });
+      const tp = d.toLocaleTimeString('en-US', { timeZone: _tz(), hour:'numeric', minute:'2-digit', timeZoneName:'short' });
+      el.textContent = dp + ' · ' + tp;
+    } catch (e) { el.textContent = ''; }
+  });
+}
+
+renderAllTimes();
+
+// Re-render times + re-run day filter whenever the user switches TZ
+document.addEventListener('pev:tz-change', () => {
+  renderAllTimes();
+  applyFilters();
 });
 
 // ── EV Explanation Modal ─────────────────────────────────────────────────
@@ -985,16 +994,16 @@ let activeLeague = 'all';
 let activeMarket = 'all';
 let activeDay    = 'today';   // 'today' | 'tomorrow'
 
-// Returns the local date string (CT) for a given Date object
+// Returns a date string in the user's selected timezone
 function ctDateStr(date) {
-  return date.toLocaleDateString('en-US', { timeZone: _CT, year: 'numeric', month: '2-digit', day: '2-digit' });
+  return date.toLocaleDateString('en-US', { timeZone: _tz(), year: 'numeric', month: '2-digit', day: '2-digit' });
 }
 
-// Reference dates in CT
-const _todayCT    = ctDateStr(new Date());
-const _tomorrowCT = ctDateStr(new Date(Date.now() + 86400000));
-
 function applyFilters() {
+  // Recompute reference dates in the currently selected TZ on every call
+  const todayStr    = ctDateStr(new Date());
+  const tomorrowStr = ctDateStr(new Date(Date.now() + 86400000));
+
   const cards = document.querySelectorAll('.bet-card');
   let visible = 0;
 
@@ -1002,15 +1011,14 @@ function applyFilters() {
     const leagueMatch = activeLeague === 'all' || card.dataset.league === activeLeague;
     const marketMatch = activeMarket === 'all' || card.dataset.market === activeMarket;
 
-    // Day filter — compare commence_time date in CT to today/tomorrow
+    // Day filter — compare commence_time date in the selected TZ
     let dayMatch = true;
     const commenceIso = card.dataset.commence;
     if (commenceIso) {
-      const cardDateCT = ctDateStr(new Date(commenceIso));
-      if (activeDay === 'today')    dayMatch = (cardDateCT === _todayCT);
-      if (activeDay === 'tomorrow') dayMatch = (cardDateCT === _tomorrowCT);
+      const cardDate = ctDateStr(new Date(commenceIso));
+      if (activeDay === 'today')    dayMatch = (cardDate === todayStr);
+      if (activeDay === 'tomorrow') dayMatch = (cardDate === tomorrowStr);
     } else {
-      // No commence_time — only show under "today"
       dayMatch = (activeDay === 'today');
     }
 
@@ -1034,7 +1042,7 @@ function applyFilters() {
   // Update day badge hint
   const dayBadge = document.getElementById('day-badge');
   if (dayBadge) {
-    const label = activeDay === 'today' ? _todayCT : _tomorrowCT;
+    const label = activeDay === 'today' ? todayStr : tomorrowStr;
     dayBadge.textContent = visible + ' pick' + (visible !== 1 ? 's' : '') + ' — ' + label;
   }
 }
