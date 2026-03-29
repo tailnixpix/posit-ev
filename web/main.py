@@ -379,8 +379,15 @@ async def register_page(request: Request):
 
 
 @app.get("/pricing", response_class=HTMLResponse)
-async def pricing(request: Request):
-    return templates.TemplateResponse(request, "pricing.html")
+async def pricing(request: Request, db: Session = Depends(get_db)):
+    # Optionally identify the logged-in user so the template can show an upgrade banner
+    user = None
+    token = get_token_from_request(request)
+    if token:
+        payload = decode_access_token(token)
+        if payload:
+            user = db.query(User).filter(User.id == int(payload["sub"])).first()
+    return templates.TemplateResponse(request, "pricing.html", {"user": user})
 
 
 @app.get("/login", response_class=HTMLResponse)

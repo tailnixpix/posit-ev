@@ -225,6 +225,32 @@ main { max-width: none; padding: 0; }
 
 {% block content %}
 
+{# ── Upgrade banner — shown only to logged-in free users ───────────────── #}
+{% if user and not user.is_subscribed %}
+<div style="background:linear-gradient(90deg,#1A1450 0%,#534AB7 100%);
+            padding:18px var(--space-5); text-align:center;">
+  <div style="max-width:760px; margin:0 auto; display:flex; align-items:center;
+              justify-content:center; gap:var(--space-4); flex-wrap:wrap;">
+    <div style="text-align:left;">
+      <p style="margin:0 0 2px; color:#fff; font-weight:700; font-size:0.95rem;">
+        👋 Welcome back, {{ user.email }}
+      </p>
+      <p style="margin:0; color:rgba(255,255,255,0.72); font-size:0.82rem;">
+        You have a free account. Upgrade below to unlock the full dashboard.
+      </p>
+    </div>
+    <a href="/subscribe"
+       style="display:inline-block; background:#FAC775; color:#1A1450; font-weight:700;
+              font-size:0.9rem; padding:10px 24px; border-radius:8px;
+              text-decoration:none; white-space:nowrap; flex-shrink:0;
+              transition:opacity 0.15s;"
+       onmouseover="this.style.opacity='0.88'" onmouseout="this.style.opacity='1'">
+      Upgrade to EV Pro — $29/mo &rarr;
+    </a>
+  </div>
+</div>
+{% endif %}
+
 {# ── Page hero ─────────────────────────────────────────────────────────── #}
 <div class="pricing-hero">
   <h1>Simple, transparent pricing</h1>

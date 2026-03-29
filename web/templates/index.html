@@ -267,22 +267,40 @@ main { max-width: none; padding: 0; }
     and surfaces every bet where the books have it wrong — before the line moves.
   </p>
   <div class="hero-actions">
-    <a href="/pricing" class="btn-hero-primary">Get Started — $29/mo &rarr;</a>
-    <a href="/login"   class="btn-hero-ghost">Sign In</a>
+    <a href="/pricing"  class="btn-hero-primary">Get Started — $29/mo &rarr;</a>
+    <a href="/register" class="btn-hero-ghost">Start Free &rarr;</a>
   </div>
+  <p style="margin-top:var(--space-3); font-size:0.8rem; color:rgba(255,255,255,0.45);">
+    Free account — 1 pick/day by email &nbsp;&bull;&nbsp; Upgrade anytime &nbsp;&bull;&nbsp; <a href="/login" style="color:rgba(255,255,255,0.55); text-decoration:underline;">Already have an account?</a>
+  </p>
 </section>
 
-{# ── Newsletter signup ─────────────────────────────────────────────────── #}
-<section class="section section-white" style="padding-top:var(--space-6); padding-bottom:var(--space-6); border-bottom:1px solid var(--brand-border);">
-  <div class="container" style="max-width:580px; text-align:center;">
-    <p class="section-label">Free daily picks</p>
+{# ── Newsletter / Free account signup ──────────────────────────────────── #}
+<section class="section section-white" style="padding-top:var(--space-7); padding-bottom:var(--space-7); border-bottom:1px solid var(--brand-border);">
+  <div class="container" style="max-width:620px; text-align:center;">
+    <p class="section-label">Start free — no card required</p>
     <h2 class="section-title" style="margin:0 auto var(--space-3);">
-      Get one free +EV pick in your inbox every morning
+      Get a free account + 1 +EV pick delivered every morning
     </h2>
-    <p class="section-sub" style="margin:0 auto var(--space-5);">
-      No subscription required. One pick a day, with an AI breakdown of
-      why it has edge. Upgrade anytime for the full scan.
+    <p class="section-sub" style="margin:0 auto var(--space-2);">
+      Enter your email to create a free account and subscribe to our daily pick.
+      You'll get one top +EV bet each morning — free, forever.
+      Upgrade to EV Pro anytime for the full dashboard.
     </p>
+
+    {# Tier choice pills #}
+    <div style="display:flex; gap:var(--space-2); justify-content:center; margin-bottom:var(--space-5); flex-wrap:wrap;">
+      <span style="display:inline-flex; align-items:center; gap:5px; font-size:0.82rem;
+                   background:var(--brand-light); color:var(--brand-primary);
+                   border-radius:20px; padding:4px 14px; font-weight:600;">
+        ✓ Free — 1 pick/day by email
+      </span>
+      <span style="display:inline-flex; align-items:center; gap:5px; font-size:0.82rem;
+                   background:#FFF7E6; color:#92600A;
+                   border-radius:20px; padding:4px 14px; font-weight:600;">
+        ★ EV Pro — full dashboard, $29/mo
+      </span>
+    </div>
 
     <form id="nlForm" style="display:flex; gap:var(--space-3); flex-wrap:wrap; justify-content:center;">
       <input
@@ -290,7 +308,7 @@ main { max-width: none; padding: 0; }
         id="nlEmail"
         placeholder="your@email.com"
         required
-        style="flex:1; min-width:220px; max-width:320px;
+        style="flex:1; min-width:220px; max-width:300px;
                padding:13px 18px; border-radius:var(--radius-md);
                border:1.5px solid var(--brand-border); font-size:0.95rem;
                color:var(--text-primary); outline:none;
@@ -304,16 +322,17 @@ main { max-width: none; padding: 0; }
                font-weight:600; cursor:pointer; font-family:inherit;
                white-space:nowrap; transition:opacity 0.15s;"
       >
-        Get Free Picks
+        Start Free &rarr;
       </button>
     </form>
 
     <div id="nlResult" style="display:none; margin-top:var(--space-4);
-         padding:12px 20px; border-radius:var(--radius-md);
-         font-size:0.9rem; font-weight:500;"></div>
+         padding:16px 20px; border-radius:var(--radius-md);
+         font-size:0.9rem; font-weight:500; text-align:left;"></div>
 
     <p style="margin-top:var(--space-3); font-size:0.78rem; color:var(--text-muted);">
       Unsubscribe in one click &nbsp;&bull;&nbsp; No spam, ever
+      &nbsp;&bull;&nbsp; <a href="/pricing" style="color:var(--brand-primary); text-decoration:none;">Go straight to EV Pro &rarr;</a>
     </p>
   </div>
 </section>
@@ -324,36 +343,50 @@ main { max-width: none; padding: 0; }
   const btn    = document.getElementById('nlBtn');
   const result = document.getElementById('nlResult');
 
-  function showResult(ok) {
-    result.innerHTML = ok
-      ? '<strong>✓ You\'re in! Welcome email is on its way.</strong><br>'
-        + '<span style="font-size:0.82rem;">📬 Don\'t see it? Check your <strong>spam or junk folder</strong> and mark us as "Not Spam".</span>'
-      : 'Something went wrong — please try again.';
-    result.style.display = 'block';
-    result.style.background = ok ? '#EDFAF5' : '#FEF2F2';
-    result.style.color      = ok ? '#0F6E56' : '#C53030';
-    result.style.border     = ok ? '1px solid #9EEBD6' : '1px solid #FCA5A5';
-  }
-
   form.addEventListener('submit', async function (e) {
     e.preventDefault();
+    const email = document.getElementById('nlEmail').value;
     btn.disabled = true;
-    btn.textContent = 'Subscribing…';
+    btn.textContent = 'Setting up…';
     try {
-      const body = new URLSearchParams({ email: document.getElementById('nlEmail').value });
+      const body = new URLSearchParams({ email });
       const res  = await fetch('/newsletter/subscribe', { method: 'POST', body });
       if (res.ok) {
-        showResult(true);
         form.style.display = 'none';
+        result.style.display = 'block';
+        result.style.background = '#EDFAF5';
+        result.style.color      = '#0F6E56';
+        result.style.border     = '1px solid #9EEBD6';
+        result.innerHTML =
+          '<strong style="font-size:1rem;">✓ You\'re in — welcome email is on its way!</strong><br>'
+          + '<span style="font-size:0.82rem; color:#374151;">📬 Don\'t see it? Check your <strong>spam or junk folder</strong> and mark us as "Not Spam".</span>'
+          + '<div style="margin-top:14px; padding-top:14px; border-top:1px solid rgba(15,110,86,0.2); display:flex; gap:10px; flex-wrap:wrap; align-items:center;">'
+          + '  <div style="flex:1; min-width:180px;">'
+          + '    <p style="margin:0 0 2px; font-weight:700; color:#1A1450; font-size:0.88rem;">Want the full dashboard?</p>'
+          + '    <p style="margin:0; font-size:0.78rem; color:#6B7280;">Unlock every pick, every market, Kelly sizing — $29/mo.</p>'
+          + '  </div>'
+          + '  <a href="/subscribe" style="display:inline-block; background:#534AB7; color:#fff; font-weight:700; font-size:0.88rem;'
+          + '     padding:9px 20px; border-radius:8px; text-decoration:none; white-space:nowrap; flex-shrink:0;">'
+          + '    Upgrade to EV Pro &rarr;'
+          + '  </a>'
+          + '</div>';
       } else {
-        showResult(false);
+        result.style.display = 'block';
+        result.style.background = '#FEF2F2';
+        result.style.color      = '#C53030';
+        result.style.border     = '1px solid #FCA5A5';
+        result.innerHTML = 'Something went wrong — please try again.';
         btn.disabled = false;
-        btn.textContent = 'Get Free Picks';
+        btn.textContent = 'Start Free →';
       }
     } catch {
-      showResult(false);
+      result.style.display = 'block';
+      result.style.background = '#FEF2F2';
+      result.style.color      = '#C53030';
+      result.style.border     = '1px solid #FCA5A5';
+      result.innerHTML = 'Something went wrong — please try again.';
       btn.disabled = false;
-      btn.textContent = 'Get Free Picks';
+      btn.textContent = 'Start Free →';
     }
   });
 })();
