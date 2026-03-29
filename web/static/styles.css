@@ -160,7 +160,12 @@ nav a:hover {
 .nav-right {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 20px;          /* wider gap separates TZ picker from auth buttons */
+}
+.nav-auth {
+  display: flex;
+  align-items: center;
+  gap: 10px;          /* tighter gap keeps the two buttons together */
 }
 .nav-link {
   font-size: 0.9rem;
@@ -199,14 +204,14 @@ nav a:hover {
 }
 
 .nav-btn-ghost {
-  background: transparent;
-  color: var(--brand-primary) !important;
-  border: 1.5px solid var(--brand-primary);
+  background: var(--brand-dark);
+  color: #ffffff !important;
+  border: 1.5px solid var(--brand-dark);
 }
 .nav-btn-ghost:hover {
-  background: var(--brand-light);
-  border-color: var(--brand-dark);
-  color: var(--brand-dark) !important;
+  background: #0e0b2e;
+  border-color: #0e0b2e;
+  color: #ffffff !important;
 }
 
 /* ------------------------------------------------------------

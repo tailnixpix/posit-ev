@@ -22,13 +22,17 @@
       </div>
 
       {% if user is defined and user %}
-        <a href="/dashboard" class="nav-btn nav-btn-primary">Dashboard</a>
-        <form action="/logout" method="post" style="margin:0;">
-          <button type="submit" class="nav-btn nav-btn-ghost">Sign Out</button>
-        </form>
+        <div class="nav-auth">
+          <a href="/dashboard" class="nav-btn nav-btn-primary">Dashboard</a>
+          <form action="/logout" method="post" style="margin:0;">
+            <button type="submit" class="nav-btn nav-btn-ghost">Sign Out</button>
+          </form>
+        </div>
       {% else %}
-        <a href="/pricing" class="nav-link">Pricing</a>
-        <a href="/login" class="nav-link">Sign In</a>
+        <div class="nav-auth">
+          <a href="/pricing" class="nav-link">Pricing</a>
+          <a href="/login" class="nav-link">Sign In</a>
+        </div>
       {% endif %}
     </div>
   </nav>
