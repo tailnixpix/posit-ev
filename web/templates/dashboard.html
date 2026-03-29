@@ -410,7 +410,8 @@ main { max-width: 1200px; padding-top: var(--space-5); }
 
       <div class="bet-card {{ tier }}"
            data-league="{{ bet.league }}"
-           data-market="{{ market_key }}">
+           data-market="{{ market_key }}"
+           {% if bet.commence_time %}data-commence="{{ bet.commence_time.isoformat() }}"{% endif %}>
 
         {# Header: team name + EV badge #}
         <div class="card-header">
@@ -418,6 +419,11 @@ main { max-width: 1200px; padding-top: var(--space-5); }
             <div class="card-team">{{ team_display }}</div>
             {% if bet.game %}
             <div style="font-size:0.78rem; color:var(--text-muted); margin-top:2px;">{{ bet.game }}</div>
+            {% endif %}
+            {% if bet.commence_time %}
+            <div class="card-commence" style="font-size:0.72rem; color:var(--text-muted); margin-top:3px; font-variant-numeric:tabular-nums;">
+              ⏰ <span data-commence-fmt="{{ bet.commence_time.isoformat() }}">—</span>
+            </div>
             {% endif %}
           </div>
           <div class="card-ev-badge {{ tier }}">{{ "%.1f"|format(bet.ev_percent) }}%</div>
@@ -503,9 +509,30 @@ main { max-width: 1200px; padding-top: var(--space-5); }
 {# ─── JavaScript ──────────────────────────────────────────────────────────── #}
 {% block scripts %}
 <script>
-// ── Today's date ─────────────────────────────────────────────────────────
-document.getElementById('today-date').textContent =
-  new Date().toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
+// ── Today's date + current CT time ───────────────────────────────────────
+const _CT = 'America/Chicago';
+const _now = new Date();
+const _datePart = _now.toLocaleDateString('en-US', { timeZone: _CT, weekday:'long', month:'long', day:'numeric', year:'numeric' });
+const _timePart = _now.toLocaleTimeString('en-US', { timeZone: _CT, hour:'numeric', minute:'2-digit', timeZoneName:'short' });
+document.getElementById('today-date').textContent = _datePart + ' · ' + _timePart;
+
+// ── Format event commence times in Central time ───────────────────────────
+document.querySelectorAll('[data-commence-fmt]').forEach(el => {
+  const iso = el.dataset.commenceFmt;
+  if (!iso) return;
+  try {
+    const d = new Date(iso);
+    const datePart = d.toLocaleDateString('en-US', {
+      timeZone: _CT, weekday: 'short', month: 'short', day: 'numeric'
+    });
+    const timePart = d.toLocaleTimeString('en-US', {
+      timeZone: _CT, hour: 'numeric', minute: '2-digit', timeZoneName: 'short'
+    });
+    el.textContent = datePart + ' · ' + timePart;
+  } catch (e) {
+    el.textContent = '';
+  }
+});
 
 // ── Half-Kelly criterion ─────────────────────────────────────────────────
 // Full Kelly: f* = (p·b − q) / b   where b = profit per unit at given odds

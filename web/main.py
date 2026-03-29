@@ -218,17 +218,31 @@ def refresh_ev_cache() -> int:
             except (ValueError, TypeError):
                 point_val = None
 
+            # Parse commence_time — may be a pandas Timestamp or ISO string
+            ct_raw = row.get("commence_time")
+            ct_val = None
+            if ct_raw is not None:
+                try:
+                    import pandas as pd
+                    ts = pd.Timestamp(ct_raw)
+                    if ts.tzinfo is None:
+                        ts = ts.tz_localize("UTC")
+                    ct_val = ts.to_pydatetime()
+                except Exception:
+                    ct_val = None
+
             rows.append(EVBetCache(
-                league     = str(row.get("sport_key",      "")),
-                market     = str(row.get("market",         "")),
-                team       = str(row.get("outcome_name",   "")),
-                game       = str(row.get("game",           "")) or None,
-                point      = point_val,
-                book       = str(row.get("bookmaker",      "")),
-                ev_percent = float(row.get("effective_ev_pct", row.get("ev_pct", 0))),
-                true_prob  = float(row.get("true_prob",    0)),
-                odds       = odds_val,
-                created_at = datetime.now(timezone.utc),
+                league        = str(row.get("sport_key",      "")),
+                market        = str(row.get("market",         "")),
+                team          = str(row.get("outcome_name",   "")),
+                game          = str(row.get("game",           "")) or None,
+                point         = point_val,
+                commence_time = ct_val,
+                book          = str(row.get("bookmaker",      "")),
+                ev_percent    = float(row.get("effective_ev_pct", row.get("ev_pct", 0))),
+                true_prob     = float(row.get("true_prob",    0)),
+                odds          = odds_val,
+                created_at    = datetime.now(timezone.utc),
             ))
 
         db.bulk_save_objects(rows)
@@ -264,6 +278,7 @@ async def on_startup() -> None:
         try:
             _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS game VARCHAR"))
             _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS point FLOAT"))
+            _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS commence_time TIMESTAMPTZ"))
             _db.commit()
         except Exception:
             _db.rollback()
