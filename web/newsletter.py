@@ -421,11 +421,22 @@ def _build_daily_email(
     else:
         league_display = league_raw.upper()
 
+    # Format the point value (spread/total line) for display
+    point_raw = getattr(bet, "point", None)
+    if point_raw is not None:
+        if market_raw.lower() == "spreads":
+            point_str = f"+{point_raw:g}" if point_raw > 0 else f"{point_raw:g}"
+        else:
+            point_str = f"{point_raw:g}"   # totals: plain number, e.g. "5.5"
+    else:
+        point_str = ""
+
     ctx = {
         "date_str":        date_str,
         "league":          league_display,
         "game":            getattr(bet, "game", "") or "",
         "team":            getattr(bet, "team", "—"),
+        "point":           point_str,
         "market":          market_display,
         "book":            getattr(bet, "book", "—"),
         "odds":            odds_str,
