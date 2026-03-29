@@ -69,6 +69,7 @@ from web.newsletter import (                                             # noqa:
     send_daily_newsletter,
 )
 from web.stripe_webhook import router as stripe_router                   # noqa: E402
+from web.beehiiv import bulk_sync as bh_bulk_sync, remove_subscriber as bh_remove  # noqa: E402
 
 load_dotenv()
 
@@ -523,7 +524,31 @@ async def admin_newsletter_unsubscribe(
         sub.is_active = False
         db.commit()
         log.info("Admin unsubscribed newsletter subscriber %s", sub.email)
+        try:
+            bh_remove(sub.email)
+        except Exception as exc:
+            log.error("Beehiiv remove failed for %s: %s", sub.email, exc)
     return RedirectResponse(url="/admin", status_code=303)
+
+
+@app.post("/admin/beehiiv-sync")
+async def admin_beehiiv_sync(
+    db: Session = Depends(get_db),
+    _: HTTPBasicCredentials = Depends(_require_admin),
+):
+    """
+    One-time bulk sync: push all active NewsletterSubscribers into Beehiiv.
+    Safe to run repeatedly — Beehiiv deduplicates by email.
+    """
+    active_subs = (
+        db.query(NewsletterSubscriber)
+        .filter(NewsletterSubscriber.is_active.is_(True))
+        .all()
+    )
+    emails = [s.email for s in active_subs]
+    result = bh_bulk_sync(emails)
+    log.info("Admin Beehiiv bulk sync: %s", result)
+    return JSONResponse(result)
 
 
 @app.post("/admin/newsletter-resubscribe")

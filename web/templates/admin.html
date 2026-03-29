@@ -88,6 +88,33 @@ tr:hover td { background: var(--brand-surface); }
     </div>
   </div>
 
+  {# ── Beehiiv sync ── #}
+  <div class="section-card" style="margin-bottom:16px;">
+    <div class="section-card-header">
+      <h2>Beehiiv Integration</h2>
+      <span class="badge badge-blue">Newsletter monetization</span>
+    </div>
+    <div style="padding:20px 24px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+      <div>
+        <p style="margin:0 0 4px; font-size:0.88rem; color:var(--brand-dark); font-weight:600;">
+          Sync all active subscribers to Beehiiv
+        </p>
+        <p style="margin:0; font-size:0.78rem; color:var(--text-muted); max-width:480px;">
+          Pushes every active subscriber into your Beehiiv publication. Safe to run
+          multiple times — Beehiiv deduplicates by email. Run this once after connecting
+          your API key, then new signups sync automatically.
+        </p>
+      </div>
+      <button onclick="runBeehiivSync()" id="syncBtn"
+              style="font-size:0.85rem; padding:8px 20px; background:var(--brand-primary);
+                     color:#fff; border:none; border-radius:8px; cursor:pointer;
+                     font-family:inherit; font-weight:600; white-space:nowrap; flex-shrink:0;">
+        ⇄ Sync to Beehiiv
+      </button>
+      <span id="syncResult" style="font-size:0.82rem; color:var(--text-muted);"></span>
+    </div>
+  </div>
+
   {# ── Newsletter subscribers ── #}
   <div class="section-card">
     <div class="section-card-header">
@@ -213,4 +240,32 @@ tr:hover td { background: var(--brand-surface); }
   </div>
 
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function runBeehiivSync() {
+  const btn = document.getElementById('syncBtn');
+  const result = document.getElementById('syncResult');
+  btn.disabled = true;
+  btn.textContent = '⏳ Syncing…';
+  result.textContent = '';
+  try {
+    const res = await fetch('/admin/beehiiv-sync', { method: 'POST' });
+    const data = await res.json();
+    if (res.ok) {
+      result.style.color = '#0F6E56';
+      result.textContent = `✓ ${data.synced} synced, ${data.failed} failed out of ${data.total} subscribers.`;
+    } else {
+      result.style.color = '#C53030';
+      result.textContent = 'Sync failed — check server logs.';
+    }
+  } catch {
+    result.style.color = '#C53030';
+    result.textContent = 'Network error — try again.';
+  }
+  btn.disabled = false;
+  btn.textContent = '⇄ Sync to Beehiiv';
+}
+</script>
 {% endblock %}

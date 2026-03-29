@@ -39,6 +39,7 @@ if _PROJECT_ROOT not in sys.path:
 
 from config import LOCAL_TZ                                   # noqa: E402
 from db.database import EVBetCache, NewsletterSubscriber, SessionLocal  # noqa: E402
+from web.beehiiv import add_subscriber as bh_add, remove_subscriber as bh_remove, create_post as bh_post  # noqa: E402
 
 load_dotenv()
 
@@ -464,7 +465,72 @@ def send_daily_newsletter() -> dict:
         log.info("send_daily_newsletter: no active subscribers.")
         return {"sent": 0, "failed": 0, "total": 0}
 
-    # 4. Send
+    # 4. Send — prefer Beehiiv (monetization); fall back to Resend per-recipient
+    import os as _os
+    beehiiv_configured = bool(_os.getenv("BEEHIIV_API_KEY") and _os.getenv("BEEHIIV_PUBLICATION_ID"))
+
+    if beehiiv_configured:
+        # Build the post body (plain content block — Beehiiv applies its own email chrome)
+        odds_raw  = getattr(bet, "odds", 0)
+        odds_str  = f"+{odds_raw}" if isinstance(odds_raw, int) and odds_raw > 0 else str(odds_raw)
+        ev_pct    = getattr(bet, "ev_percent", 0)
+        team      = getattr(bet, "team", "—")
+        market    = getattr(bet, "market", "").upper()
+        book      = getattr(bet, "book", "—")
+        true_prob = getattr(bet, "true_prob", 0)
+
+        ev_color = "#534AB7" if ev_pct > 8 else ("#0F6E56" if ev_pct > 5 else "#B45309")
+
+        body_html = f"""
+<h2 style="color:#1A1450; font-size:20px; font-weight:700; margin:0 0 16px;">
+  Today&rsquo;s Free +EV Pick &mdash; {date_str}
+</h2>
+
+<div style="background:#F5F4FE; border-radius:10px; padding:20px 24px; margin:0 0 20px;">
+  <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:8px;">
+    <div>
+      <div style="font-size:26px; font-weight:800; color:{ev_color};">{ev_pct:.1f}% EV</div>
+      <div style="font-size:12px; color:#7F77DD; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px;">
+        {market} &bull; {book}
+      </div>
+    </div>
+    <div style="background:#534AB7; color:#fff; border-radius:6px; padding:4px 14px;
+                font-size:16px; font-weight:700; align-self:center;">
+      {odds_str}
+    </div>
+  </div>
+  <div style="margin-top:14px; font-size:15px; color:#26215C; font-weight:600;">{team}</div>
+  <div style="margin-top:4px; font-size:13px; color:#7F77DD;">True probability: {true_prob:.1%}</div>
+</div>
+
+<div style="border-left:3px solid #534AB7; padding:14px 18px; background:#FAFAFE;
+            border-radius:0 8px 8px 0; margin:0 0 24px; font-size:14px;
+            color:#3D3860; line-height:1.75;">
+  {synopsis}
+</div>
+
+<p style="font-size:14px; color:#555270; line-height:1.7; margin:0 0 20px;">
+  This is your free daily pick from Posit+EV. EV Pro members get the
+  <strong>full daily scan</strong> — usually 10&ndash;30 picks across NHL, NBA, NCAAB,
+  MLB, and more — refreshed every hour on a live dashboard.
+</p>
+
+<a href="{_base_url}/pricing"
+   style="display:inline-block; background:#534AB7; color:#ffffff;
+          text-decoration:none; padding:13px 32px; border-radius:8px;
+          font-weight:700; font-size:15px;">
+  Unlock All Today&rsquo;s Picks &mdash; $29/month &rarr;
+</a>
+"""
+        subtitle = f"Today's top +EV pick: {team} at {odds_str} ({ev_pct:.1f}% EV)"
+        post = bh_post(subject, body_html, subtitle=subtitle, send=True)
+        if post:
+            log.info("send_daily_newsletter: delivered via Beehiiv to all subscribers.")
+            return {"sent": len(emails), "failed": 0, "total": len(emails), "channel": "beehiiv"}
+        else:
+            log.warning("Beehiiv post failed — falling back to Resend per-recipient send.")
+
+    # Resend fallback (or primary if Beehiiv not configured)
     sent = failed = 0
     for email in emails:
         html = _build_daily_email(bet, synopsis, date_str, email)
@@ -475,10 +541,10 @@ def send_daily_newsletter() -> dict:
             failed += 1
 
     log.info(
-        "send_daily_newsletter: %d sent, %d failed (total %d subscribers).",
+        "send_daily_newsletter: %d sent, %d failed (total %d subscribers) via Resend.",
         sent, failed, len(emails),
     )
-    return {"sent": sent, "failed": failed, "total": len(emails)}
+    return {"sent": sent, "failed": failed, "total": len(emails), "channel": "resend"}
 
 
 # ---------------------------------------------------------------------------
@@ -610,7 +676,13 @@ async def newsletter_subscribe(
     finally:
         db.close()
 
-    # Send welcome (non-blocking: errors are logged but don't fail the response)
+    # Sync to Beehiiv (non-blocking)
+    try:
+        bh_add(email)
+    except Exception as exc:
+        log.error("Beehiiv sync failed for %s: %s", email, exc)
+
+    # Send welcome (non-blocking)
     try:
         send_newsletter_welcome(email)
     except Exception as exc:
@@ -654,6 +726,10 @@ async def newsletter_unsubscribe(token: str = ""):
             subscriber.is_active = False
             db.commit()
             log.info("Newsletter: unsubscribed %s", email)
+            try:
+                bh_remove(email)
+            except Exception as exc:
+                log.error("Beehiiv remove failed for %s: %s", email, exc)
         elif not subscriber:
             log.warning("Newsletter unsubscribe: no record found for %s", email)
     except Exception as exc:
