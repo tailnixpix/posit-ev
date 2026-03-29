@@ -265,9 +265,41 @@ def _decode_unsub_token(token: str) -> Optional[str]:
 # ---------------------------------------------------------------------------
 
 def get_top_ev_bet() -> Optional[EVBetCache]:
-    """Return the single highest-EV bet from EVBetCache, or None if empty."""
+    """
+    Return the single highest-EV bet whose game starts TODAY (CT timezone).
+
+    Falls back to any bet in the cache if no today-games are found, so the
+    newsletter never sends empty when the cache is slightly stale.
+    """
+    from datetime import timedelta
+
     db = SessionLocal()
     try:
+        # CT midnight boundaries for today
+        now_ct    = datetime.now(LOCAL_TZ)
+        start_ct  = now_ct.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_ct    = start_ct + timedelta(days=1)
+        # Convert to UTC for the DB query (commence_time is stored with tz)
+        start_utc = start_ct.astimezone(timezone.utc)
+        end_utc   = end_ct.astimezone(timezone.utc)
+
+        bet = (
+            db.query(EVBetCache)
+            .filter(
+                EVBetCache.commence_time >= start_utc,
+                EVBetCache.commence_time <  end_utc,
+            )
+            .order_by(EVBetCache.ev_percent.desc())
+            .first()
+        )
+        if bet:
+            return bet
+
+        # Fallback: no commence_time filter (handles stale or missing timestamps)
+        log.warning(
+            "get_top_ev_bet: no bets with today's commence_time — "
+            "returning overall top bet as fallback."
+        )
         return (
             db.query(EVBetCache)
             .order_by(EVBetCache.ev_percent.desc())

@@ -85,93 +85,24 @@
 
 
         <!-- ╔══════════════════════════════════════════════════════════╗
-             ║  HEADER — full SVG: gradient + line graph + logo + date ║
+             ║  HEADER — PNG image (works in all email clients)         ║
              ╚══════════════════════════════════════════════════════════╝ -->
         <tr>
-          <td align="center" style="padding:0; border-radius:16px 16px 0 0; line-height:0;">
-
-            <!--[if mso]>
-            <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"
-                   style="background-color:#1E1A47; border-radius:16px 16px 0 0;">
-              <tr><td align="center" style="padding:36px 36px 30px;">
-                <p style="font-family:Arial,sans-serif; font-size:28px; font-weight:bold;
-                           color:#ffffff; margin:0 0 8px;">Posit+EV</p>
-                <p style="font-family:Arial,sans-serif; font-size:11px; color:rgba(255,255,255,0.5);
-                           margin:0; letter-spacing:2px;">{{ date_str | upper }}</p>
-              </td></tr>
-            </table>
-            <![endif]-->
-
-            <!--[if !mso]><!-->
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 190"
-                 width="600" height="190" role="img" aria-label="Posit+EV header"
-                 style="display:block; border-radius:16px 16px 0 0;">
-
-              <defs>
-                <linearGradient id="hdrGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%"   stop-color="#1E1A47"/>
-                  <stop offset="55%"  stop-color="#34288A"/>
-                  <stop offset="100%" stop-color="#534AB7"/>
-                </linearGradient>
-              </defs>
-
-              <!-- Background -->
-              <rect width="600" height="190" rx="16" ry="16" fill="url(#hdrGrad)"/>
-
-              <!-- ── Rising line graph (background decoration) ──────── -->
-              <!-- Area fill under the curve -->
-              <path d="M 0,168  40,155  80,162  120,142  160,148
-                        200,124  250,130  295,108  335,114
-                        375,90   415,96   455,72   500,78
-                        540,54   580,38   600,28
-                        L 600,190 L 0,190 Z"
-                    fill="rgba(83,74,183,0.10)"/>
-              <!-- Main upward line -->
-              <polyline
-                points="0,168  40,155  80,162  120,142  160,148
-                         200,124  250,130  295,108  335,114
-                         375,90   415,96   455,72   500,78
-                         540,54   580,38   600,28"
-                fill="none"
-                stroke="rgba(155,142,255,0.28)"
-                stroke-width="1.8"
-                stroke-linecap="round"
-                stroke-linejoin="round"/>
-              <!-- Highlight dots at local peaks -->
-              <circle cx="120"  cy="142" r="2.5" fill="rgba(155,142,255,0.4)"/>
-              <circle cx="295"  cy="108" r="2.5" fill="rgba(155,142,255,0.4)"/>
-              <circle cx="455"  cy="72"  r="2.5" fill="rgba(155,142,255,0.45)"/>
-              <circle cx="580"  cy="38"  r="3"   fill="rgba(155,142,255,0.55)"/>
-
-              <!-- ── Arc symbol (centered, no text) ────────────────── -->
-              <g transform="translate(300,92)">
-                <!-- Shaded right-half fill -->
-                <path d="M 0,-52 C 28,-52 57,0 68,38 L 0,38 Z"
-                      fill="#534AB7" fill-opacity="0.18"/>
-                <!-- Main arc -->
-                <path d="M -68,38 C -43,-52 43,-52 68,38"
-                      fill="none" stroke="#7B6EE8" stroke-width="7" stroke-linecap="round"/>
-                <!-- Top dot -->
-                <circle cx="0" cy="-52" r="9"  fill="#8B7EF8"/>
-                <!-- Glow ring -->
-                <circle cx="0" cy="-52" r="15" fill="#534AB7" fill-opacity="0.22"/>
-              </g>
-
-              <!-- ── "Posit+EV" wordmark ──────────────────────────── -->
-              <text x="300" y="158"
-                    font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif"
-                    font-size="22" font-weight="700" text-anchor="middle"
-                    letter-spacing="0.5" fill="#ffffff">Posit<tspan fill="#9B8EFF">+</tspan>EV</text>
-
-              <!-- ── Date ───────────────────────────────────────────── -->
-              <text x="300" y="178"
-                    font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif"
-                    font-size="10" font-weight="600" text-anchor="middle"
-                    letter-spacing="2" fill="rgba(255,255,255,0.48)">{{ date_str | upper }}</text>
-
-            </svg>
-            <!--<![endif]-->
-
+          <td align="center" style="padding:0; line-height:0; border-radius:16px 16px 0 0; overflow:hidden; background-color:#1E1A47;">
+            <img src="https://www.posit-ev.com/static/email_header.png"
+                 alt="Posit+EV"
+                 width="600" height="190"
+                 style="display:block; width:600px; max-width:100%; height:auto; border-radius:16px 16px 0 0;" />
+          </td>
+        </tr>
+        <!-- Date strip below header image -->
+        <tr>
+          <td align="center"
+              style="background-color:#1E1A47; padding:10px 24px 14px;
+                     font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;
+                     font-size:11px; font-weight:600; letter-spacing:2px;
+                     color:rgba(255,255,255,0.5); text-transform:uppercase;">
+            {{ date_str | upper }}
           </td>
         </tr>
 
