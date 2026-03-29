@@ -92,7 +92,7 @@ tr:hover td { background: var(--brand-surface); }
   <div class="section-card">
     <div class="section-card-header">
       <h2>Newsletter Subscribers</h2>
-      <span class="badge badge-blue">{{ nl_total }} total</span>
+      <span class="badge badge-blue">{{ nl_active }} active / {{ nl_total }} total</span>
     </div>
     {% if newsletter_subs %}
     <table>
@@ -101,6 +101,7 @@ tr:hover td { background: var(--brand-surface); }
           <th>Email</th>
           <th>Status</th>
           <th>Signed up</th>
+          <th>Action</th>
         </tr>
       </thead>
       <tbody>
@@ -115,6 +116,27 @@ tr:hover td { background: var(--brand-surface); }
             {% endif %}
           </td>
           <td>{{ s.subscribed_at.strftime('%b %-d, %Y') if s.subscribed_at else '—' }}</td>
+          <td>
+            {% if s.is_active %}
+            <form method="post" action="/admin/newsletter-unsubscribe" style="margin:0;">
+              <input type="hidden" name="subscriber_id" value="{{ s.id }}" />
+              <button type="submit" style="font-size:0.75rem;padding:3px 10px;background:#FEF2F2;
+                color:#C53030;border:1px solid #FCA5A5;border-radius:6px;
+                cursor:pointer;font-family:inherit;">
+                Unsubscribe
+              </button>
+            </form>
+            {% else %}
+            <form method="post" action="/admin/newsletter-resubscribe" style="margin:0;">
+              <input type="hidden" name="subscriber_id" value="{{ s.id }}" />
+              <button type="submit" style="font-size:0.75rem;padding:3px 10px;background:rgba(15,110,86,0.08);
+                color:#0F6E56;border:1px solid #9EEBD6;border-radius:6px;
+                cursor:pointer;font-family:inherit;">
+                Resubscribe
+              </button>
+            </form>
+            {% endif %}
+          </td>
         </tr>
         {% endfor %}
       </tbody>
@@ -128,7 +150,7 @@ tr:hover td { background: var(--brand-surface); }
   <div class="section-card">
     <div class="section-card-header">
       <h2>Registered Users</h2>
-      <span class="badge badge-green">{{ user_paid }} paid</span>
+      <span class="badge badge-green">{{ user_paid }} paid / {{ user_total }} total</span>
     </div>
     {% if users %}
     <table>
@@ -136,8 +158,9 @@ tr:hover td { background: var(--brand-surface); }
         <tr>
           <th>Email</th>
           <th>Plan</th>
+          <th>Joined</th>
           <th>Stripe customer</th>
-          <th>Access</th>
+          <th>Dashboard access</th>
         </tr>
       </thead>
       <tbody>
@@ -146,33 +169,39 @@ tr:hover td { background: var(--brand-surface); }
           <td>{{ u.email }}</td>
           <td>
             {% if u.is_subscribed %}
-              <span class="tag tag-paid">Paid</span>
+              <span class="tag tag-paid">EV Pro</span>
             {% else %}
               <span class="tag tag-free">Free</span>
             {% endif %}
+          </td>
+          <td style="font-size:0.82rem; color:var(--text-muted);">
+            {{ u.created_at.strftime('%b %-d, %Y') if u.created_at else '—' }}
           </td>
           <td style="font-size:0.78rem; color:var(--text-muted);">
             {{ u.stripe_customer_id or '—' }}
           </td>
           <td>
-            {% if not u.is_subscribed %}
-            <form method="post" action="/admin/grant-access?key={{ admin_key }}">
-              <input type="hidden" name="user_id" value="{{ u.id }}" />
-              <button type="submit" style="font-size:0.75rem;padding:3px 10px;background:var(--brand-primary);
-                color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;">
-                Grant Access
-              </button>
-            </form>
-            {% else %}
-            <form method="post" action="/admin/revoke-access?key={{ admin_key }}">
-              <input type="hidden" name="user_id" value="{{ u.id }}" />
-              <button type="submit" style="font-size:0.75rem;padding:3px 10px;background:#F3F4F6;
-                color:var(--text-muted);border:1px solid var(--brand-border);border-radius:6px;
-                cursor:pointer;font-family:inherit;">
-                Revoke
-              </button>
-            </form>
-            {% endif %}
+            <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+              {% if not u.is_subscribed %}
+              <form method="post" action="/admin/grant-access" style="margin:0;">
+                <input type="hidden" name="user_id" value="{{ u.id }}" />
+                <button type="submit" style="font-size:0.75rem;padding:3px 10px;
+                  background:var(--brand-primary);color:#fff;border:none;
+                  border-radius:6px;cursor:pointer;font-family:inherit;">
+                  Grant Access
+                </button>
+              </form>
+              {% else %}
+              <form method="post" action="/admin/revoke-access" style="margin:0;">
+                <input type="hidden" name="user_id" value="{{ u.id }}" />
+                <button type="submit" style="font-size:0.75rem;padding:3px 10px;
+                  background:#FEF2F2;color:#C53030;border:1px solid #FCA5A5;
+                  border-radius:6px;cursor:pointer;font-family:inherit;">
+                  Revoke Access
+                </button>
+              </form>
+              {% endif %}
+            </div>
           </td>
         </tr>
         {% endfor %}

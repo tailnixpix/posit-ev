@@ -512,6 +512,34 @@ async def admin_revoke_access(
     return RedirectResponse(url="/admin", status_code=303)
 
 
+@app.post("/admin/newsletter-unsubscribe")
+async def admin_newsletter_unsubscribe(
+    subscriber_id: int = Form(...),
+    db: Session = Depends(get_db),
+    _: HTTPBasicCredentials = Depends(_require_admin),
+):
+    sub = db.query(NewsletterSubscriber).filter(NewsletterSubscriber.id == subscriber_id).first()
+    if sub:
+        sub.is_active = False
+        db.commit()
+        log.info("Admin unsubscribed newsletter subscriber %s", sub.email)
+    return RedirectResponse(url="/admin", status_code=303)
+
+
+@app.post("/admin/newsletter-resubscribe")
+async def admin_newsletter_resubscribe(
+    subscriber_id: int = Form(...),
+    db: Session = Depends(get_db),
+    _: HTTPBasicCredentials = Depends(_require_admin),
+):
+    sub = db.query(NewsletterSubscriber).filter(NewsletterSubscriber.id == subscriber_id).first()
+    if sub:
+        sub.is_active = True
+        db.commit()
+        log.info("Admin resubscribed newsletter subscriber %s", sub.email)
+    return RedirectResponse(url="/admin", status_code=303)
+
+
 @app.post("/admin/refresh-cache")
 async def admin_refresh_cache(
     current_user: User = Depends(require_auth),
