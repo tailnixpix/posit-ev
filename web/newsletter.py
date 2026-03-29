@@ -424,6 +424,7 @@ def _build_daily_email(
     ctx = {
         "date_str":        date_str,
         "league":          league_display,
+        "game":            getattr(bet, "game", "") or "",
         "team":            getattr(bet, "team", "—"),
         "market":          market_display,
         "book":            getattr(bet, "book", "—"),
