@@ -230,6 +230,55 @@ def no_vig_market(american_odds: list, outcome_names: list = None) -> dict:
 # Multi-book sharpness selection
 # ---------------------------------------------------------------------------
 
+def consensus_no_vig(book_odds: dict, outcome_names: list = None) -> dict:
+    """
+    Compute true probabilities as the trimmed mean of all books' devigged probs.
+
+    More robust to outlier/stale lines than single-book selection. Trims the
+    highest and lowest per-outcome probability when 4+ books are available,
+    then renormalises so probabilities sum to 1.0.
+
+    Parameters
+    ----------
+    book_odds : dict
+        {bookmaker_name: [american_odds_per_outcome]}
+    outcome_names : list of str, optional
+
+    Returns
+    -------
+    dict with keys:
+        no_vig_probs    : list of float
+        no_vig_american : list of int
+        outcomes        : list of str
+    """
+    import statistics as _stats
+
+    all_probs = []
+    for odds in book_odds.values():
+        implied = [american_to_implied(o) for o in odds]
+        all_probs.append(remove_vig(implied))
+
+    n_outcomes = len(next(iter(book_odds.values())))
+    consensus = []
+    for i in range(n_outcomes):
+        col = [probs[i] for probs in all_probs]
+        if len(col) >= 4:
+            col_sorted = sorted(col)[1:-1]   # drop highest and lowest
+        else:
+            col_sorted = col
+        consensus.append(_stats.mean(col_sorted))
+
+    total = sum(consensus)
+    consensus = [p / total for p in consensus]
+
+    names = outcome_names or [f"outcome_{i}" for i in range(n_outcomes)]
+    return {
+        "no_vig_probs": [round(p, 4) for p in consensus],
+        "no_vig_american": [decimal_to_american(1 / p) for p in consensus],
+        "outcomes": names,
+    }
+
+
 def sharpest_no_vig(
     book_odds: dict,
     outcome_names: list = None,
@@ -285,6 +334,37 @@ def sharpest_no_vig(
     sharpest_book = min(all_vigs, key=all_vigs.get)
     sharp_odds = book_odds[sharpest_book]
     market = no_vig_market(sharp_odds, outcome_names)
+
+    # ── Outlier guard ────────────────────────────────────────────────────────
+    # If the sharpest book's devigged probability deviates more than
+    # MAX_DIVERGENCE from the trimmed-mean consensus of all books, the
+    # "sharpest" book likely has a stale or erroneous line.  Fall back to
+    # the consensus probability so one bad book cannot poison all EV calcs.
+    _MAX_DIVERGENCE = 0.12   # 12 percentage-point threshold
+    if len(book_odds) >= 2:
+        _cons = consensus_no_vig(book_odds, outcome_names)
+        _max_delta = max(
+            abs(sp - cp)
+            for sp, cp in zip(market["no_vig_probs"], _cons["no_vig_probs"])
+        )
+        if _max_delta > _MAX_DIVERGENCE:
+            import logging as _logging
+            _logging.getLogger(__name__).warning(
+                "sharpest_no_vig: book '%s' deviates %.1f pp from consensus — "
+                "falling back to consensus probs (outlier line detected)",
+                sharpest_book,
+                _max_delta * 100,
+            )
+            return {
+                "sharpest_book": f"consensus (was {sharpest_book})",
+                "sharpest_vig": all_vigs[sharpest_book],
+                "all_vigs": all_vigs,
+                "no_vig_probs": _cons["no_vig_probs"],
+                "no_vig_american": _cons["no_vig_american"],
+                "outcomes": _cons["outcomes"],
+                "outlier_detected": True,
+            }
+    # ─────────────────────────────────────────────────────────────────────────
 
     return {
         "sharpest_book": sharpest_book,

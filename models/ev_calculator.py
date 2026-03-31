@@ -173,18 +173,34 @@ def find_positive_ev(
 
         # Build {bookmaker: [odds per outcome]} — outcomes sorted for alignment
         outcome_order = sorted(game_df["outcome_name"].unique())
-        book_odds = {}
+        book_odds = {}        # all books — used for EV evaluation
+        sportsbook_odds = {}  # sportsbooks only — used as sharp reference
         for book, bk_df in game_df.groupby("bookmaker"):
             bk_df_sorted = bk_df.set_index("outcome_name").reindex(outcome_order)
             if bk_df_sorted["price"].isna().any():
                 continue  # skip books missing an outcome
-            book_odds[book] = bk_df_sorted["price"].astype(int).tolist()
+            odds_list = bk_df_sorted["price"].astype(int).tolist()
+            book_odds[book] = odds_list
+            # Prediction markets (NoVig, Kalshi, Polymarket) must not anchor the
+            # true-probability reference for spread/total markets — their pricing
+            # models differ structurally from sportsbooks on non-h2h markets and
+            # their near-zero vig always makes them "sharpest" even when wrong.
+            # For h2h they compete directly and are legitimately included.
+            src = bk_df["source_type"].iloc[0] if "source_type" in bk_df.columns else "sportsbook"
+            if src == "sportsbook" or market == "h2h":
+                sportsbook_odds[book] = odds_list
 
         if len(book_odds) < 2:
             continue  # need at least two books to identify the sharpest
 
-        # --- True probabilities from sharpest book ---
-        sharp = sharpest_no_vig(book_odds, outcome_names=outcome_order)
+        # Use sportsbooks as the sharp reference for spreads/totals.
+        # Fall back to all books only when fewer than 2 sportsbooks have data.
+        reference_odds = sportsbook_odds if len(sportsbook_odds) >= 2 else book_odds
+        if len(reference_odds) < 2:
+            continue
+
+        # --- True probabilities from sharpest sportsbook ---
+        sharp = sharpest_no_vig(reference_odds, outcome_names=outcome_order)
         true_probs = sharp["no_vig_probs"]
         sharp_book = sharp["sharpest_book"]
 
@@ -206,6 +222,15 @@ def find_positive_ev(
                         except (ValueError, TypeError):
                             pass
 
+                # Resolve source_type from the original data for this bookmaker
+                source_type_val = "sportsbook"
+                if not outcome_match.empty and "source_type" in outcome_match.columns:
+                    source_type_val = outcome_match["source_type"].iloc[0] or "sportsbook"
+                elif "source_type" in game_df.columns:
+                    bk_rows = game_df[game_df["bookmaker"] == book]
+                    if not bk_rows.empty:
+                        source_type_val = bk_rows["source_type"].iloc[0] or "sportsbook"
+
                 row.update({
                     "game_id": game_id,
                     "game": game_label,
@@ -215,6 +240,7 @@ def find_positive_ev(
                     "sharp_book": sharp_book,
                     "sharp_vig_pct": round(sharp["sharpest_vig"] * 100, 3),
                     "point": point_val,
+                    "source_type": source_type_val,
                 })
                 all_rows.append(row)
 

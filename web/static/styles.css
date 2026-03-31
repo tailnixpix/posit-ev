@@ -100,10 +100,11 @@ nav {
   display: flex;
   align-items: center;
   flex-shrink: 0;
+  filter: drop-shadow(0 0 8px rgba(83, 74, 183, 0.45));
 }
 
 .nav-logo img {
-  height: 40px;
+  height: 44px;
   width: auto;
 }
 
@@ -165,7 +166,14 @@ nav a:hover {
 .nav-auth {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;          /* space between groups and the divider */
+}
+
+/* Tight cluster of same-type nav buttons */
+.nav-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 .nav-link {
   font-size: 0.9rem;
@@ -218,6 +226,294 @@ button.nav-btn-ghost:hover,
   background: #0e0b2e !important;
   border-color: #0e0b2e !important;
   color: #ffffff !important;
+}
+
+/* Outline variant — kept for backward compat */
+button.nav-btn-outline,
+.nav-btn-outline {
+  background: transparent !important;
+  color: var(--brand-primary) !important;
+  border: 1.5px solid var(--brand-primary) !important;
+}
+button.nav-btn-outline:hover,
+.nav-btn-outline:hover {
+  background: var(--brand-light) !important;
+  color: var(--brand-dark) !important;
+  border-color: var(--brand-primary) !important;
+}
+
+/* Soft variant — Pricing / Support / Dashboard (subtle, low-contrast) */
+button.nav-btn-soft,
+.nav-btn-soft {
+  background: var(--brand-light) !important;
+  color: var(--brand-primary) !important;
+  border: 1.5px solid var(--brand-border) !important;
+  padding: 7px 14px !important;   /* slightly tighter than the default 8px 18px */
+}
+button.nav-btn-soft:hover,
+.nav-btn-soft:hover {
+  background: #ddd8f8 !important;
+  color: var(--brand-dark) !important;
+  border-color: var(--brand-primary) !important;
+}
+
+/* Vertical divider between text links and action buttons */
+.nav-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--brand-border);
+  flex-shrink: 0;
+}
+
+/* ── Mobile nav ──────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  nav {
+    padding: var(--space-2) var(--space-3);
+    gap: 8px;
+  }
+  .nav-logo img {
+    height: 36px;
+  }
+  /* Stack tz-picker + nav-auth tightly */
+  .nav-right {
+    gap: 4px;
+  }
+  /* Shrink tz buttons */
+  .tz-picker {
+    gap: 1px;
+    padding: 2px;
+  }
+  .tz-btn {
+    font-size: 0.62rem;
+    padding: 3px 5px;
+  }
+  /* Tighten nav-auth links */
+  .nav-auth {
+    gap: 5px;
+  }
+  .nav-group {
+    gap: 3px;
+  }
+  .nav-link {
+    font-size: 0.8rem;
+    padding: 4px 2px;
+  }
+  .nav-btn {
+    font-size: 0.78rem;
+    padding: 6px 10px;
+  }
+}
+
+@media (max-width: 400px) {
+  /* Hide tz picker on very small phones to give nav-auth room */
+  .tz-picker { display: none; }
+  .nav-auth { gap: 5px; }
+  .nav-group { gap: 2px; }
+  .nav-link { font-size: 0.82rem; }
+  /* Shrink soft buttons to bare minimum on tiny screens */
+  button.nav-btn-soft, .nav-btn-soft { padding: 5px 8px !important; font-size: 0.72rem !important; }
+}
+
+/* ── Global mobile body/main fixes ──────────────────────────────────── */
+@media (max-width: 640px) {
+  body { overflow-x: hidden; }
+  main { padding-top: var(--space-5); padding-bottom: var(--space-5); }
+}
+
+/* ── Premium Record Banner (top of landing + dashboard) ─────────────── */
+.record-banner {
+  background: linear-gradient(135deg, #0F0C2A 0%, #26215C 50%, #3D35A0 100%);
+  padding: 28px 40px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: var(--space-6);
+  border-radius: var(--radius-lg);
+}
+
+/* Gold glow orb — top right */
+.record-banner::before {
+  content: '';
+  position: absolute;
+  width: 340px;
+  height: 340px;
+  background: radial-gradient(circle, rgba(250,199,117,0.12) 0%, transparent 70%);
+  top: -120px;
+  right: -80px;
+  pointer-events: none;
+}
+
+/* Purple glow orb — bottom left */
+.record-banner::after {
+  content: '';
+  position: absolute;
+  width: 260px;
+  height: 260px;
+  background: radial-gradient(circle, rgba(83,74,183,0.35) 0%, transparent 70%);
+  bottom: -100px;
+  left: -60px;
+  pointer-events: none;
+}
+
+.record-banner-eyebrow {
+  font-size: 0.6rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  color: var(--brand-accent);
+  margin-bottom: 18px;
+  position: relative;
+  z-index: 1;
+}
+
+.record-banner-stats {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  flex-wrap: wrap;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+}
+
+.rb-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 4px 32px 8px;
+  position: relative;
+}
+
+/* Vertical dividers between stats */
+.rb-stat + .rb-stat::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 15%;
+  height: 70%;
+  width: 1px;
+  background: rgba(255,255,255,0.1);
+}
+
+.rb-val {
+  font-size: 2.6rem;
+  font-weight: 900;
+  line-height: 1;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -1px;
+}
+
+.rb-lbl {
+  font-size: 0.58rem;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: rgba(255,255,255,0.38);
+  margin-top: 7px;
+}
+
+.rb-win  .rb-val { color: #4ADE80; }
+.rb-loss .rb-val { color: #F87171; }
+.rb-push .rb-val { color: rgba(255,255,255,0.45); }
+.rb-positive { color: #4ADE80 !important; }
+.rb-negative { color: #F87171 !important; }
+
+/* Make ROI/Profit slightly larger for emphasis */
+.rb-roi .rb-val  { font-size: 2.8rem; }
+.rb-profit .rb-val { font-size: 2.2rem; }
+
+.record-banner-disclaimer {
+  font-size: 0.58rem;
+  color: rgba(255,255,255,0.22);
+  margin-top: 16px;
+  letter-spacing: 0.3px;
+  position: relative;
+  z-index: 1;
+}
+
+@media (max-width: 640px) {
+  .record-banner {
+    padding: 12px 12px 10px;
+    border-radius: var(--radius-md);
+    margin-bottom: var(--space-4);
+  }
+  .record-banner-eyebrow {
+    font-size: 0.52rem;
+    margin-bottom: 10px;
+    letter-spacing: 2px;
+  }
+  .record-banner-stats { gap: 0; flex-wrap: nowrap; }
+  .rb-stat { padding: 2px 12px 4px; }
+  .rb-val {
+    font-size: 1.3rem;
+    letter-spacing: -0.5px;
+  }
+  .rb-roi .rb-val   { font-size: 1.3rem; }
+  .rb-profit .rb-val { font-size: 1.1rem; }
+  .rb-lbl { font-size: 0.48rem; margin-top: 4px; }
+  .record-banner-disclaimer { font-size: 0.5rem; margin-top: 8px; }
+}
+
+@media (max-width: 480px) {
+  .record-banner { padding: 10px 8px 8px; }
+  .record-banner-eyebrow { display: none; }   /* hide on very small screens */
+  .rb-stat { padding: 2px 8px 4px; }
+  .rb-val  { font-size: 1.1rem; }
+  .rb-roi .rb-val    { font-size: 1.1rem; }
+  .rb-profit .rb-val { font-size: 0.95rem; }
+  .rb-lbl  { font-size: 0.44rem; letter-spacing: 0.8px; }
+  .record-banner-disclaimer { display: none; }  /* hide disclaimer on very small screens */
+}
+
+/* ── Nav center record pill ──────────────────────────────────────────── */
+.nav-record {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--brand-light);
+  border: 1px solid var(--brand-border);
+  border-radius: 20px;
+  padding: 5px 14px;
+  margin: 0 auto;       /* flex auto margin: centers between logo and nav-right */
+  white-space: nowrap;
+  pointer-events: none; /* purely informational */
+}
+
+.nr-wlp {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--brand-dark);
+  letter-spacing: 0.2px;
+}
+
+.nr-divider {
+  width: 1px;
+  height: 12px;
+  background: var(--brand-border);
+}
+
+.nr-roi {
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.nr-positive { color: #15803D; }
+.nr-negative { color: #C53030; }
+
+@media (max-width: 640px) {
+  .nav-record {
+    padding: 4px 10px;
+    gap: 6px;
+  }
+  .nr-wlp, .nr-roi { font-size: 0.68rem; }
+}
+
+@media (max-width: 480px) {
+  /* On very small screens hide the record pill to avoid nav overflow */
+  .nav-record { display: none; }
 }
 
 /* ------------------------------------------------------------

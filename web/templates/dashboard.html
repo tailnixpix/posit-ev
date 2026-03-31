@@ -139,6 +139,7 @@ main { max-width: 1200px; padding-top: var(--space-5); }
 .badge-league  { background: var(--brand-light); color: var(--brand-dark); }
 .badge-market  { background: #EEF2FF; color: var(--brand-primary); }
 .badge-book    { background: #F3F4F6; color: #374151; }
+.badge-pm      { background: #F5F3FF; color: #6D28D9; text-transform: none; letter-spacing: 0; }
 
 /* Stats row inside card */
 .card-stats {
@@ -152,6 +153,121 @@ main { max-width: 1200px; padding-top: var(--space-5); }
 .card-stat .s-val { font-size: 0.92rem; font-weight: 700; color: var(--brand-dark); }
 .card-stat .s-lbl { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.4px;
                     color: var(--text-muted); margin-top: 1px; }
+
+/* ── CLV badge strip ─────────────────────────────────────────────────── */
+.clv-badge {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 8px;
+  padding: 7px 10px;
+  margin-top: 7px;
+  gap: 8px;
+}
+.clv-positive {
+  background: linear-gradient(90deg, #DCFCE7 0%, #F0FDF4 100%);
+  border: 1px solid #86EFAC;
+}
+.clv-caution {
+  background: linear-gradient(90deg, #FEF9C3 0%, #FEFCE8 100%);
+  border: 1px solid #FDE68A;
+}
+
+/* Left: icon + label */
+.clv-badge-left {
+  display: flex; align-items: center; gap: 6px;
+  flex-shrink: 0;
+}
+.clv-badge-icon {
+  display: flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; border-radius: 50%;
+  font-size: 0.7rem; font-weight: 900; flex-shrink: 0;
+}
+.clv-positive .clv-badge-icon { background: #16A34A; color: #fff; }
+.clv-caution  .clv-badge-icon { background: #D97706; color: #fff; }
+.clv-badge-title {
+  font-size: 0.72rem; font-weight: 700; line-height: 1.2;
+}
+.clv-positive .clv-badge-title { color: #14532D; }
+.clv-caution  .clv-badge-title { color: #78350F; }
+.clv-badge-sub {
+  font-size: 0.62rem; font-weight: 500; margin-top: 1px; opacity: 0.75;
+}
+.clv-positive .clv-badge-sub { color: #166534; }
+.clv-caution  .clv-badge-sub { color: #92400E; }
+
+/* Right: detail + info button */
+.clv-badge-right {
+  display: flex; align-items: center; gap: 6px; flex-shrink: 0;
+}
+.clv-badge-line {
+  font-size: 0.65rem; font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.clv-positive .clv-badge-line { color: #15803D; }
+.clv-caution  .clv-badge-line { color: #B45309; }
+
+/* CLV info button */
+.clv-info-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 1.5px solid currentColor;
+  font-size: 0.6rem; font-weight: 800; line-height: 1;
+  cursor: pointer; flex-shrink: 0;
+  background: transparent;
+  transition: background 0.12s, color 0.12s;
+  padding: 0;
+}
+.clv-positive .clv-info-btn { color: #16A34A; }
+.clv-positive .clv-info-btn:hover { background: #16A34A; color: #fff; }
+.clv-caution  .clv-info-btn { color: #D97706; }
+.clv-caution  .clv-info-btn:hover { background: #D97706; color: #fff; }
+
+/* ── CLV info card (replaces tooltip) ───────────────────────────────── */
+.clv-popover {
+  position: fixed;
+  z-index: 600;
+  background: #fff;
+  border-radius: 12px;
+  max-width: 300px;
+  box-shadow: 0 12px 40px rgba(15,12,50,0.20), 0 0 0 1px rgba(15,12,50,0.06);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s, transform 0.15s;
+  transform: translateY(6px);
+  overflow: hidden;
+}
+.clv-popover.visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+.clv-pop-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px 9px;
+  border-bottom: 1px solid #F3F4F6;
+}
+.clv-pop-title {
+  font-size: 0.8rem; font-weight: 700; color: var(--brand-dark);
+  display: flex; align-items: center; gap: 5px;
+}
+.clv-pop-close {
+  display: flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 50%;
+  border: none; background: #F3F4F6; cursor: pointer;
+  font-size: 0.7rem; color: var(--text-muted);
+  transition: background 0.12s, color 0.12s;
+  flex-shrink: 0; padding: 0; line-height: 1;
+}
+.clv-pop-close:hover { background: #E5E7EB; color: var(--brand-dark); }
+.clv-pop-body {
+  padding: 12px 14px 14px;
+  font-size: 0.76rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+.clv-pop-body strong { color: var(--brand-dark); }
+.clv-pop-body .clv-highlight { color: #15803D; font-weight: 700; }
 
 /* ── Empty state ──────────────────────────────────────────────────────── */
 .empty-state {
@@ -180,10 +296,6 @@ main { max-width: 1200px; padding-top: var(--space-5); }
   align-items: center;
   gap: var(--space-2);
 }
-
-/* ── Refresh button states ────────────────────────────────────────────── */
-#refreshBtn { font-size: 0.82rem; padding: 7px 14px; }
-#refreshBtn:disabled { opacity: 0.55; cursor: not-allowed; }
 
 /* ── Countdown ────────────────────────────────────────────────────────── */
 #countdown { font-variant-numeric: tabular-nums; }
@@ -469,11 +581,109 @@ main { max-width: 1200px; padding-top: var(--space-5); }
   transition: background 0.15s;
 }
 .welcome-banner-close:hover { background: rgba(255,255,255,0.35); }
+
+/* ── Dashboard mobile improvements ────────────────────────────────────── */
+@media (max-width: 640px) {
+  /* Topbar */
+  .db-title { font-size: 1.2rem; }
+  .db-meta  { font-size: 0.75rem; }
+
+  /* Stat pills — compact */
+  .stat-row  { gap: var(--space-2); }
+  .stat-pill { padding: var(--space-2) var(--space-3); min-width: 80px; }
+  .stat-pill .val { font-size: 1.4rem; }
+  .stat-pill .lbl { font-size: 0.65rem; }
+
+  /* Filter bar — tighter overall */
+  .filter-bar { padding: var(--space-2) var(--space-3); }
+
+  /* Filter rows scroll horizontally instead of wrapping to multiple lines */
+  .filter-row {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+    gap: 4px;
+  }
+  .filter-row::-webkit-scrollbar { display: none; }
+
+  /* Shrink filter buttons so more fit in view */
+  .filter-btn  { padding: 3px 10px; font-size: 0.76rem; flex-shrink: 0; white-space: nowrap; }
+  .filter-label { font-size: 0.62rem; flex-shrink: 0; white-space: nowrap; }
+
+  /* Bet count badge */
+  #bet-count-badge { flex-shrink: 0; font-size: 0.7rem; }
+
+  /* Bankroll row can still wrap (intentional) */
+  .bankroll-row { flex-wrap: wrap; }
+
+  /* Day toggle buttons slightly smaller */
+  .day-toggle-btn { padding: 5px 14px; font-size: 0.8rem; }
+
+  /* Cards — tighter padding */
+  .bet-card { padding: var(--space-3); }
+  .card-team { font-size: 0.95rem; }
+  .card-ev-badge { font-size: 1rem; padding: 2px 8px; }
+
+  /* Card stats — 2×2 grid instead of 4 columns (CRITICAL) */
+  .card-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-2);
+  }
+  .card-stat .s-val { font-size: 0.85rem; }
+  .card-stat .s-lbl { font-size: 0.6rem; }
+}
+
+/* EV modal tighter on small phones */
+@media (max-width: 480px) {
+  .ev-modal-header { padding: 16px 18px 14px; }
+  .ev-modal-body   { padding: 16px 18px 20px; }
+  .prob-box .pb-val { font-size: 1.2rem; }
+  .ev-edge-row .edge-num { font-size: 1rem; }
+  .ev-explain-text { font-size: 0.8rem; }
+  .ev-formula-box  { font-size: 0.75rem; }
+}
+
 </style>
 {% endblock %}
 
 {# ─── Page content ────────────────────────────────────────────────────────── #}
 {% block content %}
+
+{# ── Free Pick Record Banner ────────────────────────────────────────────── #}
+{% if pick_record and pick_record.has_data %}
+<div class="record-banner">
+  <div class="record-banner-eyebrow">📊 Free Pick Record</div>
+  <div class="record-banner-stats">
+    <div class="rb-stat rb-win">
+      <div class="rb-val">{{ pick_record.wins }}</div>
+      <div class="rb-lbl">Wins</div>
+    </div>
+    <div class="rb-stat rb-loss">
+      <div class="rb-val">{{ pick_record.losses }}</div>
+      <div class="rb-lbl">Losses</div>
+    </div>
+    <div class="rb-stat rb-push">
+      <div class="rb-val">{{ pick_record.pushes }}</div>
+      <div class="rb-lbl">Pushes</div>
+    </div>
+    <div class="rb-stat rb-profit">
+      <div class="rb-val {% if pick_record.total_profit >= 0 %}rb-positive{% else %}rb-negative{% endif %}">
+        {% if pick_record.total_profit >= 0 %}+${{ "%.2f"|format(pick_record.total_profit) }}{% else %}-${{ "%.2f"|format(pick_record.total_profit | abs) }}{% endif %}
+      </div>
+      <div class="rb-lbl">Profit</div>
+    </div>
+    <div class="rb-stat rb-roi">
+      <div class="rb-val {% if pick_record.roi >= 0 %}rb-positive{% else %}rb-negative{% endif %}">
+        {% if pick_record.roi >= 0 %}+{{ "%.1f"|format(pick_record.roi) }}%{% else %}{{ "%.1f"|format(pick_record.roi) }}%{% endif %}
+      </div>
+      <div class="rb-lbl">ROI</div>
+    </div>
+  </div>
+  <div class="record-banner-disclaimer">$1,000 bankroll &middot; $20 unit &middot; Flat bet model &middot; Past performance does not guarantee future results.</div>
+</div>
+{% endif %}
 
 {# ── Top bar ───────────────────────────────────────────────────────────── #}
 <div class="db-topbar">
@@ -483,7 +693,7 @@ main { max-width: 1200px; padding-top: var(--space-5); }
       <span id="today-date"></span>
       &nbsp;&bull;&nbsp;
       {% if cache_status and cache_status.last_run %}
-        Updated {{ cache_status.last_run.strftime('%-I:%M %p') }} UTC
+        Updated <span data-last-run="{{ cache_status.last_run.isoformat() }}">…</span>
       {% elif cache_status and cache_status.running %}
         Scanning now&hellip;
       {% else %}
@@ -498,9 +708,6 @@ main { max-width: 1200px; padding-top: var(--space-5); }
     {% if cache_status and cache_status.last_error %}
     <span style="font-size:0.78rem; color:#C53030;">&#9888; Pipeline error</span>
     {% endif %}
-    <button id="refreshBtn" class="btn btn-secondary" onclick="triggerRefresh()">
-      &#8635; Refresh
-    </button>
   </div>
 </div>
 
@@ -526,6 +733,7 @@ main { max-width: 1200px; padding-top: var(--space-5); }
   &mdash; showing previous results.</span>
 </div>
 {% endif %}
+
 
 {# ── Stat pills ────────────────────────────────────────────────────────── #}
 <div class="stat-row">
@@ -584,6 +792,17 @@ main { max-width: 1200px; padding-top: var(--space-5); }
     <button type="button" class="filter-btn" data-filter="market" data-value="spreads">Spread</button>
     <button type="button" class="filter-btn" data-filter="market" data-value="totals">Total</button>
   </div>
+  {# Source filter #}
+  <div class="filter-row">
+    <span class="filter-label">Source</span>
+    <button type="button" class="filter-btn active" data-filter="source" data-value="all">All</button>
+    <button type="button" class="filter-btn" data-filter="source" data-value="sportsbook">Sportsbooks</button>
+    <button type="button" class="filter-btn" data-filter="source" data-value="prediction_market">Prediction Markets</button>
+    <span style="font-size:0.72rem; color:var(--text-muted); margin-left:var(--space-2);">
+      ℹ️ <a href="#pm-info" onclick="document.getElementById('pm-callout').style.display='block'; return false;"
+             style="color:var(--text-muted); text-decoration:underline; cursor:pointer;">What are prediction markets?</a>
+    </span>
+  </div>
   {# Bankroll input #}
   <div class="filter-row bankroll-row">
     <span class="filter-label">Bankroll</span>
@@ -596,7 +815,38 @@ main { max-width: 1200px; padding-top: var(--space-5); }
   </div>
 </div>
 
+{# ── Prediction Market info callout (hidden by default) ────────────── #}
+<div id="pm-callout" style="display:none; background:#EEF2FF; border:1px solid #C7D2FE;
+     border-radius:10px; padding:16px 20px; margin-bottom:16px; font-size:0.88rem;
+     color:#3730A3; position:relative;">
+  <button onclick="document.getElementById('pm-callout').style.display='none'"
+          style="position:absolute; top:10px; right:14px; background:none; border:none;
+                 font-size:1rem; cursor:pointer; color:#6366F1;">✕</button>
+  <strong style="font-size:0.92rem;">🔮 What are Prediction Markets?</strong>
+  <p style="margin:6px 0 0; line-height:1.6; color:#4338CA;">
+    Prediction markets like <strong>Kalshi</strong>, <strong>Polymarket</strong>, <strong>NoVig</strong>, and <strong>ProphetX</strong>
+    are exchange-style platforms where users trade on the probability of outcomes — with little to no vig
+    (house edge). Unlike traditional sportsbooks, most prediction markets are available in
+    <strong>all 50 US states</strong> because they are regulated as financial instruments, not gambling.
+    <br><br>
+    Kalshi is federally regulated by the CFTC. Polymarket operates globally. NoVig is a peer-to-peer
+    betting exchange. Because these platforms price outcomes closer to true probability,
+    <strong>they often represent the sharpest available line</strong> — and can surface edges
+    that traditional sportsbooks miss.
+  </p>
+</div>
+
+
 {# ── Cards grid ────────────────────────────────────────────────────────── #}
+<!-- ── CLV Info Card ─────────────────────────────────────────────────── -->
+<div class="clv-popover" id="clvPopover" role="dialog" aria-label="CLV explanation">
+  <div class="clv-pop-header">
+    <div class="clv-pop-title" id="clvPopTitle">📈 Closing Line Value</div>
+    <button class="clv-pop-close" onclick="hideClvPopover()" aria-label="Close">✕</button>
+  </div>
+  <div class="clv-pop-body" id="clvPopoverBody"></div>
+</div>
+
 <!-- ── EV Explanation Modal ──────────────────────────────────────────── -->
 <div class="ev-modal-overlay" id="evModalOverlay" onclick="closeEvModal(event)">
   <div class="ev-modal" role="dialog" aria-modal="true" aria-labelledby="evModalTitle">
@@ -613,7 +863,7 @@ main { max-width: 1200px; padding-top: var(--space-5); }
         </div>
         <div class="prob-box model">
           <div class="pb-val" id="evModalTrueProb">—</div>
-          <div class="pb-lbl">Our true probability</div>
+          <div class="pb-lbl">Sharp market consensus</div>
         </div>
       </div>
       <div class="ev-edge-row">
@@ -622,6 +872,11 @@ main { max-width: 1200px; padding-top: var(--space-5); }
       </div>
       <p class="ev-explain-text" id="evModalExplain"></p>
       <div class="ev-formula-box" id="evModalFormula"></div>
+      <div id="evModalFlags" style="display:none; margin-top:12px;">
+        <div style="font-size:0.72rem; color:var(--text-muted); margin-bottom:6px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Context Adjustments Applied</div>
+        <div id="evModalFlagPills" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+      </div>
+      <div id="evModalClvInfo" style="display:none;"></div>
     </div>
   </div>
 </div>
@@ -689,15 +944,18 @@ main { max-width: 1200px; padding-top: var(--space-5); }
       <div class="bet-card {{ tier }}"
            data-league="{{ bet.league }}"
            data-market="{{ market_key }}"
+           data-source="{{ bet.source_type or 'sportsbook' }}"
            data-ev="{{ '%.2f'|format(bet.ev_percent) }}"
            data-true-prob="{{ '%.4f'|format(bet.true_prob) }}"
            data-odds="{{ bet.odds }}"
            data-team="{{ team_display }}"
            data-game="{{ bet.game or '' }}"
            data-market-display="{{ market_display }}"
+           data-adj-flags="{{ bet.adj_flags or '' }}"
+           {% if bet.opening_odds and bet.opening_odds != bet.odds %}data-opening-odds="{{ bet.opening_odds }}"{% endif %}
            {% if bet.commence_time %}data-commence="{{ bet.commence_time.isoformat() }}"{% endif %}>
 
-        {# Header: team name + EV badge #}
+        {# Header: team name + game info #}
         <div class="card-header">
           <div>
             <div class="card-team">{{ team_display }}</div>
@@ -710,15 +968,54 @@ main { max-width: 1200px; padding-top: var(--space-5); }
             </div>
             {% endif %}
           </div>
-          <div class="card-ev-badge {{ tier }}">{{ "%.1f"|format(bet.ev_percent) }}%</div>
         </div>
 
-        {# Badges: league, market, book #}
+        {# Badges: league, market, book, source type #}
         <div class="card-badges">
           <span class="badge badge-league">{{ league_display }}</span>
           <span class="badge badge-market">{{ market_display }}</span>
           <span class="badge badge-book">{{ bet.book | title }}</span>
+          {% if (bet.source_type or 'sportsbook') == 'prediction_market' %}
+          <span class="badge badge-pm" title="Available in all 50 states">🔮 Prediction Market</span>
+          {% endif %}
         </div>
+
+        {# CLV line movement badge — shown when odds have moved since opening #}
+        {% if bet.opening_odds and bet.opening_odds != bet.odds %}
+          {% set op = ('+' if bet.opening_odds > 0 else '') ~ bet.opening_odds %}
+          {% set cur = ('+' if bet.odds > 0 else '') ~ bet.odds %}
+          {% if bet.opening_odds > bet.odds %}
+            {# Odds shorter = market moved in your favor = positive CLV signal #}
+            <div class="clv-badge clv-positive">
+              <div class="clv-badge-left">
+                <div class="clv-badge-icon">✓</div>
+                <div>
+                  <div class="clv-badge-title">CLV Confirmed</div>
+                  <div class="clv-badge-sub">Line moved in your favor</div>
+                </div>
+              </div>
+              <div class="clv-badge-right">
+                <div class="clv-badge-line">{{ op }} → {{ cur }}</div>
+                <button class="clv-info-btn" onclick="showClvPopover(event, true)" aria-label="What is CLV?">?</button>
+              </div>
+            </div>
+          {% else %}
+            {# Odds longer = market moving against this bet #}
+            <div class="clv-badge clv-caution">
+              <div class="clv-badge-left">
+                <div class="clv-badge-icon">!</div>
+                <div>
+                  <div class="clv-badge-title">CLV — Monitor</div>
+                  <div class="clv-badge-sub">Line moved against bet</div>
+                </div>
+              </div>
+              <div class="clv-badge-right">
+                <div class="clv-badge-line">{{ op }} → {{ cur }}</div>
+                <button class="clv-info-btn" onclick="showClvPopover(event, false)" aria-label="What is CLV?">?</button>
+              </div>
+            </div>
+          {% endif %}
+        {% endif %}
 
         {# Stats: odds | true prob | EV% | kelly #}
         <div class="card-stats">
@@ -728,7 +1025,7 @@ main { max-width: 1200px; padding-top: var(--space-5); }
           </div>
           <div class="card-stat">
             <div class="s-val">{{ "%.1f"|format(bet.true_prob * 100) }}%</div>
-            <div class="s-lbl">True Prob</div>
+            <div class="s-lbl">Consensus</div>
           </div>
           <div class="card-stat">
             <div class="s-val" style="color:{% if bet.ev_percent >= 5 %}var(--brand-success){% else %}#9A6B00{% endif %};">
@@ -758,8 +1055,7 @@ main { max-width: 1200px; padding-top: var(--space-5); }
       <div class="empty-icon">📊</div>
       <h2>No +EV bets right now</h2>
       <p>The pipeline scans odds every hour across NHL, NBA, MLB, EPL, and more.
-         Check back soon or run a manual scan.</p>
-      <button onclick="triggerRefresh()" class="btn btn-primary">Run Scan Now</button>
+         Check back soon — the next refresh is shown above.</p>
     </div>
   {% endif %}
 
@@ -812,6 +1108,18 @@ function renderHeaderDate() {
 
 function renderAllTimes() {
   renderHeaderDate();
+
+  // Last-run "Updated" timestamp — format in the user's selected TZ
+  const lastRunEl = document.querySelector('[data-last-run]');
+  if (lastRunEl) {
+    try {
+      const d = new Date(lastRunEl.dataset.lastRun);
+      lastRunEl.textContent = d.toLocaleTimeString('en-US', {
+        timeZone: _tz(), hour: 'numeric', minute: '2-digit', timeZoneName: 'short'
+      });
+    } catch (e) { /* leave as-is on parse error */ }
+  }
+
   document.querySelectorAll('[data-commence-fmt]').forEach(el => {
     const iso = el.dataset.commenceFmt;
     if (!iso) return;
@@ -841,12 +1149,14 @@ function impliedProb(americanOdds) {
 }
 
 function openEvModal(card) {
-  const odds      = parseInt(card.dataset.odds, 10);
-  const trueProb  = parseFloat(card.dataset.trueProb);
-  const ev        = parseFloat(card.dataset.ev);
-  const team      = card.dataset.team;
-  const game      = card.dataset.game;
-  const market    = card.dataset.marketDisplay;
+  const odds        = parseInt(card.dataset.odds, 10);
+  const trueProb    = parseFloat(card.dataset.trueProb);
+  const ev          = parseFloat(card.dataset.ev);
+  const team        = card.dataset.team;
+  const game        = card.dataset.game;
+  const market      = card.dataset.marketDisplay;
+  const adjFlags    = card.dataset.adjFlags || '';
+  const openingOdds = card.dataset.openingOdds ? parseInt(card.dataset.openingOdds, 10) : null;
 
   const bookProb  = impliedProb(odds);
   const edgePp    = trueProb - bookProb;           // percentage-point edge
@@ -881,8 +1191,8 @@ function openEvModal(card) {
   document.getElementById('evModalExplain').innerHTML =
     `To price odds of <strong>${oddsStr}</strong>, the book implies a ` +
     `<strong>${(bookProb * 100).toFixed(1)}%</strong> chance this outcome occurs. ` +
-    `Our model — built on sharp-market consensus across the highest-volume books — ` +
-    `puts the true probability at <strong>${(trueProb * 100).toFixed(1)}%</strong>. ` +
+    `The sharp market consensus — derived by removing the bookmaker margin across the highest-volume books — ` +
+    `puts the fair probability at <strong>${(trueProb * 100).toFixed(1)}%</strong>. ` +
     `That <strong>${(edgePp * 100).toFixed(1)} percentage point gap</strong> is the edge: ` +
     `the book is underpricing the probability that this ${marketContext}.`;
 
@@ -896,6 +1206,43 @@ function openEvModal(card) {
     `EV doesn't guarantee a win on any single bet — it means this wager is ` +
     `mathematically profitable over a large sample of similar edges.</span>`;
 
+  // Context adjustment flags — amber pills
+  const flagsEl    = document.getElementById('evModalFlags');
+  const flagPillsEl = document.getElementById('evModalFlagPills');
+  const flags = adjFlags ? adjFlags.split('|').filter(f => f.trim()) : [];
+  if (flags.length > 0) {
+    flagPillsEl.innerHTML = flags.map(f =>
+      `<span style="background:#FEF9C3; color:#92400E; border:1px solid #FDE68A;
+               border-radius:20px; font-size:0.72rem; padding:2px 10px; white-space:nowrap;"
+      >${f.trim()}</span>`
+    ).join('');
+    flagsEl.style.display = 'block';
+  } else {
+    flagsEl.style.display = 'none';
+  }
+
+  // CLV line movement info
+  const clvInfoEl = document.getElementById('evModalClvInfo');
+  if (clvInfoEl) {
+    if (openingOdds && openingOdds !== odds) {
+      const openStr  = openingOdds > 0 ? '+' + openingOdds : String(openingOdds);
+      const currStr  = odds > 0 ? '+' + odds : String(odds);
+      const shorter  = openingOdds > odds;   // true = odds moved in your favor
+      const direction = shorter
+        ? `↓ shorter <strong style="color:#15803D;">(CLV confirmed)</strong>`
+        : `↑ longer <strong style="color:#92400E;">(monitor)</strong>`;
+      clvInfoEl.innerHTML =
+        `<div style="margin-top:10px; padding:8px 12px; border-radius:8px; ` +
+        `background:${shorter ? '#DCFCE7' : '#FEF9C3'}; border:1px solid ${shorter ? '#BBF7D0' : '#FDE68A'}; ` +
+        `font-size:0.78rem; color:var(--text-secondary);">` +
+        `📊 <strong>Line movement:</strong> Opened at <strong>${openStr}</strong> → now <strong>${currStr}</strong> — moved ${direction}` +
+        `</div>`;
+      clvInfoEl.style.display = 'block';
+    } else {
+      clvInfoEl.style.display = 'none';
+    }
+  }
+
   document.getElementById('evModalOverlay').classList.add('open');
   document.body.style.overflow = 'hidden';
 }
@@ -906,6 +1253,66 @@ function closeEvModal(e) {
   document.getElementById('evModalOverlay').classList.remove('open');
   document.body.style.overflow = '';
 }
+
+// ── CLV Info Popover ──────────────────────────────────────────────────────
+
+const _clvPositiveText =
+  `<strong>The line moved in your favor — a strong signal.</strong><br><br>` +
+  `The <strong>closing line</strong> is the final market price just before a game ` +
+  `starts. It's the most efficient price the market ever produces, because sharp ` +
+  `money has had the most time to correct any mispricing.<br><br>` +
+  `When the line shortens after a bet first appears (odds drop), it means the ` +
+  `market is agreeing with the edge — sharp bettors pushed the price down.<br><br>` +
+  `<span class="clv-highlight">Consistently beating the closing line is the gold-standard proof of a real edge.</span> ` +
+  `It shows you identified value before the market corrected, not just got lucky.`;
+
+const _clvCautionText =
+  `<strong>The line moved against this bet — worth monitoring.</strong><br><br>` +
+  `The <strong>closing line</strong> is the final market price just before a game starts — ` +
+  `the most efficient price the market ever produces.<br><br>` +
+  `When the line lengthens after a bet appears (odds rise), it means sharp money ` +
+  `hasn't yet confirmed this edge. The market is moving away from it.<br><br>` +
+  `The bet may still be +EV if the book is slow to adjust, but a lengthening line ` +
+  `means <strong>market confirmation is pending</strong>. Watch it closely before acting.`;
+
+function showClvPopover(e, isPositive) {
+  e.stopPropagation();
+  const pop     = document.getElementById('clvPopover');
+  const titleEl = document.getElementById('clvPopTitle');
+  document.getElementById('clvPopoverBody').innerHTML = isPositive ? _clvPositiveText : _clvCautionText;
+  titleEl.innerHTML = isPositive ? '📈 CLV Confirmed' : '⚠️ CLV — Monitor';
+
+  // Show to measure height, then position
+  pop.classList.add('visible');
+
+  const popW = 300;
+  const popH = pop.offsetHeight;
+  const rect  = e.target.getBoundingClientRect();
+  let left = rect.left + rect.width / 2 - popW / 2;
+  let top  = rect.top - popH - 10;
+
+  // Flip below if not enough room above
+  if (top < 8) top = rect.bottom + 10;
+  // Clamp horizontally inside viewport
+  left = Math.max(8, Math.min(left, window.innerWidth - popW - 8));
+
+  pop.style.left     = left + 'px';
+  pop.style.top      = top  + 'px';
+  pop.style.maxWidth = popW + 'px';
+}
+
+function hideClvPopover() {
+  document.getElementById('clvPopover').classList.remove('visible');
+}
+
+// Close on outside click (but not when clicking inside the card)
+document.addEventListener('click', function(e) {
+  const pop = document.getElementById('clvPopover');
+  if (pop.classList.contains('visible') && !pop.contains(e.target)) {
+    hideClvPopover();
+  }
+});
+document.addEventListener('scroll', hideClvPopover, true);
 
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') closeEvModal();
@@ -992,6 +1399,7 @@ updateKellyDisplays(); // run on page load with saved value
 // ── Filter logic ─────────────────────────────────────────────────────────
 let activeLeague = 'all';
 let activeMarket = 'all';
+let activeSource = 'all';     // 'all' | 'sportsbook' | 'prediction_market'
 let activeDay    = 'today';   // 'today' | 'tomorrow'
 
 // Returns a date string in the user's selected timezone
@@ -1010,6 +1418,7 @@ function applyFilters() {
   cards.forEach(card => {
     const leagueMatch = activeLeague === 'all' || card.dataset.league === activeLeague;
     const marketMatch = activeMarket === 'all' || card.dataset.market === activeMarket;
+    const sourceMatch = activeSource === 'all' || (card.dataset.source || 'sportsbook') === activeSource;
 
     // Day filter — compare commence_time date in the selected TZ
     let dayMatch = true;
@@ -1022,7 +1431,7 @@ function applyFilters() {
       dayMatch = (activeDay === 'today');
     }
 
-    const show = leagueMatch && marketMatch && dayMatch;
+    const show = leagueMatch && marketMatch && sourceMatch && dayMatch;
     card.style.display = show ? '' : 'none';
     if (show) visible++;
   });
@@ -1060,6 +1469,7 @@ document.querySelectorAll('.filter-btn').forEach(btn => {
 
     if (filterType === 'league') activeLeague = value;
     if (filterType === 'market') activeMarket = value;
+    if (filterType === 'source') activeSource = value;
     applyFilters();
   });
 });
@@ -1079,7 +1489,8 @@ document.getElementById('dayTomorrow').addEventListener('click', () => {
 });
 
 function clearFilters() {
-  activeDay = 'today';
+  activeDay    = 'today';
+  activeSource = 'all';
   document.getElementById('dayToday').classList.add('active');
   document.getElementById('dayTomorrow').classList.remove('active');
   document.querySelectorAll('.filter-btn[data-value="all"]').forEach(b => b.click());
@@ -1088,32 +1499,5 @@ function clearFilters() {
 // Run on load so the day badge populates immediately
 applyFilters();
 
-// ── Manual refresh ────────────────────────────────────────────────────────
-async function triggerRefresh() {
-  const btn = document.getElementById('refreshBtn');
-  if (!btn || btn.disabled) return;
-  btn.disabled = true;
-  btn.textContent = '⏳ Queuing…';
-
-  try {
-    const res = await fetch('/admin/refresh-cache', { method: 'POST' });
-    if (res.ok) {
-      btn.textContent = '✓ Queued — reloading in 20s';
-      let secs = 20;
-      const iv = setInterval(() => {
-        secs--;
-        if (secs <= 0) { clearInterval(iv); location.reload(); }
-        else btn.textContent = `✓ Reloading in ${secs}s`;
-      }, 1000);
-    } else {
-      btn.disabled = false;
-      btn.textContent = '↻ Refresh';
-      alert('Refresh failed — check server logs.');
-    }
-  } catch {
-    btn.disabled = false;
-    btn.textContent = '↻ Refresh';
-  }
-}
 </script>
 {% endblock %}

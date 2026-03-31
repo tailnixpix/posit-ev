@@ -6,6 +6,160 @@
   <title>{% block title %}Posit+EV{% endblock %}</title>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg" />
   <link rel="stylesheet" href="/static/styles.css" />
+  <style>
+    /* ── Support modal ───────────────────────────────────────────────── */
+    .support-modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 12, 50, 0.55);
+      z-index: 1100;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .support-modal-overlay.open { display: flex; }
+    .support-modal {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 24px 64px rgba(15, 12, 50, 0.28);
+      width: 100%;
+      max-width: 460px;
+      animation: sup-modal-in 0.18s ease;
+      overflow: hidden;
+    }
+    @keyframes sup-modal-in {
+      from { opacity: 0; transform: translateY(14px) scale(0.97); }
+      to   { opacity: 1; transform: none; }
+    }
+    .support-modal-header {
+      background: linear-gradient(120deg, #1E1A47 0%, #534AB7 100%);
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .support-modal-header h3 {
+      margin: 0;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #fff;
+    }
+    .support-modal-close {
+      background: rgba(255,255,255,0.15);
+      border: none;
+      color: #fff;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      font-size: 0.85rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .support-modal-close:hover { background: rgba(255,255,255,0.28); }
+    .support-modal-body {
+      padding: 24px;
+    }
+    .support-modal-body p.support-intro {
+      margin: 0 0 20px;
+      font-size: 0.9rem;
+      color: #6B7280;
+      line-height: 1.6;
+    }
+    .support-form-group {
+      margin-bottom: 14px;
+    }
+    .support-form-group label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 5px;
+    }
+    .support-form-group label .opt {
+      font-weight: 400;
+      color: #9CA3AF;
+    }
+    .support-form-group input,
+    .support-form-group textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1.5px solid #E5E7EB;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-family: inherit;
+      color: #111827;
+      background: #fff;
+      outline: none;
+      transition: border-color 0.15s;
+      box-sizing: border-box;
+    }
+    .support-form-group input:focus,
+    .support-form-group textarea:focus { border-color: #534AB7; }
+    .support-form-group textarea { resize: vertical; min-height: 100px; }
+    #supportError {
+      display: none;
+      margin-top: 10px;
+      padding: 10px 12px;
+      background: #FEF2F2;
+      border: 1px solid #FCA5A5;
+      border-radius: 8px;
+      font-size: 0.84rem;
+      color: #C53030;
+    }
+    #supportSubmitBtn {
+      width: 100%;
+      margin-top: 6px;
+      padding: 12px;
+      background: #534AB7;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    #supportSubmitBtn:hover  { opacity: 0.88; }
+    #supportSubmitBtn:disabled { opacity: 0.55; cursor: not-allowed; }
+    .support-success {
+      text-align: center;
+      padding: 12px 0 4px;
+    }
+    .support-success .sup-check {
+      font-size: 2.4rem;
+      line-height: 1;
+      margin-bottom: 14px;
+    }
+    .support-success h4 {
+      margin: 0 0 10px;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #1A1450;
+    }
+    .support-success p {
+      margin: 0 0 20px;
+      font-size: 0.88rem;
+      color: #6B7280;
+      line-height: 1.65;
+    }
+    .support-success button {
+      padding: 10px 28px;
+      background: #534AB7;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+    }
+    .support-success button:hover { opacity: 0.88; }
+  </style>
   {% block head %}{% endblock %}
 </head>
 <body>
@@ -13,6 +167,7 @@
     <a href="/" class="nav-logo" aria-label="Posit+EV home">
       <img src="/static/logo.svg" height="32" alt="Posit+EV" />
     </a>
+    {% block nav_center %}{% endblock %}
     <div class="nav-right">
       <div class="tz-picker" aria-label="Time zone">
         <button class="tz-btn" data-tz="America/New_York"  title="Eastern Time">ET</button>
@@ -23,21 +178,163 @@
 
       {% if user is defined and user %}
         <div class="nav-auth">
-          <a href="/dashboard" class="nav-btn nav-btn-primary">Dashboard</a>
-          <form action="/logout" method="post" style="margin:0;">
-            <button type="submit" class="nav-btn nav-btn-ghost">Sign Out</button>
-          </form>
+          <div class="nav-group">
+            <a href="/dashboard" class="nav-btn nav-btn-soft">Dashboard</a>
+            <a href="#" class="nav-btn nav-btn-soft" onclick="openSupportModal(); return false;">Support</a>
+          </div>
+          <div class="nav-divider"></div>
+          <div class="nav-group">
+            <form action="/logout" method="post" style="margin:0;">
+              <button type="submit" class="nav-btn nav-btn-ghost">Sign Out</button>
+            </form>
+          </div>
         </div>
       {% else %}
         <div class="nav-auth">
-          <a href="/pricing" class="nav-link">Pricing</a>
-          <a href="/login" class="nav-link">Sign In</a>
+          <div class="nav-group">
+            <a href="/pricing" class="nav-btn nav-btn-soft">Pricing</a>
+            <a href="#" class="nav-btn nav-btn-soft" onclick="openSupportModal(); return false;">Support</a>
+          </div>
+          <div class="nav-divider"></div>
+          <div class="nav-group">
+            <a href="/login" class="nav-btn nav-btn-ghost">Sign In</a>
+            <a href="/register" class="nav-btn nav-btn-primary">Sign Up</a>
+          </div>
         </div>
       {% endif %}
     </div>
   </nav>
   <main>{% block content %}{% endblock %}</main>
+
+  <!-- ── Support Modal (sitewide) ───────────────────────────────────── -->
+  <div class="support-modal-overlay" id="supportModalOverlay" onclick="closeSupportModal(event)">
+    <div class="support-modal" role="dialog" aria-modal="true" aria-labelledby="supportModalTitle">
+      <div class="support-modal-header">
+        <h3 id="supportModalTitle">Contact Support</h3>
+        <button class="support-modal-close" onclick="closeSupportModal()" aria-label="Close">✕</button>
+      </div>
+      <div class="support-modal-body" id="supportModalBody">
+        <p class="support-intro">
+          Have a question about your account, a pick, or anything else?<br>
+          Send us a message and we'll get back to you.
+        </p>
+        <form id="supportForm">
+          <div class="support-form-group">
+            <label>Name <span class="opt">(optional)</span></label>
+            <input type="text" id="supportName" name="name" placeholder="Your name" autocomplete="name" />
+          </div>
+          <div class="support-form-group">
+            <label>Email <span style="color:#C53030;">*</span></label>
+            <input type="email" id="supportEmail" name="email" required placeholder="your@email.com" autocomplete="email" />
+          </div>
+          <div class="support-form-group">
+            <label>Message <span style="color:#C53030;">*</span></label>
+            <textarea id="supportMessage" name="message" required placeholder="What can we help you with?"></textarea>
+          </div>
+          <div id="supportError"></div>
+          <button type="submit" id="supportSubmitBtn">Send Message</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <script src="/static/js/app.js"></script>
+  <script>
+    // ── Support modal ────────────────────────────────────────────────
+    function openSupportModal() {
+      const overlay = document.getElementById('supportModalOverlay');
+      const body    = document.getElementById('supportModalBody');
+
+      // Reset to form state each open
+      body.innerHTML = `
+        <p class="support-intro">
+          Have a question about your account, a pick, or anything else?<br>
+          Send us a message and we'll get back to you.
+        </p>
+        <form id="supportForm">
+          <div class="support-form-group">
+            <label>Name <span class="opt">(optional)</span></label>
+            <input type="text" id="supportName" name="name" placeholder="Your name" autocomplete="name" />
+          </div>
+          <div class="support-form-group">
+            <label>Email <span style="color:#C53030;">*</span></label>
+            <input type="email" id="supportEmail" name="email" required placeholder="your@email.com" autocomplete="email" />
+          </div>
+          <div class="support-form-group">
+            <label>Message <span style="color:#C53030;">*</span></label>
+            <textarea id="supportMessage" name="message" required placeholder="What can we help you with?"></textarea>
+          </div>
+          <div id="supportError"></div>
+          <button type="submit" id="supportSubmitBtn">Send Message</button>
+        </form>`;
+
+      document.getElementById('supportForm').addEventListener('submit', handleSupportSubmit);
+      overlay.classList.add('open');
+      setTimeout(() => { const el = document.getElementById('supportEmail'); if (el) el.focus(); }, 120);
+    }
+
+    function closeSupportModal(e) {
+      // If called from the overlay onclick, only close when clicking the backdrop itself
+      if (e && e.target !== document.getElementById('supportModalOverlay')) return;
+      document.getElementById('supportModalOverlay').classList.remove('open');
+    }
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
+        document.getElementById('supportModalOverlay').classList.remove('open');
+      }
+    });
+
+    async function handleSupportSubmit(e) {
+      e.preventDefault();
+      const btn     = document.getElementById('supportSubmitBtn');
+      const errDiv  = document.getElementById('supportError');
+      const email   = document.getElementById('supportEmail').value.trim();
+      const message = document.getElementById('supportMessage').value.trim();
+
+      errDiv.style.display = 'none';
+      errDiv.textContent   = '';
+
+      if (!email || !message) {
+        errDiv.style.display = 'block';
+        errDiv.textContent   = 'Please fill in your email and message.';
+        return;
+      }
+
+      btn.disabled    = true;
+      btn.textContent = 'Sending…';
+
+      try {
+        const fd = new FormData(document.getElementById('supportForm'));
+        const res = await fetch('/contact/support', { method: 'POST', body: fd });
+        if (res.ok) {
+          document.getElementById('supportModalBody').innerHTML = `
+            <div class="support-success">
+              <div class="sup-check">✅</div>
+              <h4>Message sent!</h4>
+              <p>Your question will be reviewed and typically answered within
+                 <strong>24–48 hours</strong>. Response times may vary.</p>
+              <button onclick="document.getElementById('supportModalOverlay').classList.remove('open')">
+                Close
+              </button>
+            </div>`;
+        } else {
+          throw new Error('server error');
+        }
+      } catch {
+        btn.disabled    = false;
+        btn.textContent = 'Send Message';
+        errDiv.style.display = 'block';
+        errDiv.textContent   = 'Something went wrong — please try again.';
+      }
+    }
+
+    // Attach submit handler on initial page load (for static modal HTML)
+    document.addEventListener('DOMContentLoaded', function () {
+      const f = document.getElementById('supportForm');
+      if (f) f.addEventListener('submit', handleSupportSubmit);
+    });
+  </script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

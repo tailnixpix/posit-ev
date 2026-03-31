@@ -39,13 +39,34 @@ SPORT_KEYS = [
     "soccer_usa_mls",
 ]
 
-BOOKMAKERS = [
+SPORTSBOOK_BOOKMAKERS = [
     "draftkings",
     "fanduel",
     "betmgm",
     "pointsbet",
     "caesars",
 ]
+
+# Prediction markets: regulated exchanges with very low vig.
+# Available in all US states (Kalshi/Polymarket are federally regulated;
+# NoVig is an exchange-style book). They only offer h2h (moneyline) markets.
+PREDICTION_MARKET_BOOKMAKERS = [
+    "kalshi",
+    "novig",
+    "polymarket",
+    "prophetx",
+]
+
+# Combined list — prediction markets are included in h2h fetches.
+# For spreads/totals they have no data and simply don't appear in results.
+BOOKMAKERS = SPORTSBOOK_BOOKMAKERS  # backward-compat alias (sportsbooks only)
+ALL_BOOKMAKERS = SPORTSBOOK_BOOKMAKERS + PREDICTION_MARKET_BOOKMAKERS
+
+# Maps each bookmaker key to its source type
+BOOKMAKER_SOURCE_TYPE: dict = {
+    **{b: "sportsbook"         for b in SPORTSBOOK_BOOKMAKERS},
+    **{b: "prediction_market"  for b in PREDICTION_MARKET_BOOKMAKERS},
+}
 
 MARKETS = ["h2h", "spreads", "totals"]
 PROP_MARKETS = ["player_props"]  # fetched separately (event-level endpoint)
@@ -211,10 +232,17 @@ def get_odds_df(
 ) -> pd.DataFrame:
     """
     Fetch h2h / spreads / totals for all configured sports.
+    Prediction market bookmakers (Kalshi, NoVig, Polymarket) are included
+    automatically for h2h markets — they have no spread/total lines so they
+    simply don't appear for those markets.
+
     Returns a tidy DataFrame with one row per (game, bookmaker, market, outcome).
+    Includes a ``source_type`` column: "sportsbook" or "prediction_market".
     """
     sport_keys = sport_keys or SPORT_KEYS
     markets = markets or MARKETS
+    # Use ALL_BOOKMAKERS so prediction markets are included in h2h fetches
+    bookmakers = bookmakers or ALL_BOOKMAKERS
     all_rows = []
 
     for sport in sport_keys:
@@ -231,6 +259,9 @@ def get_odds_df(
     df["last_update"] = pd.to_datetime(df["last_update"], utc=True)
     df["price"] = pd.to_numeric(df["price"], errors="coerce")
     df["point"] = pd.to_numeric(df["point"], errors="coerce")
+
+    # Tag each row with its source type (sportsbook vs prediction_market)
+    df["source_type"] = df["bookmaker"].map(BOOKMAKER_SOURCE_TYPE).fillna("sportsbook")
 
     # Drop any game that has already started — live odds skew EV artificially
     now = pd.Timestamp.now(tz="UTC")

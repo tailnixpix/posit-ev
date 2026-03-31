@@ -60,13 +60,200 @@ tr:hover td { background: var(--brand-surface); }
 .tag-paid { background: rgba(83,74,183,0.1); color: var(--brand-primary); }
 .tag-free { background: #F3F4F6; color: var(--text-muted); }
 .empty { padding: 32px 24px; text-align: center; color: var(--text-muted); font-size: 0.88rem; }
+
+/* ── Users: tier tab bar ── */
+.tier-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--brand-border);
+  background: var(--brand-surface);
+}
+.tier-tab {
+  padding: 10px 18px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  font-family: inherit;
+  text-decoration: none;
+  display: inline-block;
+  white-space: nowrap;
+  margin-bottom: -1px;
+  transition: color 0.15s;
+}
+.tier-tab:hover { color: var(--brand-primary); text-decoration: none; }
+.tier-tab.active {
+  color: var(--brand-primary);
+  border-bottom-color: var(--brand-primary);
+}
+
+/* ── Users: search toolbar ── */
+.users-toolbar {
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--brand-border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.users-search-input {
+  width: 280px;
+  padding: 7px 12px;
+  border: 1.5px solid var(--brand-border);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-family: inherit;
+  color: var(--brand-dark);
+  background: #fff;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.users-search-input:focus { border-color: var(--brand-primary); }
+.users-search-btn {
+  padding: 7px 16px;
+  background: var(--brand-primary);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+.users-search-clear {
+  padding: 7px 12px;
+  background: #F3F4F6;
+  color: var(--text-muted);
+  border: none;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+}
+.users-result-info {
+  margin-left: auto;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* ── Users: pagination ── */
+.pagination-bar {
+  padding: 12px 24px;
+  border-top: 1px solid var(--brand-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.pagination-info { font-size: 0.78rem; color: var(--text-muted); }
+.pagination-controls { display: flex; gap: 4px; align-items: center; }
+.page-btn {
+  padding: 5px 11px;
+  border: 1px solid var(--brand-border);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--brand-dark);
+  font-size: 0.8rem;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+  line-height: 1.4;
+}
+.page-btn:hover { background: var(--brand-surface); text-decoration: none; }
+.page-btn.disabled { opacity: 0.35; pointer-events: none; }
+.page-btn.active-page {
+  background: var(--brand-primary);
+  color: #fff;
+  border-color: var(--brand-primary);
+}
+
+/* ── Daily pick result row colors ───────────────────────────────────────── */
+.pick-row-won  td { background: #F0FDF4; }
+.pick-row-lost td { background: #FEF2F2; }
+.pick-row-push td { background: #F9FAFB; }
+tr.pick-row-won:hover  td { background: #DCFCE7; }
+tr.pick-row-lost:hover td { background: #FEE2E2; }
+.result-select {
+  font-size: 0.78rem;
+  padding: 3px 6px;
+  border: 1px solid var(--brand-border);
+  border-radius: 6px;
+  font-family: inherit;
+  background: #fff;
+  color: var(--brand-dark);
+  cursor: pointer;
+}
+.result-update-btn {
+  font-size: 0.75rem;
+  padding: 3px 10px;
+  background: var(--brand-primary);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+  margin-left: 4px;
+}
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="admin-wrap">
-  <h1>Admin Dashboard</h1>
-  <p class="subtitle">Last refreshed: {{ now }}</p>
+  <div style="display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:4px;">
+    <div>
+      <h1>Admin Dashboard</h1>
+      <p class="subtitle">Last refreshed: {{ now }}</p>
+    </div>
+    <div style="display:flex; gap:10px; align-items:center;">
+      <button id="adminRefreshBtn" onclick="adminTriggerRefresh()" style="font-size:0.8rem; font-weight:600; padding:8px 16px;
+        background:#534AB7; color:#fff; border:1px solid #534AB7;
+        border-radius:8px; cursor:pointer; font-family:inherit; transition:background 0.15s;">
+        &#8635; Refresh EV Cache
+      </button>
+      <form action="/admin/logout" method="post" style="margin:0;">
+        <button type="submit" style="font-size:0.8rem; font-weight:600; padding:8px 16px;
+          background:#F7F6FE; color:var(--text-secondary); border:1px solid var(--brand-border);
+          border-radius:8px; cursor:pointer; font-family:inherit; transition:background 0.15s;">
+          🔒 Sign Out
+        </button>
+      </form>
+    </div>
+
+    <script>
+    async function adminTriggerRefresh() {
+      const btn = document.getElementById('adminRefreshBtn');
+      if (!btn || btn.disabled) return;
+      btn.disabled = true;
+      btn.textContent = '⏳ Queuing…';
+      try {
+        const res = await fetch('/admin/refresh-cache', { method: 'POST' });
+        if (res.ok) {
+          btn.textContent = '✓ Running — done in ~30s';
+          setTimeout(() => {
+            btn.disabled = false;
+            btn.innerHTML = '&#8635; Refresh EV Cache';
+          }, 35000);
+        } else {
+          btn.disabled = false;
+          btn.innerHTML = '&#8635; Refresh EV Cache';
+          alert('Refresh failed — check server logs.');
+        }
+      } catch {
+        btn.disabled = false;
+        btn.innerHTML = '&#8635; Refresh EV Cache';
+      }
+    }
+    </script>
+  </div>
 
   {# ── Stats ── #}
   <div class="stats-row">
@@ -112,6 +299,195 @@ tr:hover td { background: var(--brand-surface); }
         ⇄ Sync to Beehiiv
       </button>
       <span id="syncResult" style="font-size:0.82rem; color:var(--text-muted);"></span>
+    </div>
+  </div>
+
+  {# ── Daily Picks Record ── #}
+  <div class="section-card">
+    <div class="section-card-header">
+      <h2>Daily Picks Record</h2>
+      <span class="badge badge-blue">{{ picks_badge }}</span>
+    </div>
+    {# CLV Summary Bar #}
+    {% if clv_summary.total > 0 %}
+    <div style="display:flex; flex-wrap:wrap; gap:12px; padding:12px 20px 0; align-items:center;">
+      <div style="font-size:0.78rem; font-weight:700; color:var(--brand-dark);">📊 CLV Performance</div>
+      <div style="font-size:0.82rem; color:var(--text-secondary);">
+        {{ clv_summary.beat_count }} of {{ clv_summary.total }} picks beat the closing line
+        <strong style="margin-left:4px; color:{% if clv_summary.beat_rate >= 55 %}var(--brand-success){% else %}#9A6B00{% endif %};">
+          ({{ clv_summary.beat_rate }}%)
+        </strong>
+      </div>
+      {% if clv_summary.avg_clv is not none %}
+      <div style="font-size:0.82rem; color:var(--text-secondary);">
+        Avg CLV:
+        <strong style="color:{% if clv_summary.avg_clv > 0 %}var(--brand-success){% else %}#C53030{% endif %};">
+          {% if clv_summary.avg_clv > 0 %}+{% endif %}{{ "%.2f"|format(clv_summary.avg_clv) }}%
+        </strong>
+      </div>
+      {% endif %}
+      <div style="font-size:0.72rem; color:var(--text-muted);">Requires ≥2 hourly snapshots to compute</div>
+    </div>
+    {% endif %}
+
+    {% if daily_picks_all %}
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Game</th>
+          <th>Team / Bet</th>
+          <th>Odds</th>
+          <th>EV at Send</th>
+          <th>CLV%</th>
+          <th>Result</th>
+          <th>Update</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for pick in daily_picks_all %}
+        {% set row_class = {
+            "won":     "pick-row-won",
+            "lost":    "pick-row-lost",
+            "push":    "pick-row-push",
+        }.get(pick.result or "", "") %}
+        {% set pick_clv = picks_clv.get(pick.id) %}
+        <tr class="{{ row_class }}">
+          <td style="white-space:nowrap; font-size:0.82rem;">
+            {{ pick.pick_date.strftime('%b %-d, %Y') if pick.pick_date else '—' }}
+          </td>
+          <td style="font-size:0.82rem; max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+            {{ pick.game or '—' }}
+          </td>
+          <td style="font-size:0.82rem; font-weight:600;">
+            {{ pick.team or '—' }}{% if pick.market == "spreads" and pick.point is not none %} {{ ("+" ~ pick.point) if pick.point > 0 else pick.point }}{% elif pick.market == "totals" and pick.point is not none %} {{ pick.point }}{% endif %}
+          </td>
+          <td style="font-weight:700; font-size:0.85rem;">
+            {% if pick.odds %}{{ ("+" ~ pick.odds) if pick.odds > 0 else pick.odds }}{% else %}—{% endif %}
+          </td>
+          <td style="font-size:0.82rem; color:var(--brand-primary);">
+            {% if pick.ev_percent %}{{ "%.1f"|format(pick.ev_percent) }}%{% else %}—{% endif %}
+          </td>
+          <td style="font-size:0.82rem; font-weight:700; text-align:center;">
+            {% if pick_clv is not none %}
+              <span style="color:{% if pick_clv > 0 %}var(--brand-success){% else %}#C53030{% endif %};">
+                {% if pick_clv > 0 %}+{% endif %}{{ "%.2f"|format(pick_clv) }}%
+              </span>
+            {% else %}
+              <span style="color:var(--text-muted);">—</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if pick.result == "won" %}
+              <span class="tag tag-active">Won</span>
+            {% elif pick.result == "lost" %}
+              <span class="tag" style="background:#FEF2F2;color:#C53030;">Lost</span>
+            {% elif pick.result == "push" %}
+              <span class="tag tag-inactive">Push</span>
+            {% else %}
+              <span class="tag tag-inactive">Pending</span>
+            {% endif %}
+          </td>
+          <td>
+            <form method="post" action="/admin/pick-result" style="margin:0; display:flex; align-items:center; gap:4px;">
+              <input type="hidden" name="pick_id" value="{{ pick.id }}" />
+              <select name="result" class="result-select">
+                <option value="pending" {% if not pick.result or pick.result == 'pending' %}selected{% endif %}>Pending</option>
+                <option value="won"     {% if pick.result == 'won'  %}selected{% endif %}>Won</option>
+                <option value="lost"    {% if pick.result == 'lost' %}selected{% endif %}>Lost</option>
+                <option value="push"    {% if pick.result == 'push' %}selected{% endif %}>Push</option>
+              </select>
+              <button type="submit" class="result-update-btn">Save</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="empty">No daily picks recorded yet — they'll appear here after the 8 AM newsletter sends.</p>
+    {% endif %}
+
+    {# ── Manual add / backfill form ── #}
+    <div style="padding:16px 24px; border-top:1px solid var(--brand-border); background:var(--brand-surface);">
+      <p style="font-size:0.78rem; font-weight:700; color:var(--brand-dark); margin:0 0 12px;">
+        ＋ Add / Backfill Pick
+      </p>
+      <form method="post" action="/admin/add-pick"
+            style="display:flex; flex-wrap:wrap; gap:8px; align-items:flex-end;">
+        <div style="display:flex; flex-direction:column; gap:3px;">
+          <label style="font-size:0.68rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.4px;">Date</label>
+          <input type="date" name="pick_date" required
+                 style="font-size:0.82rem; padding:5px 8px; border:1.5px solid var(--brand-border);
+                        border-radius:6px; font-family:inherit; width:140px;"/>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:3px;">
+          <label style="font-size:0.68rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.4px;">Game</label>
+          <input type="text" name="game" placeholder="Twins @ Orioles"
+                 style="font-size:0.82rem; padding:5px 8px; border:1.5px solid var(--brand-border);
+                        border-radius:6px; font-family:inherit; width:200px;"/>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:3px;">
+          <label style="font-size:0.68rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.4px;">Team / Outcome</label>
+          <input type="text" name="team" placeholder="Over" required
+                 style="font-size:0.82rem; padding:5px 8px; border:1.5px solid var(--brand-border);
+                        border-radius:6px; font-family:inherit; width:100px;"/>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:3px;">
+          <label style="font-size:0.68rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.4px;">Market</label>
+          <select name="market"
+                  style="font-size:0.82rem; padding:5px 8px; border:1.5px solid var(--brand-border);
+                         border-radius:6px; font-family:inherit; background:#fff;">
+            <option value="h2h">Moneyline</option>
+            <option value="totals">Total</option>
+            <option value="spreads">Spread</option>
+          </select>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:3px;">
+          <label style="font-size:0.68rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.4px;">Line (opt)</label>
+          <input type="text" name="point" placeholder="9.5"
+                 style="font-size:0.82rem; padding:5px 8px; border:1.5px solid var(--brand-border);
+                        border-radius:6px; font-family:inherit; width:70px;"/>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:3px;">
+          <label style="font-size:0.68rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.4px;">Book</label>
+          <input type="text" name="book" placeholder="polymarket"
+                 style="font-size:0.82rem; padding:5px 8px; border:1.5px solid var(--brand-border);
+                        border-radius:6px; font-family:inherit; width:110px;"/>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:3px;">
+          <label style="font-size:0.68rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.4px;">Odds</label>
+          <input type="number" name="odds" placeholder="+133" required
+                 style="font-size:0.82rem; padding:5px 8px; border:1.5px solid var(--brand-border);
+                        border-radius:6px; font-family:inherit; width:80px;"/>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:3px;">
+          <label style="font-size:0.68rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.4px;">EV %</label>
+          <input type="number" step="0.01" name="ev_percent" placeholder="23.77"
+                 style="font-size:0.82rem; padding:5px 8px; border:1.5px solid var(--brand-border);
+                        border-radius:6px; font-family:inherit; width:80px;"/>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:3px;">
+          <label style="font-size:0.68rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.4px;">Result</label>
+          <select name="result"
+                  style="font-size:0.82rem; padding:5px 8px; border:1.5px solid var(--brand-border);
+                         border-radius:6px; font-family:inherit; background:#fff;">
+            <option value="pending">Pending</option>
+            <option value="won">Won</option>
+            <option value="lost">Lost</option>
+            <option value="push">Push</option>
+          </select>
+        </div>
+        <button type="submit"
+                style="font-size:0.82rem; padding:6px 18px; background:var(--brand-primary);
+                       color:#fff; border:none; border-radius:6px; cursor:pointer;
+                       font-family:inherit; font-weight:600; align-self:flex-end;">
+          Save Pick
+        </button>
+      </form>
+      <p style="font-size:0.7rem; color:var(--text-muted); margin:8px 0 0;">
+        If a pick already exists for that date, it will be overwritten with the new values.
+      </p>
     </div>
   </div>
 
@@ -177,8 +553,53 @@ tr:hover td { background: var(--brand-surface); }
   <div class="section-card">
     <div class="section-card-header">
       <h2>Registered Users</h2>
-      <span class="badge badge-green">{{ user_paid }} paid / {{ user_total }} total</span>
+      <span class="badge badge-green">{{ user_paid }} paid · {{ user_free }} free · {{ user_total }} total</span>
     </div>
+
+    {# Tier tabs #}
+    <div class="tier-tabs">
+      <a href="/admin?tier=all&q={{ current_q }}&page=1"
+         class="tier-tab {% if current_tier == 'all' %}active{% endif %}">
+        All ({{ user_total }})
+      </a>
+      <a href="/admin?tier=paid&q={{ current_q }}&page=1"
+         class="tier-tab {% if current_tier == 'paid' %}active{% endif %}">
+        EV Pro ({{ user_paid }})
+      </a>
+      <a href="/admin?tier=free&q={{ current_q }}&page=1"
+         class="tier-tab {% if current_tier == 'free' %}active{% endif %}">
+        Free ({{ user_free }})
+      </a>
+    </div>
+
+    {# Search toolbar #}
+    <div class="users-toolbar">
+      <form method="get" action="/admin" style="display:contents;">
+        <input type="hidden" name="tier" value="{{ current_tier }}" />
+        <input type="hidden" name="page" value="1" />
+        <input
+          class="users-search-input"
+          type="text"
+          name="q"
+          value="{{ current_q }}"
+          placeholder="Search by email…"
+          autocomplete="off"
+        />
+        <button type="submit" class="users-search-btn">Search</button>
+        {% if current_q %}
+        <a href="/admin?tier={{ current_tier }}&page=1" class="users-search-clear">Clear</a>
+        {% endif %}
+      </form>
+      <span class="users-result-info">
+        {% if current_q %}
+          {{ filtered_total }} result{{ 's' if filtered_total != 1 else '' }} for "{{ current_q }}"
+        {% else %}
+          {{ filtered_total }} user{{ 's' if filtered_total != 1 else '' }}
+        {% endif %}
+      </span>
+    </div>
+
+    {# Users table #}
     {% if users %}
     <table>
       <thead>
@@ -212,6 +633,9 @@ tr:hover td { background: var(--brand-surface); }
               {% if not u.is_subscribed %}
               <form method="post" action="/admin/grant-access" style="margin:0;">
                 <input type="hidden" name="user_id" value="{{ u.id }}" />
+                <input type="hidden" name="redirect_tier" value="{{ current_tier }}" />
+                <input type="hidden" name="redirect_q" value="{{ current_q }}" />
+                <input type="hidden" name="redirect_page" value="{{ current_page }}" />
                 <button type="submit" style="font-size:0.75rem;padding:3px 10px;
                   background:var(--brand-primary);color:#fff;border:none;
                   border-radius:6px;cursor:pointer;font-family:inherit;">
@@ -221,6 +645,9 @@ tr:hover td { background: var(--brand-surface); }
               {% else %}
               <form method="post" action="/admin/revoke-access" style="margin:0;">
                 <input type="hidden" name="user_id" value="{{ u.id }}" />
+                <input type="hidden" name="redirect_tier" value="{{ current_tier }}" />
+                <input type="hidden" name="redirect_q" value="{{ current_q }}" />
+                <input type="hidden" name="redirect_page" value="{{ current_page }}" />
                 <button type="submit" style="font-size:0.75rem;padding:3px 10px;
                   background:#FEF2F2;color:#C53030;border:1px solid #FCA5A5;
                   border-radius:6px;cursor:pointer;font-family:inherit;">
@@ -234,8 +661,51 @@ tr:hover td { background: var(--brand-surface); }
         {% endfor %}
       </tbody>
     </table>
+
+    {# Pagination — only when there's more than one page #}
+    {% if total_pages > 1 %}
+    {% set start_pg = [1, current_page - 2] | max %}
+    {% set end_pg   = [total_pages, current_page + 2] | min %}
+    <div class="pagination-bar">
+      <span class="pagination-info">
+        Page {{ current_page }} of {{ total_pages }}
+        &nbsp;·&nbsp;
+        Showing {{ ((current_page - 1) * page_size) + 1 }}–{{ [current_page * page_size, filtered_total] | min }}
+        of {{ filtered_total }}
+      </span>
+      <div class="pagination-controls">
+        <a href="/admin?tier={{ current_tier }}&q={{ current_q }}&page={{ current_page - 1 }}"
+           class="page-btn {% if current_page <= 1 %}disabled{% endif %}">← Prev</a>
+
+        {% if start_pg > 1 %}
+          <a href="/admin?tier={{ current_tier }}&q={{ current_q }}&page=1" class="page-btn">1</a>
+          {% if start_pg > 2 %}<span style="font-size:0.8rem;color:var(--text-muted);padding:0 2px;">…</span>{% endif %}
+        {% endif %}
+
+        {% for p in range(start_pg, end_pg + 1) %}
+          <a href="/admin?tier={{ current_tier }}&q={{ current_q }}&page={{ p }}"
+             class="page-btn {% if p == current_page %}active-page{% endif %}">{{ p }}</a>
+        {% endfor %}
+
+        {% if end_pg < total_pages %}
+          {% if end_pg < total_pages - 1 %}<span style="font-size:0.8rem;color:var(--text-muted);padding:0 2px;">…</span>{% endif %}
+          <a href="/admin?tier={{ current_tier }}&q={{ current_q }}&page={{ total_pages }}" class="page-btn">{{ total_pages }}</a>
+        {% endif %}
+
+        <a href="/admin?tier={{ current_tier }}&q={{ current_q }}&page={{ current_page + 1 }}"
+           class="page-btn {% if current_page >= total_pages %}disabled{% endif %}">Next →</a>
+      </div>
+    </div>
+    {% endif %}
+
     {% else %}
-    <p class="empty">No registered users yet.</p>
+    <p class="empty">
+      {% if current_q %}
+        No users match "{{ current_q }}"{% if current_tier != 'all' %} in the {{ current_tier }} tier{% endif %}.
+      {% else %}
+        No registered users yet.
+      {% endif %}
+    </p>
     {% endif %}
   </div>
 

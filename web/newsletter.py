@@ -38,7 +38,7 @@ if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
 from config import LOCAL_TZ                                   # noqa: E402
-from db.database import EVBetCache, NewsletterSubscriber, SessionLocal  # noqa: E402
+from db.database import DailyPick, EVBetCache, NewsletterSubscriber, SessionLocal  # noqa: E402
 from web.beehiiv import add_subscriber as bh_add, remove_subscriber as bh_remove, create_post as bh_post  # noqa: E402
 
 load_dotenv()
@@ -344,6 +344,19 @@ def _generate_synopsis(bet: EVBetCache) -> str:
         league    = getattr(bet, "league", "")
         book      = getattr(bet, "book", "")
 
+        source_type = getattr(bet, "source_type", None) or "sportsbook"
+        is_pm = source_type == "prediction_market"
+        platform_label = "prediction market" if is_pm else "sportsbook"
+        mispricing_reason = (
+            "why the prediction market may be offering better-than-fair odds on this outcome"
+            if is_pm else
+            "why the book may be mispricing this line"
+        )
+        pm_note = (
+            f"  Platform type: prediction market ({book}) — available in all 50 US states\n"
+            if is_pm else ""
+        )
+
         prompt = (
             f"You are a sports betting analyst writing for an email newsletter. "
             f"Write exactly 4-5 sentences (plain English, no markdown, no bullet points) "
@@ -352,12 +365,13 @@ def _generate_synopsis(bet: EVBetCache) -> str:
             f"  Team / outcome: {team}\n"
             f"  League: {league}\n"
             f"  Market: {market}\n"
-            f"  Book: {book}\n"
+            f"  Platform ({platform_label}): {book}\n"
+            f"{pm_note}"
             f"  American odds: {odds_str}\n"
             f"  True probability (model): {true_prob:.1%}\n"
             f"  Expected value edge: +{ev_pct:.1f}%\n\n"
             f"Cover: (1) brief context about this game or matchup, "
-            f"(2) why the book may be mispricing this line, "
+            f"(2) {mispricing_reason}, "
             f"(3) why this edge is worth acting on today. "
             f"Keep it concise, confident, and free of jargon."
         )
@@ -431,6 +445,8 @@ def _build_daily_email(
     else:
         point_str = ""
 
+    source_type = getattr(bet, "source_type", None) or "sportsbook"
+
     ctx = {
         "date_str":        date_str,
         "league":          league_display,
@@ -439,6 +455,7 @@ def _build_daily_email(
         "point":           point_str,
         "market":          market_display,
         "book":            getattr(bet, "book", "—"),
+        "source_type":     source_type,
         "odds":            odds_str,
         "synopsis":        synopsis,
         "base_url":        _base_url,
@@ -492,6 +509,39 @@ def send_daily_newsletter() -> dict:
 
     # 2. AI synopsis
     synopsis = _generate_synopsis(bet)
+
+    # 2b. Persist today's pick snapshot (idempotent — skips if today's row already exists)
+    today_date_ct = datetime.now(LOCAL_TZ).date()
+    _pick_db = SessionLocal()
+    try:
+        exists = _pick_db.query(DailyPick).filter(DailyPick.pick_date == today_date_ct).first()
+        if not exists:
+            _pick_db.add(DailyPick(
+                pick_date     = today_date_ct,
+                league        = getattr(bet, "league",        None),
+                market        = getattr(bet, "market",        None),
+                team          = getattr(bet, "team",          None),
+                game          = getattr(bet, "game",          None),
+                point         = getattr(bet, "point",         None),
+                book          = getattr(bet, "book",          None),
+                source_type   = getattr(bet, "source_type",   "sportsbook"),
+                ev_percent    = getattr(bet, "ev_percent",    None),
+                true_prob     = getattr(bet, "true_prob",     None),
+                odds          = getattr(bet, "odds",          None),
+                commence_time = getattr(bet, "commence_time", None),
+                synopsis      = synopsis,
+                sent_at       = datetime.now(timezone.utc),
+                game_id       = getattr(bet, "game_id",       None),
+            ))
+            _pick_db.commit()
+            log.info("DailyPick saved for %s", today_date_ct)
+        else:
+            log.info("DailyPick for %s already exists — skipping duplicate write.", today_date_ct)
+    except Exception as exc:
+        _pick_db.rollback()
+        log.error("DailyPick save failed: %s", exc)
+    finally:
+        _pick_db.close()
 
     # 3. Active subscribers
     db = SessionLocal()

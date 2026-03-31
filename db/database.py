@@ -25,10 +25,12 @@ from dotenv import load_dotenv
 from sqlalchemy import (
     Boolean,
     Column,
+    Date,
     DateTime,
     Float,
     Integer,
     String,
+    Text,
     create_engine,
 )
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
@@ -106,6 +108,7 @@ class EVBetCache(Base):
     __tablename__ = "ev_bet_cache"
 
     id         = Column(Integer, primary_key=True, index=True)
+    game_id       = Column(String, nullable=True, index=True)   # Odds API game ID (for OddsHistory lookups)
     league     = Column(String, index=True, nullable=False)   # e.g. "icehockey_nhl"
     market     = Column(String, nullable=False)               # e.g. "h2h", "spreads"
     team       = Column(String, nullable=False)               # outcome_name
@@ -113,9 +116,14 @@ class EVBetCache(Base):
     point         = Column(Float, nullable=True)              # spread/total line value
     commence_time = Column(DateTime(timezone=True), nullable=True)  # game start time (UTC)
     book          = Column(String, nullable=False)            # bookmaker
-    ev_percent = Column(Float, nullable=False)                # EV% (effective_ev_pct if available)
-    true_prob  = Column(Float, nullable=False)                # no-vig true probability
-    odds       = Column(Integer, nullable=False)              # American odds
+    source_type   = Column(String, nullable=True, default="sportsbook")  # "sportsbook" or "prediction_market"
+    ev_percent    = Column(Float, nullable=False)              # EV% (effective_ev_pct if available)
+    true_prob     = Column(Float, nullable=False)             # no-vig true probability (sharp market consensus)
+    adjusted_prob = Column(Float, nullable=True)              # prob after sport-specific context adjustments
+    adj_flags     = Column(String, nullable=True)             # pipe-separated adjustment labels shown as pills
+    implied_prob  = Column(Float, nullable=True)              # book's raw implied probability (vig-on)
+    opening_odds  = Column(Integer, nullable=True)            # first recorded odds for this bet from OddsHistory
+    odds          = Column(Integer, nullable=False)           # American odds
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True, nullable=False)
 
     def __repr__(self) -> str:
@@ -123,6 +131,71 @@ class EVBetCache(Base):
         return (
             f"<EVBetCache id={self.id} league={self.league!r} "
             f"team={self.team!r} odds={sign}{self.odds} ev={self.ev_percent:.1f}%>"
+        )
+
+
+class DailyPick(Base):
+    """
+    Permanent snapshot of the morning newsletter pick for each CT calendar day.
+    Written once at 8 AM when the newsletter sends. Never deleted — builds a
+    historical track record and powers the pinned dashboard card.
+    """
+
+    __tablename__ = "daily_picks"
+
+    id            = Column(Integer, primary_key=True, index=True)
+    pick_date     = Column(Date, unique=True, index=True, nullable=False)  # CT date e.g. 2026-03-29
+    league        = Column(String, nullable=True)
+    market        = Column(String, nullable=True)
+    team          = Column(String, nullable=True)
+    game          = Column(String, nullable=True)
+    point         = Column(Float, nullable=True)
+    book          = Column(String, nullable=True)
+    source_type   = Column(String, nullable=True, default="sportsbook")
+    ev_percent    = Column(Float, nullable=True)
+    true_prob     = Column(Float, nullable=True)
+    odds          = Column(Integer, nullable=True)
+    commence_time = Column(DateTime(timezone=True), nullable=True)
+    synopsis      = Column(Text, nullable=True)
+    sent_at       = Column(DateTime(timezone=True), nullable=True)
+    result        = Column(String, nullable=True)  # "won"|"lost"|"push"|"pending" — future use
+    game_id       = Column(String, nullable=True)  # Odds API game ID — used for CLV closing line lookup
+
+    def __repr__(self) -> str:
+        return (
+            f"<DailyPick date={self.pick_date} team={self.team!r} "
+            f"ev={self.ev_percent}% book={self.book!r}>"
+        )
+
+
+class OddsHistory(Base):
+    """
+    Append-only ledger of every +EV bet seen at each hourly snapshot.
+    Used to compute opening line (first seen) and closing line (last seen
+    before commence_time) for CLV calculations.
+    """
+
+    __tablename__ = "odds_history"
+
+    id            = Column(Integer, primary_key=True, index=True)
+    game_id       = Column(String,  nullable=False, index=True)
+    league        = Column(String,  nullable=False)
+    market        = Column(String,  nullable=False)
+    team          = Column(String,  nullable=False)
+    game          = Column(String,  nullable=True)
+    point         = Column(Float,   nullable=True)
+    book          = Column(String,  nullable=False)
+    odds          = Column(Integer, nullable=False)
+    implied_prob  = Column(Float,   nullable=True)   # vig-inclusive book probability
+    true_prob     = Column(Float,   nullable=True)   # sharp no-vig consensus probability
+    ev_percent    = Column(Float,   nullable=True)
+    commence_time = Column(DateTime(timezone=True), nullable=True)
+    captured_at   = Column(DateTime(timezone=True), nullable=False, index=True)
+
+    def __repr__(self) -> str:
+        return (
+            f"<OddsHistory game_id={self.game_id!r} book={self.book!r} "
+            f"team={self.team!r} odds={self.odds} at={self.captured_at}>"
         )
 
 

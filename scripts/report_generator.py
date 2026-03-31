@@ -35,6 +35,7 @@ from models.sport_adjustments import (
     ADJUSTMENT_CONFIG,
     SOCCER_SPORT_KEYS,
 )
+from scripts.context_fetcher import build_context, match_team
 from config import LEAGUES, LOG_LEVEL, LOCAL_TZ
 
 # ---------------------------------------------------------------------------
@@ -56,28 +57,67 @@ _SPORT_KEY_TO_NAME: dict = {v: k for k, v in LEAGUES.items()}
 # Sport adjustments integration
 # ---------------------------------------------------------------------------
 
-def _apply_sport_adjustments(ev_df: pd.DataFrame) -> pd.DataFrame:
+def _apply_sport_adjustments(
+    ev_df: pd.DataFrame,
+    sport_context: dict = None,
+) -> pd.DataFrame:
     """
-    Iterate ev_df rows, build a GameContext from available metadata,
+    Iterate ev_df rows, build a GameContext from available metadata
+    (including real-time context from context_fetcher when provided),
     call apply_adjustments(), and patch adjusted_prob / confidence_multiplier
     / adj_flags / adj_warnings / effective_ev_pct onto each row.
 
-    Note: B2B, goalie confirmation, and euro-midweek data are not available
-    from the Odds API — those fields default to safe neutral values in
-    GameContext. The adjustments that fire here are those derivable from
-    the odds data alone (e.g. soccer 3-way prob handling, DNB derivation).
-    Goalie / B2B flags will show as warnings prompting manual checks.
+    Parameters
+    ----------
+    ev_df : pd.DataFrame
+        +EV bets from find_all_positive_ev().
+    sport_context : dict, optional
+        {sport_key: {normalised_team_name: context_dict}}
+        Pre-fetched from build_context() for each sport in the DataFrame.
+        When absent, GameContext fields default to neutral values.
     """
+    sport_context = sport_context or {}
+
     records = []
     for _, row in ev_df.iterrows():
         outcome_names = [row["outcome_name"]]
         probs = [row["true_prob"]]
 
+        sport_key = row.get("sport_key", "")
+        game_str = row.get("game", "")
+
+        # Parse home/away from "Away @ Home" format
+        if " @ " in game_str:
+            away_team = game_str.split(" @ ")[0].strip()
+            home_team = game_str.split(" @ ")[1].strip()
+        else:
+            home_team = ""
+            away_team = ""
+
+        # Look up real-time context for each team
+        ctx_map = sport_context.get(sport_key, {})
+        home_key = match_team(home_team, list(ctx_map.keys())) if ctx_map and home_team else None
+        away_key = match_team(away_team, list(ctx_map.keys())) if ctx_map and away_team else None
+        home_ctx = ctx_map.get(home_key, {}) if home_key else {}
+        away_ctx = ctx_map.get(away_key, {}) if away_key else {}
+
         ctx = GameContext(
             game_id=row.get("game_id", ""),
-            sport_key=row.get("sport_key", ""),
-            home_team=row.get("game", "").split(" @ ")[-1] if " @ " in row.get("game", "") else "",
-            away_team=row.get("game", "").split(" @ ")[0] if " @ " in row.get("game", "") else "",
+            sport_key=sport_key,
+            home_team=home_team,
+            away_team=away_team,
+            # NHL — goalie confirmation (None = unknown → confidence warning)
+            home_goalie_confirmed=home_ctx.get("goalie_confirmed", None),
+            away_goalie_confirmed=away_ctx.get("goalie_confirmed", None),
+            # NBA — back-to-back rest penalty
+            home_b2b=home_ctx.get("b2b", False),
+            away_b2b=away_ctx.get("b2b", False),
+            # Home/away win% splits (NHL + NBA)
+            home_win_pct_home=home_ctx.get("home_win_pct", None),
+            away_win_pct_away=away_ctx.get("away_win_pct", None),
+            # Injuries (shared)
+            home_injuries=home_ctx.get("injuries", []),
+            away_injuries=away_ctx.get("injuries", []),
         )
 
         try:
@@ -95,7 +135,7 @@ def _apply_sport_adjustments(ev_df: pd.DataFrame) -> pd.DataFrame:
             **row.to_dict(),
             "adjusted_prob": round(adj_prob, 4),
             "confidence_mult": round(conf_mult, 3),
-            "adj_flags": "; ".join(result.get("flags", [])),
+            "adj_flags": "|".join(f for f in result.get("flags", []) if f),
             "adj_warnings": "; ".join(result.get("warnings", [])),
             "effective_ev_pct": round(effective_ev_pct, 4),
         })
@@ -144,7 +184,12 @@ def run_pipeline(
 
     if apply_adjustments_flag:
         log.info("Applying sport-specific adjustments...")
-        ev_df = _apply_sport_adjustments(ev_df)
+        # Fetch real-time context data once per sport (fault-tolerant)
+        sport_context: dict = {}
+        for sport in ev_df["sport_key"].unique():
+            if sport in ("icehockey_nhl", "basketball_nba"):
+                sport_context[sport] = build_context(sport)
+        ev_df = _apply_sport_adjustments(ev_df, sport_context=sport_context)
     else:
         ev_df["adjusted_prob"] = ev_df["true_prob"]
         ev_df["confidence_mult"] = 1.0

@@ -34,10 +34,14 @@ ADJUSTMENT_CONFIG: dict = {
     # --- NHL ---
     "nhl_goalie_confirmation":    True,   # flag games w/ unconfirmed starters
     "nhl_puck_line_ev_separate":  True,   # treat puck line (-1.5) as distinct from ATS spreads
+    "nhl_home_away_split":        True,   # blend home/away win% into true prob
 
     # --- NBA ---
     "nba_rest_advantage":         True,   # penalise B2B team true_prob
     "nba_home_away_split":        True,   # weight home/away historical splits into prob
+
+    # --- Shared ---
+    "injury_report":              True,   # pull toward 0.5 for notable injuries
 
     # --- Soccer ---
     "soccer_three_way_1x2":       True,   # handle home/draw/away separately
@@ -74,6 +78,10 @@ class GameContext:
     # Soccer
     home_euro_midweek: bool = False   # home played Champions/Europa League in last 4 days
     away_euro_midweek: bool = False
+
+    # Injuries (shared, populated by context_fetcher)
+    home_injuries: list = field(default_factory=list)  # notable injured players on home team
+    away_injuries: list = field(default_factory=list)  # notable injured players on away team
 
     # Derived flags (populated by adjustments)
     flags: dict = field(default_factory=dict)
@@ -206,6 +214,54 @@ def nhl_puck_line_ev(
     }
 
 
+_NHL_HOME_SPLIT_WEIGHT = 0.20   # fraction pulled toward historical home/away win%
+
+
+def nhl_home_away_split_adjustment(
+    ctx: GameContext,
+    home_adj: AdjustedProb,
+    away_adj: AdjustedProb,
+    config: dict = ADJUSTMENT_CONFIG,
+) -> tuple[AdjustedProb, AdjustedProb]:
+    """
+    Blend each team's historical home/away win% into the model probability
+    at _NHL_HOME_SPLIT_WEIGHT, then renormalise to 1.0.
+
+    blended_home = (1 - w) * model_home + w * home_win_pct_at_home
+    blended_away = 1 - blended_home
+
+    Parameters
+    ----------
+    ctx : GameContext
+        home_win_pct_home / away_win_pct_away must be populated (from context_fetcher).
+    """
+    if not config.get("nhl_home_away_split"):
+        return home_adj, away_adj
+
+    w = _NHL_HOME_SPLIT_WEIGHT
+    base_home = home_adj.adjusted_prob
+
+    home_pct = ctx.home_win_pct_home
+    away_pct = ctx.away_win_pct_away
+
+    # Only apply when at least one split is non-default (0.5)
+    if home_pct is None or away_pct is None:
+        return home_adj, away_adj
+    if abs(home_pct - 0.5) < 0.001 and abs(away_pct - 0.5) < 0.001:
+        return home_adj, away_adj
+
+    # Blend home model prob toward home team's home win%, then renorm
+    blended = (1 - w) * base_home + w * home_pct
+    home_adj.adjusted_prob = blended
+    away_adj.adjusted_prob = 1 - blended
+    home_adj.flags.append(
+        f"NHL H/A split (home {home_pct:.0%} home / {away_pct:.0%} road)"
+    )
+    away_adj.flags.append("NHL_HOME_AWAY_RENORMED")
+
+    return home_adj, away_adj
+
+
 def apply_nhl_adjustments(
     ctx: GameContext,
     home_prob: float,
@@ -218,6 +274,56 @@ def apply_nhl_adjustments(
     if home_adj.warnings or away_adj.warnings:
         home_adj.flags.append("NHL_GOALIE_RISK")
         away_adj.flags.append("NHL_GOALIE_RISK")
+
+    home_adj, away_adj = nhl_home_away_split_adjustment(ctx, home_adj, away_adj, config)
+    home_adj, away_adj = apply_injury_adjustment(ctx, home_adj, away_adj, config)
+
+    return home_adj, away_adj
+
+
+# ---------------------------------------------------------------------------
+# Shared injury adjustment (NHL + NBA)
+# ---------------------------------------------------------------------------
+
+_INJURY_PENALTY_PER_PLAYER = 0.90   # 10% confidence pull toward 0.5 per notable injury
+_INJURY_PENALTY_FLOOR = 0.70        # max combined pull — never exceeds 30%
+
+
+def apply_injury_adjustment(
+    ctx: GameContext,
+    home_adj: AdjustedProb,
+    away_adj: AdjustedProb,
+    config: dict = ADJUSTMENT_CONFIG,
+) -> tuple[AdjustedProb, AdjustedProb]:
+    """
+    Reduce confidence (pull probabilities toward 0.5) for each notable
+    injured player on either roster.
+
+    Each injured player applies a 10% pull multiplier; the combined
+    pull is floored at 70% (i.e. never pulls more than 30% toward 0.5).
+
+    The adjustment is symmetric — injuries on either team affect both
+    sides because the true market impact is uncertain.
+    """
+    if not config.get("injury_report"):
+        return home_adj, away_adj
+
+    all_injuries = list(ctx.home_injuries or []) + list(ctx.away_injuries or [])
+    if not all_injuries:
+        return home_adj, away_adj
+
+    mult = max(_INJURY_PENALTY_FLOOR, _INJURY_PENALTY_PER_PLAYER ** len(all_injuries))
+
+    for adj in (home_adj, away_adj):
+        original = adj.adjusted_prob
+        adj.adjusted_prob = original + (0.5 - original) * (1 - mult)
+
+    # Build flag string (cap at 3 names to stay readable)
+    names = all_injuries[:3]
+    suffix = "…" if len(all_injuries) > 3 else ""
+    flag = f"Injuries: {', '.join(names)}{suffix}"
+    home_adj.flags.append(flag)
+    away_adj.flags.append(flag)
 
     return home_adj, away_adj
 
@@ -329,6 +435,7 @@ def apply_nba_adjustments(
     """Apply all enabled NBA adjustments and return adjusted probs."""
     home_adj, away_adj = nba_rest_adjustment(ctx, home_prob, away_prob, config)
     home_adj, away_adj = nba_home_away_split_adjustment(ctx, home_adj, away_adj, config)
+    home_adj, away_adj = apply_injury_adjustment(ctx, home_adj, away_adj, config)
     return home_adj, away_adj
 
 
