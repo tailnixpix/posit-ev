@@ -267,57 +267,38 @@ button.nav-btn-soft:hover,
 
 /* ── Mobile nav ──────────────────────────────────────────────────────── */
 @media (max-width: 640px) {
-  /* Wrap so logo sits on row 1, nav-right drops to full-width row 2 */
+  /* Single row: logo left, buttons right — no wrapping */
   nav {
-    flex-wrap: wrap;
-    padding: 8px 14px;
-    gap: 4px 0;
+    flex-wrap: nowrap;
+    padding: 8px 12px;
+    gap: 8px;
   }
   .nav-logo img {
-    height: 34px;
+    height: 28px;
   }
-  /* Full-width second row: TZ on left, buttons on right */
-  .nav-right {
-    width: 100%;
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-    margin-left: 0;
-    gap: 6px;
-  }
-  .tz-picker {
-    gap: 1px;
-    padding: 2px;
-    flex-shrink: 0;
-  }
-  .tz-btn {
-    font-size: 0.62rem;
-    padding: 3px 5px;
-  }
-  .nav-auth {
-    gap: 4px;
-  }
-  .nav-group {
-    gap: 2px;
-  }
-  .nav-btn {
-    font-size: 0.74rem;
-    padding: 6px 10px;
-  }
-  button.nav-btn-soft, .nav-btn-soft {
-    font-size: 0.74rem !important;
-    padding: 6px 10px !important;
-  }
-}
-
-@media (max-width: 430px) {
-  /* Hide TZ picker on small phones — frees room for all buttons in one row */
+  /* Hide TZ on all mobile — too cramped */
   .tz-picker { display: none; }
-  .nav-right { justify-content: flex-end; }
+  /* Nav-right becomes a simple inline row */
+  .nav-right {
+    flex-direction: row;
+    align-items: center;
+    gap: 3px;
+    margin-left: auto;
+  }
   .nav-auth { gap: 3px; }
   .nav-group { gap: 2px; }
-  .nav-btn { font-size: 0.72rem; padding: 5px 8px; }
-  button.nav-btn-soft, .nav-btn-soft { padding: 5px 8px !important; font-size: 0.72rem !important; }
+  /* Hide divider — saves space */
+  .nav-divider { display: none; }
+  /* All buttons compact but still styled */
+  .nav-btn {
+    font-size: 0.66rem !important;
+    padding: 4px 7px !important;
+    border-radius: 6px;
+  }
+  button.nav-btn-soft, .nav-btn-soft {
+    font-size: 0.66rem !important;
+    padding: 4px 7px !important;
+  }
 }
 
 /* ── Global mobile body/main fixes ──────────────────────────────────── */
