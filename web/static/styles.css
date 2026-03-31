@@ -267,50 +267,56 @@ button.nav-btn-soft:hover,
 
 /* ── Mobile nav ──────────────────────────────────────────────────────── */
 @media (max-width: 640px) {
+  /* Wrap so logo sits on row 1, nav-right drops to full-width row 2 */
   nav {
-    padding: var(--space-2) var(--space-3);
-    gap: 8px;
+    flex-wrap: wrap;
+    padding: 8px 14px;
+    gap: 4px 0;
   }
   .nav-logo img {
-    height: 36px;
+    height: 34px;
   }
-  /* Stack tz-picker + nav-auth tightly */
+  /* Full-width second row: TZ on left, buttons on right */
   .nav-right {
-    gap: 4px;
+    width: 100%;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    margin-left: 0;
+    gap: 6px;
   }
-  /* Shrink tz buttons */
   .tz-picker {
     gap: 1px;
     padding: 2px;
+    flex-shrink: 0;
   }
   .tz-btn {
     font-size: 0.62rem;
     padding: 3px 5px;
   }
-  /* Tighten nav-auth links */
   .nav-auth {
-    gap: 5px;
+    gap: 4px;
   }
   .nav-group {
-    gap: 3px;
-  }
-  .nav-link {
-    font-size: 0.8rem;
-    padding: 4px 2px;
+    gap: 2px;
   }
   .nav-btn {
-    font-size: 0.78rem;
+    font-size: 0.74rem;
     padding: 6px 10px;
+  }
+  button.nav-btn-soft, .nav-btn-soft {
+    font-size: 0.74rem !important;
+    padding: 6px 10px !important;
   }
 }
 
-@media (max-width: 400px) {
-  /* Hide tz picker on very small phones to give nav-auth room */
+@media (max-width: 430px) {
+  /* Hide TZ picker on small phones — frees room for all buttons in one row */
   .tz-picker { display: none; }
-  .nav-auth { gap: 5px; }
+  .nav-right { justify-content: flex-end; }
+  .nav-auth { gap: 3px; }
   .nav-group { gap: 2px; }
-  .nav-link { font-size: 0.82rem; }
-  /* Shrink soft buttons to bare minimum on tiny screens */
+  .nav-btn { font-size: 0.72rem; padding: 5px 8px; }
   button.nav-btn-soft, .nav-btn-soft { padding: 5px 8px !important; font-size: 0.72rem !important; }
 }
 
@@ -435,37 +441,49 @@ button.nav-btn-soft:hover,
 }
 
 @media (max-width: 640px) {
+  /* Horizontal slim banner instead of tall card */
   .record-banner {
-    padding: 12px 12px 10px;
+    flex-direction: row;
+    align-items: center;
+    padding: 9px 14px;
     border-radius: var(--radius-md);
     margin-bottom: var(--space-4);
+    gap: 10px;
   }
+  /* Compact "📊" label on the left */
   .record-banner-eyebrow {
-    font-size: 0.52rem;
-    margin-bottom: 10px;
-    letter-spacing: 2px;
+    font-size: 0.56rem;
+    letter-spacing: 1.5px;
+    margin-bottom: 0;
+    white-space: nowrap;
+    flex-shrink: 0;
   }
-  .record-banner-stats { gap: 0; flex-wrap: nowrap; }
-  .rb-stat { padding: 2px 12px 4px; }
+  /* Stats row fills remaining width */
+  .record-banner-stats {
+    flex: 1;
+    justify-content: space-around;
+    flex-wrap: nowrap;
+    gap: 0;
+  }
+  .rb-stat { padding: 0 8px; }
+  .rb-stat + .rb-stat::before { top: 10%; height: 80%; }
   .rb-val {
-    font-size: 1.3rem;
-    letter-spacing: -0.5px;
+    font-size: 1.05rem;
+    letter-spacing: -0.3px;
+    line-height: 1.1;
   }
-  .rb-roi .rb-val   { font-size: 1.3rem; }
-  .rb-profit .rb-val { font-size: 1.1rem; }
-  .rb-lbl { font-size: 0.48rem; margin-top: 4px; }
-  .record-banner-disclaimer { font-size: 0.5rem; margin-top: 8px; }
+  .rb-roi .rb-val, .rb-profit .rb-val { font-size: 1.05rem; }
+  .rb-lbl { font-size: 0.47rem; margin-top: 2px; letter-spacing: 0.8px; }
+  .record-banner-disclaimer { display: none; }
 }
 
-@media (max-width: 480px) {
-  .record-banner { padding: 10px 8px 8px; }
-  .record-banner-eyebrow { display: none; }   /* hide on very small screens */
-  .rb-stat { padding: 2px 8px 4px; }
-  .rb-val  { font-size: 1.1rem; }
-  .rb-roi .rb-val    { font-size: 1.1rem; }
-  .rb-profit .rb-val { font-size: 0.95rem; }
-  .rb-lbl  { font-size: 0.44rem; letter-spacing: 0.8px; }
-  .record-banner-disclaimer { display: none; }  /* hide disclaimer on very small screens */
+@media (max-width: 430px) {
+  .record-banner { padding: 8px 12px; gap: 6px; }
+  .record-banner-eyebrow { display: none; }
+  .rb-stat { padding: 0 6px; }
+  .rb-val { font-size: 0.95rem; }
+  .rb-roi .rb-val, .rb-profit .rb-val { font-size: 0.95rem; }
+  .rb-lbl { font-size: 0.44rem; }
 }
 
 /* ── Nav center record pill ──────────────────────────────────────────── */
