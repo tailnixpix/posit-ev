@@ -198,7 +198,9 @@
           <div class="nav-divider"></div>
           <div class="nav-group">
             <a href="/login" class="nav-btn nav-btn-ghost">Sign In</a>
+            {% if not is_admin_page %}
             <a href="/register" class="nav-btn nav-btn-primary">Sign Up</a>
+            {% endif %}
           </div>
         </div>
       {% endif %}

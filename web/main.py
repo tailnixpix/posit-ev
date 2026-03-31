@@ -938,6 +938,7 @@ async def admin_dashboard(
             "clv_summary":      clv_summary,
             "now":              datetime.now(timezone.utc).strftime("%b %-d, %Y at %-I:%M %p UTC"),
             "admin_key":        "",   # no longer used
+            "is_admin_page":    True,
         },
     )
 
