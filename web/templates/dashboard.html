@@ -801,6 +801,34 @@ main { max-width: 1200px; padding-top: var(--space-5); }
     <button type="button" class="filter-btn" data-filter="market" data-value="spreads">Spread</button>
     <button type="button" class="filter-btn" data-filter="market" data-value="totals">Total</button>
   </div>
+  {# Book filter — one button per bookmaker present in current bets #}
+  {% set book_label_map = {
+    "draftkings":       "DraftKings",
+    "fanduel":          "FanDuel",
+    "betmgm":           "BetMGM",
+    "pointsbet":        "PointsBet",
+    "caesars":          "Caesars",
+    "betfair_ex_uk":    "Betfair",
+    "kalshi":           "Kalshi",
+    "novig":            "NoVig",
+    "polymarket":       "Polymarket",
+    "prophetx":         "ProphetX"
+  } %}
+  {% set seen_books = [] %}
+  {% for bet in bets %}
+    {% if bet.book | lower not in seen_books %}
+      {% set _ = seen_books.append(bet.book | lower) %}
+    {% endif %}
+  {% endfor %}
+  <div class="filter-row">
+    <span class="filter-label">Book</span>
+    <button type="button" class="filter-btn active" data-filter="book" data-value="all">All</button>
+    {% for book_key in seen_books | sort %}
+      <button type="button" class="filter-btn" data-filter="book" data-value="{{ book_key }}">
+        {{ book_label_map.get(book_key, book_key | title) }}
+      </button>
+    {% endfor %}
+  </div>
   {# Source filter #}
   <div class="filter-row">
     <span class="filter-label">Source</span>
@@ -939,6 +967,10 @@ main { max-width: 1200px; padding-top: var(--space-5); }
         {% else %}
           {% set team_display = bet.team ~ " " ~ bet.point %}
         {% endif %}
+      {% elif bet.is_prop and bet.point is not none %}
+        {# Props: "Over 27.5" or "Under 0.5" — show the line #}
+        {% set point_fmt = (bet.point | int) if (bet.point == (bet.point | int)) else bet.point %}
+        {% set team_display = bet.team ~ " " ~ point_fmt %}
       {% else %}
         {% set team_display = bet.team %}
       {% endif %}
@@ -954,6 +986,7 @@ main { max-width: 1200px; padding-top: var(--space-5); }
            data-league="{{ bet.league }}"
            data-market="{{ market_key }}"
            data-source="{{ bet.source_type or 'sportsbook' }}"
+           data-book="{{ bet.book | lower }}"
            data-is-prop="{{ 'true' if bet.is_prop else 'false' }}"
            data-player-name="{{ bet.player_name or '' }}"
            data-ev="{{ '%.2f'|format(bet.ev_percent) }}"
@@ -1414,6 +1447,7 @@ updateKellyDisplays(); // run on page load with saved value
 let activeLeague = 'all';
 let activeMarket = 'all';
 let activeSource = 'all';     // 'all' | 'sportsbook' | 'prediction_market'
+let activeBook   = 'all';     // 'all' | bookmaker key
 let activeIsProp = 'all';     // 'all' | 'true'
 let activeDay    = 'today';   // 'today' | 'tomorrow'
 
@@ -1434,6 +1468,7 @@ function applyFilters() {
     const leagueMatch  = activeLeague === 'all' || card.dataset.league === activeLeague;
     const marketMatch  = activeMarket === 'all' || card.dataset.market === activeMarket;
     const sourceMatch  = activeSource === 'all' || (card.dataset.source || 'sportsbook') === activeSource;
+    const bookMatch    = activeBook   === 'all' || (card.dataset.book || '') === activeBook;
     const isPropMatch  = activeIsProp === 'all' || card.dataset.isProp === activeIsProp;
 
     // Day filter — compare commence_time date in the selected TZ
@@ -1447,7 +1482,7 @@ function applyFilters() {
       dayMatch = (activeDay === 'today');
     }
 
-    const show = leagueMatch && marketMatch && sourceMatch && isPropMatch && dayMatch;
+    const show = leagueMatch && marketMatch && sourceMatch && bookMatch && isPropMatch && dayMatch;
     card.style.display = show ? '' : 'none';
     if (show) visible++;
   });
@@ -1475,18 +1510,40 @@ function applyFilters() {
 // League / Market filter buttons
 document.querySelectorAll('.filter-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    const filterType = btn.dataset.filter;   // 'league' or 'market'
+    const filterType = btn.dataset.filter;
     const value      = btn.dataset.value;
 
-    // Deactivate siblings, activate clicked
+    // Props button: toggle behavior
+    if (filterType === 'is_prop') {
+      if (activeIsProp === 'true') {
+        // Turn off — go back to "All"
+        activeIsProp = 'all';
+        btn.classList.remove('active');
+        document.querySelector('.filter-btn[data-filter="league"][data-value="all"]').classList.add('active');
+      } else {
+        // Turn on — visually deactivate league buttons
+        activeIsProp = 'true';
+        document.querySelectorAll('.filter-btn[data-filter="league"]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      }
+      applyFilters();
+      return;
+    }
+
+    // Standard filter: deactivate siblings, activate clicked
     document.querySelectorAll(`.filter-btn[data-filter="${filterType}"]`)
       .forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
 
-    if (filterType === 'league')   activeLeague = value;
+    if (filterType === 'league') {
+      activeLeague = value;
+      // Switching league always clears Props filter
+      activeIsProp = 'all';
+      document.querySelectorAll('.filter-btn[data-filter="is_prop"]').forEach(b => b.classList.remove('active'));
+    }
     if (filterType === 'market')   activeMarket = value;
     if (filterType === 'source')   activeSource = value;
-    if (filterType === 'is_prop')  activeIsProp = value;
+    if (filterType === 'book')     activeBook   = value;
     applyFilters();
   });
 });
@@ -1508,6 +1565,7 @@ document.getElementById('dayTomorrow').addEventListener('click', () => {
 function clearFilters() {
   activeDay    = 'today';
   activeSource = 'all';
+  activeBook   = 'all';
   activeIsProp = 'all';
   document.getElementById('dayToday').classList.add('active');
   document.getElementById('dayTomorrow').classList.remove('active');
