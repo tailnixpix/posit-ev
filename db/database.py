@@ -124,6 +124,8 @@ class EVBetCache(Base):
     implied_prob  = Column(Float, nullable=True)              # book's raw implied probability (vig-on)
     opening_odds  = Column(Integer, nullable=True)            # first recorded odds for this bet from OddsHistory
     odds          = Column(Integer, nullable=False)           # American odds
+    player_name   = Column(String, nullable=True)             # player name for prop bets
+    is_prop       = Column(Boolean, nullable=True, default=False)  # True for player prop bets
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True, nullable=False)
 
     def __repr__(self) -> str:

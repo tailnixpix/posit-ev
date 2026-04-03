@@ -213,7 +213,21 @@ def refresh_ev_cache() -> int:
         # Lazy import so the web process doesn't pay the pandas/requests import
         # cost at startup — only on the first scheduled run.
         from scripts.report_generator import run_pipeline
+        from scripts.odds_fetcher import get_props_df
+        from models.ev_calculator import find_positive_ev_props
+        import pandas as _pd
         ev_df = run_pipeline()
+
+        # ── Player props (NBA, MLB, NHL) ──────────────────────────────────
+        try:
+            props_df = get_props_df()
+            if not props_df.empty:
+                props_ev_df = find_positive_ev_props(props_df)
+                if not props_ev_df.empty:
+                    ev_df = _pd.concat([ev_df, props_ev_df], ignore_index=True)
+                    log.info("Props: found %d +EV prop bets.", len(props_ev_df))
+        except Exception as _props_exc:
+            log.warning("Props fetch/calc failed (non-fatal): %s", _props_exc)
     except Exception as exc:
         log.error("EV cache refresh: pipeline failed: %s", exc, exc_info=True)
         _cache_status.update({"running": False, "last_error": str(exc),
@@ -362,6 +376,8 @@ def refresh_ev_cache() -> int:
                 implied_prob  = implied_prob_val,
                 opening_odds  = opening_odds_val,
                 odds          = odds_val,
+                player_name   = str(row.get("player_name", "")) or None,
+                is_prop       = bool(row.get("is_prop", False)),
                 created_at    = datetime.now(timezone.utc),
             ))
 
@@ -405,6 +421,8 @@ async def on_startup() -> None:
             _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS game_id VARCHAR"))
             _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS implied_prob FLOAT"))
             _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS opening_odds INTEGER"))
+            _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS player_name VARCHAR"))
+            _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS is_prop BOOLEAN DEFAULT FALSE"))
             _db.commit()
         except Exception:
             _db.rollback()

@@ -288,6 +288,94 @@ def find_all_positive_ev(
 
 
 # ---------------------------------------------------------------------------
+# Player props EV pipeline
+# ---------------------------------------------------------------------------
+
+def find_positive_ev_props(
+    props_df: pd.DataFrame,
+    ev_threshold: float = EV_THRESHOLD_PCT,
+    stake: float = DEFAULT_STAKE,
+) -> pd.DataFrame:
+    """
+    Scan player props DataFrame for +EV opportunities.
+
+    Groups by (game_id, prop_market, player, point) — each unique player line
+    is its own mini-market with Over and Under as the two outcomes.
+    Requires at least 2 sportsbooks to establish a sharp reference.
+    """
+    if props_df.empty:
+        return pd.DataFrame()
+
+    all_rows = []
+
+    for keys, group in props_df.groupby(
+        ["game_id", "prop_market", "player", "point"], dropna=False
+    ):
+        game_id, prop_market, player, point = keys
+        meta = group.iloc[0]
+        game_label = f"{meta['away_team']} @ {meta['home_team']}"
+        outcome_order = sorted(group["outcome_name"].unique())
+
+        if len(outcome_order) != 2:
+            continue  # props must have Over and Under
+
+        book_odds: dict = {}
+        for book, bk_df in group.groupby("bookmaker"):
+            bk_df_sorted = bk_df.set_index("outcome_name").reindex(outcome_order)
+            if bk_df_sorted["price"].isna().any():
+                continue
+            book_odds[book] = bk_df_sorted["price"].astype(int).tolist()
+
+        if len(book_odds) < 2:
+            continue  # single-book props are unreliable
+
+        sharp = sharpest_no_vig(book_odds, outcome_names=outcome_order)
+        true_probs = sharp["no_vig_probs"]
+        sharp_book = sharp["sharpest_book"]
+
+        for book, odds_list in book_odds.items():
+            rows = ev_for_market(odds_list, true_probs, outcome_order, book, stake)
+            for row in rows:
+                point_val = None
+                if point is not None:
+                    try:
+                        pf = float(point)
+                        if str(pf) not in ("nan", "inf"):
+                            point_val = pf
+                    except (ValueError, TypeError):
+                        pass
+
+                row.update({
+                    "game_id":          game_id,
+                    "game":             game_label,
+                    "market":           prop_market,
+                    "player_name":      player,
+                    "sport_key":        meta["sport_key"],
+                    "commence_time":    meta["commence_time"],
+                    "sharp_book":       sharp_book,
+                    "sharp_vig_pct":    round(sharp["sharpest_vig"] * 100, 3),
+                    "point":            point_val,
+                    "source_type":      "sportsbook",
+                    "is_prop":          True,
+                    "adjusted_prob":    None,
+                    "confidence_mult":  1.0,
+                    "adj_flags":        "",
+                    "adj_warnings":     "",
+                    "effective_ev_pct": None,
+                })
+                all_rows.append(row)
+
+    if not all_rows:
+        return pd.DataFrame()
+
+    df = pd.DataFrame(all_rows)
+    df["effective_ev_pct"] = df["ev_pct"]
+    df["adjusted_prob"] = df["true_prob"]
+    positive = df[df["ev_pct"] > ev_threshold].copy()
+    return positive.sort_values("ev_pct", ascending=False).reset_index(drop=True)
+
+
+# ---------------------------------------------------------------------------
 # Display helpers
 # ---------------------------------------------------------------------------
 
