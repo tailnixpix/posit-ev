@@ -63,6 +63,10 @@ PREDICTION_MARKET_BOOKMAKERS = [
 BOOKMAKERS = SPORTSBOOK_BOOKMAKERS  # backward-compat alias (sportsbooks only)
 ALL_BOOKMAKERS = SPORTSBOOK_BOOKMAKERS + PREDICTION_MARKET_BOOKMAKERS
 
+# Props use sportsbooks only — Betfair Exchange doesn't offer US player props
+# and including it causes 422 errors that silently drop entire event responses.
+PROPS_BOOKMAKERS = [b for b in SPORTSBOOK_BOOKMAKERS if b != "betfair_ex_uk"]
+
 # Maps each bookmaker key to its source type
 BOOKMAKER_SOURCE_TYPE: dict = {
     **{b: "sportsbook"         for b in SPORTSBOOK_BOOKMAKERS},
@@ -166,11 +170,11 @@ def fetch_odds(
 
 def fetch_player_props(sport_key: str, event_id: str, bookmakers: list[str] = None) -> list[dict]:
     """Fetch player prop markets for a single event using sport-specific markets.
-    Props use sportsbooks only — prediction markets don't offer player lines."""
+    Props use sportsbooks only — Betfair Exchange doesn't offer US player props."""
     prop_markets = PROP_MARKETS_BY_SPORT.get(sport_key, [])
     if not prop_markets:
         return []
-    bookmakers = bookmakers or SPORTSBOOK_BOOKMAKERS
+    bookmakers = bookmakers or PROPS_BOOKMAKERS
     url = f"{ODDS_API_BASE_URL}/sports/{sport_key}/events/{event_id}/odds"
     params = {
         "apiKey": ODDS_API_KEY,
@@ -309,7 +313,7 @@ def get_props_df(
     One API request per event, so limited to max_games per sport to conserve quota.
     """
     sport_keys = [s for s in (sport_keys or PROP_SPORTS) if s in PROP_SPORTS]
-    bookmakers = bookmakers or SPORTSBOOK_BOOKMAKERS
+    bookmakers = bookmakers or PROPS_BOOKMAKERS
     all_rows = []
     now_iso = datetime.now(timezone.utc).isoformat()
 
