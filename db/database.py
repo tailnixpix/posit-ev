@@ -126,6 +126,10 @@ class EVBetCache(Base):
     odds          = Column(Integer, nullable=False)           # American odds
     player_name   = Column(String, nullable=True)             # player name for prop bets
     is_prop       = Column(Boolean, nullable=True, default=False)  # True for player prop bets
+    analysis             = Column(Text, nullable=True)              # AI natural language analysis
+    analysis_generated_at = Column(DateTime(timezone=True), nullable=True)  # when analysis was generated
+    confidence_score     = Column(Float, nullable=True)             # AI confidence 1-100
+    kelly_pct            = Column(Float, nullable=True)             # 25% fractional Kelly %
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True, nullable=False)
 
     def __repr__(self) -> str:

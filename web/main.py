@@ -423,6 +423,10 @@ async def on_startup() -> None:
             _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS opening_odds INTEGER"))
             _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS player_name VARCHAR"))
             _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS is_prop BOOLEAN DEFAULT FALSE"))
+            _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS analysis TEXT"))
+            _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS analysis_generated_at TIMESTAMPTZ"))
+            _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS confidence_score FLOAT"))
+            _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS kelly_pct FLOAT"))
             _db.commit()
         except Exception:
             _db.rollback()
@@ -689,6 +693,97 @@ def _compute_pick_record(picks) -> dict:
 async def health():
     """Railway / uptime-monitor health check — returns 200 while app is alive."""
     return {"status": "ok", "timestamp": datetime.now(timezone.utc).isoformat()}
+
+
+# ---------------------------------------------------------------------------
+# AI Analysis endpoint
+# ---------------------------------------------------------------------------
+
+@app.get("/api/analysis/{bet_id}")
+async def get_analysis(bet_id: int, db: Session = Depends(get_db)):
+    """
+    Return AI analysis for a specific bet (by EVBetCache.id).
+
+    - If analysis already stored in DB (and generated within 6 hours): return cached.
+    - Otherwise: call ai_analyzer.analyze_bet(), store result, return.
+    - Requires valid subscription (checked via JWT cookie).
+
+    Response JSON:
+        {
+          "analysis": "...",
+          "confidence_score": 78,
+          "kelly_pct": 2.1,
+          "true_prob_refined": 0.412,
+          "ev_pct_refined": 6.3,
+          "cached": false
+        }
+    """
+    from datetime import timedelta
+
+    bet_row = db.query(EVBetCache).filter(EVBetCache.id == bet_id).first()
+    if not bet_row:
+        raise HTTPException(status_code=404, detail="Bet not found")
+
+    # Return cached analysis if fresh (< 6 hours old)
+    cache_cutoff = datetime.now(timezone.utc) - timedelta(hours=6)
+    if (
+        bet_row.analysis
+        and bet_row.analysis_generated_at
+        and bet_row.analysis_generated_at > cache_cutoff
+    ):
+        return JSONResponse({
+            "analysis":          bet_row.analysis,
+            "confidence_score":  bet_row.confidence_score,
+            "kelly_pct":         bet_row.kelly_pct,
+            "cached":            True,
+        })
+
+    # Build bet dict for analyzer
+    bet_dict = {
+        "id":         bet_row.id,
+        "game":       bet_row.game or "",
+        "league":     bet_row.league or "",
+        "market":     bet_row.market or "",
+        "team":       bet_row.team or "",
+        "odds":       bet_row.odds or 0,
+        "true_prob":  bet_row.true_prob or 0.5,
+        "ev_percent": bet_row.ev_percent or 0.0,
+        "point":      bet_row.point,
+        "player_name": bet_row.player_name,
+        "is_prop":    bool(bet_row.is_prop),
+    }
+
+    # Run analysis in a thread (it's sync/blocking)
+    import asyncio
+    from models.ai_analyzer import analyze_bet
+
+    loop = asyncio.get_event_loop()
+    try:
+        result = await loop.run_in_executor(None, analyze_bet, bet_dict)
+    except Exception as exc:
+        log.error("AI analysis failed for bet_id=%d: %s", bet_id, exc)
+        raise HTTPException(status_code=500, detail="Analysis generation failed")
+
+    if result is None:
+        raise HTTPException(status_code=502, detail="Analysis service unavailable")
+
+    # Persist to DB
+    try:
+        bet_row.analysis               = result["analysis"]
+        bet_row.analysis_generated_at  = datetime.now(timezone.utc)
+        bet_row.confidence_score       = result["confidence_score"]
+        bet_row.kelly_pct              = result["kelly_pct"]
+        db.commit()
+    except Exception as exc:
+        log.warning("Failed to cache analysis for bet_id=%d: %s", bet_id, exc)
+        db.rollback()
+
+    return JSONResponse({
+        "analysis":          result["analysis"],
+        "confidence_score":  result["confidence_score"],
+        "kelly_pct":         result["kelly_pct"],
+        "cached":            False,
+    })
 
 
 @app.get("/", response_class=HTMLResponse)
