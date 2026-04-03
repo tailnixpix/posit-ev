@@ -376,8 +376,8 @@ def refresh_ev_cache() -> int:
                 implied_prob  = implied_prob_val,
                 opening_odds  = opening_odds_val,
                 odds          = odds_val,
-                player_name   = str(row.get("player_name", "")) or None,
-                is_prop       = bool(row.get("is_prop", False)),
+                player_name   = (lambda v: str(v) if v and str(v) not in ("nan", "None", "") else None)(row.get("player_name")),
+                is_prop       = row.get("is_prop") is True,
                 created_at    = datetime.now(timezone.utc),
             ))
 
