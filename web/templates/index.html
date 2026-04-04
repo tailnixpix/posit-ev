@@ -239,6 +239,155 @@ main { max-width: none; padding: 0; }
 .msv-amber  { color: #9A6B00; }
 .msv-purple { color: #6D28D9; }
 .msl { font-size: 0.56rem; text-transform: uppercase; color: #9CA3AF; letter-spacing: 0.3px; margin-top: 1px; }
+/* ── AI analysis mini-panel inside mockup card ────────────────────── */
+.mock-ai-panel {
+  margin-top: 8px;
+  padding: 8px 9px;
+  background: linear-gradient(135deg, #FAFAFE 0%, #F5F3FF 100%);
+  border: 1px solid #DDD8F8;
+  border-radius: 7px;
+  font-size: 0.58rem;
+  line-height: 1.5;
+  color: #555270;
+}
+.mock-ai-header {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+.mock-ai-label {
+  font-size: 0.56rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #6D28D9;
+}
+.mock-ai-conf {
+  font-size: 0.56rem;
+  font-weight: 700;
+  background: rgba(15,110,86,0.12);
+  color: #0F6E56;
+  border-radius: 20px;
+  padding: 1px 6px;
+}
+.mock-ai-kelly {
+  font-size: 0.56rem;
+  font-weight: 600;
+  background: #EDE9FE;
+  color: #6D28D9;
+  border-radius: 20px;
+  padding: 1px 6px;
+}
+
+/* ── AI Engine Feature Section ────────────────────────────────────── */
+.ai-feature-section {
+  background: #F5F3FF;
+  padding: 80px var(--space-5);
+  border-top: 1px solid #DDD8F8;
+}
+.ai-feature-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 56px;
+  align-items: center;
+  max-width: 1080px;
+  margin: 0 auto;
+}
+@media (max-width: 860px) {
+  .ai-feature-grid { grid-template-columns: 1fr; gap: 36px; }
+}
+.ai-mock-panel {
+  background: #fff;
+  border: 1.5px solid #DDD8F8;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(109,40,217,0.12);
+}
+.ai-mock-panel-header {
+  background: linear-gradient(120deg, #1E1A47 0%, #4C1D95 100%);
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.ai-mock-panel-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.ai-mock-panel-body {
+  padding: 16px 18px;
+}
+.ai-mock-section-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: #6D28D9;
+  margin-bottom: 6px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid #EDE9FE;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.ai-mock-section-body {
+  font-size: 0.82rem;
+  color: #555270;
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+.ai-feature-list {
+  list-style: none;
+  margin: 0 0 var(--space-5);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.ai-feature-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.92rem;
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+.ai-li-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6D28D9 0%, #8B5CF6 100%);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  color: #fff;
+  font-weight: 900;
+  margin-top: 1px;
+}
+.ai-powered-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #6D28D9;
+  background: #EDE9FE;
+  border: 1px solid #DDD8F8;
+  border-radius: 20px;
+  padding: 5px 14px;
+  margin-top: var(--space-2);
+}
+
 /* ── Mockup caption blurb ──────────────────────────────────────────── */
 .mockup-caption {
   margin-top: 16px;
@@ -787,7 +936,7 @@ main { max-width: none; padding: 0; }
     <div class="hero-copy">
       <div class="announce-pill">
         <span class="announce-pill-dot"></span>
-        🎯 New &mdash; Player Props live &middot; NBA &middot; MLB &middot; NHL
+        🤖 New &mdash; Claude AI analysis on every +EV pick
       </div>
       <div class="hero-eyebrow">⚡ Live odds &nbsp;&bull;&nbsp; 8 leagues &nbsp;&bull;&nbsp; Updated every hour</div>
       <h1>Stop guessing. Start betting with a <span class="accent">mathematical edge</span>.</h1>
@@ -805,6 +954,7 @@ main { max-width: none; padding: 0; }
         <span><span class="ht-check">✓</span> No credit card required</span>
         <span><span class="ht-check">✓</span> Player Props (NBA, MLB, NHL)</span>
         <span><span class="ht-check">✓</span> Includes Prediction Markets</span>
+        <span><span class="ht-check">✓</span> Claude AI analysis on every pick</span>
       </div>
       <p style="margin-top:14px; font-size:0.78rem; color:rgba(255,255,255,0.4);">
         <a href="/login" style="color:rgba(255,255,255,0.5); text-decoration:underline;">Already have an account?</a>
@@ -878,7 +1028,33 @@ main { max-width: none; padding: 0; }
             </div>
           </div>
 
-          <div class="mock-more">+ 24 more picks — including prediction markets</div>
+          {# 4th card: AI analysis panel expanded #}
+          <div class="mock-card mock-ev-high" style="border-left-color:#6D28D9; background:#FAFAFE;">
+            <div class="mock-card-header">
+              <div>
+                <div class="mock-team">LeBron James Over 26.5 pts</div>
+                <div class="mock-game-line">Lakers @ Thunder &middot; Tonight 9:30 PM</div>
+              </div>
+            </div>
+            <div class="mock-badges"><span>NBA</span><span>Prop</span><span>DraftKings</span></div>
+            <div class="mock-stats-row">
+              <div><div class="msv">&minus;112</div><div class="msl">Odds</div></div>
+              <div><div class="msv">56.4%</div><div class="msl">Consensus</div></div>
+              <div><div class="msv msv-green">+7.2%</div><div class="msl">EV</div></div>
+              <div><div class="msv">3.8%</div><div class="msl">½ Kelly</div></div>
+            </div>
+            <div class="mock-ai-panel">
+              <div class="mock-ai-header">
+                <span class="mock-ai-label">🤖 AI Analysis</span>
+                <span class="mock-ai-conf">84/100 — High Conviction</span>
+                <span class="mock-ai-kelly">Kelly: 3.8%</span>
+              </div>
+              <span><strong style="color:#26215C;">Math:</strong> Sharp consensus 56.4% vs DK implied 52.9% — 3.5 pp gap, +7.2% EV. </span>
+              <span><strong style="color:#26215C;">Context:</strong> LeBron avg 28.1 pts last 10 games; Thunder allow 118.4 ppg in last 5.</span>
+            </div>
+          </div>
+
+          <div class="mock-more">+ 24 more picks — all with Claude AI analysis</div>
         </div>
       </div>
 
@@ -898,6 +1074,7 @@ main { max-width: none; padding: 0; }
           <span>✓ Sportsbooks + prediction markets</span>
           <span>✓ Betfair Exchange sharp reference</span>
           <span>✓ Kelly stake sizing</span>
+          <span>✓ Claude AI analysis with real-world context</span>
           <span>✓ Closing Line Value (CLV) tracking</span>
         </div>
       </div>
@@ -910,10 +1087,9 @@ main { max-width: none; padding: 0; }
 {# ── Announcement band ──────────────────────────────────────────────────── #}
 <div class="announce-band">
   <div class="announce-band-inner">
-    🔮 Prediction Markets:
-    Kalshi &nbsp;&middot;&nbsp; Polymarket &nbsp;&middot;&nbsp; NoVig &nbsp;&middot;&nbsp; ProphetX
-    &nbsp;&nbsp;·&nbsp;&nbsp; Available in all 50 states
-    <a href="#prediction-markets">Learn more &darr;</a>
+    🤖 New — Claude AI analysis with confidence scores &amp; real-world context on every +EV pick
+    &nbsp;&nbsp;·&nbsp;&nbsp;
+    <a href="#ai-engine">See how it works &darr;</a>
   </div>
 </div>
 
@@ -1058,8 +1234,8 @@ main { max-width: none; padding: 0; }
       <div class="s-lbl">States with access</div>
     </div>
     <div class="stat-item">
-      <div class="s-num">3</div>
-      <div class="s-lbl">Market types</div>
+      <div class="s-num" style="color:#A78BFA;">AI</div>
+      <div class="s-lbl">Analysis on every pick</div>
     </div>
     <div class="stat-item">
       <div class="s-num">&gt;3%</div>
@@ -1151,34 +1327,111 @@ main { max-width: none; padding: 0; }
         </p>
       </div>
 
-      <div class="step-card">
-        <div class="step-num">03</div>
-        <div class="step-icon">⚡</div>
-        <p class="step-title">You get the bet, sized and ready</p>
+      <div class="step-card" style="border-top: 3px solid #6D28D9;">
+        <div class="step-num" style="color:#EDE9FE;">03</div>
+        <div class="step-icon">🤖</div>
+        <p class="step-title">Claude AI explains exactly why this bet has edge</p>
         <p class="step-desc">
-          Every edge above our threshold is surfaced on your dashboard with
-          the exact book, odds, and a conservative stake recommendation.
-          No guesswork — just act.
+          Every qualifying bet comes with a Claude AI analysis — a confidence score,
+          Kelly-sized stake recommendation, and a plain-English breakdown of both
+          the mathematical edge and real-world context: team form, line movement,
+          and market signals. No guesswork — the reasoning is right there.
         </p>
+        <div style="margin-top:var(--space-3); display:inline-flex; align-items:center; gap:6px;
+                    font-size:0.72rem; font-weight:700; color:#6D28D9;
+                    background:#F5F3FF; border:1px solid #DDD8F8;
+                    border-radius:20px; padding:4px 12px;">
+          🤖 Powered by Claude Opus 4.6 + Optimal MCP
+        </div>
       </div>
 
     </div>
 
-    {# Sport-specific adjustment callout #}
-    <div style="background:#fff; border:1px solid var(--brand-border); border-radius:var(--radius-lg);
-                padding:var(--space-5); margin-top:var(--space-6); box-shadow:var(--shadow-sm);
-                display:flex; gap:var(--space-5); align-items:flex-start; flex-wrap:wrap;">
-      <div style="font-size:2rem; flex-shrink:0; padding-top:2px;">🎯</div>
-      <div>
-        <p style="font-weight:700; color:var(--brand-dark); margin:0 0 6px; font-size:1rem;">
-          Built-in intelligence for each sport
-        </p>
-        <p style="margin:0; font-size:0.88rem; color:var(--text-secondary); line-height:1.65; max-width:640px;">
-          The model accounts for conditions that move lines — roster confirmations,
-          fatigue, scheduling — so edges are filtered for quality, not just raw math.
-        </p>
+  </div>
+</section>
+
+{# ── AI Analysis Engine Feature Section ──────────────────────────────────── #}
+<section class="ai-feature-section" id="ai-engine">
+  <div class="ai-feature-grid">
+
+    {# Left: copy #}
+    <div>
+      <p class="section-label" style="text-align:left; color:#6D28D9;">AI Analysis Engine</p>
+      <h2 class="section-title" style="text-align:left; margin:0 0 var(--space-4);">
+        Claude AI explains the <span style="color:#6D28D9;">why</span> behind every edge
+      </h2>
+      <p style="color:var(--text-secondary); font-size:1rem; line-height:1.75; margin:0 0 var(--space-5);">
+        Every +EV pick on your dashboard comes with a full AI analysis —
+        not just a number, but the reasoning. Powered by Claude Opus 4.6 with live
+        Optimal MCP sports data, so the analysis reflects what&rsquo;s actually happening today.
+      </p>
+      <ul class="ai-feature-list">
+        <li>
+          <span class="ai-li-icon">✓</span>
+          <span><strong style="color:var(--brand-dark);">Confidence score (0–100).</strong>
+          Aggregates edge strength, market confirmation, and real-world context into a single conviction rating.</span>
+        </li>
+        <li>
+          <span class="ai-li-icon">✓</span>
+          <span><strong style="color:var(--brand-dark);">Kelly sizing recommendation.</strong>
+          Claude&rsquo;s own stake guidance, calibrated to each bet&rsquo;s specific confidence level — not a flat formula.</span>
+        </li>
+        <li>
+          <span class="ai-li-icon">✓</span>
+          <span><strong style="color:var(--brand-dark);">Real-world context.</strong>
+          Line movement, team form, player gamelogs, injury signals — the factors the pure math can&rsquo;t capture alone.</span>
+        </li>
+        <li>
+          <span class="ai-li-icon">✓</span>
+          <span><strong style="color:var(--brand-dark);">Plain-English justification.</strong>
+          A clear breakdown of both the math and the narrative, written for a sharp bettor, not a statistician.</span>
+        </li>
+      </ul>
+      <div class="ai-powered-badge">
+        🤖 Powered by Claude Opus 4.6 + Optimal MCP live data
       </div>
     </div>
+
+    {# Right: mock AI analysis panel #}
+    <div class="ai-mock-panel">
+      <div class="ai-mock-panel-header">
+        <div class="ai-mock-panel-title">🤖 AI Analysis</div>
+        <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+          <span style="font-size:0.65rem; font-weight:700; background:rgba(15,110,86,0.2);
+                       color:#D1FAE5; border-radius:20px; padding:2px 9px;">
+            87/100 — High Conviction
+          </span>
+          <span style="font-size:0.65rem; font-weight:600; background:rgba(167,139,250,0.25);
+                       color:#DDD6FE; border-radius:20px; padding:2px 9px;">
+            Kelly: 4.1%
+          </span>
+        </div>
+      </div>
+      <div class="ai-mock-panel-body">
+        <div class="ai-mock-section-label">📐 Mathematical Justification</div>
+        <div class="ai-mock-section-body">
+          Sharp consensus (Betfair Exchange + Pinnacle) prices Boston Bruins at
+          <strong>48.3%</strong> true probability. DraftKings is offering +145,
+          implying only <strong>40.8%</strong> — a <strong>7.5 pp gap</strong>
+          generating <strong>+12.3% EV</strong>. The half-Kelly recommendation
+          is 5.2% of bankroll; Claude reduces this to 4.1% given moderate
+          variance in the total line over the last 5 days.
+        </div>
+        <div class="ai-mock-section-label">🌍 Real-World Context</div>
+        <div class="ai-mock-section-body">
+          Bruins have covered in 7 of their last 9 road games and carry a
+          2-day rest advantage tonight. The Maple Leafs are 3-7 ATS at home
+          this season when their top defensive pairing is game-time decision.
+          Line has moved +155 → +145 since open — <strong style="color:#0F6E56;">CLV confirmed</strong>,
+          sharp money is on this side.
+        </div>
+        <div style="padding:10px 0 0; border-top:1px solid #EDE9FE;
+                    font-size:0.72rem; color:#8E8BAA; font-style:italic;">
+          🤖 Claude Opus 4.6 &nbsp;·&nbsp; Optimal MCP &nbsp;·&nbsp; Generated just now
+        </div>
+      </div>
+    </div>
+
   </div>
 </section>
 
@@ -1325,6 +1578,11 @@ main { max-width: none; padding: 0; }
         </tr>
         <tr>
           <td>+EV math explainer per pick</td>
+          <td><span class="c-dash">—</span></td>
+          <td><span class="c-check">✓</span></td>
+        </tr>
+        <tr class="row-highlight">
+          <td>🤖 Claude AI analysis — confidence score, Kelly sizing &amp; real-world context</td>
           <td><span class="c-dash">—</span></td>
           <td><span class="c-check">✓</span></td>
         </tr>

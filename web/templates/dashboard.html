@@ -395,45 +395,97 @@ main { max-width: 1200px; padding-top: var(--space-5); }
   margin-top: 1px;
 }
 
-/* ── Why +EV button ───────────────────────────────────────────────────── */
+/* ── Why +EV button — secondary ──────────────────────────────────────── */
 .why-ev-btn {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  margin-top: var(--space-2);
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--brand-primary);
-  background: var(--brand-light);
+  margin-top: 4px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: transparent;
   border: none;
   border-radius: 6px;
-  padding: 5px 11px;
+  padding: 4px 8px;
   cursor: pointer;
   font-family: inherit;
-  transition: background 0.12s, color 0.12s;
+  transition: color 0.12s;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  transition: color 0.12s, text-decoration-color 0.12s;
 }
-.why-ev-btn:hover { background: #DDD8F8; color: var(--brand-dark); }
+.why-ev-btn:hover { color: var(--brand-primary); text-decoration-color: var(--brand-primary); }
 
-/* ── AI Analysis button ──────────────────────────────────────────────── */
+/* ── AI Analysis button — PRIMARY full-width action ─────────────────── */
 .ai-analysis-btn {
-  display: inline-flex;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: var(--space-2);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(120deg, #4C1D95 0%, #6D28D9 55%, #7C3AED 100%);
+  border: none;
+  border-radius: 8px;
+  padding: 9px 14px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: opacity 0.15s, box-shadow 0.15s, transform 0.1s;
+  box-shadow: 0 2px 12px rgba(109,40,217,0.28);
+  letter-spacing: 0.1px;
+}
+.ai-analysis-btn:hover {
+  opacity: 0.92;
+  box-shadow: 0 4px 18px rgba(109,40,217,0.40);
+  transform: translateY(-1px);
+}
+.ai-analysis-btn:disabled { opacity: 0.55; cursor: default; transform: none; box-shadow: none; }
+
+/* ── AI confidence tease badge (card face, shown after first fetch) ── */
+.ai-tease-badge {
+  display: none;
   align-items: center;
   gap: 4px;
-  margin-top: var(--space-2);
-  margin-left: 6px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #6D28D9;
-  background: #F5F3FF;
-  border: none;
-  border-radius: 6px;
-  padding: 5px 11px;
-  cursor: pointer;
-  font-family: inherit;
-  transition: background 0.12s, color 0.12s;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+  border: 1px solid;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
-.ai-analysis-btn:hover { background: #EDE9FE; color: #4C1D95; }
-.ai-analysis-btn:disabled { opacity: 0.6; cursor: default; }
+.ai-tease-badge.conf-high   { background:rgba(15,110,86,0.08);  color:#0F6E56; border-color:rgba(15,110,86,0.2); }
+.ai-tease-badge.conf-medium { background:rgba(250,199,117,0.15); color:#9A6B00; border-color:rgba(250,199,117,0.35); }
+.ai-tease-badge.conf-low    { background:rgba(239,68,68,0.08);  color:#B91C1C; border-color:rgba(239,68,68,0.2); }
+
+/* ── AI panel section breaks ─────────────────────────────────────────── */
+.ai-panel-section { margin-bottom: var(--space-3); }
+.ai-panel-section:last-of-type { margin-bottom: 0; }
+.ai-panel-section-header {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #6D28D9;
+  padding-bottom: 5px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid #EDE9FE;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.ai-panel-footer {
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid #EDE9FE;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
 
 /* ── AI Analysis panel ────────────────────────────────────────────────── */
 .ai-panel {
@@ -795,6 +847,12 @@ main { max-width: 1200px; padding-top: var(--space-5); }
 <div class="db-topbar">
   <div>
     <h1 class="db-title">Today&rsquo;s +EV Picks</h1>
+    <div style="display:inline-flex; align-items:center; gap:6px; margin:3px 0 5px;
+                font-size:0.72rem; font-weight:700; color:#6D28D9;
+                background:#F5F3FF; border:1px solid #DDD8F8;
+                border-radius:20px; padding:3px 10px;">
+      🤖 Powered by Claude Opus 4.6 AI
+    </div>
     <p class="db-meta">
       <span id="today-date"></span>
       &nbsp;&bull;&nbsp;
@@ -864,6 +922,10 @@ main { max-width: 1200px; padding-top: var(--space-5); }
     <div class="lbl">EV &ge; 5%</div>
   </div>
   {% endif %}
+  <div class="stat-pill" id="ai-stat-pill" style="border-color:#DDD8F8; background:linear-gradient(135deg,#FAFAFE,#F5F3FF);">
+    <div class="val" style="color:#6D28D9; font-size:1.4rem;" id="ai-cached-count">—</div>
+    <div class="lbl" style="color:#8B5CF6;">AI Analyzed</div>
+  </div>
 </div>
 
 {# ── Filter bar ────────────────────────────────────────────────────────── #}
@@ -1097,7 +1159,7 @@ main { max-width: 1200px; padding-top: var(--space-5); }
            {% if bet.opening_odds and bet.opening_odds != bet.odds %}data-opening-odds="{{ bet.opening_odds }}"{% endif %}
            {% if bet.commence_time %}data-commence="{{ bet.commence_time.isoformat() }}"{% endif %}>
 
-        {# Header: team name + game info #}
+        {# Header: team name + game info + AI tease badge #}
         <div class="card-header">
           <div>
             {% if bet.is_prop and bet.player_name %}
@@ -1113,6 +1175,8 @@ main { max-width: 1200px; padding-top: var(--space-5); }
             </div>
             {% endif %}
           </div>
+          {# AI confidence tease — hidden until first analysis fetch #}
+          <span class="ai-tease-badge" id="ai-tease-{{ bet.id }}"></span>
         </div>
 
         {# Badges: league, market, book, source type #}
@@ -1187,14 +1251,14 @@ main { max-width: 1200px; padding-top: var(--space-5); }
           </div>
         </div>
 
-        <div style="display:flex; flex-wrap:wrap; gap:4px; align-items:center;">
-          <button class="why-ev-btn" onclick="openEvModal(this.closest('.bet-card'))">
-            📐 Why is this +EV?
-          </button>
+        <div style="display:flex; flex-direction:column; gap:2px; margin-top:var(--space-2);">
           <button class="ai-analysis-btn"
                   data-bet-id="{{ bet.id }}"
                   onclick="toggleAiPanel(this)">
-            🤖 AI Analysis
+            🤖 Get AI Analysis
+          </button>
+          <button class="why-ev-btn" onclick="openEvModal(this.closest('.bet-card'))">
+            📐 Why is this +EV?
           </button>
         </div>
 
@@ -1205,9 +1269,9 @@ main { max-width: 1200px; padding-top: var(--space-5); }
             Generating AI analysis&hellip; (15–30s)
           </div>
           <div id="ai-content-{{ bet.id }}" style="display:none;">
-            <div class="ai-panel-label">🤖 AI Analysis</div>
             <div class="ai-panel-meta" id="ai-meta-{{ bet.id }}"></div>
-            <div class="ai-panel-body" id="ai-body-{{ bet.id }}"></div>
+            <div id="ai-body-{{ bet.id }}"></div>
+            <div class="ai-panel-footer" id="ai-footer-{{ bet.id }}"></div>
           </div>
           <div class="ai-panel-error" id="ai-error-{{ bet.id }}" style="display:none;">
             Analysis unavailable — please try again.
@@ -1697,8 +1761,13 @@ function clearFilters() {
 applyFilters();
 
 // ── AI Analysis panel ─────────────────────────────────────────────────────
-// Cache per bet_id so repeated opens don't re-fetch
 const _aiCache = {};
+
+function updateAiCachePill() {
+  const count = Object.keys(_aiCache).length;
+  const el = document.getElementById('ai-cached-count');
+  if (el) el.textContent = count > 0 ? count : '—';
+}
 
 function toggleAiPanel(btn) {
   const betId  = btn.dataset.betId;
@@ -1708,15 +1777,15 @@ function toggleAiPanel(btn) {
   // Toggle closed if already open
   if (panel.classList.contains('open')) {
     panel.classList.remove('open');
-    btn.textContent = '🤖 AI Analysis';
+    btn.innerHTML = '🤖 Get AI Analysis';
     return;
   }
 
   // Open panel
   panel.classList.add('open');
-  btn.textContent = '✕ Close Analysis';
+  btn.innerHTML = '✕ Close Analysis';
 
-  // Already fetched — just reveal
+  // Already fetched — just reveal cached result
   if (_aiCache[betId]) return;
 
   // Show loading state
@@ -1732,28 +1801,79 @@ function toggleAiPanel(btn) {
     .then(r => r.ok ? r.json() : Promise.reject(r.status))
     .then(data => {
       _aiCache[betId] = data;
+      updateAiCachePill();
 
-      // Build meta chips
+      // Meta chips: confidence + Kelly
       const metaEl = document.getElementById('ai-meta-' + betId);
       if (metaEl) {
-        const conf     = Math.round(data.confidence_score || 0);
-        const confCls  = conf >= 75 ? 'ai-conf-high' : conf >= 55 ? 'ai-conf-medium' : 'ai-conf-low';
+        const conf      = Math.round(data.confidence_score || 0);
+        const confCls   = conf >= 75 ? 'ai-conf-high' : conf >= 55 ? 'ai-conf-medium' : 'ai-conf-low';
         const confLabel = conf >= 75 ? 'High Conviction' : conf >= 55 ? 'Moderate' : 'Low Conviction';
-        const kelly    = (data.kelly_pct || 0).toFixed(1);
-
+        const kelly     = (data.kelly_pct || 0).toFixed(1);
         metaEl.innerHTML =
           `<span class="ai-confidence-badge ${confCls}">${conf}/100 — ${confLabel}</span>` +
-          `<span class="ai-kelly-chip">Kelly rec: ${kelly}% of bankroll</span>` +
+          `<span class="ai-kelly-chip">Kelly rec: ${kelly}%</span>` +
           (data.cached ? `<span style="font-size:0.65rem;color:var(--text-muted);">cached</span>` : '');
       }
 
-      // Render analysis text — convert **bold** markdown to <strong>
+      // Structured body: try to split Math / Context sections
       const bodyEl = document.getElementById('ai-body-' + betId);
       if (bodyEl) {
-        const html = (data.analysis || '')
-          .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-          .replace(/\n/g, '<br>');
-        bodyEl.innerHTML = html;
+        const raw = data.analysis || '';
+        const toBold = s => s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+
+        // Split on section headings produced by ai_analyzer prompt:
+        // "**A. Mathematical Justification**" and "**B. Real-World Context**"
+        const mathMatch    = raw.match(/\*\*A\.[^*]*?\*\*([\s\S]*?)(?=\*\*B\.|$)/i);
+        const contextMatch = raw.match(/\*\*B\.[^*]*?\*\*([\s\S]*?)(?=\*\*Risk|$)/i);
+        const riskMatch    = raw.match(/\*\*Risk Factors\*\*([\s\S]*?)$/i);
+        // Summary line is before the first section
+        const summaryMatch = raw.match(/^(.+?)\n/);
+
+        if (mathMatch || contextMatch) {
+          let html = '';
+          if (summaryMatch) {
+            html += `<p style="font-size:0.82rem;color:var(--brand-dark);font-weight:600;margin:0 0 10px;">${toBold(summaryMatch[1])}</p>`;
+          }
+          if (mathMatch) {
+            html += `<div class="ai-panel-section">
+              <div class="ai-panel-section-header">📐 Mathematical Justification</div>
+              <div class="ai-panel-body">${toBold(mathMatch[1].trim())}</div>
+            </div>`;
+          }
+          if (contextMatch) {
+            html += `<div class="ai-panel-section">
+              <div class="ai-panel-section-header">🌍 Real-World Context</div>
+              <div class="ai-panel-body">${toBold(contextMatch[1].trim())}</div>
+            </div>`;
+          }
+          if (riskMatch) {
+            html += `<div class="ai-panel-section">
+              <div class="ai-panel-section-header">⚠️ Risk Factors</div>
+              <div class="ai-panel-body">${toBold(riskMatch[1].trim())}</div>
+            </div>`;
+          }
+          bodyEl.innerHTML = html;
+        } else {
+          // Fallback: plain render
+          bodyEl.innerHTML = `<div class="ai-panel-body">${toBold(raw)}</div>`;
+        }
+      }
+
+      // Footer
+      const footerEl = document.getElementById('ai-footer-' + betId);
+      if (footerEl) {
+        footerEl.innerHTML = `🤖 Claude Opus 4.6 &nbsp;·&nbsp; Optimal MCP &nbsp;·&nbsp; ${data.cached ? 'Cached analysis' : 'Generated just now'}`;
+      }
+
+      // Tease badge on card face
+      const teaseBadge = document.getElementById('ai-tease-' + betId);
+      if (teaseBadge) {
+        const conf    = Math.round(data.confidence_score || 0);
+        const confCls = conf >= 75 ? 'conf-high' : conf >= 55 ? 'conf-medium' : 'conf-low';
+        teaseBadge.className   = 'ai-tease-badge ' + confCls;
+        teaseBadge.textContent = '🤖 ' + conf + '/100';
+        teaseBadge.style.display = 'inline-flex';
       }
 
       if (loadEl)    loadEl.style.display    = 'none';
