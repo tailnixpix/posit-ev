@@ -823,6 +823,11 @@ main { max-width: none; padding: 0; }
   text-transform: uppercase;
   letter-spacing: 0.3px;
 }
+.market-dot-props {
+  background: rgba(109,40,217,0.12);
+  color: #6D28D9;
+  border: 1px solid rgba(109,40,217,0.25);
+}
 
 /* ── Final CTA ────────────────────────────────────────────────────── */
 .cta-section {
@@ -911,9 +916,15 @@ main { max-width: none; padding: 0; }
       <div class="rb-val">{{ pick_record.pushes }}</div>
       <div class="rb-lbl">Pushes</div>
     </div>
+    <div class="rb-stat rb-units">
+      <div class="rb-val {% if pick_record.units >= 0 %}rb-positive{% else %}rb-negative{% endif %}">
+        {% if pick_record.units >= 0 %}+{{ "%.1f"|format(pick_record.units) }}u{% else %}{{ "%.1f"|format(pick_record.units) }}u{% endif %}
+      </div>
+      <div class="rb-lbl">Units</div>
+    </div>
     <div class="rb-stat rb-profit">
       <div class="rb-val {% if pick_record.total_profit >= 0 %}rb-positive{% else %}rb-negative{% endif %}">
-        {% if pick_record.total_profit >= 0 %}+${{ "%.2f"|format(pick_record.total_profit) }}{% else %}-${{ "%.2f"|format(pick_record.total_profit | abs) }}{% endif %}
+        {% if pick_record.total_profit >= 0 %}+${{ "%.0f"|format(pick_record.total_profit) }}{% else %}-${{ "%.0f"|format(pick_record.total_profit | abs) }}{% endif %}
       </div>
       <div class="rb-lbl">Profit</div>
     </div>
@@ -936,7 +947,7 @@ main { max-width: none; padding: 0; }
     <div class="hero-copy">
       <div class="announce-pill">
         <span class="announce-pill-dot"></span>
-        🤖 New &mdash; Claude AI analysis on every +EV pick
+        🤖 New &mdash; +EV Insight on every pick — math + real-world context
       </div>
       <div class="hero-eyebrow">⚡ Live odds &nbsp;&bull;&nbsp; 8 leagues &nbsp;&bull;&nbsp; Updated every hour</div>
       <h1>Stop guessing. Start betting with a <span class="accent">mathematical edge</span>.</h1>
@@ -947,14 +958,14 @@ main { max-width: none; padding: 0; }
       </p>
       <div class="hero-actions">
         <a href="/register" class="btn-hero-primary">Start Free — No card needed &rarr;</a>
-        <a href="/pricing"  class="btn-hero-ghost">See EV Pro &mdash; $29/mo</a>
+        <a href="/pricing"  class="btn-hero-ghost">See EV Pro &mdash; $19.99/mo</a>
       </div>
       <div class="hero-trust">
         <span><span class="ht-check">✓</span> 1 free pick/day by email</span>
         <span><span class="ht-check">✓</span> No credit card required</span>
         <span><span class="ht-check">✓</span> Player Props (NBA, MLB, NHL)</span>
         <span><span class="ht-check">✓</span> Includes Prediction Markets</span>
-        <span><span class="ht-check">✓</span> Claude AI analysis on every pick</span>
+        <span><span class="ht-check">✓</span> +EV Insight on every pick</span>
       </div>
       <p style="margin-top:14px; font-size:0.78rem; color:rgba(255,255,255,0.4);">
         <a href="/login" style="color:rgba(255,255,255,0.5); text-decoration:underline;">Already have an account?</a>
@@ -974,6 +985,7 @@ main { max-width: none; padding: 0; }
             <span class="mock-filter-pill">NHL</span>
             <span class="mock-filter-pill">NBA</span>
             <span class="mock-filter-pill pm">🔮 PM</span>
+            <span class="mock-filter-pill" style="color:#6D28D9; background:rgba(109,40,217,0.1); border-color:rgba(109,40,217,0.3);">🎯 Props</span>
           </div>
 
           <div class="mock-card mock-ev-high">
@@ -1045,7 +1057,7 @@ main { max-width: none; padding: 0; }
             </div>
             <div class="mock-ai-panel">
               <div class="mock-ai-header">
-                <span class="mock-ai-label">🤖 AI Analysis</span>
+                <span class="mock-ai-label">🤖 +EV Insight</span>
                 <span class="mock-ai-conf">84/100 — High Conviction</span>
                 <span class="mock-ai-kelly">Kelly: 3.8%</span>
               </div>
@@ -1054,7 +1066,7 @@ main { max-width: none; padding: 0; }
             </div>
           </div>
 
-          <div class="mock-more">+ 24 more picks — all with Claude AI analysis</div>
+          <div class="mock-more">+ 24 more picks — all with +EV Insight</div>
         </div>
       </div>
 
@@ -1074,7 +1086,7 @@ main { max-width: none; padding: 0; }
           <span>✓ Sportsbooks + prediction markets</span>
           <span>✓ Betfair Exchange sharp reference</span>
           <span>✓ Kelly stake sizing</span>
-          <span>✓ Claude AI analysis with real-world context</span>
+          <span>✓ +EV Insight: confidence score &amp; real-world context</span>
           <span>✓ Closing Line Value (CLV) tracking</span>
         </div>
       </div>
@@ -1087,7 +1099,7 @@ main { max-width: none; padding: 0; }
 {# ── Announcement band ──────────────────────────────────────────────────── #}
 <div class="announce-band">
   <div class="announce-band-inner">
-    🤖 New — Claude AI analysis with confidence scores &amp; real-world context on every +EV pick
+    🤖 New — +EV Insight: confidence scores, Kelly sizing &amp; real-world context on every pick
     &nbsp;&nbsp;·&nbsp;&nbsp;
     <a href="#ai-engine">See how it works &darr;</a>
   </div>
@@ -1121,7 +1133,7 @@ main { max-width: none; padding: 0; }
                    background:#FFF7E6; color:#92600A;
                    border-radius:20px; padding:5px 16px; font-weight:600;
                    border:1px solid rgba(250,199,117,0.4);">
-        ★ EV Pro — full dashboard, $29/mo
+        ★ EV Pro — full dashboard, $19.99/mo
       </span>
     </div>
 
@@ -1189,7 +1201,7 @@ main { max-width: none; padding: 0; }
           + '<div style="margin-top:14px; padding-top:14px; border-top:1px solid rgba(15,110,86,0.2); display:flex; gap:10px; flex-wrap:wrap; align-items:center;">'
           + '  <div style="flex:1; min-width:180px;">'
           + '    <p style="margin:0 0 2px; font-weight:700; color:#1A1450; font-size:0.88rem;">Want the full dashboard?</p>'
-          + '    <p style="margin:0; font-size:0.78rem; color:#6B7280;">Unlock every pick, every market, Kelly sizing — $29/mo.</p>'
+          + '    <p style="margin:0; font-size:0.78rem; color:#6B7280;">Unlock every pick, every market, Kelly sizing — $19.99/mo.</p>'
           + '  </div>'
           + '  <a href="/subscribe" style="display:inline-block; background:#534AB7; color:#fff; font-weight:700; font-size:0.88rem;'
           + '     padding:9px 20px; border-radius:8px; text-decoration:none; white-space:nowrap; flex-shrink:0;">'
@@ -1234,8 +1246,8 @@ main { max-width: none; padding: 0; }
       <div class="s-lbl">States with access</div>
     </div>
     <div class="stat-item">
-      <div class="s-num" style="color:#A78BFA;">AI</div>
-      <div class="s-lbl">Analysis on every pick</div>
+      <div class="s-num" style="color:#A78BFA;">+EV</div>
+      <div class="s-lbl">Insight on every pick</div>
     </div>
     <div class="stat-item">
       <div class="s-num">&gt;3%</div>
@@ -1330,9 +1342,9 @@ main { max-width: none; padding: 0; }
       <div class="step-card" style="border-top: 3px solid #6D28D9;">
         <div class="step-num" style="color:#EDE9FE;">03</div>
         <div class="step-icon">🤖</div>
-        <p class="step-title">Claude AI explains exactly why this bet has edge</p>
+        <p class="step-title">+EV Insight explains exactly why this bet has edge</p>
         <p class="step-desc">
-          Every qualifying bet comes with a Claude AI analysis — a confidence score,
+          Every qualifying bet comes with a +EV Insight — a confidence score,
           Kelly-sized stake recommendation, and a plain-English breakdown of both
           the mathematical edge and real-world context: team form, line movement,
           and market signals. No guesswork — the reasoning is right there.
@@ -1356,14 +1368,14 @@ main { max-width: none; padding: 0; }
 
     {# Left: copy #}
     <div>
-      <p class="section-label" style="text-align:left; color:#6D28D9;">AI Analysis Engine</p>
+      <p class="section-label" style="text-align:left; color:#6D28D9;">+EV Insight Engine</p>
       <h2 class="section-title" style="text-align:left; margin:0 0 var(--space-4);">
-        Claude AI explains the <span style="color:#6D28D9;">why</span> behind every edge
+        Know the <span style="color:#6D28D9;">why</span> behind every edge
       </h2>
       <p style="color:var(--text-secondary); font-size:1rem; line-height:1.75; margin:0 0 var(--space-5);">
-        Every +EV pick on your dashboard comes with a full AI analysis —
+        Every +EV pick on your dashboard comes with a full +EV Insight —
         not just a number, but the reasoning. Powered by Claude Opus 4.6 with live
-        Optimal MCP sports data, so the analysis reflects what&rsquo;s actually happening today.
+        Optimal MCP sports data, so the insight reflects what&rsquo;s actually happening today.
       </p>
       <ul class="ai-feature-list">
         <li>
@@ -1395,7 +1407,7 @@ main { max-width: none; padding: 0; }
     {# Right: mock AI analysis panel #}
     <div class="ai-mock-panel">
       <div class="ai-mock-panel-header">
-        <div class="ai-mock-panel-title">🤖 AI Analysis</div>
+        <div class="ai-mock-panel-title">🤖 +EV Insight</div>
         <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
           <span style="font-size:0.65rem; font-weight:700; background:rgba(15,110,86,0.2);
                        color:#D1FAE5; border-radius:20px; padding:2px 9px;">
@@ -1582,7 +1594,7 @@ main { max-width: none; padding: 0; }
           <td><span class="c-check">✓</span></td>
         </tr>
         <tr class="row-highlight">
-          <td>🤖 Claude AI analysis — confidence score, Kelly sizing &amp; real-world context</td>
+          <td>🤖 +EV Insight — confidence score, Kelly sizing &amp; real-world context</td>
           <td><span class="c-dash">—</span></td>
           <td><span class="c-check">✓</span></td>
         </tr>
@@ -1602,7 +1614,11 @@ main { max-width: none; padding: 0; }
           <td><strong>Price</strong></td>
           <td style="text-align:center;"><span class="c-price">Free</span></td>
           <td style="text-align:center; background:rgba(83,74,183,0.04);">
-            <span class="c-price" style="color:var(--brand-primary);">$29/mo</span>
+            <div style="display:flex; flex-direction:column; align-items:center; gap:2px;">
+              <span style="font-size:0.72rem; color:#9CA3AF; text-decoration:line-through; font-weight:600;">$29/mo</span>
+              <span class="c-price" style="color:var(--brand-primary);">$19.99/mo</span>
+              <span style="font-size:0.68rem; font-weight:700; color:#fff; background:#6D28D9; border-radius:20px; padding:2px 8px; margin-top:2px;">PRICE DROP</span>
+            </div>
           </td>
         </tr>
         <tr>
@@ -1627,7 +1643,7 @@ main { max-width: none; padding: 0; }
   <div class="container">
     <p class="section-label" style="text-align:center;">Coverage</p>
     <h2 class="section-title" style="text-align:center; margin:0 auto var(--space-6);">
-      8 leagues. 4 market types. Every day.
+      8 leagues. Game lines + player props. Every day.
     </h2>
     <div class="leagues-grid">
 
@@ -1639,6 +1655,7 @@ main { max-width: none; padding: 0; }
           <span class="market-dot">ML</span>
           <span class="market-dot">Spread</span>
           <span class="market-dot">Total</span>
+          <span class="market-dot market-dot-props">Props</span>
         </div>
       </div>
 
@@ -1650,6 +1667,7 @@ main { max-width: none; padding: 0; }
           <span class="market-dot">ML</span>
           <span class="market-dot">Spread</span>
           <span class="market-dot">Total</span>
+          <span class="market-dot market-dot-props">Props</span>
         </div>
       </div>
 
@@ -1661,6 +1679,7 @@ main { max-width: none; padding: 0; }
           <span class="market-dot">ML</span>
           <span class="market-dot">Spread</span>
           <span class="market-dot">Total</span>
+          <span class="market-dot market-dot-props">Props</span>
         </div>
       </div>
 
@@ -1733,7 +1752,7 @@ main { max-width: none; padding: 0; }
     </p>
     <div style="display:flex; gap:var(--space-3); justify-content:center; flex-wrap:wrap;">
       <a href="/register" class="btn-hero-primary">Start Free — No card needed &rarr;</a>
-      <a href="/subscribe" class="btn-hero-ghost">Get EV Pro &mdash; $29/mo</a>
+      <a href="/subscribe" class="btn-hero-ghost">Get EV Pro &mdash; $19.99/mo</a>
     </div>
     <div style="margin-top:var(--space-4); display:flex; gap:20px; justify-content:center;
                 flex-wrap:wrap; font-size:0.78rem; color:rgba(255,255,255,0.5);">

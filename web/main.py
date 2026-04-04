@@ -676,6 +676,7 @@ def _compute_pick_record(picks) -> dict:
             pushes += 1
     total_picks = wins + losses + pushes
     roi = (total_profit / BANKROLL) * 100 if total_picks > 0 else 0.0
+    units = total_profit / UNIT
     return {
         "wins":         wins,
         "losses":       losses,
@@ -683,6 +684,7 @@ def _compute_pick_record(picks) -> dict:
         "total_picks":  total_picks,
         "total_profit": round(total_profit, 2),
         "roi":          round(roi, 2),
+        "units":        round(units, 2),
         "has_data":     total_picks > 0,
     }
 

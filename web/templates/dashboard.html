@@ -1255,7 +1255,7 @@ main { max-width: 1200px; padding-top: var(--space-5); }
           <button class="ai-analysis-btn"
                   data-bet-id="{{ bet.id }}"
                   onclick="toggleAiPanel(this)">
-            🤖 Get AI Analysis
+            🤖 Get +EV Insight
           </button>
           <button class="why-ev-btn" onclick="openEvModal(this.closest('.bet-card'))">
             📐 Why is this +EV?
@@ -1266,7 +1266,7 @@ main { max-width: 1200px; padding-top: var(--space-5); }
         <div class="ai-panel" id="ai-panel-{{ bet.id }}">
           <div class="ai-panel-loading" id="ai-loading-{{ bet.id }}" style="display:none;">
             <div class="ai-spin"></div>
-            Generating AI analysis&hellip; (15–30s)
+            Generating +EV Insight&hellip; (15–30s)
           </div>
           <div id="ai-content-{{ bet.id }}" style="display:none;">
             <div class="ai-panel-meta" id="ai-meta-{{ bet.id }}"></div>
@@ -1777,13 +1777,13 @@ function toggleAiPanel(btn) {
   // Toggle closed if already open
   if (panel.classList.contains('open')) {
     panel.classList.remove('open');
-    btn.innerHTML = '🤖 Get AI Analysis';
+    btn.innerHTML = '🤖 Get +EV Insight';
     return;
   }
 
   // Open panel
   panel.classList.add('open');
-  btn.innerHTML = '✕ Close Analysis';
+  btn.innerHTML = '✕ Close Insight';
 
   // Already fetched — just reveal cached result
   if (_aiCache[betId]) return;
