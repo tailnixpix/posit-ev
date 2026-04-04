@@ -4,73 +4,211 @@
 {% block head %}
 <style>
 main { max-width: none; padding: 0; }
-.admin-wrap { max-width: 1000px; margin: 0 auto; padding: 40px 24px 80px; }
-h1 { color: var(--brand-dark); font-size: 1.6rem; font-weight: 800; margin: 0 0 4px; }
-.subtitle { color: var(--text-muted); font-size: 0.88rem; margin: 0 0 40px; }
+.admin-wrap { max-width: 1080px; margin: 0 auto; padding: 32px 20px 80px; }
+@media (max-width: 600px) { .admin-wrap { padding: 16px 12px 60px; } }
 
+h1 { color: var(--brand-dark); font-size: 1.5rem; font-weight: 800; margin: 0 0 2px; }
+.subtitle { color: var(--text-muted); font-size: 0.82rem; margin: 0 0 24px; }
+
+/* ── Header row ── */
+.admin-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.admin-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* ── Stats ── */
 .stats-row {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  margin-bottom: 40px;
+  gap: 12px;
+  margin-bottom: 28px;
 }
-@media (max-width: 700px) { .stats-row { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 700px) { .stats-row { grid-template-columns: repeat(2, 1fr); gap: 10px; } }
 .stat-box {
   background: #fff;
   border: 1px solid var(--brand-border);
   border-radius: var(--radius-lg);
-  padding: 20px 24px;
+  padding: 16px 18px;
   box-shadow: var(--shadow-sm);
 }
-.stat-box .num { font-size: 2.2rem; font-weight: 900; color: var(--brand-primary); line-height: 1; }
-.stat-box .lbl { font-size: 0.78rem; color: var(--text-muted); margin-top: 4px;
+.stat-box .num { font-size: 2rem; font-weight: 900; color: var(--brand-primary); line-height: 1; }
+.stat-box .lbl { font-size: 0.72rem; color: var(--text-muted); margin-top: 4px;
                  text-transform: uppercase; letter-spacing: 0.5px; }
 
+/* ── Section cards ── */
 .section-card {
   background: #fff;
   border: 1px solid var(--brand-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
-  margin-bottom: 28px;
+  margin-bottom: 20px;
   overflow: hidden;
 }
 .section-card-header {
-  padding: 16px 24px;
+  padding: 14px 20px;
   border-bottom: 1px solid var(--brand-border);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
 }
-.section-card-header h2 { font-size: 0.95rem; font-weight: 700; color: var(--brand-dark); margin: 0; }
-.badge { font-size: 0.72rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; }
-.badge-blue { background: var(--brand-light); color: var(--brand-primary); }
+.section-card-header h2 { font-size: 0.92rem; font-weight: 700; color: var(--brand-dark); margin: 0; }
+.badge { font-size: 0.7rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
+.badge-blue  { background: var(--brand-light); color: var(--brand-primary); }
 .badge-green { background: rgba(15,110,86,0.1); color: #0F6E56; }
 
-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
-th { text-align: left; padding: 10px 24px; font-size: 0.72rem; font-weight: 700;
+/* ── Tables ── */
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+table { width: 100%; border-collapse: collapse; font-size: 0.875rem; min-width: 480px; }
+th { text-align: left; padding: 9px 20px; font-size: 0.68rem; font-weight: 700;
      text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted);
-     border-bottom: 1px solid var(--brand-border); background: var(--brand-surface); }
-td { padding: 12px 24px; border-bottom: 1px solid #F3F4F6; color: var(--text-secondary); }
+     border-bottom: 1px solid var(--brand-border); background: var(--brand-surface);
+     white-space: nowrap; }
+td { padding: 11px 20px; border-bottom: 1px solid #F3F4F6; color: var(--text-secondary); }
 tr:last-child td { border-bottom: none; }
 tr:hover td { background: var(--brand-surface); }
-.tag { display: inline-block; font-size: 0.7rem; font-weight: 600; padding: 2px 8px;
-       border-radius: 20px; }
-.tag-active { background: rgba(15,110,86,0.1); color: #0F6E56; }
+.tag { display: inline-block; font-size: 0.68rem; font-weight: 600; padding: 2px 8px;
+       border-radius: 20px; white-space: nowrap; }
+.tag-active   { background: rgba(15,110,86,0.1); color: #0F6E56; }
 .tag-inactive { background: #F3F4F6; color: var(--text-muted); }
-.tag-paid { background: rgba(83,74,183,0.1); color: var(--brand-primary); }
-.tag-free { background: #F3F4F6; color: var(--text-muted); }
-.empty { padding: 32px 24px; text-align: center; color: var(--text-muted); font-size: 0.88rem; }
+.tag-paid     { background: rgba(83,74,183,0.1); color: var(--brand-primary); }
+.tag-free     { background: #F3F4F6; color: var(--text-muted); }
+.empty { padding: 28px 20px; text-align: center; color: var(--text-muted); font-size: 0.88rem; }
+
+/* ── Collapsible subscriber lists ── */
+.coll-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 20px;
+  cursor: pointer;
+  user-select: none;
+  border-bottom: 1px solid transparent;
+  transition: background 0.15s;
+  gap: 8px;
+}
+.coll-header:hover { background: var(--brand-surface); }
+.coll-header.open  { border-bottom-color: var(--brand-border); }
+.coll-title  { font-size: 0.88rem; font-weight: 700; color: var(--brand-dark); display:flex; align-items:center; gap:8px; }
+.coll-arrow  { font-size: 0.8rem; color: var(--text-muted); transition: transform 0.2s; flex-shrink:0; }
+.coll-header.open .coll-arrow { transform: rotate(180deg); }
+.coll-body   { display: none; }
+.coll-body.open { display: block; }
+
+/* ── Daily pick result ── */
+.pick-row-won  td { background: #F0FDF4; }
+.pick-row-lost td { background: #FEF2F2; }
+.pick-row-push td { background: #F9FAFB; }
+tr.pick-row-won:hover  td { background: #DCFCE7; }
+tr.pick-row-lost:hover td { background: #FEE2E2; }
+
+.result-select {
+  font-size: 0.8rem;
+  padding: 5px 8px;
+  border: 1px solid var(--brand-border);
+  border-radius: 6px;
+  font-family: inherit;
+  background: #fff;
+  color: var(--brand-dark);
+  cursor: pointer;
+  min-width: 90px;
+}
+.result-update-btn {
+  font-size: 0.78rem;
+  padding: 5px 12px;
+  background: var(--brand-primary);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ── Add/Backfill pick form ── */
+.pick-add-form {
+  padding: 16px 20px;
+  border-top: 1px solid var(--brand-border);
+  background: var(--brand-surface);
+}
+.pick-add-form-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--brand-dark);
+  margin: 0 0 12px;
+}
+.pick-add-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px;
+  align-items: end;
+}
+.pick-add-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.pick-add-field label {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  font-weight: 600;
+}
+.pick-add-field input,
+.pick-add-field select {
+  font-size: 0.85rem;
+  padding: 7px 9px;
+  border: 1.5px solid var(--brand-border);
+  border-radius: 6px;
+  font-family: inherit;
+  background: #fff;
+  color: var(--brand-dark);
+  width: 100%;
+  box-sizing: border-box;
+}
+.pick-add-field input:focus,
+.pick-add-field select:focus {
+  outline: none;
+  border-color: var(--brand-primary);
+}
+.pick-add-save {
+  font-size: 0.85rem;
+  padding: 8px 20px;
+  background: var(--brand-primary);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+  align-self: flex-end;
+  width: 100%;
+}
 
 /* ── Users: tier tab bar ── */
 .tier-tabs {
   display: flex;
   gap: 2px;
-  padding: 0 24px;
+  padding: 0 20px;
   border-bottom: 1px solid var(--brand-border);
   background: var(--brand-surface);
+  overflow-x: auto;
 }
 .tier-tab {
-  padding: 10px 18px;
+  padding: 10px 16px;
   font-size: 0.82rem;
   font-weight: 600;
   color: var(--text-muted);
@@ -86,14 +224,11 @@ tr:hover td { background: var(--brand-surface); }
   transition: color 0.15s;
 }
 .tier-tab:hover { color: var(--brand-primary); text-decoration: none; }
-.tier-tab.active {
-  color: var(--brand-primary);
-  border-bottom-color: var(--brand-primary);
-}
+.tier-tab.active { color: var(--brand-primary); border-bottom-color: var(--brand-primary); }
 
 /* ── Users: search toolbar ── */
 .users-toolbar {
-  padding: 12px 24px;
+  padding: 10px 20px;
   border-bottom: 1px solid var(--brand-border);
   display: flex;
   align-items: center;
@@ -101,7 +236,9 @@ tr:hover td { background: var(--brand-surface); }
   flex-wrap: wrap;
 }
 .users-search-input {
-  width: 280px;
+  flex: 1;
+  min-width: 160px;
+  max-width: 280px;
   padding: 7px 12px;
   border: 1.5px solid var(--brand-border);
   border-radius: 8px;
@@ -110,7 +247,6 @@ tr:hover td { background: var(--brand-surface); }
   color: var(--brand-dark);
   background: #fff;
   outline: none;
-  transition: border-color 0.15s;
 }
 .users-search-input:focus { border-color: var(--brand-primary); }
 .users-search-btn {
@@ -143,9 +279,9 @@ tr:hover td { background: var(--brand-surface); }
   white-space: nowrap;
 }
 
-/* ── Users: pagination ── */
+/* ── Pagination ── */
 .pagination-bar {
-  padding: 12px 24px;
+  padding: 12px 20px;
   border-top: 1px solid var(--brand-border);
   display: flex;
   align-items: center;
@@ -154,7 +290,7 @@ tr:hover td { background: var(--brand-surface); }
   flex-wrap: wrap;
 }
 .pagination-info { font-size: 0.78rem; color: var(--text-muted); }
-.pagination-controls { display: flex; gap: 4px; align-items: center; }
+.pagination-controls { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
 .page-btn {
   padding: 5px 11px;
   border: 1px solid var(--brand-border);
@@ -170,89 +306,39 @@ tr:hover td { background: var(--brand-surface); }
 }
 .page-btn:hover { background: var(--brand-surface); text-decoration: none; }
 .page-btn.disabled { opacity: 0.35; pointer-events: none; }
-.page-btn.active-page {
-  background: var(--brand-primary);
-  color: #fff;
-  border-color: var(--brand-primary);
-}
+.page-btn.active-page { background: var(--brand-primary); color: #fff; border-color: var(--brand-primary); }
 
-/* ── Daily pick result row colors ───────────────────────────────────────── */
-.pick-row-won  td { background: #F0FDF4; }
-.pick-row-lost td { background: #FEF2F2; }
-.pick-row-push td { background: #F9FAFB; }
-tr.pick-row-won:hover  td { background: #DCFCE7; }
-tr.pick-row-lost:hover td { background: #FEE2E2; }
-.result-select {
-  font-size: 0.78rem;
-  padding: 3px 6px;
-  border: 1px solid var(--brand-border);
-  border-radius: 6px;
-  font-family: inherit;
-  background: #fff;
-  color: var(--brand-dark);
-  cursor: pointer;
-}
-.result-update-btn {
-  font-size: 0.75rem;
-  padding: 3px 10px;
-  background: var(--brand-primary);
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-family: inherit;
-  margin-left: 4px;
-}
+/* ── Unsubscribed count badge (red) ── */
+.badge-red { background: rgba(197,48,48,0.1); color: #C53030; }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="admin-wrap">
-  <div style="display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:4px;">
+
+  {# ── Header ── #}
+  <div class="admin-header">
     <div>
       <h1>Admin Dashboard</h1>
       <p class="subtitle">Last refreshed: {{ now }}</p>
     </div>
-    <div style="display:flex; gap:10px; align-items:center;">
-      <button id="adminRefreshBtn" onclick="adminTriggerRefresh()" style="font-size:0.8rem; font-weight:600; padding:8px 16px;
-        background:#534AB7; color:#fff; border:1px solid #534AB7;
-        border-radius:8px; cursor:pointer; font-family:inherit; transition:background 0.15s;">
+    <div class="admin-actions">
+      <button id="adminRefreshBtn" onclick="adminTriggerRefresh()"
+              style="font-size:0.82rem; font-weight:600; padding:8px 16px;
+                     background:#534AB7; color:#fff; border:1px solid #534AB7;
+                     border-radius:8px; cursor:pointer; font-family:inherit;">
         &#8635; Refresh EV Cache
       </button>
       <form action="/admin/logout" method="post" style="margin:0;">
-        <button type="submit" style="font-size:0.8rem; font-weight:600; padding:8px 16px;
-          background:#F7F6FE; color:var(--text-secondary); border:1px solid var(--brand-border);
-          border-radius:8px; cursor:pointer; font-family:inherit; transition:background 0.15s;">
+        <button type="submit"
+                style="font-size:0.82rem; font-weight:600; padding:8px 16px;
+                       background:#F7F6FE; color:var(--text-secondary);
+                       border:1px solid var(--brand-border);
+                       border-radius:8px; cursor:pointer; font-family:inherit;">
           🔒 Sign Out
         </button>
       </form>
     </div>
-
-    <script>
-    async function adminTriggerRefresh() {
-      const btn = document.getElementById('adminRefreshBtn');
-      if (!btn || btn.disabled) return;
-      btn.disabled = true;
-      btn.textContent = '⏳ Queuing…';
-      try {
-        const res = await fetch('/admin/refresh-cache', { method: 'POST' });
-        if (res.ok) {
-          btn.textContent = '✓ Running — done in ~30s';
-          setTimeout(() => {
-            btn.disabled = false;
-            btn.innerHTML = '&#8635; Refresh EV Cache';
-          }, 35000);
-        } else {
-          btn.disabled = false;
-          btn.innerHTML = '&#8635; Refresh EV Cache';
-          alert('Refresh failed — check server logs.');
-        }
-      } catch {
-        btn.disabled = false;
-        btn.innerHTML = '&#8635; Refresh EV Cache';
-      }
-    }
-    </script>
   </div>
 
   {# ── Stats ── #}
@@ -271,7 +357,7 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
     </div>
     <div class="stat-box">
       <div class="num">{{ user_paid }}</div>
-      <div class="lbl">Paid subscribers</div>
+      <div class="lbl">EV Pro subscribers</div>
     </div>
   </div>
 
@@ -281,24 +367,24 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
       <h2>Beehiiv Integration</h2>
       <span class="badge badge-blue">Newsletter monetization</span>
     </div>
-    <div style="padding:20px 24px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
-      <div>
-        <p style="margin:0 0 4px; font-size:0.88rem; color:var(--brand-dark); font-weight:600;">
+    <div style="padding:16px 20px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+      <div style="flex:1; min-width:200px;">
+        <p style="margin:0 0 3px; font-size:0.88rem; color:var(--brand-dark); font-weight:600;">
           Sync all active subscribers to Beehiiv
         </p>
-        <p style="margin:0; font-size:0.78rem; color:var(--text-muted); max-width:480px;">
-          Pushes every active subscriber into your Beehiiv publication. Safe to run
-          multiple times — Beehiiv deduplicates by email. Run this once after connecting
-          your API key, then new signups sync automatically.
+        <p style="margin:0; font-size:0.78rem; color:var(--text-muted);">
+          Pushes every active subscriber into your Beehiiv publication. Safe to run multiple times — Beehiiv deduplicates by email.
         </p>
       </div>
-      <button onclick="runBeehiivSync()" id="syncBtn"
-              style="font-size:0.85rem; padding:8px 20px; background:var(--brand-primary);
-                     color:#fff; border:none; border-radius:8px; cursor:pointer;
-                     font-family:inherit; font-weight:600; white-space:nowrap; flex-shrink:0;">
-        ⇄ Sync to Beehiiv
-      </button>
-      <span id="syncResult" style="font-size:0.82rem; color:var(--text-muted);"></span>
+      <div style="display:flex; align-items:center; gap:12px; flex-shrink:0;">
+        <button onclick="runBeehiivSync()" id="syncBtn"
+                style="font-size:0.85rem; padding:8px 20px; background:var(--brand-primary);
+                       color:#fff; border:none; border-radius:8px; cursor:pointer;
+                       font-family:inherit; font-weight:600; white-space:nowrap;">
+          ⇄ Sync to Beehiiv
+        </button>
+        <span id="syncResult" style="font-size:0.82rem; color:var(--text-muted);"></span>
+      </div>
     </div>
   </div>
 
@@ -308,29 +394,32 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
       <h2>Daily Picks Record</h2>
       <span class="badge badge-blue">{{ picks_badge }}</span>
     </div>
+
     {# CLV Summary Bar #}
     {% if clv_summary.total > 0 %}
-    <div style="display:flex; flex-wrap:wrap; gap:12px; padding:12px 20px 0; align-items:center;">
-      <div style="font-size:0.78rem; font-weight:700; color:var(--brand-dark);">📊 CLV Performance</div>
-      <div style="font-size:0.82rem; color:var(--text-secondary);">
-        {{ clv_summary.beat_count }} of {{ clv_summary.total }} picks beat the closing line
+    <div style="display:flex; flex-wrap:wrap; gap:12px; padding:12px 20px; align-items:center;
+                border-bottom:1px solid var(--brand-border); background:var(--brand-surface);">
+      <span style="font-size:0.78rem; font-weight:700; color:var(--brand-dark);">📊 CLV Performance</span>
+      <span style="font-size:0.82rem; color:var(--text-secondary);">
+        {{ clv_summary.beat_count }} of {{ clv_summary.total }} picks beat closing line
         <strong style="margin-left:4px; color:{% if clv_summary.beat_rate >= 55 %}var(--brand-success){% else %}#9A6B00{% endif %};">
           ({{ clv_summary.beat_rate }}%)
         </strong>
-      </div>
+      </span>
       {% if clv_summary.avg_clv is not none %}
-      <div style="font-size:0.82rem; color:var(--text-secondary);">
+      <span style="font-size:0.82rem; color:var(--text-secondary);">
         Avg CLV:
         <strong style="color:{% if clv_summary.avg_clv > 0 %}var(--brand-success){% else %}#C53030{% endif %};">
           {% if clv_summary.avg_clv > 0 %}+{% endif %}{{ "%.2f"|format(clv_summary.avg_clv) }}%
         </strong>
-      </div>
+      </span>
       {% endif %}
-      <div style="font-size:0.72rem; color:var(--text-muted);">Requires ≥2 hourly snapshots to compute</div>
     </div>
     {% endif %}
 
+    {# Picks table #}
     {% if daily_picks_all %}
+    <div class="table-scroll">
     <table>
       <thead>
         <tr>
@@ -338,7 +427,7 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
           <th>Game</th>
           <th>Team / Bet</th>
           <th>Odds</th>
-          <th>EV at Send</th>
+          <th>EV%</th>
           <th>CLV%</th>
           <th>Result</th>
           <th>Update</th>
@@ -346,29 +435,25 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
       </thead>
       <tbody>
         {% for pick in daily_picks_all %}
-        {% set row_class = {
-            "won":     "pick-row-won",
-            "lost":    "pick-row-lost",
-            "push":    "pick-row-push",
-        }.get(pick.result or "", "") %}
+        {% set row_class = {"won":"pick-row-won","lost":"pick-row-lost","push":"pick-row-push"}.get(pick.result or "", "") %}
         {% set pick_clv = picks_clv.get(pick.id) %}
         <tr class="{{ row_class }}">
           <td style="white-space:nowrap; font-size:0.82rem;">
-            {{ pick.pick_date.strftime('%b %-d, %Y') if pick.pick_date else '—' }}
+            {{ pick.pick_date.strftime('%b %-d') if pick.pick_date else '—' }}
           </td>
-          <td style="font-size:0.82rem; max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+          <td style="font-size:0.82rem; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
             {{ pick.game or '—' }}
           </td>
-          <td style="font-size:0.82rem; font-weight:600;">
+          <td style="font-size:0.82rem; font-weight:600; white-space:nowrap;">
             {{ pick.team or '—' }}{% if pick.market == "spreads" and pick.point is not none %} {{ ("+" ~ pick.point) if pick.point > 0 else pick.point }}{% elif pick.market == "totals" and pick.point is not none %} {{ pick.point }}{% endif %}
           </td>
-          <td style="font-weight:700; font-size:0.85rem;">
+          <td style="font-weight:700; font-size:0.85rem; white-space:nowrap;">
             {% if pick.odds %}{{ ("+" ~ pick.odds) if pick.odds > 0 else pick.odds }}{% else %}—{% endif %}
           </td>
-          <td style="font-size:0.82rem; color:var(--brand-primary);">
-            {% if pick.ev_percent %}{{ "%.1f"|format(pick.ev_percent) }}%{% else %}—{% endif %}
+          <td style="font-size:0.82rem; color:var(--brand-primary); white-space:nowrap;">
+            {% if pick.ev_percent %}+{{ "%.1f"|format(pick.ev_percent) }}%{% else %}—{% endif %}
           </td>
-          <td style="font-size:0.82rem; font-weight:700; text-align:center;">
+          <td style="font-size:0.82rem; font-weight:700; white-space:nowrap;">
             {% if pick_clv is not none %}
               <span style="color:{% if pick_clv > 0 %}var(--brand-success){% else %}#C53030{% endif %};">
                 {% if pick_clv > 0 %}+{% endif %}{{ "%.2f"|format(pick_clv) }}%
@@ -377,7 +462,7 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
               <span style="color:var(--text-muted);">—</span>
             {% endif %}
           </td>
-          <td>
+          <td style="white-space:nowrap;">
             {% if pick.result == "won" %}
               <span class="tag tag-active">Won</span>
             {% elif pick.result == "lost" %}
@@ -388,8 +473,8 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
               <span class="tag tag-inactive">Pending</span>
             {% endif %}
           </td>
-          <td>
-            <form method="post" action="/admin/pick-result" style="margin:0; display:flex; align-items:center; gap:4px;">
+          <td style="white-space:nowrap;">
+            <form method="post" action="/admin/pick-result" style="margin:0;display:flex;align-items:center;gap:4px;">
               <input type="hidden" name="pick_id" value="{{ pick.id }}" />
               <select name="result" class="result-select">
                 <option value="pending" {% if not pick.result or pick.result == 'pending' %}selected{% endif %}>Pending</option>
@@ -404,152 +489,180 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
         {% endfor %}
       </tbody>
     </table>
+    </div>
     {% else %}
-    <p class="empty">No daily picks recorded yet — they'll appear here after the 8 AM newsletter sends.</p>
+    <p class="empty">No daily picks recorded yet — they appear after the 8 AM newsletter sends.</p>
     {% endif %}
 
-    {# ── Manual add / backfill form ── #}
-    <div style="padding:16px 24px; border-top:1px solid var(--brand-border); background:var(--brand-surface);">
-      <p style="font-size:0.78rem; font-weight:700; color:var(--brand-dark); margin:0 0 12px;">
-        ＋ Add / Backfill Pick
-      </p>
-      <form method="post" action="/admin/add-pick"
-            style="display:flex; flex-wrap:wrap; gap:8px; align-items:flex-end;">
-        <div style="display:flex; flex-direction:column; gap:3px;">
-          <label style="font-size:0.68rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.4px;">Date</label>
-          <input type="date" name="pick_date" required
-                 style="font-size:0.82rem; padding:5px 8px; border:1.5px solid var(--brand-border);
-                        border-radius:6px; font-family:inherit; width:140px;"/>
+    {# ── Add / Backfill form ── #}
+    <div class="pick-add-form">
+      <p class="pick-add-form-title">＋ Add / Backfill Pick</p>
+      <form method="post" action="/admin/add-pick">
+        <div class="pick-add-grid">
+          <div class="pick-add-field" style="min-width:130px;">
+            <label>Date</label>
+            <input type="date" name="pick_date" required />
+          </div>
+          <div class="pick-add-field" style="min-width:180px;">
+            <label>Game</label>
+            <input type="text" name="game" placeholder="Twins @ Orioles" />
+          </div>
+          <div class="pick-add-field">
+            <label>Team / Outcome</label>
+            <input type="text" name="team" placeholder="Over" required />
+          </div>
+          <div class="pick-add-field">
+            <label>Market</label>
+            <select name="market">
+              <option value="h2h">Moneyline</option>
+              <option value="totals">Total</option>
+              <option value="spreads">Spread</option>
+            </select>
+          </div>
+          <div class="pick-add-field">
+            <label>Line (opt)</label>
+            <input type="text" name="point" placeholder="9.5" />
+          </div>
+          <div class="pick-add-field">
+            <label>Book</label>
+            <input type="text" name="book" placeholder="draftkings" />
+          </div>
+          <div class="pick-add-field">
+            <label>Odds</label>
+            <input type="number" name="odds" placeholder="+133" required />
+          </div>
+          <div class="pick-add-field">
+            <label>EV %</label>
+            <input type="number" step="0.01" name="ev_percent" placeholder="23.77" />
+          </div>
+          <div class="pick-add-field">
+            <label>Result</label>
+            <select name="result">
+              <option value="pending">Pending</option>
+              <option value="won">Won</option>
+              <option value="lost">Lost</option>
+              <option value="push">Push</option>
+            </select>
+          </div>
+          <div class="pick-add-field">
+            <label>&nbsp;</label>
+            <button type="submit" class="pick-add-save">Save Pick</button>
+          </div>
         </div>
-        <div style="display:flex; flex-direction:column; gap:3px;">
-          <label style="font-size:0.68rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.4px;">Game</label>
-          <input type="text" name="game" placeholder="Twins @ Orioles"
-                 style="font-size:0.82rem; padding:5px 8px; border:1.5px solid var(--brand-border);
-                        border-radius:6px; font-family:inherit; width:200px;"/>
-        </div>
-        <div style="display:flex; flex-direction:column; gap:3px;">
-          <label style="font-size:0.68rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.4px;">Team / Outcome</label>
-          <input type="text" name="team" placeholder="Over" required
-                 style="font-size:0.82rem; padding:5px 8px; border:1.5px solid var(--brand-border);
-                        border-radius:6px; font-family:inherit; width:100px;"/>
-        </div>
-        <div style="display:flex; flex-direction:column; gap:3px;">
-          <label style="font-size:0.68rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.4px;">Market</label>
-          <select name="market"
-                  style="font-size:0.82rem; padding:5px 8px; border:1.5px solid var(--brand-border);
-                         border-radius:6px; font-family:inherit; background:#fff;">
-            <option value="h2h">Moneyline</option>
-            <option value="totals">Total</option>
-            <option value="spreads">Spread</option>
-          </select>
-        </div>
-        <div style="display:flex; flex-direction:column; gap:3px;">
-          <label style="font-size:0.68rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.4px;">Line (opt)</label>
-          <input type="text" name="point" placeholder="9.5"
-                 style="font-size:0.82rem; padding:5px 8px; border:1.5px solid var(--brand-border);
-                        border-radius:6px; font-family:inherit; width:70px;"/>
-        </div>
-        <div style="display:flex; flex-direction:column; gap:3px;">
-          <label style="font-size:0.68rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.4px;">Book</label>
-          <input type="text" name="book" placeholder="polymarket"
-                 style="font-size:0.82rem; padding:5px 8px; border:1.5px solid var(--brand-border);
-                        border-radius:6px; font-family:inherit; width:110px;"/>
-        </div>
-        <div style="display:flex; flex-direction:column; gap:3px;">
-          <label style="font-size:0.68rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.4px;">Odds</label>
-          <input type="number" name="odds" placeholder="+133" required
-                 style="font-size:0.82rem; padding:5px 8px; border:1.5px solid var(--brand-border);
-                        border-radius:6px; font-family:inherit; width:80px;"/>
-        </div>
-        <div style="display:flex; flex-direction:column; gap:3px;">
-          <label style="font-size:0.68rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.4px;">EV %</label>
-          <input type="number" step="0.01" name="ev_percent" placeholder="23.77"
-                 style="font-size:0.82rem; padding:5px 8px; border:1.5px solid var(--brand-border);
-                        border-radius:6px; font-family:inherit; width:80px;"/>
-        </div>
-        <div style="display:flex; flex-direction:column; gap:3px;">
-          <label style="font-size:0.68rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.4px;">Result</label>
-          <select name="result"
-                  style="font-size:0.82rem; padding:5px 8px; border:1.5px solid var(--brand-border);
-                         border-radius:6px; font-family:inherit; background:#fff;">
-            <option value="pending">Pending</option>
-            <option value="won">Won</option>
-            <option value="lost">Lost</option>
-            <option value="push">Push</option>
-          </select>
-        </div>
-        <button type="submit"
-                style="font-size:0.82rem; padding:6px 18px; background:var(--brand-primary);
-                       color:#fff; border:none; border-radius:6px; cursor:pointer;
-                       font-family:inherit; font-weight:600; align-self:flex-end;">
-          Save Pick
-        </button>
+        <p style="font-size:0.7rem; color:var(--text-muted); margin:10px 0 0;">
+          Existing pick for that date will be overwritten.
+        </p>
       </form>
-      <p style="font-size:0.7rem; color:var(--text-muted); margin:8px 0 0;">
-        If a pick already exists for that date, it will be overwritten with the new values.
-      </p>
     </div>
   </div>
 
-  {# ── Newsletter subscribers ── #}
+  {# ── Newsletter Subscribers ── #}
+  {% set active_subs = newsletter_subs | selectattr('is_active') | list %}
+  {% set unsub_subs  = newsletter_subs | rejectattr('is_active') | list %}
+
   <div class="section-card">
     <div class="section-card-header">
       <h2>Newsletter Subscribers</h2>
-      <span class="badge badge-blue">{{ nl_active }} active / {{ nl_total }} total</span>
+      <span class="badge badge-blue">{{ nl_active }} active · {{ nl_total }} total</span>
     </div>
-    {% if newsletter_subs %}
-    <table>
-      <thead>
-        <tr>
-          <th>Email</th>
-          <th>Status</th>
-          <th>Signed up</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for s in newsletter_subs %}
-        <tr>
-          <td>{{ s.email }}</td>
-          <td>
-            {% if s.is_active %}
-              <span class="tag tag-active">Active</span>
-            {% else %}
-              <span class="tag tag-inactive">Unsubscribed</span>
-            {% endif %}
-          </td>
-          <td>{{ s.subscribed_at.strftime('%b %-d, %Y') if s.subscribed_at else '—' }}</td>
-          <td>
-            {% if s.is_active %}
-            <form method="post" action="/admin/newsletter-unsubscribe" style="margin:0;">
-              <input type="hidden" name="subscriber_id" value="{{ s.id }}" />
-              <button type="submit" style="font-size:0.75rem;padding:3px 10px;background:#FEF2F2;
-                color:#C53030;border:1px solid #FCA5A5;border-radius:6px;
-                cursor:pointer;font-family:inherit;">
-                Unsubscribe
-              </button>
-            </form>
-            {% else %}
-            <form method="post" action="/admin/newsletter-resubscribe" style="margin:0;">
-              <input type="hidden" name="subscriber_id" value="{{ s.id }}" />
-              <button type="submit" style="font-size:0.75rem;padding:3px 10px;background:rgba(15,110,86,0.08);
-                color:#0F6E56;border:1px solid #9EEBD6;border-radius:6px;
-                cursor:pointer;font-family:inherit;">
-                Resubscribe
-              </button>
-            </form>
-            {% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% else %}
-    <p class="empty">No newsletter subscribers yet.</p>
-    {% endif %}
+
+    {# Active subscribers — collapsible #}
+    <div class="coll-header" onclick="toggleColl('nl-active')" id="nl-active-hdr">
+      <span class="coll-title">
+        <span class="tag tag-active" style="font-size:0.72rem;">Active</span>
+        {{ active_subs | length }} subscriber{{ 's' if active_subs | length != 1 else '' }}
+      </span>
+      <span class="coll-arrow">▼</span>
+    </div>
+    <div class="coll-body" id="nl-active">
+      {% if active_subs %}
+      <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Email</th>
+            <th>Signed up</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in active_subs %}
+          <tr>
+            <td style="font-weight:500;">{{ s.email }}</td>
+            <td style="font-size:0.82rem; color:var(--text-muted);">
+              {{ s.subscribed_at.strftime('%b %-d, %Y') if s.subscribed_at else '—' }}
+            </td>
+            <td>
+              <form method="post" action="/admin/newsletter-unsubscribe" style="margin:0;">
+                <input type="hidden" name="subscriber_id" value="{{ s.id }}" />
+                <button type="submit" style="font-size:0.75rem;padding:4px 12px;background:#FEF2F2;
+                  color:#C53030;border:1px solid #FCA5A5;border-radius:6px;
+                  cursor:pointer;font-family:inherit;font-weight:600;">
+                  Unsubscribe
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      </div>
+      {% else %}
+      <p class="empty">No active subscribers.</p>
+      {% endif %}
+    </div>
+
+    {# Unsubscribed — collapsible #}
+    <div class="coll-header" style="border-top:1px solid var(--brand-border);"
+         onclick="toggleColl('nl-unsub')" id="nl-unsub-hdr">
+      <span class="coll-title">
+        <span class="tag tag-inactive" style="font-size:0.72rem;">Unsubscribed</span>
+        {{ unsub_subs | length }} subscriber{{ 's' if unsub_subs | length != 1 else '' }}
+        <span style="font-size:0.72rem; color:var(--text-muted); font-weight:400;">— no longer receiving emails</span>
+      </span>
+      <span class="coll-arrow">▼</span>
+    </div>
+    <div class="coll-body" id="nl-unsub">
+      {% if unsub_subs %}
+      <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Email</th>
+            <th>Signed up</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in unsub_subs %}
+          <tr>
+            <td style="font-weight:500; color:var(--text-muted);">{{ s.email }}</td>
+            <td style="font-size:0.82rem; color:var(--text-muted);">
+              {{ s.subscribed_at.strftime('%b %-d, %Y') if s.subscribed_at else '—' }}
+            </td>
+            <td>
+              <form method="post" action="/admin/newsletter-resubscribe" style="margin:0;">
+                <input type="hidden" name="subscriber_id" value="{{ s.id }}" />
+                <button type="submit" style="font-size:0.75rem;padding:4px 12px;
+                  background:rgba(15,110,86,0.08);color:#0F6E56;border:1px solid #9EEBD6;
+                  border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600;">
+                  Resubscribe
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      </div>
+      {% else %}
+      <p class="empty">No unsubscribed users.</p>
+      {% endif %}
+    </div>
+
   </div>
 
-  {# ── Registered users ── #}
+  {# ── Registered Users ── #}
   <div class="section-card">
     <div class="section-card-header">
       <h2>Registered Users</h2>
@@ -572,19 +685,13 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
       </a>
     </div>
 
-    {# Search toolbar #}
+    {# Search #}
     <div class="users-toolbar">
       <form method="get" action="/admin" style="display:contents;">
         <input type="hidden" name="tier" value="{{ current_tier }}" />
         <input type="hidden" name="page" value="1" />
-        <input
-          class="users-search-input"
-          type="text"
-          name="q"
-          value="{{ current_q }}"
-          placeholder="Search by email…"
-          autocomplete="off"
-        />
+        <input class="users-search-input" type="text" name="q"
+               value="{{ current_q }}" placeholder="Search by email…" autocomplete="off" />
         <button type="submit" class="users-search-btn">Search</button>
         {% if current_q %}
         <a href="/admin?tier={{ current_tier }}&page=1" class="users-search-clear">Clear</a>
@@ -601,20 +708,21 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
 
     {# Users table #}
     {% if users %}
+    <div class="table-scroll">
     <table>
       <thead>
         <tr>
           <th>Email</th>
           <th>Plan</th>
           <th>Joined</th>
-          <th>Stripe customer</th>
-          <th>Dashboard access</th>
+          <th>Stripe ID</th>
+          <th>Access</th>
         </tr>
       </thead>
       <tbody>
         {% for u in users %}
         <tr>
-          <td>{{ u.email }}</td>
+          <td style="font-weight:500;">{{ u.email }}</td>
           <td>
             {% if u.is_subscribed %}
               <span class="tag tag-paid">EV Pro</span>
@@ -622,47 +730,49 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
               <span class="tag tag-free">Free</span>
             {% endif %}
           </td>
-          <td style="font-size:0.82rem; color:var(--text-muted);">
+          <td style="font-size:0.82rem; color:var(--text-muted); white-space:nowrap;">
             {{ u.created_at.strftime('%b %-d, %Y') if u.created_at else '—' }}
           </td>
-          <td style="font-size:0.78rem; color:var(--text-muted);">
+          <td style="font-size:0.75rem; color:var(--text-muted); max-width:140px;
+                     overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
             {{ u.stripe_customer_id or '—' }}
           </td>
           <td>
-            <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
-              {% if not u.is_subscribed %}
-              <form method="post" action="/admin/grant-access" style="margin:0;">
-                <input type="hidden" name="user_id" value="{{ u.id }}" />
-                <input type="hidden" name="redirect_tier" value="{{ current_tier }}" />
-                <input type="hidden" name="redirect_q" value="{{ current_q }}" />
-                <input type="hidden" name="redirect_page" value="{{ current_page }}" />
-                <button type="submit" style="font-size:0.75rem;padding:3px 10px;
-                  background:var(--brand-primary);color:#fff;border:none;
-                  border-radius:6px;cursor:pointer;font-family:inherit;">
-                  Grant Access
-                </button>
-              </form>
-              {% else %}
-              <form method="post" action="/admin/revoke-access" style="margin:0;">
-                <input type="hidden" name="user_id" value="{{ u.id }}" />
-                <input type="hidden" name="redirect_tier" value="{{ current_tier }}" />
-                <input type="hidden" name="redirect_q" value="{{ current_q }}" />
-                <input type="hidden" name="redirect_page" value="{{ current_page }}" />
-                <button type="submit" style="font-size:0.75rem;padding:3px 10px;
-                  background:#FEF2F2;color:#C53030;border:1px solid #FCA5A5;
-                  border-radius:6px;cursor:pointer;font-family:inherit;">
-                  Revoke Access
-                </button>
-              </form>
-              {% endif %}
-            </div>
+            {% if not u.is_subscribed %}
+            <form method="post" action="/admin/grant-access" style="margin:0;">
+              <input type="hidden" name="user_id" value="{{ u.id }}" />
+              <input type="hidden" name="redirect_tier" value="{{ current_tier }}" />
+              <input type="hidden" name="redirect_q" value="{{ current_q }}" />
+              <input type="hidden" name="redirect_page" value="{{ current_page }}" />
+              <button type="submit" style="font-size:0.75rem;padding:4px 12px;
+                background:var(--brand-primary);color:#fff;border:none;
+                border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600;
+                white-space:nowrap;">
+                Grant Access
+              </button>
+            </form>
+            {% else %}
+            <form method="post" action="/admin/revoke-access" style="margin:0;">
+              <input type="hidden" name="user_id" value="{{ u.id }}" />
+              <input type="hidden" name="redirect_tier" value="{{ current_tier }}" />
+              <input type="hidden" name="redirect_q" value="{{ current_q }}" />
+              <input type="hidden" name="redirect_page" value="{{ current_page }}" />
+              <button type="submit" style="font-size:0.75rem;padding:4px 12px;
+                background:#FEF2F2;color:#C53030;border:1px solid #FCA5A5;
+                border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600;
+                white-space:nowrap;">
+                Revoke Access
+              </button>
+            </form>
+            {% endif %}
           </td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
+    </div>
 
-    {# Pagination — only when there's more than one page #}
+    {# Pagination #}
     {% if total_pages > 1 %}
     {% set start_pg = [1, current_page - 2] | max %}
     {% set end_pg   = [total_pages, current_page + 2] | min %}
@@ -676,22 +786,18 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
       <div class="pagination-controls">
         <a href="/admin?tier={{ current_tier }}&q={{ current_q }}&page={{ current_page - 1 }}"
            class="page-btn {% if current_page <= 1 %}disabled{% endif %}">← Prev</a>
-
         {% if start_pg > 1 %}
           <a href="/admin?tier={{ current_tier }}&q={{ current_q }}&page=1" class="page-btn">1</a>
           {% if start_pg > 2 %}<span style="font-size:0.8rem;color:var(--text-muted);padding:0 2px;">…</span>{% endif %}
         {% endif %}
-
         {% for p in range(start_pg, end_pg + 1) %}
           <a href="/admin?tier={{ current_tier }}&q={{ current_q }}&page={{ p }}"
              class="page-btn {% if p == current_page %}active-page{% endif %}">{{ p }}</a>
         {% endfor %}
-
         {% if end_pg < total_pages %}
           {% if end_pg < total_pages - 1 %}<span style="font-size:0.8rem;color:var(--text-muted);padding:0 2px;">…</span>{% endif %}
           <a href="/admin?tier={{ current_tier }}&q={{ current_q }}&page={{ total_pages }}" class="page-btn">{{ total_pages }}</a>
         {% endif %}
-
         <a href="/admin?tier={{ current_tier }}&q={{ current_q }}&page={{ current_page + 1 }}"
            class="page-btn {% if current_page >= total_pages %}disabled{% endif %}">Next →</a>
       </div>
@@ -700,13 +806,11 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
 
     {% else %}
     <p class="empty">
-      {% if current_q %}
-        No users match "{{ current_q }}"{% if current_tier != 'all' %} in the {{ current_tier }} tier{% endif %}.
-      {% else %}
-        No registered users yet.
-      {% endif %}
+      {% if current_q %}No users match "{{ current_q }}"{% if current_tier != 'all' %} in the {{ current_tier }} tier{% endif %}.
+      {% else %}No registered users yet.{% endif %}
     </p>
     {% endif %}
+
   </div>
 
 </div>
@@ -714,18 +818,52 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
 
 {% block scripts %}
 <script>
+/* ── Collapsible subscriber sections ── */
+function toggleColl(id) {
+  const body = document.getElementById(id);
+  const hdr  = document.getElementById(id + '-hdr');
+  const open = body.classList.toggle('open');
+  hdr.classList.toggle('open', open);
+}
+
+/* ── EV cache refresh ── */
+async function adminTriggerRefresh() {
+  const btn = document.getElementById('adminRefreshBtn');
+  if (!btn || btn.disabled) return;
+  btn.disabled = true;
+  btn.textContent = '⏳ Queuing…';
+  try {
+    const res = await fetch('/admin/refresh-cache', { method: 'POST' });
+    if (res.ok) {
+      btn.textContent = '✓ Running — done in ~30s';
+      setTimeout(() => {
+        btn.disabled = false;
+        btn.innerHTML = '&#8635; Refresh EV Cache';
+      }, 35000);
+    } else {
+      btn.disabled = false;
+      btn.innerHTML = '&#8635; Refresh EV Cache';
+      alert('Refresh failed — check server logs.');
+    }
+  } catch {
+    btn.disabled = false;
+    btn.innerHTML = '&#8635; Refresh EV Cache';
+  }
+}
+
+/* ── Beehiiv sync ── */
 async function runBeehiivSync() {
-  const btn = document.getElementById('syncBtn');
+  const btn    = document.getElementById('syncBtn');
   const result = document.getElementById('syncResult');
   btn.disabled = true;
   btn.textContent = '⏳ Syncing…';
   result.textContent = '';
   try {
-    const res = await fetch('/admin/beehiiv-sync', { method: 'POST' });
+    const res  = await fetch('/admin/beehiiv-sync', { method: 'POST' });
     const data = await res.json();
     if (res.ok) {
       result.style.color = '#0F6E56';
-      result.textContent = `✓ ${data.synced} synced, ${data.failed} failed out of ${data.total} subscribers.`;
+      result.textContent = `✓ ${data.synced} synced, ${data.failed} failed out of ${data.total}.`;
     } else {
       result.style.color = '#C53030';
       result.textContent = 'Sync failed — check server logs.';
