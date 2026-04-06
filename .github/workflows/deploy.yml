@@ -10,19 +10,12 @@ jobs:
     name: Deploy to Railway
     runs-on: ubuntu-latest
     steps:
-      - name: Find Railway service and project IDs
+      - name: Introspect Railway GraphQL schema
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
-          echo "=== services ==="
           curl -s -X POST https://backboard.railway.app/graphql/v2 \
             -H "Authorization: Bearer $RAILWAY_TOKEN" \
             -H "Content-Type: application/json" \
-            -d '{"query":"{ services { edges { node { id name projectId } } } }"}'
-
-          echo ""
-          echo "=== deployments ==="
-          curl -s -X POST https://backboard.railway.app/graphql/v2 \
-            -H "Authorization: Bearer $RAILWAY_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d '{"query":"{ deployments(first: 5) { edges { node { id projectId serviceId environmentId } } } }"}'
+            -d '{"query":"{ __schema { queryType { fields { name args { name type { name ofType { name } } } } } } }"}' \
+            | jq '[.data.__schema.queryType.fields[] | {name, args: [.args[].name]}]'
