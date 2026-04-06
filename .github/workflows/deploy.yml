@@ -10,13 +10,33 @@ jobs:
     name: Deploy to Railway
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Railway CLI
-        run: npm install -g @railway/cli
-
-      - name: Deploy
-        run: railway up --detach
+      - name: Trigger Railway redeploy via API
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
+        run: |
+          # Fetch service ID and environment ID from project
+          RESPONSE=$(curl -sf -X POST https://backboard.railway.app/graphql/v2 \
+            -H "Authorization: Bearer $RAILWAY_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"query\":\"{ project(id: \\\"$RAILWAY_PROJECT_ID\\\") { environments { edges { node { id name } } } services { edges { node { id name } } } } }\"}")
+
+          echo "API response: $RESPONSE"
+
+          SERVICE_ID=$(echo "$RESPONSE" | jq -r '.data.project.services.edges[0].node.id')
+          ENV_ID=$(echo "$RESPONSE"     | jq -r '.data.project.environments.edges[0].node.id')
+
+          echo "Service: $SERVICE_ID  |  Environment: $ENV_ID"
+
+          if [ "$SERVICE_ID" = "null" ] || [ -z "$SERVICE_ID" ]; then
+            echo "Could not resolve service ID — check RAILWAY_TOKEN and RAILWAY_PROJECT_ID"
+            exit 1
+          fi
+
+          # Trigger redeploy
+          DEPLOY=$(curl -sf -X POST https://backboard.railway.app/graphql/v2 \
+            -H "Authorization: Bearer $RAILWAY_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"query\":\"mutation { serviceInstanceRedeploy(serviceId: \\\"$SERVICE_ID\\\", environmentId: \\\"$ENV_ID\\\") }\"}")
+
+          echo "Deploy response: $DEPLOY"
