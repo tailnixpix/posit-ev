@@ -5,7 +5,7 @@
 {% block head %}
 <style>
 /* ── Layout ───────────────────────────────────────────────────────────── */
-main { max-width: 1200px; padding-top: var(--space-5); }
+main { max-width: 1200px; padding-top: var(--space-5); overflow-x: hidden; }
 
 /* ── Top bar ──────────────────────────────────────────────────────────── */
 .db-topbar {
@@ -48,41 +48,175 @@ main { max-width: 1200px; padding-top: var(--space-5); }
   padding: var(--space-3) var(--space-4);
   margin-bottom: var(--space-5);
   box-shadow: var(--shadow-sm);
+  position: sticky;
+  top: 62px;
+  z-index: 90;
 }
-.filter-row { display: flex; gap: var(--space-2); flex-wrap: wrap; align-items: center; }
-.filter-row + .filter-row { margin-top: var(--space-2); padding-top: var(--space-2);
-                             border-top: 1px solid var(--brand-light); }
-.filter-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.6px;
-                color: var(--text-muted); font-weight: 600; margin-right: var(--space-1);
-                flex-shrink: 0; padding-top: 2px; }
-.filter-btn {
-  background: transparent;
-  border: 1px solid transparent;
+
+/* Primary row: day toggle + spacer + sort + filters btn + count */
+.filter-primary-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+.filter-primary-spacer { flex: 1; }
+
+/* Sort select */
+.sort-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--brand-light) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23534AB7'/%3E%3C/svg%3E") no-repeat right 10px center;
+  border: 1px solid var(--brand-border);
   border-radius: 20px;
-  padding: 4px 14px;
-  font-size: 0.82rem;
-  font-weight: 500;
+  padding: 5px 28px 5px 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--brand-primary);
+  cursor: pointer;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.12s, box-shadow 0.12s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.sort-select:focus { border-color: var(--brand-primary); box-shadow: 0 0 0 3px rgba(83,74,183,0.12); }
+
+/* More-filters button */
+.more-filters-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--brand-light);
+  border: 1px solid var(--brand-border);
+  border-radius: 20px;
+  padding: 5px 13px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-family: inherit;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  line-height: 1;
+}
+.more-filters-btn:hover { background: #ECEAF8; color: var(--brand-primary); border-color: var(--brand-border); }
+.more-filters-btn.has-active { border-color: var(--brand-primary); color: var(--brand-primary); background: #ECEAF8; }
+.filter-active-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px; height: 17px;
+  border-radius: 50%;
+  background: var(--brand-primary);
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+/* League chips row */
+.filter-chips-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+.filter-chips-row::-webkit-scrollbar { display: none; }
+
+/* Chip = league / quick-filter button */
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: 1.5px solid var(--brand-border);
+  border-radius: 20px;
+  padding: 4px 13px;
+  font-size: 0.8rem;
+  font-weight: 600;
   cursor: pointer;
   color: var(--text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-family: inherit;
   transition: background 0.12s, color 0.12s, border-color 0.12s;
-  width: auto;
-  margin: 0;
 }
-.filter-btn:hover { background: var(--brand-light); color: var(--brand-primary); }
-.filter-btn.active {
+.filter-chip:hover { background: var(--brand-light); color: var(--brand-primary); border-color: var(--brand-primary); }
+.filter-chip.active {
   background: var(--brand-primary);
   color: #fff;
   border-color: var(--brand-primary);
 }
+.filter-chip.chip-props { border-color: #8B5CF6; color: #6D28D9; }
+.filter-chip.chip-props:hover { background: #F5F3FF; }
+.filter-chip.chip-props.active { background: #6D28D9; color: #fff; border-color: #6D28D9; }
+
+/* Count badge in primary row */
 #bet-count-badge {
   font-size: 0.75rem;
   background: var(--brand-light);
   color: var(--brand-primary);
   border-radius: 20px;
-  padding: 2px 10px;
-  font-weight: 600;
-  margin-left: auto;
+  padding: 4px 11px;
+  font-weight: 700;
   flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* ── Advanced filter panel (collapsed by default) ─────────────────────── */
+.filter-advanced {
+  display: none;
+  border-top: 1px solid var(--brand-light);
+  margin-top: var(--space-2);
+  padding-top: var(--space-3);
+}
+.filter-advanced.open { display: block; }
+.filter-section {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: var(--space-2);
+}
+.filter-section:last-child { margin-bottom: 0; }
+.filter-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-muted);
+  font-weight: 700;
+  flex-shrink: 0;
+  width: 60px;        /* fixed width so buttons line up */
+  padding-top: 1px;
+}
+
+/* Secondary filter buttons (inside advanced panel) */
+.filter-btn {
+  background: transparent;
+  border: 1.5px solid var(--brand-border);
+  border-radius: 20px;
+  padding: 3px 12px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-family: inherit;
+  margin: 0;
+}
+.filter-btn:hover { background: var(--brand-light); color: var(--brand-primary); border-color: var(--brand-primary); }
+.filter-btn.active {
+  background: var(--brand-primary);
+  color: #fff;
+  border-color: var(--brand-primary);
 }
 
 /* ── Cards grid ───────────────────────────────────────────────────────── */
@@ -466,12 +600,27 @@ main { max-width: 1200px; padding-top: var(--space-5); }
   margin-top: 1px;
 }
 
-/* ── Why +EV button — secondary ──────────────────────────────────────── */
-.why-ev-btn {
+/* ── Secondary action row (Why +EV · Projection) ─────────────────────── */
+.card-secondary-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0;
+  margin-top: 2px;
+}
+.card-secondary-actions .sec-divider {
+  color: var(--brand-border);
+  font-size: 0.8rem;
+  margin: 0 2px;
+  user-select: none;
+  line-height: 1;
+}
+
+/* ── Projection button (now matches why-ev-btn style) ────────────────── */
+.proj-btn {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  margin-top: 4px;
   font-size: 0.72rem;
   font-weight: 500;
   color: var(--text-muted);
@@ -481,7 +630,142 @@ main { max-width: 1200px; padding-top: var(--space-5); }
   padding: 4px 8px;
   cursor: pointer;
   font-family: inherit;
-  transition: color 0.12s;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  transition: color 0.12s, text-decoration-color 0.12s;
+}
+.proj-btn:hover { color: #059669; text-decoration-color: #059669; }
+.proj-btn:disabled { opacity: 0.45; cursor: default; }
+
+.proj-panel {
+  display: none;
+  margin-top: var(--space-3);
+  background: #fff;
+  border: 1px solid rgba(5,150,105,0.2);
+  border-radius: 10px;
+  overflow: hidden;
+  font-size: 0.8rem;
+}
+
+/* Header bar */
+.proj-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 12px;
+  background: rgba(5,150,105,0.06);
+  border-bottom: 1px solid rgba(5,150,105,0.12);
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #059669;
+}
+.proj-panel-timestamp {
+  font-size: 0.6rem;
+  font-weight: 400;
+  color: var(--text-muted);
+  font-style: italic;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Score row — 3-column grid: away | @ | home */
+.proj-scoreline {
+  display: grid;
+  grid-template-columns: 1fr 28px 1fr;
+  align-items: center;
+  padding: 12px 12px 10px;
+  border-bottom: 1px solid rgba(5,150,105,0.1);
+}
+.proj-team { text-align: center; }
+.proj-team-score {
+  font-size: 1.55rem;
+  font-weight: 800;
+  color: var(--brand-dark);
+  line-height: 1;
+}
+.proj-team-name {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  margin-top: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.proj-sep {
+  text-align: center;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+/* Stats grid — 3 equal columns */
+.proj-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+.proj-stat-item {
+  padding: 9px 10px 8px;
+  text-align: center;
+  border-right: 1px solid rgba(5,150,105,0.1);
+}
+.proj-stat-item:last-child { border-right: none; }
+.proj-stat-lbl {
+  font-size: 0.59rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+.proj-stat-val {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--brand-dark);
+  line-height: 1.1;
+  margin-bottom: 4px;
+}
+.proj-stat-sub {
+  font-size: 0.58rem;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+/* Alignment badge */
+.proj-align-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.59rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+.proj-align-yes { background: rgba(5,150,105,0.1);  color: #059669; }
+.proj-align-no  { background: rgba(239,68,68,0.08); color: #B91C1C; }
+.proj-align-neu { background: rgba(107,114,128,0.1); color: #6B7280; }
+
+.proj-loading { color: var(--text-muted); font-size: 0.78rem; padding: 12px 0; text-align: center; }
+.proj-error   { color: #C53030; font-size: 0.75rem; padding: 8px 12px; }
+
+/* ── Why +EV button — secondary ──────────────────────────────────────── */
+.why-ev-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-family: inherit;
   text-decoration: underline;
   text-decoration-color: transparent;
   transition: color 0.12s, text-decoration-color 0.12s;
@@ -777,6 +1061,55 @@ main { max-width: 1200px; padding-top: var(--space-5); }
   flex-shrink: 0;
 }
 
+/* ── Trial countdown banner ─────────────────────────────────────────────── */
+.trial-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  background: linear-gradient(135deg, #1e1070 0%, #4C1D95 100%);
+  color: #fff;
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
+  margin-bottom: var(--space-4);
+  box-shadow: 0 4px 20px rgba(76,29,149,0.30);
+  animation: slideDown 0.4s ease;
+  flex-wrap: wrap;
+}
+.trial-banner-days {
+  font-size: 2.4rem;
+  font-weight: 900;
+  color: #FAC775;
+  line-height: 1;
+  flex-shrink: 0;
+  text-align: center;
+  min-width: 52px;
+}
+.trial-banner-days small {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(250,199,117,0.75);
+  display: block;
+  margin-top: 2px;
+}
+.trial-banner-text { flex: 1; min-width: 180px; }
+.trial-banner-text h3 { margin: 0 0 3px; font-size: 0.92rem; font-weight: 700; }
+.trial-banner-text p  { margin: 0; font-size: 0.8rem; color: rgba(255,255,255,0.8); line-height: 1.5; }
+.trial-banner-text a  { color: #FAC775; font-weight: 700; }
+.trial-banner-close {
+  background: rgba(255,255,255,0.15);
+  border: none; border-radius: 50%;
+  color: #fff; cursor: pointer;
+  width: 28px; height: 28px;
+  font-size: 0.9rem; line-height: 1;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s;
+  margin-left: auto;
+}
+.trial-banner-close:hover { background: rgba(255,255,255,0.28); }
+
 /* ── Welcome banner ────────────────────────────────────────────────────── */
 .welcome-banner {
   display: flex;
@@ -817,35 +1150,33 @@ main { max-width: 1200px; padding-top: var(--space-5); }
   .db-title { font-size: 1.2rem; }
   .db-meta  { font-size: 0.75rem; }
 
-  /* Stat pills — compact */
-  .stat-row  { gap: var(--space-2); }
-  .stat-pill { padding: var(--space-2) var(--space-3); min-width: 80px; }
+  /* Sticky filter bar — keep inside content margins, clip chip overflow */
+  .filter-bar {
+    top: 56px;
+    padding: var(--space-2) var(--space-3);
+    margin-bottom: var(--space-4);
+    overflow: hidden;   /* contains the horizontally-scrolling chip row */
+  }
+
+  /* Stat pills — keep wrapping on mobile to avoid page-width overflow */
+  .stat-pill { padding: var(--space-2) var(--space-3); min-width: 76px; }
   .stat-pill .val { font-size: 1.4rem; }
   .stat-pill .lbl { font-size: 0.65rem; }
 
-  /* Filter bar — tighter overall */
-  .filter-bar { padding: var(--space-2) var(--space-3); }
+  /* Primary row — slightly tighter */
+  .filter-primary-row { margin-bottom: 8px; gap: 5px; flex-wrap: wrap; }
 
-  /* Filter rows scroll horizontally instead of wrapping to multiple lines */
-  .filter-row {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    padding-bottom: 2px;
-    gap: 4px;
-  }
-  .filter-row::-webkit-scrollbar { display: none; }
+  /* Sort select — compact */
+  .sort-select { font-size: 0.72rem; padding: 4px 24px 4px 10px; }
 
-  /* Shrink filter buttons so more fit in view */
-  .filter-btn  { padding: 3px 10px; font-size: 0.76rem; flex-shrink: 0; white-space: nowrap; }
-  .filter-label { font-size: 0.62rem; flex-shrink: 0; white-space: nowrap; }
+  /* More-filters button */
+  .more-filters-btn { font-size: 0.72rem; padding: 4px 10px; }
 
   /* Bet count badge */
-  #bet-count-badge { flex-shrink: 0; font-size: 0.7rem; }
+  #bet-count-badge { font-size: 0.7rem; }
 
-  /* Bankroll row can still wrap (intentional) */
-  .bankroll-row { flex-wrap: wrap; }
+  /* League chips smaller */
+  .filter-chip { font-size: 0.74rem; padding: 3px 11px; }
 
   /* Day toggle buttons slightly smaller */
   .day-toggle-btn { padding: 5px 14px; font-size: 0.8rem; }
@@ -859,6 +1190,10 @@ main { max-width: 1200px; padding-top: var(--space-5); }
   .card-stat  { padding: 8px 6px; }
   .card-stat .s-val { font-size: 0.82rem; }
   .card-stat .s-lbl { font-size: 0.52rem; }
+
+  /* Advanced filter panel — full-width sections stack */
+  .filter-section { flex-wrap: wrap; }
+  .filter-label { width: 100%; margin-bottom: 2px; }
 }
 
 /* EV modal tighter on small phones */
@@ -943,14 +1278,38 @@ main { max-width: 1200px; padding-top: var(--space-5); }
   </div>
 </div>
 
+{# ── Trial countdown banner (shown whenever trial is active) ───────────── #}
+{% if trial_days_remaining is not none %}
+<div class="trial-banner" id="trialBanner">
+  <div class="trial-banner-days">
+    {{ trial_days_remaining }}<small>days left</small>
+  </div>
+  <div class="trial-banner-text">
+    <h3>🎁 Your 7-day free trial is active</h3>
+    <p>
+      Your trial ends on
+      <strong>{{ trial_ends_at.strftime('%B %-d') }}</strong>.
+      After that you'll be charged $19.99/month automatically.
+      <a href="https://billing.stripe.com/p/login/test_3cs8yg1l36Nl8qk000" target="_blank" rel="noopener">Manage billing &rarr;</a>
+    </p>
+  </div>
+  <button class="trial-banner-close" onclick="document.getElementById('trialBanner').remove()" aria-label="Dismiss">&#10005;</button>
+</div>
+{% endif %}
+
 {# ── Welcome banner (shown once after successful checkout) ──────────────── #}
 {% if show_welcome %}
 <div class="welcome-banner" id="welcomeBanner">
   <div class="welcome-banner-body">
     <div class="welcome-banner-icon">🎉</div>
     <div>
+      {% if trial_days_remaining is not none %}
+      <h3>Your free trial has started — welcome!</h3>
+      <p>Full dashboard access is live. You won&rsquo;t be charged until your trial ends. Happy hunting.</p>
+      {% else %}
       <h3>You're subscribed to EV Pro — welcome!</h3>
       <p>Every +EV bet below is live. Refreshes every hour. Happy hunting.</p>
+      {% endif %}
     </div>
   </div>
   <button class="welcome-banner-close" onclick="document.getElementById('welcomeBanner').remove()" aria-label="Dismiss">&#10005;</button>
@@ -997,86 +1356,108 @@ main { max-width: 1200px; padding-top: var(--space-5); }
 </div>
 
 {# ── Filter bar ────────────────────────────────────────────────────────── #}
-<div class="filter-bar">
-  {# Day toggle #}
-  <div class="filter-row" style="margin-bottom:var(--space-1);">
+<div class="filter-bar" id="filterBar">
+
+  {# ── Primary row: day toggle + sort + more button + count ── #}
+  <div class="filter-primary-row">
     <div class="day-toggle">
       <button type="button" class="day-toggle-btn active" id="dayToday">📅 Today</button>
       <button type="button" class="day-toggle-btn" id="dayTomorrow">Tomorrow</button>
     </div>
-    <span id="day-badge"></span>
-  </div>
-  {# League tabs #}
-  <div class="filter-row">
-    <span class="filter-label">League</span>
-    <button type="button" class="filter-btn active" data-filter="league" data-value="all">All</button>
-    <button type="button" class="filter-btn" data-filter="league" data-value="icehockey_nhl">NHL</button>
-    <button type="button" class="filter-btn" data-filter="league" data-value="basketball_nba">NBA</button>
-    <button type="button" class="filter-btn" data-filter="league" data-value="basketball_ncaab">NCAAB</button>
-    <button type="button" class="filter-btn" data-filter="league" data-value="baseball_mlb">MLB</button>
-    <button type="button" class="filter-btn" data-filter="league" data-value="soccer_epl">EPL</button>
-    <button type="button" class="filter-btn" data-filter="league" data-value="soccer_spain_la_liga">La Liga</button>
-    <button type="button" class="filter-btn" data-filter="league" data-value="soccer_germany_bundesliga">Bundesliga</button>
-    <button type="button" class="filter-btn" data-filter="league" data-value="soccer_usa_mls">MLS</button>
-    <button type="button" class="filter-btn" data-filter="is_prop" data-value="true">🎯 Props</button>
+    <div class="filter-primary-spacer"></div>
+    <select class="sort-select" id="sortSelect" aria-label="Sort picks by">
+      <option value="ev_desc">↑ EV% High→Low</option>
+      <option value="ev_asc">↓ EV% Low→High</option>
+      <option value="time_asc">⏰ Game Time</option>
+      <option value="odds_best">💰 Best Odds</option>
+    </select>
+    <button type="button" class="more-filters-btn" id="moreFiltersBtn" onclick="toggleAdvancedFilters()">
+      ⚙ Filters <span class="filter-active-dot" id="activeFilterDot" style="display:none;">0</span>
+    </button>
     <span id="bet-count-badge">{{ bet_count }} bets</span>
   </div>
-  {# Market filter #}
-  <div class="filter-row">
-    <span class="filter-label">Market</span>
-    <button type="button" class="filter-btn active" data-filter="market" data-value="all">All</button>
-    <button type="button" class="filter-btn" data-filter="market" data-value="h2h">Moneyline</button>
-    <button type="button" class="filter-btn" data-filter="market" data-value="spreads">Spread</button>
-    <button type="button" class="filter-btn" data-filter="market" data-value="totals">Total</button>
+
+  {# ── League quick-chips ── #}
+  <div class="filter-chips-row" id="leagueChips">
+    <button type="button" class="filter-chip active" data-filter="league" data-value="all">All</button>
+    <button type="button" class="filter-chip" data-filter="league" data-value="icehockey_nhl">🏒 NHL</button>
+    <button type="button" class="filter-chip" data-filter="league" data-value="basketball_nba">🏀 NBA</button>
+    <button type="button" class="filter-chip" data-filter="league" data-value="baseball_mlb">⚾ MLB</button>
+    <button type="button" class="filter-chip" data-filter="league" data-value="basketball_ncaab">🎓 NCAAB</button>
+    <button type="button" class="filter-chip" data-filter="league" data-value="soccer">⚽ Soccer</button>
+    <button type="button" class="filter-chip" data-filter="league" data-value="golf">⛳ Golf</button>
+    <button type="button" class="filter-chip chip-props" data-filter="is_prop" data-value="true">🎯 Props</button>
   </div>
-  {# Book filter — one button per bookmaker present in current bets #}
-  {% set book_label_map = {
-    "draftkings":       "DraftKings",
-    "fanduel":          "FanDuel",
-    "betmgm":           "BetMGM",
-    "pointsbet":        "PointsBet",
-    "caesars":          "Caesars",
-    "betfair_ex_uk":    "Betfair",
-    "kalshi":           "Kalshi",
-    "novig":            "NoVig",
-    "polymarket":       "Polymarket",
-    "prophetx":         "ProphetX"
-  } %}
-  {% set seen_books = [] %}
-  {% for bet in bets %}
-    {% if bet.book | lower not in seen_books %}
-      {% set _ = seen_books.append(bet.book | lower) %}
-    {% endif %}
-  {% endfor %}
-  <div class="filter-row">
-    <span class="filter-label">Book</span>
-    <button type="button" class="filter-btn active" data-filter="book" data-value="all">All</button>
-    {% for book_key in seen_books | sort %}
-      <button type="button" class="filter-btn" data-filter="book" data-value="{{ book_key }}">
-        {{ book_label_map.get(book_key, book_key | title) }}
-      </button>
-    {% endfor %}
-  </div>
-  {# Source filter #}
-  <div class="filter-row">
-    <span class="filter-label">Source</span>
-    <button type="button" class="filter-btn active" data-filter="source" data-value="all">All</button>
-    <button type="button" class="filter-btn" data-filter="source" data-value="sportsbook">Sportsbooks</button>
-    <button type="button" class="filter-btn" data-filter="source" data-value="prediction_market">Prediction Markets</button>
-    <span style="font-size:0.72rem; color:var(--text-muted); margin-left:var(--space-2);">
-      ℹ️ <a href="#pm-info" onclick="document.getElementById('pm-callout').style.display='block'; return false;"
-             style="color:var(--text-muted); text-decoration:underline; cursor:pointer;">What are prediction markets?</a>
-    </span>
-  </div>
-  {# Bankroll input #}
-  <div class="filter-row bankroll-row">
-    <span class="filter-label">Bankroll</span>
-    <div class="bankroll-wrap">
-      <span class="bankroll-prefix">$</span>
-      <input type="number" id="bankrollInput" placeholder="e.g. 1000"
-             min="0" step="1" autocomplete="off" />
+
+  {# ── Advanced panel (hidden by default) ── #}
+  <div class="filter-advanced" id="advancedFilters">
+
+    {# Market #}
+    <div class="filter-section">
+      <span class="filter-label">Market</span>
+      <button type="button" class="filter-btn active" data-filter="market" data-value="all">All</button>
+      <button type="button" class="filter-btn" data-filter="market" data-value="h2h">Moneyline</button>
+      <button type="button" class="filter-btn" data-filter="market" data-value="spreads">Spread</button>
+      <button type="button" class="filter-btn" data-filter="market" data-value="totals">Total</button>
     </div>
-    <span class="bankroll-hint" id="bankrollHint">Enter your bankroll → unit sizes appear on each pick</span>
+
+    {# Book #}
+    {% set book_label_map = {
+      "draftkings":    "DraftKings",
+      "fanduel":       "FanDuel",
+      "betmgm":        "BetMGM",
+      "pointsbet":     "PointsBet",
+      "caesars":       "Caesars",
+      "betfair_ex_uk": "Betfair",
+      "kalshi":        "Kalshi",
+      "novig":         "NoVig",
+      "polymarket":    "Polymarket",
+      "prophetx":      "ProphetX"
+    } %}
+    {% set seen_books = [] %}
+    {% for bet in bets %}
+      {% if bet.book | lower not in seen_books %}
+        {% set _ = seen_books.append(bet.book | lower) %}
+      {% endif %}
+    {% endfor %}
+    <div class="filter-section">
+      <span class="filter-label">Book</span>
+      <button type="button" class="filter-btn active" data-filter="book" data-value="all">All</button>
+      {% for book_key in seen_books | sort %}
+        <button type="button" class="filter-btn" data-filter="book" data-value="{{ book_key }}">
+          {{ book_label_map.get(book_key, book_key | title) }}
+        </button>
+      {% endfor %}
+    </div>
+
+    {# Source #}
+    <div class="filter-section">
+      <span class="filter-label">Source</span>
+      <button type="button" class="filter-btn active" data-filter="source" data-value="all">All</button>
+      <button type="button" class="filter-btn" data-filter="source" data-value="sportsbook">Sportsbooks</button>
+      <button type="button" class="filter-btn" data-filter="source" data-value="prediction_market">Prediction Markets</button>
+      <a href="#pm-info" onclick="document.getElementById('pm-callout').style.display='block'; return false;"
+         style="font-size:0.72rem; color:var(--text-muted); text-decoration:underline; cursor:pointer; margin-left:4px;">
+        What are prediction markets?
+      </a>
+    </div>
+
+    {# Bankroll #}
+    <div class="filter-section bankroll-row">
+      <span class="filter-label">Bankroll</span>
+      <div class="bankroll-wrap">
+        <span class="bankroll-prefix">$</span>
+        <input type="number" id="bankrollInput" placeholder="e.g. 1000"
+               min="0" step="1" autocomplete="off" />
+      </div>
+      <span class="bankroll-hint" id="bankrollHint">Enter bankroll → ½ Kelly unit sizes on each pick</span>
+    </div>
+
+  </div>{# /filter-advanced #}
+
+  {# Day badge hint #}
+  <div style="margin-top:6px; font-size:0.72rem; color:var(--text-muted);">
+    <span id="day-badge"></span>
   </div>
 </div>
 
@@ -1168,9 +1549,12 @@ main { max-width: 1200px; padding-top: var(--space-5); }
         "soccer_germany_bundesliga":  "Bundesliga",
         "soccer_usa_mls":             "MLS",
         "basketball_ncaab":           "NCAAB",
-        "americanfootball_nfl":       "NFL",
-        "mma_mixed_martial_arts":     "MMA",
-        "basketball_wnba":            "WNBA"
+        "americanfootball_nfl":               "NFL",
+        "mma_mixed_martial_arts":             "MMA",
+        "basketball_wnba":                    "WNBA",
+        "golf_masters_tournament_winner":     "Masters",
+        "golf_pga_championship":              "PGA Champ.",
+        "golf_us_open":                       "US Open"
       } %}
       {% set league_display = league_map.get(bet.league, bet.league | upper) %}
 
@@ -1324,10 +1708,29 @@ main { max-width: 1200px; padding-top: var(--space-5); }
             <button class="ai-analysis-btn" data-bet-id="{{ bet.id }}" onclick="toggleAiPanel(this)">
               🤖 Get +EV Insight
             </button>
-            <button class="why-ev-btn" onclick="openEvModal(this.closest('.bet-card'))">
-              📐 Why is this +EV?
-            </button>
+            <div class="card-secondary-actions">
+              <button class="why-ev-btn" onclick="openEvModal(this.closest('.bet-card'))">
+                📐 Why is this +EV?
+              </button>
+              {% if not bet.is_prop and bet.game and ' @ ' in (bet.game or '') %}
+              <span class="sec-divider">·</span>
+              <button class="proj-btn" data-bet-id="{{ bet.id }}" onclick="toggleProjPanel(this)">
+                📊 Projection
+              </button>
+              {% endif %}
+            </div>
           </div>
+
+          {# Game projection panel (non-prop game bets only) #}
+          {% if not bet.is_prop and bet.game and ' @ ' in (bet.game or '') %}
+          <div class="proj-panel" id="proj-panel-{{ bet.id }}">
+            <div class="proj-loading" id="proj-loading-{{ bet.id }}">Fetching model projection&hellip;</div>
+            <div id="proj-content-{{ bet.id }}" style="display:none;"></div>
+            <div class="proj-error" id="proj-error-{{ bet.id }}" style="display:none;">
+              Projection unavailable for this game.
+            </div>
+          </div>
+          {% endif %}
 
           {# +EV Insight collapsible panel #}
           <div class="ai-panel" id="ai-panel-{{ bet.id }}">
@@ -1699,32 +2102,84 @@ updateKellyDisplays(); // run on page load with saved value
 // ── Filter logic ─────────────────────────────────────────────────────────
 let activeLeague = 'all';
 let activeMarket = 'all';
-let activeSource = 'all';     // 'all' | 'sportsbook' | 'prediction_market'
-let activeBook   = 'all';     // 'all' | bookmaker key
-let activeIsProp = 'all';     // 'all' | 'true'
-let activeDay    = 'today';   // 'today' | 'tomorrow'
+let activeSource = 'all';
+let activeBook   = 'all';
+let activeIsProp = 'all';
+let activeDay    = 'today';
+let activeSort   = 'ev_desc';
 
 // Returns a date string in the user's selected timezone
 function ctDateStr(date) {
   return date.toLocaleDateString('en-US', { timeZone: _tz(), year: 'numeric', month: '2-digit', day: '2-digit' });
 }
 
+// ── Sort cards in DOM ─────────────────────────────────────────────
+function sortCards() {
+  const grid = document.getElementById('cards-grid');
+  if (!grid) return;
+  const cards = Array.from(grid.querySelectorAll('.bet-card'));
+  cards.sort((a, b) => {
+    switch (activeSort) {
+      case 'ev_asc':
+        return parseFloat(a.dataset.ev) - parseFloat(b.dataset.ev);
+      case 'time_asc': {
+        const ta = a.dataset.commence ? new Date(a.dataset.commence).getTime() : Infinity;
+        const tb = b.dataset.commence ? new Date(b.dataset.commence).getTime() : Infinity;
+        return ta - tb;
+      }
+      case 'odds_best': {
+        const oa = parseInt(a.dataset.odds, 10);
+        const ob = parseInt(b.dataset.odds, 10);
+        return ob - oa;
+      }
+      default: // ev_desc
+        return parseFloat(b.dataset.ev) - parseFloat(a.dataset.ev);
+    }
+  });
+  cards.forEach(card => grid.appendChild(card));
+}
+
+// ── Active filter dot badge ───────────────────────────────────────
+function updateActiveFilterDot() {
+  const count = [activeMarket !== 'all', activeBook !== 'all', activeSource !== 'all'].filter(Boolean).length;
+  const dot = document.getElementById('activeFilterDot');
+  const btn = document.getElementById('moreFiltersBtn');
+  if (!dot || !btn) return;
+  if (count > 0) {
+    dot.textContent = count;
+    dot.style.display = 'inline-flex';
+    btn.classList.add('has-active');
+  } else {
+    dot.style.display = 'none';
+    btn.classList.remove('has-active');
+  }
+}
+
+// ── Toggle advanced filters panel ────────────────────────────────
+function toggleAdvancedFilters() {
+  const panel = document.getElementById('advancedFilters');
+  if (panel) panel.classList.toggle('open');
+}
+
 function applyFilters() {
-  // Recompute reference dates in the currently selected TZ on every call
   const todayStr    = ctDateStr(new Date());
   const tomorrowStr = ctDateStr(new Date(Date.now() + 86400000));
-
   const cards = document.querySelectorAll('.bet-card');
   let visible = 0;
 
   cards.forEach(card => {
-    const leagueMatch  = activeLeague === 'all' || card.dataset.league === activeLeague;
-    const marketMatch  = activeMarket === 'all' || card.dataset.market === activeMarket;
-    const sourceMatch  = activeSource === 'all' || (card.dataset.source || 'sportsbook') === activeSource;
-    const bookMatch    = activeBook   === 'all' || (card.dataset.book || '') === activeBook;
-    const isPropMatch  = activeIsProp === 'all' || card.dataset.isProp === activeIsProp;
+    // Sport meta-filters: soccer → any soccer_* key; golf → any golf_* key
+    const leagueMatch =
+      activeLeague === 'all' ||
+      (activeLeague === 'soccer' && card.dataset.league.startsWith('soccer_')) ||
+      (activeLeague === 'golf'   && card.dataset.league.startsWith('golf_'))   ||
+      card.dataset.league === activeLeague;
 
-    // Day filter — compare commence_time date in the selected TZ
+    const marketMatch = activeMarket === 'all' || card.dataset.market === activeMarket;
+    const sourceMatch = activeSource === 'all' || (card.dataset.source || 'sportsbook') === activeSource;
+    const bookMatch   = activeBook   === 'all' || (card.dataset.book || '') === activeBook;
+    const isPropMatch = activeIsProp === 'all' || card.dataset.isProp === activeIsProp;
+
     let dayMatch = true;
     const commenceIso = card.dataset.commence;
     if (commenceIso) {
@@ -1740,68 +2195,67 @@ function applyFilters() {
     if (show) visible++;
   });
 
-  // Update badge count
   const badge = document.getElementById('bet-count-badge');
   if (badge) badge.textContent = visible + ' bet' + (visible !== 1 ? 's' : '');
 
-  // Show/hide "no results" empty state
   const noResults = document.getElementById('no-results-filtered');
   if (noResults) noResults.style.display = (visible === 0 && cards.length > 0) ? '' : 'none';
 
-  // Update stat pill total
   const statTotal = document.getElementById('stat-total');
   if (statTotal) statTotal.textContent = visible;
 
-  // Update day badge hint
   const dayBadge = document.getElementById('day-badge');
   if (dayBadge) {
     const label = activeDay === 'today' ? todayStr : tomorrowStr;
-    dayBadge.textContent = visible + ' pick' + (visible !== 1 ? 's' : '') + ' — ' + label;
+    dayBadge.textContent = visible + ' pick' + (visible !== 1 ? 's' : '') + ' · ' + label;
   }
+
+  updateActiveFilterDot();
 }
 
-// League / Market filter buttons
-document.querySelectorAll('.filter-btn').forEach(btn => {
+// ── League chips ──────────────────────────────────────────────────
+document.querySelectorAll('.filter-chip').forEach(btn => {
   btn.addEventListener('click', () => {
     const filterType = btn.dataset.filter;
     const value      = btn.dataset.value;
 
-    // Props button: toggle behavior
     if (filterType === 'is_prop') {
       if (activeIsProp === 'true') {
-        // Turn off — go back to "All"
         activeIsProp = 'all';
         btn.classList.remove('active');
-        document.querySelector('.filter-btn[data-filter="league"][data-value="all"]').classList.add('active');
+        document.querySelector('.filter-chip[data-filter="league"][data-value="all"]').classList.add('active');
       } else {
-        // Turn on — visually deactivate league buttons
         activeIsProp = 'true';
-        document.querySelectorAll('.filter-btn[data-filter="league"]').forEach(b => b.classList.remove('active'));
+        activeLeague = 'all';
+        document.querySelectorAll('.filter-chip[data-filter="league"]').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
       }
-      applyFilters();
-      return;
-    }
-
-    // Standard filter: deactivate siblings, activate clicked
-    document.querySelectorAll(`.filter-btn[data-filter="${filterType}"]`)
-      .forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-
-    if (filterType === 'league') {
+    } else {
+      document.querySelectorAll('.filter-chip[data-filter="league"]').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.filter-chip[data-filter="is_prop"]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
       activeLeague = value;
-      // Switching league always clears Props filter
       activeIsProp = 'all';
-      document.querySelectorAll('.filter-btn[data-filter="is_prop"]').forEach(b => b.classList.remove('active'));
     }
-    if (filterType === 'market')   activeMarket = value;
-    if (filterType === 'source')   activeSource = value;
-    if (filterType === 'book')     activeBook   = value;
     applyFilters();
   });
 });
 
-// Day toggle buttons
+// ── Advanced filter buttons (market / book / source) ──────────────
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const filterType = btn.dataset.filter;
+    const value      = btn.dataset.value;
+    document.querySelectorAll(`.filter-btn[data-filter="${filterType}"]`).forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    if (filterType === 'market') activeMarket = value;
+    if (filterType === 'source') activeSource = value;
+    if (filterType === 'book')   activeBook   = value;
+    applyFilters();
+  });
+});
+
+// ── Day toggle ────────────────────────────────────────────────────
 document.getElementById('dayToday').addEventListener('click', () => {
   activeDay = 'today';
   document.getElementById('dayToday').classList.add('active');
@@ -1815,17 +2269,29 @@ document.getElementById('dayTomorrow').addEventListener('click', () => {
   applyFilters();
 });
 
+// ── Sort ──────────────────────────────────────────────────────────
+document.getElementById('sortSelect').addEventListener('change', function() {
+  activeSort = this.value;
+  sortCards();
+});
+
 function clearFilters() {
-  activeDay    = 'today';
-  activeSource = 'all';
-  activeBook   = 'all';
-  activeIsProp = 'all';
+  activeDay = 'today'; activeLeague = 'all'; activeMarket = 'all';
+  activeSource = 'all'; activeBook = 'all'; activeIsProp = 'all'; activeSort = 'ev_desc';
+  document.getElementById('sortSelect').value = 'ev_desc';
   document.getElementById('dayToday').classList.add('active');
   document.getElementById('dayTomorrow').classList.remove('active');
-  document.querySelectorAll('.filter-btn[data-value="all"]').forEach(b => b.click());
+  document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
+  const allChip = document.querySelector('.filter-chip[data-value="all"]');
+  if (allChip) allChip.classList.add('active');
+  document.querySelectorAll('.filter-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.value === 'all');
+  });
+  applyFilters();
 }
 
-// Run on load so the day badge populates immediately
+// Run on load
+sortCards();
 applyFilters();
 
 // ── AI Analysis panel ─────────────────────────────────────────────────────
@@ -1866,7 +2332,14 @@ function toggleAiPanel(btn) {
   btn.disabled = true;
 
   fetch('/api/analysis/' + betId)
-    .then(r => r.ok ? r.json() : Promise.reject(r.status))
+    .then(r => {
+      if (r.status === 404) {
+        // Bet IDs changed after hourly cache refresh — reload the page silently
+        window.location.reload();
+        return Promise.reject('stale');
+      }
+      return r.ok ? r.json() : Promise.reject(r.status);
+    })
     .then(data => {
       _aiCache[betId] = data;
       updateAiCachePill();
@@ -1954,6 +2427,149 @@ function toggleAiPanel(btn) {
     .finally(() => {
       btn.disabled = false;
     });
+}
+
+// ── Game Projection panel ─────────────────────────────────────────────────
+
+const _projCache = {};   // betId → rendered HTML string
+
+function toggleProjPanel(btn) {
+  const betId   = btn.dataset.betId;
+  const panel   = document.getElementById('proj-panel-' + betId);
+  if (!panel) return;
+
+  // Toggle closed
+  if (panel.style.display === 'block') {
+    panel.style.display = 'none';
+    btn.textContent = '📊 Projection';
+    return;
+  }
+
+  // Open
+  panel.style.display = 'block';
+  btn.textContent = '✕ Close';
+
+  // Already loaded — just show cached HTML
+  if (_projCache[betId]) {
+    document.getElementById('proj-loading-' + betId).style.display = 'none';
+    document.getElementById('proj-content-' + betId).style.display = 'block';
+    return;
+  }
+
+  const loadEl    = document.getElementById('proj-loading-' + betId);
+  const contentEl = document.getElementById('proj-content-' + betId);
+  const errorEl   = document.getElementById('proj-error-'   + betId);
+  if (loadEl)    loadEl.style.display    = 'block';
+  if (contentEl) contentEl.style.display = 'none';
+  if (errorEl)   errorEl.style.display   = 'none';
+  btn.disabled = true;
+
+  fetch('/api/projection/' + betId)
+    .then(r => {
+      if (r.status === 404) { window.location.reload(); return Promise.reject('stale'); }
+      return r.ok ? r.json() : Promise.reject(r.status);
+    })
+    .then(d => {
+      // Helper: format a score value
+      const fmt   = v => (v != null ? parseFloat(v).toFixed(1) : '—');
+      const fmtI  = v => (v != null ? Math.round(v)            : '—');
+
+      const away  = d.away_display || d.away_team || 'Away';
+      const home  = d.home_display || d.home_team || 'Home';
+
+      // Spread alignment badge
+      const spreadProj    = d.spread_mean;          // positive = home favoured
+      const spreadLine    = d.consensus_line;        // positive = home favoured
+      const totalProj     = d.total_mean;
+      const totalLine     = d.consensus_total;
+      const homeWinProb   = d.home_win_probability;
+
+      let spreadBadge = '';
+      if (spreadProj != null && spreadLine != null) {
+        const diff = Math.abs(spreadProj - spreadLine);
+        if (diff <= 1.0) {
+          spreadBadge = `<span class="proj-align-badge proj-align-neu">≈ On number</span>`;
+        } else if (Math.sign(spreadProj) === Math.sign(spreadLine)) {
+          spreadBadge = `<span class="proj-align-badge proj-align-yes">✓ Agrees</span>`;
+        } else {
+          spreadBadge = `<span class="proj-align-badge proj-align-no">✗ Fades</span>`;
+        }
+      }
+
+      let totalBadge = '';
+      if (totalProj != null && totalLine != null) {
+        const diff = Math.abs(totalProj - totalLine);
+        if (diff <= 1.5) {
+          totalBadge = `<span class="proj-align-badge proj-align-neu">≈ On number</span>`;
+        } else if (totalProj > totalLine) {
+          totalBadge = `<span class="proj-align-badge proj-align-yes">↑ Over</span>`;
+        } else {
+          totalBadge = `<span class="proj-align-badge proj-align-no">↓ Under</span>`;
+        }
+      }
+
+      // Spread display value — show favoured team + margin
+      const spreadVal = spreadProj != null
+        ? (spreadProj >= 0
+            ? home + ' \u2212' + fmt(Math.abs(spreadProj))
+            : away + ' \u2212' + fmt(Math.abs(spreadProj)))
+        : '—';
+
+      // Timestamp
+      const updatedStr = d.updated_at
+        ? new Date(d.updated_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
+        : '';
+
+      const html =
+        // Header
+        `<div class="proj-panel-header">
+           <span>📊 Model Projection</span>
+           ${updatedStr ? `<span class="proj-panel-timestamp">Updated ${updatedStr}</span>` : ''}
+         </div>` +
+
+        // Score row
+        `<div class="proj-scoreline">
+           <div class="proj-team">
+             <div class="proj-team-score">${fmtI(d.away_score_mean)}</div>
+             <div class="proj-team-name">${away}</div>
+           </div>
+           <div class="proj-sep">@</div>
+           <div class="proj-team">
+             <div class="proj-team-score">${fmtI(d.home_score_mean)}</div>
+             <div class="proj-team-name">${home}</div>
+           </div>
+         </div>` +
+
+        // Stats grid
+        `<div class="proj-stats">
+           <div class="proj-stat-item">
+             <div class="proj-stat-lbl">Spread</div>
+             <div class="proj-stat-val">${spreadVal}</div>
+             ${spreadBadge}
+           </div>
+           <div class="proj-stat-item">
+             <div class="proj-stat-lbl">Total</div>
+             <div class="proj-stat-val">${fmt(totalProj)}</div>
+             ${totalBadge}
+           </div>
+           <div class="proj-stat-item">
+             <div class="proj-stat-lbl">Win Prob</div>
+             <div class="proj-stat-val">${homeWinProb != null ? (homeWinProb * 100).toFixed(0) + '%' : '—'}</div>
+             ${homeWinProb != null ? `<div class="proj-stat-sub">${home} win</div>` : ''}
+           </div>
+         </div>`;
+
+      _projCache[betId] = html;
+      if (contentEl) { contentEl.innerHTML = html; contentEl.style.display = 'block'; }
+      if (loadEl)      loadEl.style.display = 'none';
+    })
+    .catch(err => {
+      if (loadEl)  loadEl.style.display  = 'none';
+      if (errorEl) errorEl.style.display = 'block';
+      btn.textContent = '📊 Projection';
+      panel.style.display = 'none';
+    })
+    .finally(() => { btn.disabled = false; });
 }
 
 </script>
