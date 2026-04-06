@@ -754,6 +754,8 @@ async def get_projection(bet_id: int, request: Request, db: Session = Depends(ge
     if bet_row.is_prop or not bet_row.game or " @ " not in (bet_row.game or ""):
         raise HTTPException(status_code=422, detail="No game projection for this bet type")
 
+    log.info("Projection request: game=%r league=%r bet_id=%d", bet_row.game, bet_row.league, bet_id)
+
     import asyncio
     from scripts.context_fetcher import fetch_game_projections
 
@@ -765,6 +767,8 @@ async def get_projection(bet_id: int, request: Request, db: Session = Depends(ge
     except Exception as exc:
         log.error("Projection fetch failed for bet_id=%d: %s", bet_id, exc)
         raise HTTPException(status_code=500, detail="Projection service unavailable")
+
+    log.info("Projection result for bet_id=%d: %s", bet_id, proj or "EMPTY")
 
     if not proj:
         raise HTTPException(status_code=422, detail="No projection available for this game")

@@ -2572,9 +2572,14 @@ function toggleProjPanel(btn) {
     })
     .catch(err => {
       if (loadEl)  loadEl.style.display  = 'none';
-      if (errorEl) errorEl.style.display = 'block';
-      btn.textContent = '📊 Projection';
-      panel.style.display = 'none';
+      if (errorEl) {
+        errorEl.textContent = err === 'unavailable'
+          ? 'No model projection found for this game yet.'
+          : 'Projection unavailable — try again shortly.';
+        errorEl.style.display = 'block';
+      }
+      btn.textContent = '✕ Close';
+      // Keep panel open so the error message is visible
     })
     .finally(() => { btn.disabled = false; });
 }
