@@ -431,6 +431,14 @@ async def on_startup() -> None:
         except Exception:
             _db.rollback()
 
+    # Migrate: add trial_ends_at to users table
+    with SessionLocal() as _db:
+        try:
+            _db.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMPTZ"))
+            _db.commit()
+        except Exception:
+            _db.rollback()
+
     # Migrate: add game_id to daily_picks for CLV closing line lookup
     with SessionLocal() as _db:
         try:
@@ -701,8 +709,70 @@ async def health():
 # AI Analysis endpoint
 # ---------------------------------------------------------------------------
 
+@app.get("/api/projection/{bet_id}")
+async def get_projection(bet_id: int, request: Request, db: Session = Depends(get_db)):
+    """
+    Return Optimal game-level score projections for a specific bet.
+
+    Looks up the EVBetCache row, resolves the game string and league, then
+    queries Optimal for spread / total / score projections and the model's
+    home-win probability. Subscription required.
+
+    Response JSON:
+        {
+          "away_team": "Houston Rockets",
+          "home_team": "Golden State Warriors",
+          "away_score_mean": 115.3,
+          "home_score_mean": 111.6,
+          "spread_mean": -3.7,        # positive = home favoured
+          "total_mean": 226.9,
+          "home_win_probability": 0.41,
+          "consensus_line": 3.5,
+          "consensus_total": 226.0,
+          "consensus_home_ml": "140",
+          "consensus_away_ml": "-165",
+          "updated_at": "2026-04-05T…"
+        }
+    """
+    # Auth check — subscription required
+    token = get_token_from_request(request)
+    if not token:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    payload = decode_access_token(token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    user = db.query(User).filter(User.id == int(payload["sub"])).first()
+    if not user or not user.is_subscribed:
+        raise HTTPException(status_code=403, detail="Subscription required")
+
+    bet_row = db.query(EVBetCache).filter(EVBetCache.id == bet_id).first()
+    if not bet_row:
+        raise HTTPException(status_code=404, detail="Bet not found")
+
+    # Props and bets without a game string don't have game projections
+    if bet_row.is_prop or not bet_row.game or " @ " not in (bet_row.game or ""):
+        raise HTTPException(status_code=422, detail="No game projection for this bet type")
+
+    import asyncio
+    from scripts.context_fetcher import fetch_game_projections
+
+    loop = asyncio.get_event_loop()
+    try:
+        proj = await loop.run_in_executor(
+            None, fetch_game_projections, bet_row.game, bet_row.league
+        )
+    except Exception as exc:
+        log.error("Projection fetch failed for bet_id=%d: %s", bet_id, exc)
+        raise HTTPException(status_code=500, detail="Projection service unavailable")
+
+    if not proj:
+        raise HTTPException(status_code=404, detail="No projection available for this game")
+
+    return JSONResponse(proj)
+
+
 @app.get("/api/analysis/{bet_id}")
-async def get_analysis(bet_id: int, db: Session = Depends(get_db)):
+async def get_analysis(bet_id: int, request: Request, db: Session = Depends(get_db)):
     """
     Return AI analysis for a specific bet (by EVBetCache.id).
 
@@ -852,6 +922,14 @@ async def dashboard(
     Served only after SubscriptionMiddleware confirms valid JWT + active subscription.
     Reads today's +EV bets from EVBetCache — no live API calls on page load.
     """
+    import traceback
+    try:
+     return await _dashboard_inner(request, welcome, db, current_user)
+    except Exception:
+        log.error("DASHBOARD 500:\n%s", traceback.format_exc())
+        raise
+
+async def _dashboard_inner(request, welcome, db, current_user):
     bets = (
         db.query(EVBetCache)
         .order_by(EVBetCache.ev_percent.desc())
@@ -892,19 +970,31 @@ async def dashboard(
     job = scheduler.get_job("ev_cache_refresh")
     next_refresh: Optional[datetime] = job.next_run_time if job else None
 
+    # Compute trial days remaining (None if not on trial or trial expired)
+    trial_days_remaining: Optional[int] = None
+    trial_ends_at: Optional[datetime]   = None
+    if getattr(current_user, "trial_ends_at", None):
+        now_utc = datetime.now(timezone.utc)
+        delta   = current_user.trial_ends_at - now_utc
+        if delta.total_seconds() > 0:
+            trial_ends_at        = current_user.trial_ends_at
+            trial_days_remaining = max(1, delta.days + (1 if delta.seconds > 0 else 0))
+
     return templates.TemplateResponse(
         request,
         "dashboard.html",
         {
-            "user":            current_user,
-            "bets":            bets,
-            "bet_count":       len(bets),
-            "cache_status":    _cache_status,
-            "next_refresh":    next_refresh,
-            "show_welcome":    welcome == "1",
-            "today_pick":      today_pick,
-            "pick_still_live": pick_still_live,
-            "pick_record":     pick_record,
+            "user":                 current_user,
+            "bets":                 bets,
+            "bet_count":            len(bets),
+            "cache_status":         _cache_status,
+            "next_refresh":         next_refresh,
+            "show_welcome":         welcome == "1",
+            "today_pick":           today_pick,
+            "pick_still_live":      pick_still_live,
+            "pick_record":          pick_record,
+            "trial_days_remaining": trial_days_remaining,
+            "trial_ends_at":        trial_ends_at,
         },
     )
 
