@@ -1,0 +1,16 @@
+name: Deploy to Railway
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Trigger Railway deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Railway deploy hook
+        run: |
+          curl --silent --show-error --fail \
+            -X POST "${{ secrets.RAILWAY_DEPLOY_HOOK_URL }}"
