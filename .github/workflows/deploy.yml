@@ -14,35 +14,7 @@ jobs:
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
-          curl -sf -X POST https://backboard.railway.app/graphql/v2 \
+          curl -s -X POST https://backboard.railway.app/graphql/v2 \
             -H "Authorization: Bearer $RAILWAY_TOKEN" \
             -H "Content-Type: application/json" \
-            -d '{"query":"{ me { projects { edges { node { id name } } } } }"}' \
-            | jq '.data.me.projects.edges[].node'
-
-      - name: Trigger Railway redeploy via API
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-          RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
-        run: |
-          RESPONSE=$(curl -sf -X POST https://backboard.railway.app/graphql/v2 \
-            -H "Authorization: Bearer $RAILWAY_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d "{\"query\":\"{ project(id: \\\"$RAILWAY_PROJECT_ID\\\") { environments { edges { node { id name } } } services { edges { node { id name } } } } }\"}")
-
-          SERVICE_ID=$(echo "$RESPONSE" | jq -r '.data.project.services.edges[0].node.id')
-          ENV_ID=$(echo "$RESPONSE"     | jq -r '.data.project.environments.edges[0].node.id')
-
-          echo "Service: $SERVICE_ID  |  Environment: $ENV_ID"
-
-          if [ "$SERVICE_ID" = "null" ] || [ -z "$SERVICE_ID" ]; then
-            echo "Could not resolve service ID — check RAILWAY_PROJECT_ID matches a project listed above"
-            exit 1
-          fi
-
-          DEPLOY=$(curl -sf -X POST https://backboard.railway.app/graphql/v2 \
-            -H "Authorization: Bearer $RAILWAY_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d "{\"query\":\"mutation { serviceInstanceRedeploy(serviceId: \\\"$SERVICE_ID\\\", environmentId: \\\"$ENV_ID\\\") }\"}")
-
-          echo "Deploy response: $DEPLOY"
+            -d '{"query":"{ me { projects { edges { node { id name } } } } }"}'
