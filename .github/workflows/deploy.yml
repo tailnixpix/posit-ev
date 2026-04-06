@@ -10,20 +10,19 @@ jobs:
     name: Deploy to Railway
     runs-on: ubuntu-latest
     steps:
-      - name: Probe Railway token scope
+      - name: Find Railway service and project IDs
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-          RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
         run: |
-          echo "=== me ==="
+          echo "=== services ==="
           curl -s -X POST https://backboard.railway.app/graphql/v2 \
             -H "Authorization: Bearer $RAILWAY_TOKEN" \
             -H "Content-Type: application/json" \
-            -d '{"query":"{ me { id name email } }"}'
+            -d '{"query":"{ services { edges { node { id name projectId } } } }"}'
 
           echo ""
-          echo "=== project by ID ==="
+          echo "=== deployments ==="
           curl -s -X POST https://backboard.railway.app/graphql/v2 \
             -H "Authorization: Bearer $RAILWAY_TOKEN" \
             -H "Content-Type: application/json" \
-            -d "{\"query\":\"{ project(id: \\\"$RAILWAY_PROJECT_ID\\\") { id name services { edges { node { id name } } } environments { edges { node { id name } } } } }\"}"
+            -d '{"query":"{ deployments(first: 5) { edges { node { id projectId serviceId environmentId } } } }"}'
