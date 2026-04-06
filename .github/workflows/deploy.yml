@@ -1,35 +1,17 @@
 name: Deploy to Railway
 
+# Railway auto-deploys from GitHub natively via webhook.
+# This file exists as a placeholder — no action needed here.
+
 on:
   push:
     branches:
       - main
 
 jobs:
-  deploy:
-    name: Deploy to Railway
+  check:
+    name: Confirm push received
     runs-on: ubuntu-latest
     steps:
-      - name: Find workspace and project
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: |
-          echo "=== User type fields ==="
-          curl -s -X POST https://backboard.railway.app/graphql/v2 \
-            -H "Authorization: Bearer $RAILWAY_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d '{"query":"{ __type(name: \"User\") { fields { name } } }"}'
-
-          echo ""
-          echo "=== deploymentTriggers (no filter) ==="
-          curl -s -X POST https://backboard.railway.app/graphql/v2 \
-            -H "Authorization: Bearer $RAILWAY_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d '{"query":"{ deploymentTriggers(first: 5) { edges { node { id projectId serviceId environmentId } } } }"}'
-
-          echo ""
-          echo "=== githubRepo ==="
-          curl -s -X POST https://backboard.railway.app/graphql/v2 \
-            -H "Authorization: Bearer $RAILWAY_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d '{"query":"{ githubRepo(fullRepoName: \"tailnixpix/posit-ev\") { id } }"}'
+      - name: OK
+        run: echo "Push received — Railway will deploy automatically."
