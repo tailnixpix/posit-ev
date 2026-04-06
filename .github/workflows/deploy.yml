@@ -17,5 +17,4 @@ jobs:
           curl -s -X POST https://backboard.railway.app/graphql/v2 \
             -H "Authorization: Bearer $RAILWAY_TOKEN" \
             -H "Content-Type: application/json" \
-            -d '{"query":"{ projects(userId: \"14bb1ee4-aa19-4a88-bcb9-9d2e5e663495\") { edges { node { id name services { edges { node { id name } } } environments { edges { node { id name } } } } } } }"}' \
-            | jq '.data.projects.edges[].node | {projectId: .id, name: .name, services: [.services.edges[].node | {id, name}], environments: [.environments.edges[].node | {id, name}]}'
+            -d '{"query":"{ projects(userId: \"14bb1ee4-aa19-4a88-bcb9-9d2e5e663495\") { edges { node { id name services { edges { node { id name } } } environments { edges { node { id name } } } } } } }"}'
