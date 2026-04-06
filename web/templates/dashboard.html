@@ -1733,7 +1733,7 @@ main { max-width: 1200px; padding-top: var(--space-5); overflow-x: hidden; }
             <div class="proj-loading" id="proj-loading-{{ bet.id }}">Fetching model projection&hellip;</div>
             <div id="proj-content-{{ bet.id }}" style="display:none;"></div>
             <div class="proj-error" id="proj-error-{{ bet.id }}" style="display:none;">
-              Projection unavailable for this game.
+              No model projection found for this game yet.
             </div>
           </div>
           {% endif %}
@@ -2472,7 +2472,8 @@ function toggleProjPanel(btn) {
 
   fetch('/api/projection/' + betId)
     .then(r => {
-      if (r.status === 404) { window.location.reload(); return Promise.reject('stale'); }
+      if (r.status === 404) { window.location.reload(); return Promise.reject('stale'); }  // bet no longer in DB
+      if (r.status === 422) return Promise.reject('unavailable');  // no projection for this game
       return r.ok ? r.json() : Promise.reject(r.status);
     })
     .then(d => {

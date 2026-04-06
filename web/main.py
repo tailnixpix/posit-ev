@@ -766,7 +766,7 @@ async def get_projection(bet_id: int, request: Request, db: Session = Depends(ge
         raise HTTPException(status_code=500, detail="Projection service unavailable")
 
     if not proj:
-        raise HTTPException(status_code=404, detail="No projection available for this game")
+        raise HTTPException(status_code=422, detail="No projection available for this game")
 
     return JSONResponse(proj)
 
