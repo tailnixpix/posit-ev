@@ -705,6 +705,23 @@ async def health():
     return {"status": "ok", "timestamp": datetime.now(timezone.utc).isoformat()}
 
 
+@app.get("/api/debug/projection")
+async def debug_projection(game: str = "Boston Bruins @ Toronto Maple Leafs", league: str = "icehockey_nhl"):
+    """Temporary debug endpoint — tests fetch_game_projections end-to-end."""
+    import asyncio, traceback
+    from scripts.context_fetcher import fetch_game_projections
+    from scripts.optimal_client import _call_tool
+    loop = asyncio.get_event_loop()
+    try:
+        # Raw Optimal ping
+        ping = _call_tool("get_schema", {})
+        # Full projection fetch
+        result = await loop.run_in_executor(None, fetch_game_projections, game, league)
+        return {"ping_ok": ping is not None, "game": game, "league": league, "result": result}
+    except Exception:
+        return {"error": traceback.format_exc()}
+
+
 # ---------------------------------------------------------------------------
 # AI Analysis endpoint
 # ---------------------------------------------------------------------------
