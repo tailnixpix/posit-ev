@@ -13,16 +13,17 @@ jobs:
       - name: Probe Railway token scope
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
         run: |
-          echo "=== projects (no filter) ==="
+          echo "=== me ==="
           curl -s -X POST https://backboard.railway.app/graphql/v2 \
             -H "Authorization: Bearer $RAILWAY_TOKEN" \
             -H "Content-Type: application/json" \
-            -d '{"query":"{ projects { edges { node { id name } } } }"}'
+            -d '{"query":"{ me { id name email } }"}'
 
           echo ""
-          echo "=== environments ==="
+          echo "=== project by ID ==="
           curl -s -X POST https://backboard.railway.app/graphql/v2 \
             -H "Authorization: Bearer $RAILWAY_TOKEN" \
             -H "Content-Type: application/json" \
-            -d '{"query":"{ environments { edges { node { id name projectId } } } }"}'
+            -d "{\"query\":\"{ project(id: \\\"$RAILWAY_PROJECT_ID\\\") { id name services { edges { node { id name } } } environments { edges { node { id name } } } } }\"}"
