@@ -674,16 +674,21 @@ main { max-width: 1200px; padding-top: var(--space-5); overflow-x: hidden; }
 .proj-scoreline {
   display: grid;
   grid-template-columns: 1fr 28px 1fr;
-  align-items: center;
+  align-items: start;
   padding: 12px 12px 10px;
   border-bottom: 1px solid rgba(5,150,105,0.1);
 }
-.proj-team { text-align: center; }
+.proj-team {
+  text-align: center;
+  min-width: 0;      /* allows grid cell to shrink and ellipsis to work */
+  overflow: hidden;
+}
 .proj-team-score {
   font-size: 1.55rem;
   font-weight: 800;
   color: var(--brand-dark);
   line-height: 1;
+  font-variant-numeric: tabular-nums; /* digits same width regardless of value */
 }
 .proj-team-name {
   font-size: 0.6rem;
@@ -700,6 +705,7 @@ main { max-width: 1200px; padding-top: var(--space-5); overflow-x: hidden; }
   font-size: 0.68rem;
   font-weight: 700;
   color: var(--text-muted);
+  padding-top: 6px;  /* optically align @ with the center of the score numbers */
 }
 
 /* Stats grid — 3 equal columns */
