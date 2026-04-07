@@ -798,6 +798,85 @@ main { max-width: 1200px; padding-top: var(--space-5); overflow-x: hidden; }
 .model-sig-score { font-size: 0.8rem; font-weight: 800; color: var(--brand-dark); font-variant-numeric: tabular-nums; }
 .model-sig-score-lbl { font-size: 0.54rem; color: #6B7280; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.3px; }
 
+/* ── Handle % bars + Sharp Money badge ──────────────────────────────── */
+.handle-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0 2px;
+}
+.handle-bars {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.handle-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.handle-lbl {
+  width: 44px;
+  font-size: 0.58rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.handle-track {
+  flex: 1;
+  height: 5px;
+  background: #F3F4F6;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.handle-fill-bets {
+  height: 100%;
+  background: #C4B5FD;   /* light purple — tickets */
+  border-radius: 3px;
+  transition: width 0.45s ease;
+}
+.handle-fill-money {
+  height: 100%;
+  background: linear-gradient(90deg, #059669 0%, #10B981 100%);
+  border-radius: 3px;
+  transition: width 0.45s ease;
+}
+.handle-fill-money.public-lean {
+  background: #9CA3AF;   /* grey when money ≤ tickets */
+}
+.handle-pct {
+  font-size: 0.67rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  width: 30px;
+  text-align: right;
+  flex-shrink: 0;
+}
+.handle-pct.bets-num   { color: #7C3AED; }
+.handle-pct.money-num  { color: #059669; }
+.handle-pct.money-pub  { color: #9CA3AF; }
+
+/* Sharp / public badges */
+.sharp-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 20px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  letter-spacing: 0.1px;
+}
+.sharp-badge-fire   { background: rgba(5,150,105,0.10); border: 1px solid rgba(5,150,105,0.30); color: #059669; }
+.sharp-badge-steam  { background: rgba(83,74,183,0.10); border: 1px solid rgba(83,74,183,0.30); color: #4338CA; }
+.sharp-badge-public { background: rgba(107,114,128,0.1); border: 1px solid rgba(107,114,128,0.3); color: #6B7280; }
+
 /* ── Top Pick ribbon (injected by JS for top model-backed cards) ──────── */
 .top-pick-ribbon {
   display: flex; align-items: center; gap: 7px;
@@ -1663,6 +1742,9 @@ main { max-width: 1200px; padding-top: var(--space-5); overflow-x: hidden; }
            data-ev="{{ '%.2f'|format(bet.ev_percent) }}"
            data-true-prob="{{ '%.4f'|format(bet.true_prob) }}"
            data-odds="{{ bet.odds }}"
+           {% if bet.bet_pct is not none %}data-bet-pct="{{ '%.0f'|format(bet.bet_pct) }}"{% endif %}
+           {% if bet.money_pct is not none %}data-money-pct="{{ '%.0f'|format(bet.money_pct) }}"{% endif %}
+           {% if bet.sharp_score is not none %}data-sharp-score="{{ '%.0f'|format(bet.sharp_score) }}"{% endif %}
            data-team="{{ team_display }}"
            data-game="{{ bet.game or '' }}"
            data-market-display="{{ market_display }}"
@@ -1751,6 +1833,41 @@ main { max-width: 1200px; padding-top: var(--space-5); overflow-x: hidden; }
               </div>
             </div>
             {% endif %}
+          {% endif %}
+
+          {# Handle % + Sharp Money (from Action Network — shown only when data available) #}
+          {% if bet.bet_pct is not none or bet.money_pct is not none %}
+          {% set bp = (bet.bet_pct | round | int) if bet.bet_pct is not none else 50 %}
+          {% set mp = (bet.money_pct | round | int) if bet.money_pct is not none else 50 %}
+          {% set money_is_sharp = mp > bp %}
+          {% set is_sharp  = bet.sharp_score is not none and bet.sharp_score >= 65 %}
+          {% set is_steam   = bet.sharp_score is not none and bet.sharp_score >= 80 %}
+          {% set is_public  = bet.sharp_score is not none and bet.sharp_score <= 35 %}
+          <div class="handle-section">
+            <div class="handle-bars">
+              <div class="handle-row">
+                <span class="handle-lbl">Tickets</span>
+                <div class="handle-track">
+                  <div class="handle-fill-bets" style="width:{{ bp }}%"></div>
+                </div>
+                <span class="handle-pct bets-num">{{ bp }}%</span>
+              </div>
+              <div class="handle-row">
+                <span class="handle-lbl">Money</span>
+                <div class="handle-track">
+                  <div class="handle-fill-money{% if not money_is_sharp %} public-lean{% endif %}" style="width:{{ mp }}%"></div>
+                </div>
+                <span class="handle-pct {% if money_is_sharp %}money-num{% else %}money-pub{% endif %}">{{ mp }}%</span>
+              </div>
+            </div>
+            {% if is_steam %}
+            <span class="sharp-badge sharp-badge-steam">⚡ Sharp Steam</span>
+            {% elif is_sharp %}
+            <span class="sharp-badge sharp-badge-fire">🔥 Sharp Money</span>
+            {% elif is_public %}
+            <span class="sharp-badge sharp-badge-public">📢 Public Lean</span>
+            {% endif %}
+          </div>
           {% endif %}
 
           {# Row 3: stats strip — Consensus | EV% | ½ Kelly #}

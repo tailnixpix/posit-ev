@@ -256,6 +256,25 @@ def refresh_ev_cache() -> int:
             else:
                 return abs(odds) / (abs(odds) + 100)
 
+        # ── Handle / sharp money enrichment (Action Network, non-fatal) ─────────
+        from scripts.handle_fetcher import fetch_handle_for_game, compute_sharp_score as _sharp_score
+        _handle_map: dict = {}   # (game, market, team) → (bet_pct, money_pct)
+        try:
+            for _, _hrow in ev_df.iterrows():
+                _hgame   = str(_hrow.get("game", "") or "")
+                _hmkt    = str(_hrow.get("market", "") or "")
+                _hteam   = str(_hrow.get("outcome_name", "") or "")
+                _hleague = str(_hrow.get("sport_key", "") or "")
+                _hkey    = (_hgame, _hmkt, _hteam)
+                if _hkey not in _handle_map and _hgame and " @ " in _hgame:
+                    _bp, _mp = fetch_handle_for_game(
+                        game=_hgame, market=_hmkt, team=_hteam, league=_hleague
+                    )
+                    _handle_map[_hkey] = (_bp, _mp)
+            log.info("Handle fetch: enriched %d unique lines.", sum(1 for v in _handle_map.values() if v[0] is not None))
+        except Exception as _he:
+            log.warning("Handle fetch failed (non-fatal): %s", _he)
+
         # ── Helper: look up first recorded odds for this bet from OddsHistory ─
         def _get_opening_odds(d_session: Session, game_id: str, book: str, market: str, team: str):
             row_h = (
@@ -359,6 +378,11 @@ def refresh_ev_cache() -> int:
             row_team    = str(row.get("outcome_name", ""))
             opening_odds_val = _get_opening_odds(db, row_game_id, row_book, row_market, row_team)
 
+            # handle / sharp money data
+            _hk = (str(row.get("game", "") or ""), row_market, row_team)
+            _bet_pct, _money_pct = _handle_map.get(_hk, (None, None))
+            _sharp = _sharp_score(_bet_pct, _money_pct, opening_odds_val, odds_val) if (_bet_pct is not None or _money_pct is not None) else None
+
             rows.append(EVBetCache(
                 game_id       = row_game_id or None,
                 league        = str(row.get("sport_key",      "")),
@@ -378,6 +402,9 @@ def refresh_ev_cache() -> int:
                 odds          = odds_val,
                 player_name   = (lambda v: str(v) if v and str(v) not in ("nan", "None", "") else None)(row.get("player_name")),
                 is_prop       = row.get("is_prop") is True,
+                bet_pct       = _bet_pct,
+                money_pct     = _money_pct,
+                sharp_score   = _sharp,
                 created_at    = datetime.now(timezone.utc),
             ))
 
@@ -427,6 +454,9 @@ async def on_startup() -> None:
             _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS analysis_generated_at TIMESTAMPTZ"))
             _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS confidence_score FLOAT"))
             _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS kelly_pct FLOAT"))
+            _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS bet_pct FLOAT"))
+            _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS money_pct FLOAT"))
+            _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS sharp_score FLOAT"))
             _db.commit()
         except Exception:
             _db.rollback()
