@@ -745,9 +745,11 @@ def _projection_supports_bet(bet_row, proj: dict) -> bool:
         return total_mean > point if is_over else total_mean < point
 
     if market == "spreads" and spread_mean is not None and point is not None:
-        # bet.point is negative for home team (-1.5 = home gives 1.5 pts)
+        # spread_mean = home team winning margin (positive = home wins by that much)
+        # Home bet -3.5: need spread_mean > 3.5 (home wins by more than 3.5)
+        # Away bet -3.5: need away team to win by >3.5, i.e. spread_mean < -3.5
         threshold = abs(point)
-        return spread_mean > threshold if is_home_bet else spread_mean < threshold
+        return spread_mean > threshold if is_home_bet else spread_mean < -threshold
 
     return True  # unknown market → show anyway
 

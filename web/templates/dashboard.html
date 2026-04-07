@@ -2672,8 +2672,11 @@ function _applyTopPickBadges() {
     return { card, score: ev * (confirmed ? 1.5 : 1.0), confirmed };
   }).sort((a, b) => b.score - a.score);
 
-  // Badge top 2 model-confirmed picks only
-  scored.filter(s => s.confirmed).slice(0, 2).forEach((item, idx) => {
+  // Top 2 model-confirmed picks
+  const topPicks = scored.filter(s => s.confirmed).slice(0, 2);
+
+  // Add ribbon badges
+  topPicks.forEach((item, idx) => {
     const ribbon = document.createElement('div');
     ribbon.className = 'top-pick-ribbon rank-' + (idx + 1);
     ribbon.innerHTML = idx === 0
@@ -2681,6 +2684,15 @@ function _applyTopPickBadges() {
       : '✅&nbsp; Strong Model Pick &mdash; High EV + Model Confirmed';
     item.card.insertBefore(ribbon, item.card.firstChild);
   });
+
+  // Pin top picks to the top of the grid regardless of sort order.
+  // Insert in reverse so rank-1 ends up as the very first card.
+  const grid = document.querySelector('.cards-grid');
+  if (grid) {
+    [...topPicks].reverse().forEach(item => {
+      grid.insertBefore(item.card, grid.firstChild);
+    });
+  }
 }
 
 // Kick off auto-fetch for all eligible bet cards, staggered 200ms apart
