@@ -31,6 +31,8 @@ _ESPN_NHL_TEAMS  = "https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/tea
 _ESPN_NBA_TEAMS  = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams"  # for injuries
 _ESPN_NBA_STAND  = "https://site.api.espn.com/apis/v2/sports/basketball/nba/standings"   # home/road splits
 _ESPN_NBA_BOARD  = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard"  # B2B
+_MLB_SCHEDULE    = "https://statsapi.mlb.com/api/v1/schedule"    # probable pitchers
+_MLB_PEOPLE      = "https://statsapi.mlb.com/api/v1/people"      # pitcher season stats
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -292,6 +294,110 @@ def fetch_nba_injuries() -> dict:
 
 
 # ---------------------------------------------------------------------------
+# MLB functions
+# ---------------------------------------------------------------------------
+
+def fetch_mlb_probable_pitchers() -> dict:
+    """
+    Return {game_pk: {"home": {...pitcher info...}, "away": {...pitcher info...}}}
+    using the MLB Stats API schedule endpoint with probablePitcher hydration.
+
+    Also fetches season ERA/WHIP/K9 for each pitcher via the people/stats endpoint.
+    """
+    result: dict = {}
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    data = _get(
+        _MLB_SCHEDULE,
+        params={
+            "sportId": 1,
+            "date": today,
+            "hydrate": "probablePitcher(note),linescore",
+        },
+    )
+
+    for date_entry in data.get("dates", []):
+        for game in date_entry.get("games", []):
+            gk = str(game.get("gamePk", ""))
+            if not gk:
+                continue
+
+            teams = game.get("teams", {})
+            entry: dict = {}
+
+            for side in ("home", "away"):
+                team_data = teams.get(side, {})
+                pp = team_data.get("probablePitcher")
+                if not pp:
+                    entry[side] = None
+                    continue
+                pitcher_id = pp.get("id")
+                full_name = pp.get("fullName") or f"{pp.get('firstName','')} {pp.get('lastName','')}".strip()
+                stats = fetch_mlb_pitcher_stats(pitcher_id) if pitcher_id else {}
+                entry[side] = {
+                    "id":       pitcher_id,
+                    "name":     full_name,
+                    "era":      stats.get("era"),
+                    "whip":     stats.get("whip"),
+                    "k9":       stats.get("strikeoutsPer9Inn"),
+                    "wins":     stats.get("wins"),
+                    "losses":   stats.get("losses"),
+                    "innings":  stats.get("inningsPitched"),
+                }
+
+            # Attach team names for easier downstream matching
+            entry["home_team"] = teams.get("home", {}).get("team", {}).get("name", "")
+            entry["away_team"] = teams.get("away", {}).get("team", {}).get("name", "")
+            result[gk] = entry
+
+    log.debug("fetch_mlb_probable_pitchers: %d games found", len(result))
+    return result
+
+
+def fetch_mlb_pitcher_stats(pitcher_id: int) -> dict:
+    """
+    Return current-season pitching stats for a single pitcher from the MLB Stats API.
+    Keys: era, whip, strikeoutsPer9Inn, wins, losses, inningsPitched.
+    Returns {} if not found or API error.
+    """
+    if not pitcher_id:
+        return {}
+    url = f"{_MLB_PEOPLE}/{pitcher_id}/stats"
+    data = _get(url, params={"stats": "season", "group": "pitching"})
+    try:
+        splits = data.get("stats", [{}])[0].get("splits", [])
+        if not splits:
+            return {}
+        s = splits[0].get("stat", {})
+        return {
+            "era":                 s.get("era"),
+            "whip":                s.get("whip"),
+            "strikeoutsPer9Inn":   s.get("strikeoutsPer9Inn"),
+            "wins":                s.get("wins"),
+            "losses":              s.get("losses"),
+            "inningsPitched":      s.get("inningsPitched"),
+        }
+    except Exception:
+        return {}
+
+
+def _match_mlb_game(pitchers: dict, away_team: str, home_team: str) -> Optional[dict]:
+    """
+    Find the pitcher entry for a given matchup by fuzzy-matching team names.
+    Returns the matching entry dict or None.
+    """
+    for _gk, entry in pitchers.items():
+        ht = entry.get("home_team", "")
+        at = entry.get("away_team", "")
+        # Check for substring match (handles "Milwaukee Brewers" vs "Brewers")
+        if (
+            (away_team.lower() in at.lower() or at.lower() in away_team.lower()) and
+            (home_team.lower() in ht.lower() or ht.lower() in home_team.lower())
+        ):
+            return entry
+    return None
+
+
+# ---------------------------------------------------------------------------
 # Assembler — single entry point used by report_generator
 # ---------------------------------------------------------------------------
 
@@ -350,10 +456,154 @@ def build_context(sport_key: str) -> dict:
             log.info("build_context(nba): %d teams populated", len(ctx))
             return ctx
 
+        elif sport_key == "baseball_mlb":
+            pitchers = fetch_mlb_probable_pitchers()
+            # Return a dict keyed by game_pk so ai_analyzer can look up
+            # the pitcher entry for each specific game.
+            ctx = {
+                "_mlb_pitchers": pitchers,  # raw lookup table
+                "_sport":        "baseball_mlb",
+            }
+            log.info("build_context(mlb): %d games with pitcher data", len(pitchers))
+            return ctx
+
     except Exception as exc:
         log.error("build_context(%s) failed: %s", sport_key, exc, exc_info=True)
 
     return {}
+
+
+# ---------------------------------------------------------------------------
+# Game projections — Optimal MCP
+# ---------------------------------------------------------------------------
+
+# Odds API league key → Optimal league code
+_OPTIMAL_LEAGUE_MAP = {
+    "basketball_nba":             "nba",
+    "icehockey_nhl":              "nhl",
+    "baseball_mlb":               "mlb",
+    "soccer_epl":                 "epl",
+    "soccer_spain_la_liga":       "laliga",
+    "soccer_germany_bundesliga":  "bundesliga",
+    "soccer_usa_mls":             "mls",
+    "basketball_ncaab":           "ncaab",
+}
+
+
+def fetch_game_projections(game: str, league: str) -> dict:
+    """
+    Fetch Optimal game-level score projections for a specific game.
+
+    Parses the game string ("Away @ Home") and runs a SQL query against the
+    Optimal events + game_projections tables to find the matching event and
+    return all four projection types (spread, total, homeScore, awayScore)
+    plus homeWinProbability.
+
+    Returns a dict with keys:
+        away_team, home_team,
+        spread_mean, total_mean, home_score_mean, away_score_mean,
+        home_win_probability,
+        consensus_line, consensus_total,
+        event_id, updated_at
+    Returns {} on any failure (fault-tolerant).
+
+    Parameters
+    ----------
+    game : str
+        e.g. "St. Louis Blues @ Colorado Avalanche"
+    league : str
+        Odds API sport key, e.g. "icehockey_nhl"
+    """
+    if " @ " not in game:
+        return {}
+
+    away_str, home_str = [s.strip() for s in game.split(" @ ", 1)]
+    opt_league = _OPTIMAL_LEAGUE_MAP.get(league, "")
+    if not opt_league:
+        log.debug("fetch_game_projections: no Optimal league mapping for %s", league)
+        return {}
+
+    try:
+        from scripts.optimal_client import _call_tool  # lazy import to avoid circular
+
+        # Use last word of each team name as the fuzzy match key
+        # (avoids city vs. nickname mismatches, e.g. "St. Louis" vs "Blues")
+        away_kw = away_str.split()[-1].lower()
+        home_kw = home_str.split()[-1].lower()
+
+        sql = (
+            "SELECT "
+            "  e.id AS event_id, "
+            "  e.away_display, e.home_display, "
+            "  e.consensus_line, e.consensus_total, "
+            "  e.consensus_home_ml, e.consensus_away_ml, "
+            "  (gp.projections->>'homeWinProbability')::float AS home_win_probability, "
+            "  gp.updated_at, "
+            "  proj_item->>'projectionType' AS proj_type, "
+            "  (proj_item->>'mean')::float AS mean "
+            "FROM events e "
+            "JOIN game_projections gp ON gp.event_id = e.id, "
+            "  LATERAL jsonb_array_elements(gp.projections->'projections') AS proj_item "
+            f"WHERE e.league = '{opt_league}' "
+            f"  AND e.start_date > NOW() - INTERVAL '4 hours' "
+            f"  AND e.start_date < NOW() + INTERVAL '36 hours' "
+            f"  AND LOWER(e.away_display) LIKE '%{away_kw}%' "
+            f"  AND LOWER(e.home_display) LIKE '%{home_kw}%' "
+            "LIMIT 20"
+        )
+
+        rows = _call_tool("query", {"sql": sql})
+        if not rows or not isinstance(rows, list):
+            log.debug("fetch_game_projections: no rows for %s (%s)", game, league)
+            return {}
+
+        result: dict = {
+            "away_team": away_str,
+            "home_team": home_str,
+        }
+        for row in rows:
+            # Grab event metadata once
+            if "event_id" not in result:
+                result["event_id"]          = row.get("event_id")
+                result["away_display"]       = row.get("away_display", away_str)
+                result["home_display"]       = row.get("home_display", home_str)
+                result["consensus_line"]     = row.get("consensus_line")
+                result["consensus_total"]    = row.get("consensus_total")
+                result["consensus_home_ml"]  = row.get("consensus_home_ml")
+                result["consensus_away_ml"]  = row.get("consensus_away_ml")
+                result["updated_at"]         = row.get("updated_at")
+
+            if "home_win_probability" not in result and row.get("home_win_probability") is not None:
+                result["home_win_probability"] = row["home_win_probability"]
+
+            # Pivot projection rows
+            pt   = row.get("proj_type", "")
+            mean = row.get("mean")
+            if pt == "spread":
+                result["spread_mean"]     = mean
+            elif pt == "total":
+                result["total_mean"]      = mean
+            elif pt == "homeScore":
+                result["home_score_mean"] = mean
+            elif pt == "awayScore":
+                result["away_score_mean"] = mean
+
+        if "spread_mean" not in result and "total_mean" not in result:
+            log.debug("fetch_game_projections: matched rows but no projection data for %s", game)
+            return {}
+
+        log.info(
+            "fetch_game_projections: %s spread=%.2f total=%.2f home_win=%.1f%%",
+            game,
+            result.get("spread_mean", 0),
+            result.get("total_mean", 0),
+            (result.get("home_win_probability") or 0) * 100,
+        )
+        return result
+
+    except Exception as exc:
+        log.warning("fetch_game_projections failed for %s: %s", game, exc)
+        return {}
 
 
 # ---------------------------------------------------------------------------
@@ -380,5 +630,18 @@ if __name__ == "__main__":
         sample = list(nba.items())[:3]
         for name, data in sample:
             print(f"  {name}: {data}")
+    else:
+        print("  (empty — no games today or API unavailable)")
+
+    print("\n=== MLB pitcher context ===")
+    mlb = build_context("baseball_mlb")
+    pitchers = mlb.get("_mlb_pitchers", {})
+    if pitchers:
+        for gk, entry in list(pitchers.items())[:3]:
+            away = entry.get("away") or {}
+            home = entry.get("home") or {}
+            print(f"  {entry.get('away_team')} @ {entry.get('home_team')}")
+            print(f"    Away SP: {away.get('name')} ERA={away.get('era')} WHIP={away.get('whip')}")
+            print(f"    Home SP: {home.get('name')} ERA={home.get('era')} WHIP={home.get('whip')}")
     else:
         print("  (empty — no games today or API unavailable)")

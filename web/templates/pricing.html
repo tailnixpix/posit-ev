@@ -67,6 +67,40 @@ main { max-width: none; padding: 0; }
   white-space: nowrap;
 }
 
+/* ── Trial strip (top of featured card) ──────────────────────────────── */
+.trial-strip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(90deg, #4C1D95 0%, #6D28D9 100%);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.1px;
+  padding: 10px 16px;
+  border-radius: calc(var(--radius-xl) - 1.5px) calc(var(--radius-xl) - 1.5px) 0 0;
+  margin: calc(-1 * var(--space-6)) calc(-1 * var(--space-6)) var(--space-4);
+}
+.trial-strip .ts-badge {
+  background: #FAC775;
+  color: #1A1450;
+  font-size: 0.65rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  padding: 2px 9px;
+  border-radius: 20px;
+  flex-shrink: 0;
+}
+.trial-then {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  margin-top: var(--space-2);
+  text-align: center;
+  line-height: 1.5;
+}
+
 /* Plan header */
 .plan-name { font-size: 0.78rem; font-weight: 700; text-transform: uppercase;
              letter-spacing: 0.8px; color: var(--brand-muted); margin: 0 0 var(--space-3); }
@@ -236,7 +270,7 @@ main { max-width: none; padding: 0; }
         👋 Welcome back, {{ user.email }}
       </p>
       <p style="margin:0; color:rgba(255,255,255,0.72); font-size:0.82rem;">
-        You have a free account. Upgrade below to unlock the full dashboard.
+        You have a free account. Start your 7-day free trial — card required, cancel anytime before day 8.
       </p>
     </div>
     <a href="/subscribe"
@@ -245,7 +279,7 @@ main { max-width: none; padding: 0; }
               text-decoration:none; white-space:nowrap; flex-shrink:0;
               transition:opacity 0.15s;"
        onmouseover="this.style.opacity='0.88'" onmouseout="this.style.opacity='1'">
-      Upgrade to EV Pro — $19.99/mo &rarr;
+      Start Free Trial &rarr;
     </a>
   </div>
 </div>
@@ -253,8 +287,8 @@ main { max-width: none; padding: 0; }
 
 {# ── Page hero ─────────────────────────────────────────────────────────── #}
 <div class="pricing-hero">
-  <h1>Simple, transparent pricing</h1>
-  <p>One plan. Everything included. Cancel anytime.</p>
+  <h1>Try EV Pro free for 7 days</h1>
+  <p>Full dashboard access, every pick, every edge &mdash; free for a week. Then $19.99/month. Cancel before day 8 and pay nothing.</p>
 </div>
 
 {# ── Plan cards ────────────────────────────────────────────────────────── #}
@@ -307,7 +341,10 @@ main { max-width: none; padding: 0; }
 
       {# ── EV Pro plan ───────────────────────────────────────────── #}
       <div class="plan-card featured">
-        <div class="featured-badge">Most Popular</div>
+        <div class="trial-strip">
+          <span class="ts-badge">🎁 FREE TRIAL</span>
+          7 days free &mdash; card required, cancel before day 8
+        </div>
         <p class="plan-name">EV Pro</p>
         <div style="display:flex; flex-direction:column; align-items:flex-start; gap:2px; margin-bottom:4px;">
           <div style="display:flex; align-items:baseline; gap:4px;">
@@ -331,7 +368,7 @@ main { max-width: none; padding: 0; }
           </li>
           <li>
             <span class="check check-yes">✓</span>
-            <span><span class="feature-strong">8 leagues</span> — NHL, NBA, NCAAB, MLB, EPL, La Liga, Bundesliga, MLS</span>
+            <span><span class="feature-strong">9 events</span> — NHL, NBA, NCAAB, MLB, EPL, La Liga, Bundesliga, MLS + <strong style="color:var(--brand-success);">⛳ The Masters</strong></span>
           </li>
           <li>
             <span class="check check-yes">✓</span>
@@ -362,7 +399,8 @@ main { max-width: none; padding: 0; }
             <span>Cancel anytime — no contracts</span>
           </li>
         </ul>
-        <a href="/subscribe" class="plan-cta plan-cta-primary">Subscribe Now — $19.99/month &rarr;</a>
+        <a href="/subscribe" class="plan-cta plan-cta-primary">Start 7-Day Free Trial &rarr;</a>
+        <p class="trial-then">Free for 7 days &mdash; then <strong>$19.99/month</strong>, billed automatically. Cancel anytime before day&nbsp;8 and you won&rsquo;t be charged.</p>
         <p class="plan-guarantee">🔒 Secured by Stripe &nbsp;&bull;&nbsp; Cancel anytime &nbsp;&bull;&nbsp; No hidden fees</p>
       </div>
 
@@ -452,6 +490,26 @@ main { max-width: none; padding: 0; }
           The full pipeline runs every hour throughout the day. Lines can move
           quickly when sharp money comes in, so the dashboard shows you the most
           current edges available.
+        </p>
+      </div>
+
+      <div class="faq-item">
+        <h3>Does it cover The Masters?</h3>
+        <p>
+          Yes — The Masters is live right now. The dashboard surfaces +EV outright winner bets
+          by comparing each golfer&rsquo;s odds across DraftKings, FanDuel, BetMGM, Caesars,
+          and Betfair Exchange. We identify where one book is offering meaningfully better odds
+          than the sharpest market implies, giving you a mathematical edge before the field narrows.
+        </p>
+      </div>
+
+      <div class="faq-item">
+        <h3>How does the 7-day free trial work?</h3>
+        <p>
+          When you start a trial you enter your payment details, but you are not charged anything
+          for 7 days. If you cancel before day 8, you pay nothing — zero. If you don&rsquo;t
+          cancel, your card is automatically charged $19.99 on day 8 and each month after.
+          You can cancel at any time from your Stripe billing portal.
         </p>
       </div>
 

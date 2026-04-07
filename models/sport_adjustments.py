@@ -688,6 +688,19 @@ def apply_adjustments(
             "extra": {"dnb": result["dnb"]},
         }
 
+    elif sport.startswith("golf_"):
+        # Golf outrights: many-player h2h market.
+        # Each outcome is an individual player — no home/away splits, rest, or goalie logic.
+        # Pass raw no-vig probs through; the sharp-book no-vig math already handles vig removal.
+        log.debug("Golf market — passing raw no-vig probs for %d players", len(probs))
+        return {
+            "adjusted_probs": probs,
+            "flags": [],
+            "warnings": [],
+            "confidence_multipliers": [1.0] * len(probs),
+            "extra": {},
+        }
+
     else:
         log.debug("No sport-specific adjustments for sport_key=%s", sport)
         return {

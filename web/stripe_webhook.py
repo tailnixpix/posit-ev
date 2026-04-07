@@ -29,6 +29,7 @@ Environment variables:
 import logging
 import os
 import sys
+from datetime import datetime, timezone
 
 import stripe
 from dotenv import load_dotenv
@@ -63,11 +64,16 @@ router = APIRouter()
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _set_subscribed(customer_id: str, subscription_id: str, subscribed: bool) -> bool:
+def _set_subscribed(
+    customer_id: str,
+    subscription_id: str,
+    subscribed: bool,
+    trial_ends_at: "datetime | None" = None,
+) -> bool:
     """
     Find a User by stripe_customer_id and update their subscription state.
 
-    Also stores subscription_id when subscribing.
+    Also stores subscription_id when subscribing and trial_ends_at if provided.
     Returns True if a matching user was found and updated.
     """
     db = SessionLocal()
@@ -87,11 +93,13 @@ def _set_subscribed(customer_id: str, subscription_id: str, subscribed: bool) ->
         user.is_subscribed = subscribed
         if subscribed and subscription_id:
             user.stripe_subscription_id = subscription_id
+        if trial_ends_at is not None:
+            user.trial_ends_at = trial_ends_at
 
         db.commit()
         log.info(
-            "Webhook: user %s (id=%d) is_subscribed → %s  sub_id=%s",
-            user.email, user.id, subscribed, subscription_id,
+            "Webhook: user %s (id=%d) is_subscribed → %s  sub_id=%s  trial_ends=%s",
+            user.email, user.id, subscribed, subscription_id, trial_ends_at,
         )
         return True
     except Exception as exc:
@@ -146,11 +154,14 @@ async def subscribe(request: Request):
 
     try:
         session_kwargs = {
-            "mode":                "subscription",
-            "line_items":          [{"price": _PRICE_ID, "quantity": 1}],
-            "success_url":         f"{_BASE_URL}/success?session_id={{CHECKOUT_SESSION_ID}}",
-            "cancel_url":          f"{_BASE_URL}/pricing",
-            "allow_promotion_codes": True,
+            "mode":                     "subscription",
+            "line_items":               [{"price": _PRICE_ID, "quantity": 1}],
+            "success_url":              f"{_BASE_URL}/success?session_id={{CHECKOUT_SESSION_ID}}",
+            "cancel_url":               f"{_BASE_URL}/pricing",
+            "allow_promotion_codes":    True,
+            # 7-day free trial — card is collected but not charged until day 8
+            "subscription_data":        {"trial_period_days": 7},
+            "payment_method_collection": "always",
         }
 
         if customer_id:
@@ -198,8 +209,22 @@ async def checkout_success(request: Request, session_id: str = ""):
         subscription    = session.get("subscription") or {}
         subscription_id = subscription.get("id", "") if isinstance(subscription, dict) else getattr(subscription, "id", "")
 
-        _set_subscribed(customer_id, subscription_id, subscribed=True)
-        log.info("/success: activated subscription for customer %s session %s", customer_id, session_id)
+        # Extract trial end timestamp from expanded subscription object
+        trial_end_ts = (
+            subscription.get("trial_end")
+            if isinstance(subscription, dict)
+            else getattr(subscription, "trial_end", None)
+        )
+        trial_ends_at = (
+            datetime.fromtimestamp(int(trial_end_ts), tz=timezone.utc)
+            if trial_end_ts else None
+        )
+
+        _set_subscribed(customer_id, subscription_id, subscribed=True, trial_ends_at=trial_ends_at)
+        log.info(
+            "/success: activated subscription for customer %s session %s trial_ends=%s",
+            customer_id, session_id, trial_ends_at,
+        )
 
     except stripe.error.StripeError as exc:
         log.error("/success Stripe error: %s", exc)
@@ -262,8 +287,17 @@ async def stripe_webhook(request: Request):
         status          = data.get("status", "")
         # Active statuses that should retain dashboard access
         active = status in ("active", "trialing")
-        _set_subscribed(customer_id, subscription_id, subscribed=active)
-        log.info("Subscription %s status=%s → is_subscribed=%s", subscription_id, status, active)
+        # Sync trial_end if present (Stripe includes it on trialing subscriptions)
+        trial_end_ts = data.get("trial_end")
+        trial_ends_at = (
+            datetime.fromtimestamp(int(trial_end_ts), tz=timezone.utc)
+            if trial_end_ts else None
+        )
+        _set_subscribed(customer_id, subscription_id, subscribed=active, trial_ends_at=trial_ends_at)
+        log.info(
+            "Subscription %s status=%s → is_subscribed=%s trial_ends=%s",
+            subscription_id, status, active, trial_ends_at,
+        )
 
     # ── customer.subscription.deleted ─────────────────────────────────────
     elif event_type == "customer.subscription.deleted":

@@ -9,6 +9,47 @@ main { max-width: 460px; padding-top: var(--space-7); }
 .auth-header h1 { font-size: 1.6rem; margin-bottom: var(--space-1); }
 .auth-header p  { font-size: 0.9rem; color: var(--text-muted); margin: 0; }
 
+/* ── Trial callout ────────────────────────────────────────────────── */
+.trial-callout {
+  background: linear-gradient(135deg, #1e1070 0%, #4C1D95 100%);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
+  margin-bottom: var(--space-4);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.trial-callout .tc-icon { font-size: 1.8rem; line-height: 1; flex-shrink: 0; }
+.trial-callout h3 { margin: 0 0 2px; font-size: 0.92rem; font-weight: 700; }
+.trial-callout p  { margin: 0; font-size: 0.78rem; color: rgba(255,255,255,0.78); line-height: 1.5; }
+.trial-steps {
+  display: flex;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  flex-wrap: wrap;
+}
+.trial-step {
+  flex: 1 1 120px;
+  background: #fff;
+  border: 1px solid var(--brand-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+}
+.trial-step .ts-num {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--brand-primary);
+  color: #fff;
+  font-size: 0.7rem; font-weight: 900;
+  display: inline-flex; align-items: center; justify-content: center;
+  margin-bottom: 5px;
+}
+.trial-step .ts-title { font-size: 0.78rem; font-weight: 700; color: var(--brand-dark); margin-bottom: 2px; }
+.trial-step .ts-sub   { font-size: 0.7rem;  color: var(--text-muted); line-height: 1.4; }
+
 .auth-card {
   background: #fff;
   border: 1px solid var(--brand-border);
@@ -61,8 +102,26 @@ main { max-width: 460px; padding-top: var(--space-7); }
 {% block content %}
 
 <div class="auth-header">
-  <h1>Create your account</h1>
-  <p>Join Posit+EV and start finding your edge</p>
+  <h1>Start your free trial</h1>
+  <p>Create an account, then unlock 7 days of full EV Pro access</p>
+</div>
+
+<div class="trial-steps">
+  <div class="trial-step">
+    <div class="ts-num">1</div>
+    <div class="ts-title">Create account</div>
+    <div class="ts-sub">Enter email &amp; password below</div>
+  </div>
+  <div class="trial-step">
+    <div class="ts-num">2</div>
+    <div class="ts-title">Add payment</div>
+    <div class="ts-sub">Card stored — not charged for 7 days</div>
+  </div>
+  <div class="trial-step">
+    <div class="ts-num">3</div>
+    <div class="ts-title">Full access</div>
+    <div class="ts-sub">Dashboard live instantly</div>
+  </div>
 </div>
 
 {% if error %}
@@ -106,6 +165,11 @@ main { max-width: 460px; padding-top: var(--space-7); }
 
   </form>
 </div>
+
+<p style="text-align:center; font-size:0.74rem; color:var(--text-muted); margin-top:var(--space-3); line-height:1.6;">
+  🔒 After account creation you&rsquo;ll add your payment details for the free trial.<br>
+  Card is stored but <strong>not charged for 7 days</strong>. Cancel before day 8 to pay nothing.
+</p>
 
 <p class="auth-footer">
   Already have an account? <a href="/login">Sign in</a>

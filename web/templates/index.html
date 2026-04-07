@@ -67,7 +67,7 @@ main { max-width: none; padding: 0; }
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 56px;
-  align-items: center;
+  align-items: start;
   position: relative;
   z-index: 1;
 }
@@ -108,6 +108,7 @@ main { max-width: none; padding: 0; }
   font-size: 1.05rem;
   margin: 0 0 var(--space-6);
   line-height: 1.7;
+  text-align: center;
 }
 .hero-actions { display: flex; gap: var(--space-3); flex-wrap: wrap; }
 .hero-trust {
@@ -115,6 +116,7 @@ main { max-width: none; padding: 0; }
   gap: 12px;
   flex-wrap: wrap;
   margin-top: 18px;
+  justify-content: center;
 }
 .hero-trust span {
   font-size: 0.8rem;
@@ -124,6 +126,40 @@ main { max-width: none; padding: 0; }
   gap: 5px;
 }
 .hero-trust .ht-check { color: #4ADE80; font-weight: 700; }
+.hero-coverage {
+  margin-top: 22px;
+  padding: 14px 16px;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.hcov-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+.hcov-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.hcov-pill {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.18);
+  color: rgba(255,255,255,0.85);
+  background: rgba(255,255,255,0.08);
+  white-space: nowrap;
+}
+.hcov-pill.props { background: rgba(109,40,217,0.3); border-color: rgba(167,139,250,0.4); color: #C4B5FD; }
+.hcov-pill.pm    { background: rgba(6,182,212,0.2);  border-color: rgba(103,232,249,0.3); color: #67E8F9; }
 .btn-hero-primary {
   background: #FAC775;
   color: #1A1450;
@@ -166,119 +202,156 @@ main { max-width: none; padding: 0; }
   transform: perspective(1200px) rotateY(-4deg) rotateX(2deg);
   transition: transform 0.3s ease;
 }
-.hero-mockup:hover {
-  transform: perspective(1200px) rotateY(-1deg) rotateX(1deg);
-}
+.hero-mockup:hover { transform: perspective(1200px) rotateY(-1deg) rotateX(1deg); }
 .mockup-chrome {
-  background: #F3F4F6;
-  padding: 10px 14px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  background: #F3F4F6; padding: 10px 14px;
+  display: flex; align-items: center; gap: 10px;
   border-bottom: 1px solid #E5E7EB;
 }
 .mockup-dots { display: flex; gap: 5px; }
-.mockup-dots span { width: 10px; height: 10px; border-radius: 50%; background: #D1D5DB; }
+.mockup-dots span { width: 10px; height: 10px; border-radius: 50%; }
 .mockup-dots span:nth-child(1) { background: #FC8181; }
 .mockup-dots span:nth-child(2) { background: #F6AD55; }
 .mockup-dots span:nth-child(3) { background: #68D391; }
 .mockup-url {
-  flex: 1;
-  background: #fff;
+  flex: 1; background: #fff; border: 1px solid #E5E7EB; border-radius: 5px;
+  padding: 3px 10px; font-size: 0.68rem; color: #6B7280;
+  text-align: center; font-family: monospace;
+}
+.mockup-body { background: #EEEDFB; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+
+/* ── New filter bar mock ──────────────────────────────────────────── */
+.mock-filter-wrap {
+  background: #fff; border-radius: 9px; padding: 9px 11px;
   border: 1px solid #E5E7EB;
-  border-radius: 5px;
-  padding: 3px 10px;
-  font-size: 0.68rem;
-  color: #6B7280;
-  text-align: center;
-  font-family: monospace;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
-.mockup-body { background: #EEEDFB; padding: 14px; display: flex; flex-direction: column; gap: 9px; }
-.mock-filter-bar { display: flex; gap: 5px; align-items: center; }
-.mock-filter-pill {
-  font-size: 0.62rem; font-weight: 600; padding: 3px 9px; border-radius: 20px;
-  background: rgba(255,255,255,0.65); color: #6B7280; border: 1px solid #E5E7EB;
+.mock-filter-primary {
+  display: flex; align-items: center; gap: 5px; margin-bottom: 7px;
 }
-.mock-filter-pill.active { background: #534AB7; color: #fff; border-color: #534AB7; }
-.mock-filter-pill.pm { background: rgba(109,40,217,0.12); color: #6D28D9; border-color: rgba(109,40,217,0.25); }
+.mock-day-toggle {
+  display: inline-flex; background: #F0EFFE; border-radius: 20px; padding: 2px; gap: 1px;
+}
+.mock-day-btn {
+  font-size: 0.58rem; font-weight: 700; padding: 2px 8px; border-radius: 20px;
+  color: #9CA3AF; white-space: nowrap;
+}
+.mock-day-btn.active { background: #fff; color: #534AB7; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.mock-filter-spacer { flex: 1; }
+.mock-sort-pill {
+  font-size: 0.57rem; font-weight: 700; padding: 2px 8px; border-radius: 20px;
+  background: #F0EFFE; color: #534AB7; border: 1px solid #DDD8F8; white-space: nowrap;
+}
+.mock-adv-pill {
+  font-size: 0.57rem; font-weight: 600; padding: 2px 8px; border-radius: 20px;
+  background: #F3F4F6; color: #6B7280; border: 1px solid #E5E7EB; white-space: nowrap;
+}
+.mock-count-pill {
+  font-size: 0.57rem; font-weight: 700; padding: 2px 9px; border-radius: 20px;
+  background: #F0EFFE; color: #534AB7;
+}
+.mock-chips-row { display: flex; gap: 4px; }
+.mock-chip {
+  font-size: 0.6rem; font-weight: 600; padding: 2px 9px; border-radius: 20px;
+  border: 1.5px solid #E5E7EB; color: #6B7280; background: transparent; white-space: nowrap;
+}
+.mock-chip.active { background: #534AB7; color: #fff; border-color: #534AB7; }
+.mock-chip.chip-props { border-color: #8B5CF6; color: #6D28D9; }
+
+/* ── Bet card mock ────────────────────────────────────────────────── */
 .mock-card {
-  background: #fff; border-radius: 10px; padding: 11px 13px;
-  border-left: 3px solid; box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-  position: relative;
+  background: #fff; border-radius: 10px; overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06); position: relative;
 }
-.mock-ev-high { border-left-color: #0F6E56; }
-.mock-ev-med  { border-left-color: #D97706; }
-.mock-ev-pm   { border-left-color: #6D28D9; }
-.mock-card-header { display: flex; align-items: flex-start; margin-bottom: 7px; }
-.mock-team { font-size: 0.8rem; font-weight: 700; color: #26215C; }
-.mock-game-line { font-size: 0.64rem; color: #9CA3AF; margin-top: 2px; }
-/* CLV badge inside mock card */
-.mock-clv-badge {
-  font-size: 0.58rem; font-weight: 700; border-radius: 20px;
-  padding: 2px 8px; margin-bottom: 7px; display: inline-block;
-}
-.mock-clv-positive { background: #DCFCE7; color: #15803D; border: 1px solid #BBF7D0; }
-.mock-badges { display: flex; gap: 4px; margin-bottom: 9px; align-items: center; }
+.mock-card-accent { height: 3px; }
+.mock-ev-high .mock-card-accent { background: linear-gradient(90deg,#16A34A,#22C55E); }
+.mock-ev-med  .mock-card-accent { background: linear-gradient(90deg,#D97706,#F59E0B); }
+.mock-ev-pm   .mock-card-accent { background: linear-gradient(90deg,#6D28D9,#8B5CF6); }
+.mock-card-inner { padding: 10px 12px; }
+
+/* Card top: badges + EV pill */
+.mock-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px; }
+.mock-badges { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
 .mock-badges span {
-  font-size: 0.58rem; font-weight: 600; text-transform: uppercase;
+  font-size: 0.55rem; font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.3px; padding: 1px 6px; border-radius: 3px;
   background: #EEEDFE; color: #534AB7;
 }
 .mock-badge-pm {
-  font-size: 0.56rem; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 0.3px; padding: 1px 6px; border-radius: 3px;
+  font-size: 0.55rem; font-weight: 700; padding: 1px 6px; border-radius: 3px;
   background: rgba(109,40,217,0.12); color: #6D28D9;
-  border: 1px solid rgba(109,40,217,0.2);
 }
+.mock-ev-pill {
+  font-size: 0.62rem; font-weight: 800; padding: 2px 8px; border-radius: 20px;
+  white-space: nowrap; flex-shrink: 0;
+}
+.mock-ev-pill.high { background: rgba(22,163,74,0.1); color: #15803D; border: 1px solid rgba(22,163,74,0.3); }
+.mock-ev-pill.med  { background: rgba(217,119,6,0.1);  color: #92400E; border: 1px solid rgba(217,119,6,0.3); }
+.mock-ev-pill.pm   { background: rgba(109,40,217,0.1); color: #6D28D9; border: 1px solid rgba(109,40,217,0.3); }
+
+/* Card main: team + odds */
+.mock-card-main { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 7px; }
+.mock-team { font-size: 0.78rem; font-weight: 800; color: #26215C; line-height: 1.2; }
+.mock-game-line { font-size: 0.6rem; color: #9CA3AF; margin-top: 2px; }
+.mock-odds-val { font-size: 1rem; font-weight: 900; color: #15803D; white-space: nowrap; }
+.mock-odds-neg { color: #26215C; }
+
+/* CLV badge */
+.mock-clv-badge {
+  font-size: 0.57rem; font-weight: 700; border-radius: 6px;
+  padding: 4px 8px; margin-bottom: 7px;
+  display: flex; align-items: center; gap: 5px;
+}
+.mock-clv-positive { background: linear-gradient(90deg,#DCFCE7,#F0FDF4); border: 1px solid #86EFAC; }
+.mock-clv-positive .mock-clv-icon { background: #16A34A; color: #fff; width:14px; height:14px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:0.5rem; font-weight:900; flex-shrink:0; }
+.mock-clv-positive .mock-clv-text { color: #14532D; }
+.mock-clv-positive .mock-clv-line { color: #15803D; margin-left: auto; font-weight: 700; }
+
+/* Stats strip */
 .mock-stats-row {
-  display: grid; grid-template-columns: repeat(4,1fr);
-  padding-top: 8px; border-top: 1px solid #F3F4F6; text-align: center;
+  display: grid; grid-template-columns: repeat(3,1fr);
+  background: #F8F9FB; border: 1px solid #EBEBF0; border-radius: 8px; overflow: hidden;
 }
-.msv { font-size: 0.73rem; font-weight: 700; color: #26215C; }
-.msv-green  { color: #0F6E56; }
-.msv-amber  { color: #9A6B00; }
+.mock-stat { padding: 6px 4px; text-align: center; border-right: 1px solid #EBEBF0; }
+.mock-stat:last-child { border-right: none; }
+.msv { font-size: 0.7rem; font-weight: 800; color: #26215C; line-height: 1; }
+.msv-green  { color: #15803D; }
+.msv-amber  { color: #92400E; }
 .msv-purple { color: #6D28D9; }
-.msl { font-size: 0.56rem; text-transform: uppercase; color: #9CA3AF; letter-spacing: 0.3px; margin-top: 1px; }
-/* ── AI analysis mini-panel inside mockup card ────────────────────── */
+.msl { font-size: 0.5rem; text-transform: uppercase; color: #9CA3AF; letter-spacing: 0.3px; margin-top: 3px; font-weight: 600; }
+
+/* Action button mock */
+.mock-action-btn {
+  margin-top: 8px; width: 100%; text-align: center; padding: 6px;
+  background: linear-gradient(120deg,#4C1D95,#6D28D9,#7C3AED);
+  color: #fff; border-radius: 7px; font-size: 0.62rem; font-weight: 700;
+  box-shadow: 0 2px 8px rgba(109,40,217,0.3);
+}
+
+/* ── AI Insight panel mock ────────────────────────────────────────── */
 .mock-ai-panel {
-  margin-top: 8px;
-  padding: 8px 9px;
-  background: linear-gradient(135deg, #FAFAFE 0%, #F5F3FF 100%);
-  border: 1px solid #DDD8F8;
-  border-radius: 7px;
-  font-size: 0.58rem;
-  line-height: 1.5;
-  color: #555270;
+  margin-top: 8px; padding: 8px 9px;
+  background: linear-gradient(135deg,#FAFAFE,#F5F3FF);
+  border: 1px solid #DDD8F8; border-radius: 7px;
+  font-size: 0.57rem; line-height: 1.55; color: #555270;
 }
 .mock-ai-header {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  flex-wrap: wrap;
-  margin-bottom: 4px;
+  display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin-bottom: 6px;
+  padding-bottom: 5px; border-bottom: 1px solid #EDE9FE;
 }
-.mock-ai-label {
-  font-size: 0.56rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  color: #6D28D9;
+.mock-ai-label { font-size: 0.55rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #6D28D9; }
+.mock-ai-conf { font-size: 0.55rem; font-weight: 700; background: rgba(15,110,86,0.12); color: #0F6E56; border-radius: 20px; padding: 1px 6px; }
+.mock-ai-kelly { font-size: 0.55rem; font-weight: 600; background: #EDE9FE; color: #6D28D9; border-radius: 20px; padding: 1px 6px; }
+.mock-ai-section { margin-bottom: 5px; }
+.mock-ai-section-hdr {
+  font-size: 0.52rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+  color: #6D28D9; margin-bottom: 2px; display: flex; align-items: center; gap: 3px;
 }
-.mock-ai-conf {
-  font-size: 0.56rem;
-  font-weight: 700;
-  background: rgba(15,110,86,0.12);
-  color: #0F6E56;
-  border-radius: 20px;
-  padding: 1px 6px;
-}
-.mock-ai-kelly {
-  font-size: 0.56rem;
-  font-weight: 600;
-  background: #EDE9FE;
-  color: #6D28D9;
-  border-radius: 20px;
-  padding: 1px 6px;
+.mock-ai-section-body { font-size: 0.57rem; color: #555270; line-height: 1.5; }
+.mock-ai-action {
+  display: inline-flex; align-items: center; gap: 4px; margin-top: 5px;
+  font-size: 0.57rem; font-weight: 700; color: #0F6E56;
+  background: rgba(15,110,86,0.1); border-radius: 5px; padding: 2px 7px;
 }
 
 /* ── AI Engine Feature Section ────────────────────────────────────── */
@@ -947,9 +1020,9 @@ main { max-width: none; padding: 0; }
     <div class="hero-copy">
       <div class="announce-pill">
         <span class="announce-pill-dot"></span>
-        🤖 New &mdash; +EV Insight on every pick — math + real-world context
+        ⛳ The Masters is live &mdash; +EV outright picks now in dashboard &nbsp;&bull;&nbsp; 7-Day Free Trial
       </div>
-      <div class="hero-eyebrow">⚡ Live odds &nbsp;&bull;&nbsp; 8 leagues &nbsp;&bull;&nbsp; Updated every hour</div>
+      <div class="hero-eyebrow">⚡ Live odds &nbsp;&bull;&nbsp; 9 events &nbsp;&bull;&nbsp; Updated every hour</div>
       <h1>Stop guessing. Start betting with a <span class="accent">mathematical edge</span>.</h1>
       <p class="hero-sub">
         Posit+EV scans every major sportsbook and prediction market, finds where the books have
@@ -957,15 +1030,31 @@ main { max-width: none; padding: 0; }
         including Kalshi, Polymarket, NoVig &amp; ProphetX, available in all 50 states.
       </p>
       <div class="hero-actions">
-        <a href="/register" class="btn-hero-primary">Start Free — No card needed &rarr;</a>
-        <a href="/pricing"  class="btn-hero-ghost">See EV Pro &mdash; $19.99/mo</a>
+        <a href="/register" class="btn-hero-primary">Start 7-Day Free Trial &rarr;</a>
+        <a href="/pricing"  class="btn-hero-ghost">View pricing</a>
       </div>
       <div class="hero-trust">
-        <span><span class="ht-check">✓</span> 1 free pick/day by email</span>
-        <span><span class="ht-check">✓</span> No credit card required</span>
+        <span><span class="ht-check">✓</span> 7 days free, then $19.99/mo</span>
+        <span><span class="ht-check">✓</span> Cancel before day 8 — pay nothing</span>
         <span><span class="ht-check">✓</span> Player Props (NBA, MLB, NHL)</span>
         <span><span class="ht-check">✓</span> Includes Prediction Markets</span>
         <span><span class="ht-check">✓</span> +EV Insight on every pick</span>
+      </div>
+      <div class="hero-coverage">
+        <div class="hcov-label">What's covered</div>
+        <div class="hcov-row">
+          <span class="hcov-pill">🏒 NHL</span>
+          <span class="hcov-pill">🏀 NBA</span>
+          <span class="hcov-pill">⚾ MLB</span>
+          <span class="hcov-pill">🏈 NFL</span>
+          <span class="hcov-pill">⚽ Soccer</span>
+          <span class="hcov-pill" style="background:rgba(34,197,94,0.15); color:#15803D; border-color:rgba(34,197,94,0.35);">⛳ Golf — Masters</span>
+        </div>
+        <div class="hcov-row">
+          <span class="hcov-pill props">🎯 Props — NBA, MLB, NHL</span>
+          <span class="hcov-pill pm">🔮 Kalshi &amp; Polymarket</span>
+          <span class="hcov-pill pm">📊 NoVig &amp; ProphetX</span>
+        </div>
       </div>
       <p style="margin-top:14px; font-size:0.78rem; color:rgba(255,255,255,0.4);">
         <a href="/login" style="color:rgba(255,255,255,0.5); text-decoration:underline;">Already have an account?</a>
@@ -980,93 +1069,129 @@ main { max-width: none; padding: 0; }
           <div class="mockup-url">posit-ev.com/dashboard</div>
         </div>
         <div class="mockup-body">
-          <div class="mock-filter-bar">
-            <span class="mock-filter-pill active">All</span>
-            <span class="mock-filter-pill">NHL</span>
-            <span class="mock-filter-pill">NBA</span>
-            <span class="mock-filter-pill pm">🔮 PM</span>
-            <span class="mock-filter-pill" style="color:#6D28D9; background:rgba(109,40,217,0.1); border-color:rgba(109,40,217,0.3);">🎯 Props</span>
+
+          {# ── New filter bar ── #}
+          <div class="mock-filter-wrap">
+            <div class="mock-filter-primary">
+              <div class="mock-day-toggle">
+                <span class="mock-day-btn active">📅 Today</span>
+                <span class="mock-day-btn">Tomorrow</span>
+              </div>
+              <div class="mock-filter-spacer"></div>
+              <span class="mock-sort-pill">↑ EV% ▼</span>
+              <span class="mock-adv-pill">⚙ Filters</span>
+              <span class="mock-count-pill">28 bets</span>
+            </div>
+            <div class="mock-chips-row">
+              <span class="mock-chip active">All</span>
+              <span class="mock-chip">🏒 NHL</span>
+              <span class="mock-chip">🏀 NBA</span>
+              <span class="mock-chip">⚾ MLB</span>
+              <span class="mock-chip">⚽ Soccer</span>
+              <span class="mock-chip chip-props">🎯 Props</span>
+            </div>
           </div>
 
+          {# ── Card 1: NHL Bruins — CLV confirmed ── #}
           <div class="mock-card mock-ev-high">
-            <div class="mock-card-header">
-              <div>
-                <div class="mock-team">Boston Bruins</div>
-                <div class="mock-game-line">Bruins @ Maple Leafs &middot; Tonight 7:00 PM</div>
+            <div class="mock-card-accent"></div>
+            <div class="mock-card-inner">
+              <div class="mock-card-top">
+                <div class="mock-badges">
+                  <span>NHL</span><span>Moneyline</span><span>DraftKings</span>
+                </div>
+                <span class="mock-ev-pill high">+12.3% EV</span>
               </div>
-            </div>
-            <div class="mock-badges"><span>NHL</span><span>Moneyline</span><span>DraftKings</span></div>
-            <div class="mock-clv-badge mock-clv-positive">📈 CLV ✓ &nbsp;·&nbsp; ↓ Opened +158</div>
-            <div class="mock-stats-row">
-              <div><div class="msv">+145</div><div class="msl">Odds</div></div>
-              <div><div class="msv">48.7%</div><div class="msl">Consensus</div></div>
-              <div><div class="msv msv-green">+12.34%</div><div class="msl">EV</div></div>
-              <div><div class="msv">5.2%</div><div class="msl">½ Kelly</div></div>
+              <div class="mock-card-main">
+                <div>
+                  <div class="mock-team">Boston Bruins</div>
+                  <div class="mock-game-line">Bruins @ Maple Leafs &middot; 7:00 PM ET</div>
+                </div>
+                <div class="mock-odds-val">+145</div>
+              </div>
+              <div class="mock-clv-badge mock-clv-positive">
+                <div class="mock-clv-icon">✓</div>
+                <span class="mock-clv-text">CLV Confirmed &middot; Line moved in your favor</span>
+                <span class="mock-clv-line">+158 → +145</span>
+              </div>
+              <div class="mock-stats-row">
+                <div class="mock-stat"><div class="msv">48.7%</div><div class="msl">Consensus</div></div>
+                <div class="mock-stat"><div class="msv msv-green">+12.3%</div><div class="msl">Edge</div></div>
+                <div class="mock-stat"><div class="msv">5.2%</div><div class="msl">½ Kelly</div></div>
+              </div>
             </div>
           </div>
 
+          {# ── Card 2: MLB with AI Insight expanded ── #}
           <div class="mock-card mock-ev-high">
-            <div class="mock-card-header">
-              <div>
-                <div class="mock-team">OKC Thunder &minus;4.5</div>
-                <div class="mock-game-line">Thunder @ Lakers &middot; Tonight 9:30 PM</div>
+            <div class="mock-card-accent"></div>
+            <div class="mock-card-inner">
+              <div class="mock-card-top">
+                <div class="mock-badges">
+                  <span>MLB</span><span>Spread</span><span>FanDuel</span>
+                </div>
+                <span class="mock-ev-pill high">+9.1% EV</span>
               </div>
-            </div>
-            <div class="mock-badges"><span>NBA</span><span>Spread</span><span>BetMGM</span></div>
-            <div class="mock-stats-row">
-              <div><div class="msv">&minus;108</div><div class="msl">Odds</div></div>
-              <div><div class="msv">57.3%</div><div class="msl">Consensus</div></div>
-              <div><div class="msv msv-green">+7.61%</div><div class="msl">EV</div></div>
-              <div><div class="msv">3.6%</div><div class="msl">½ Kelly</div></div>
+              <div class="mock-card-main">
+                <div>
+                  <div class="mock-team">Brewers &minus;1.5</div>
+                  <div class="mock-game-line">Brewers @ Royals &middot; 8:10 PM ET</div>
+                </div>
+                <div class="mock-odds-val">+178</div>
+              </div>
+              <div class="mock-stats-row">
+                <div class="mock-stat"><div class="msv">53.2%</div><div class="msl">Consensus</div></div>
+                <div class="mock-stat"><div class="msv msv-green">+9.1%</div><div class="msl">Edge</div></div>
+                <div class="mock-stat"><div class="msv">4.1%</div><div class="msl">½ Kelly</div></div>
+              </div>
+              <div class="mock-ai-panel">
+                <div class="mock-ai-header">
+                  <span class="mock-ai-label">🤖 +EV Insight</span>
+                  <span class="mock-ai-conf">79/100 — High Conviction</span>
+                  <span class="mock-ai-kelly">Kelly: 4.1%</span>
+                </div>
+                <div class="mock-ai-section">
+                  <div class="mock-ai-section-hdr">📐 Mathematical Edge</div>
+                  <div class="mock-ai-section-body">Sharp consensus 53.2% vs FD implied 46.0% — 7.2 pp gap. Expected value <strong>+$16.20</strong> per $100 wagered.</div>
+                </div>
+                <div class="mock-ai-section">
+                  <div class="mock-ai-section-hdr">🌍 Market &amp; Situational Context</div>
+                  <div class="mock-ai-section-body">Kyle Harrison (14.40 K/9, 2.81 ERA) vs. Kris Bubic (4.21 ERA, 1.38 WHIP). Brewers 7-3 last 10, averaging 4.9 R/G. Royals bullpen used 4.2 IP last 48h.</div>
+                </div>
+                <span class="mock-ai-action">✓ Strong Bet</span>
+              </div>
             </div>
           </div>
 
-          <div class="mock-card mock-ev-pm">
-            <div class="mock-card-header">
-              <div>
-                <div class="mock-team">Florida Panthers &minus;1.5</div>
-                <div class="mock-game-line">Panthers @ Senators &middot; Tomorrow 7:30 PM</div>
+          {# ── Card 3: NBA Prop — Prediction Market ── #}
+          <div class="mock-card mock-ev-med">
+            <div class="mock-card-accent"></div>
+            <div class="mock-card-inner">
+              <div class="mock-card-top">
+                <div class="mock-badges">
+                  <span>NBA</span><span>Prop</span><span>Kalshi</span>
+                  <span class="mock-badge-pm">🔮 PM</span>
+                </div>
+                <span class="mock-ev-pill med">+4.8% EV</span>
               </div>
-            </div>
-            <div class="mock-badges">
-              <span>NHL</span><span>Spread</span><span>Kalshi</span>
-              <span class="mock-badge-pm">🔮 PM</span>
-            </div>
-            <div class="mock-stats-row">
-              <div><div class="msv">&minus;115</div><div class="msl">Odds</div></div>
-              <div><div class="msv">54.8%</div><div class="msl">Consensus</div></div>
-              <div><div class="msv msv-amber">+4.29%</div><div class="msl">EV</div></div>
-              <div><div class="msv">2.1%</div><div class="msl">½ Kelly</div></div>
+              <div class="mock-card-main">
+                <div>
+                  <div style="font-size:0.55rem; font-weight:800; color:#534AB7; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:2px;">LeBron James</div>
+                  <div class="mock-team">Over 26.5 pts</div>
+                  <div class="mock-game-line">Lakers @ Thunder &middot; 9:30 PM ET</div>
+                </div>
+                <div class="mock-odds-val mock-odds-neg">&minus;118</div>
+              </div>
+              <div class="mock-stats-row">
+                <div class="mock-stat"><div class="msv">54.1%</div><div class="msl">Consensus</div></div>
+                <div class="mock-stat"><div class="msv msv-amber">+4.8%</div><div class="msl">Edge</div></div>
+                <div class="mock-stat"><div class="msv">2.3%</div><div class="msl">½ Kelly</div></div>
+              </div>
+              <div class="mock-action-btn">🤖 Get +EV Insight</div>
             </div>
           </div>
 
-          {# 4th card: AI analysis panel expanded #}
-          <div class="mock-card mock-ev-high" style="border-left-color:#6D28D9; background:#FAFAFE;">
-            <div class="mock-card-header">
-              <div>
-                <div class="mock-team">LeBron James Over 26.5 pts</div>
-                <div class="mock-game-line">Lakers @ Thunder &middot; Tonight 9:30 PM</div>
-              </div>
-            </div>
-            <div class="mock-badges"><span>NBA</span><span>Prop</span><span>DraftKings</span></div>
-            <div class="mock-stats-row">
-              <div><div class="msv">&minus;112</div><div class="msl">Odds</div></div>
-              <div><div class="msv">56.4%</div><div class="msl">Consensus</div></div>
-              <div><div class="msv msv-green">+7.2%</div><div class="msl">EV</div></div>
-              <div><div class="msv">3.8%</div><div class="msl">½ Kelly</div></div>
-            </div>
-            <div class="mock-ai-panel">
-              <div class="mock-ai-header">
-                <span class="mock-ai-label">🤖 +EV Insight</span>
-                <span class="mock-ai-conf">84/100 — High Conviction</span>
-                <span class="mock-ai-kelly">Kelly: 3.8%</span>
-              </div>
-              <span><strong style="color:#26215C;">Math:</strong> Sharp consensus 56.4% vs DK implied 52.9% — 3.5 pp gap, +7.2% EV. </span>
-              <span><strong style="color:#26215C;">Context:</strong> LeBron avg 28.1 pts last 10 games; Thunder allow 118.4 ppg in last 5.</span>
-            </div>
-          </div>
-
-          <div class="mock-more">+ 24 more picks — all with +EV Insight</div>
+          <div class="mock-more">+ 25 more picks &mdash; sort by EV%, time, or odds</div>
         </div>
       </div>
 
@@ -1133,7 +1258,7 @@ main { max-width: none; padding: 0; }
                    background:#FFF7E6; color:#92600A;
                    border-radius:20px; padding:5px 16px; font-weight:600;
                    border:1px solid rgba(250,199,117,0.4);">
-        ★ EV Pro — full dashboard, $19.99/mo
+        🎁 EV Pro — 7 days free, then $19.99/mo
       </span>
     </div>
 
@@ -1201,11 +1326,11 @@ main { max-width: none; padding: 0; }
           + '<div style="margin-top:14px; padding-top:14px; border-top:1px solid rgba(15,110,86,0.2); display:flex; gap:10px; flex-wrap:wrap; align-items:center;">'
           + '  <div style="flex:1; min-width:180px;">'
           + '    <p style="margin:0 0 2px; font-weight:700; color:#1A1450; font-size:0.88rem;">Want the full dashboard?</p>'
-          + '    <p style="margin:0; font-size:0.78rem; color:#6B7280;">Unlock every pick, every market, Kelly sizing — $19.99/mo.</p>'
+          + '    <p style="margin:0; font-size:0.78rem; color:#6B7280;">Unlock every pick, every market, Kelly sizing — 7 days free, then $19.99/mo.</p>'
           + '  </div>'
-          + '  <a href="/subscribe" style="display:inline-block; background:#534AB7; color:#fff; font-weight:700; font-size:0.88rem;'
+          + '  <a href="/register" style="display:inline-block; background:#534AB7; color:#fff; font-weight:700; font-size:0.88rem;'
           + '     padding:9px 20px; border-radius:8px; text-decoration:none; white-space:nowrap; flex-shrink:0;">'
-          + '    Upgrade to EV Pro &rarr;'
+          + '    Start Free Trial &rarr;'
           + '  </a>'
           + '</div>';
       } else {
@@ -1751,15 +1876,15 @@ main { max-width: none; padding: 0; }
       8 leagues, refreshed every hour, with Kelly sizing and a math explainer on every pick.
     </p>
     <div style="display:flex; gap:var(--space-3); justify-content:center; flex-wrap:wrap;">
-      <a href="/register" class="btn-hero-primary">Start Free — No card needed &rarr;</a>
-      <a href="/subscribe" class="btn-hero-ghost">Get EV Pro &mdash; $19.99/mo</a>
+      <a href="/register" class="btn-hero-primary">Start 7-Day Free Trial &rarr;</a>
+      <a href="/pricing"  class="btn-hero-ghost">See pricing</a>
     </div>
     <div style="margin-top:var(--space-4); display:flex; gap:20px; justify-content:center;
                 flex-wrap:wrap; font-size:0.78rem; color:rgba(255,255,255,0.5);">
       <span>🔒 Secure checkout via Stripe</span>
-      <span>✓ Cancel anytime</span>
+      <span>✓ 7 days free — then $19.99/mo</span>
+      <span>✓ Cancel before day 8, pay nothing</span>
       <span>✓ No contracts</span>
-      <span>✓ Access for full 30 days if cancelled early</span>
     </div>
   </div>
 </section>

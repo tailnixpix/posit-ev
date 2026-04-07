@@ -390,10 +390,14 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
 
   {# ── Daily Picks Record ── #}
   <div class="section-card">
-    <div class="section-card-header">
-      <h2>Daily Picks Record</h2>
-      <span class="badge badge-blue">{{ picks_badge }}</span>
+    <div class="coll-header" onclick="toggleColl('picks-card')" id="picks-card-hdr">
+      <span class="coll-title">
+        Daily Picks Record
+        <span class="badge badge-blue" style="font-size:0.7rem;">{{ picks_badge }}</span>
+      </span>
+      <span class="coll-arrow">▼</span>
     </div>
+    <div class="coll-body" id="picks-card">
 
     {# CLV Summary Bar #}
     {% if clv_summary.total > 0 %}
@@ -554,6 +558,7 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
         </p>
       </form>
     </div>
+    </div>{# /coll-body picks-card #}
   </div>
 
   {# ── Newsletter Subscribers ── #}
@@ -561,113 +566,123 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
   {% set unsub_subs  = newsletter_subs | rejectattr('is_active') | list %}
 
   <div class="section-card">
-    <div class="section-card-header">
-      <h2>Newsletter Subscribers</h2>
-      <span class="badge badge-blue">{{ nl_active }} active · {{ nl_total }} total</span>
-    </div>
-
-    {# Active subscribers — collapsible #}
-    <div class="coll-header" onclick="toggleColl('nl-active')" id="nl-active-hdr">
+    <div class="coll-header" onclick="toggleColl('nl-card')" id="nl-card-hdr">
       <span class="coll-title">
-        <span class="tag tag-active" style="font-size:0.72rem;">Active</span>
-        {{ active_subs | length }} subscriber{{ 's' if active_subs | length != 1 else '' }}
+        Newsletter Subscribers
+        <span class="badge badge-blue" style="font-size:0.7rem;">{{ nl_active }} active · {{ nl_total }} total</span>
       </span>
       <span class="coll-arrow">▼</span>
     </div>
-    <div class="coll-body" id="nl-active">
-      {% if active_subs %}
-      <div class="table-scroll">
-      <table>
-        <thead>
-          <tr>
-            <th>Email</th>
-            <th>Signed up</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for s in active_subs %}
-          <tr>
-            <td style="font-weight:500;">{{ s.email }}</td>
-            <td style="font-size:0.82rem; color:var(--text-muted);">
-              {{ s.subscribed_at.strftime('%b %-d, %Y') if s.subscribed_at else '—' }}
-            </td>
-            <td>
-              <form method="post" action="/admin/newsletter-unsubscribe" style="margin:0;">
-                <input type="hidden" name="subscriber_id" value="{{ s.id }}" />
-                <button type="submit" style="font-size:0.75rem;padding:4px 12px;background:#FEF2F2;
-                  color:#C53030;border:1px solid #FCA5A5;border-radius:6px;
-                  cursor:pointer;font-family:inherit;font-weight:600;">
-                  Unsubscribe
-                </button>
-              </form>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      </div>
-      {% else %}
-      <p class="empty">No active subscribers.</p>
-      {% endif %}
-    </div>
+    <div class="coll-body" id="nl-card">
 
-    {# Unsubscribed — collapsible #}
-    <div class="coll-header" style="border-top:1px solid var(--brand-border);"
-         onclick="toggleColl('nl-unsub')" id="nl-unsub-hdr">
-      <span class="coll-title">
-        <span class="tag tag-inactive" style="font-size:0.72rem;">Unsubscribed</span>
-        {{ unsub_subs | length }} subscriber{{ 's' if unsub_subs | length != 1 else '' }}
-        <span style="font-size:0.72rem; color:var(--text-muted); font-weight:400;">— no longer receiving emails</span>
-      </span>
-      <span class="coll-arrow">▼</span>
-    </div>
-    <div class="coll-body" id="nl-unsub">
-      {% if unsub_subs %}
-      <div class="table-scroll">
-      <table>
-        <thead>
-          <tr>
-            <th>Email</th>
-            <th>Signed up</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for s in unsub_subs %}
-          <tr>
-            <td style="font-weight:500; color:var(--text-muted);">{{ s.email }}</td>
-            <td style="font-size:0.82rem; color:var(--text-muted);">
-              {{ s.subscribed_at.strftime('%b %-d, %Y') if s.subscribed_at else '—' }}
-            </td>
-            <td>
-              <form method="post" action="/admin/newsletter-resubscribe" style="margin:0;">
-                <input type="hidden" name="subscriber_id" value="{{ s.id }}" />
-                <button type="submit" style="font-size:0.75rem;padding:4px 12px;
-                  background:rgba(15,110,86,0.08);color:#0F6E56;border:1px solid #9EEBD6;
-                  border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600;">
-                  Resubscribe
-                </button>
-              </form>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+      {# Active subscribers #}
+      <div class="coll-header" onclick="toggleColl('nl-active')" id="nl-active-hdr"
+           style="padding-left:28px; background:var(--brand-surface);">
+        <span class="coll-title">
+          <span class="tag tag-active" style="font-size:0.72rem;">Active</span>
+          {{ active_subs | length }} subscriber{{ 's' if active_subs | length != 1 else '' }}
+        </span>
+        <span class="coll-arrow">▼</span>
       </div>
-      {% else %}
-      <p class="empty">No unsubscribed users.</p>
-      {% endif %}
-    </div>
+      <div class="coll-body" id="nl-active">
+        {% if active_subs %}
+        <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Email</th>
+              <th>Signed up</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in active_subs %}
+            <tr>
+              <td style="font-weight:500;">{{ s.email }}</td>
+              <td style="font-size:0.82rem; color:var(--text-muted); white-space:nowrap;">
+                {{ s.subscribed_at.strftime('%b %-d, %Y') if s.subscribed_at else '—' }}
+              </td>
+              <td>
+                <form method="post" action="/admin/newsletter-unsubscribe" style="margin:0;">
+                  <input type="hidden" name="subscriber_id" value="{{ s.id }}" />
+                  <button type="submit" style="font-size:0.75rem;padding:4px 12px;background:#FEF2F2;
+                    color:#C53030;border:1px solid #FCA5A5;border-radius:6px;
+                    cursor:pointer;font-family:inherit;font-weight:600;">
+                    Unsubscribe
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        </div>
+        {% else %}
+        <p class="empty">No active subscribers.</p>
+        {% endif %}
+      </div>
 
+      {# Unsubscribed #}
+      <div class="coll-header" onclick="toggleColl('nl-unsub')" id="nl-unsub-hdr"
+           style="padding-left:28px; background:var(--brand-surface); border-top:1px solid var(--brand-border);">
+        <span class="coll-title">
+          <span class="tag tag-inactive" style="font-size:0.72rem;">Unsubscribed</span>
+          {{ unsub_subs | length }} subscriber{{ 's' if unsub_subs | length != 1 else '' }}
+          <span style="font-size:0.72rem; color:var(--text-muted); font-weight:400;">— no longer receiving emails</span>
+        </span>
+        <span class="coll-arrow">▼</span>
+      </div>
+      <div class="coll-body" id="nl-unsub">
+        {% if unsub_subs %}
+        <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Email</th>
+              <th>Signed up</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in unsub_subs %}
+            <tr>
+              <td style="font-weight:500; color:var(--text-muted);">{{ s.email }}</td>
+              <td style="font-size:0.82rem; color:var(--text-muted); white-space:nowrap;">
+                {{ s.subscribed_at.strftime('%b %-d, %Y') if s.subscribed_at else '—' }}
+              </td>
+              <td>
+                <form method="post" action="/admin/newsletter-resubscribe" style="margin:0;">
+                  <input type="hidden" name="subscriber_id" value="{{ s.id }}" />
+                  <button type="submit" style="font-size:0.75rem;padding:4px 12px;
+                    background:rgba(15,110,86,0.08);color:#0F6E56;border:1px solid #9EEBD6;
+                    border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600;">
+                    Resubscribe
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        </div>
+        {% else %}
+        <p class="empty">No unsubscribed users.</p>
+        {% endif %}
+      </div>
+
+    </div>
   </div>
 
   {# ── Registered Users ── #}
   <div class="section-card">
-    <div class="section-card-header">
-      <h2>Registered Users</h2>
-      <span class="badge badge-green">{{ user_paid }} paid · {{ user_free }} free · {{ user_total }} total</span>
+    <div class="coll-header" onclick="toggleColl('users-card')" id="users-card-hdr">
+      <span class="coll-title">
+        Registered Users
+        <span class="badge badge-green" style="font-size:0.7rem;">{{ user_paid }} paid · {{ user_free }} free · {{ user_total }} total</span>
+      </span>
+      <span class="coll-arrow">▼</span>
     </div>
+    <div class="coll-body" id="users-card">
 
     {# Tier tabs #}
     <div class="tier-tabs">
@@ -811,6 +826,7 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
     </p>
     {% endif %}
 
+    </div>{# /coll-body users-card #}
   </div>
 
 </div>
@@ -818,7 +834,7 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
 
 {% block scripts %}
 <script>
-/* ── Collapsible subscriber sections ── */
+/* ── Collapsible sections ── */
 function toggleColl(id) {
   const body = document.getElementById(id);
   const hdr  = document.getElementById(id + '-hdr');

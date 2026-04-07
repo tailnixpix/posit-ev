@@ -37,6 +37,7 @@ SPORT_KEYS = [
     "soccer_spain_la_liga",
     "soccer_germany_bundesliga",
     "soccer_usa_mls",
+    "golf_masters_tournament_winner",   # The Masters — outright winner market
 ]
 
 SPORTSBOOK_BOOKMAKERS = [

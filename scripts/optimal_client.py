@@ -34,19 +34,22 @@ Usage
 
 import json
 import logging
-import subprocess
-import time
 from typing import Any, Optional
+
+import requests
 
 log = logging.getLogger(__name__)
 
 _BASE_URL = "https://mcp.tangiers.ai/"
-_HEADERS = [
-    "-H", "Accept: application/json, text/event-stream",
-    "-H", "Content-Type: application/json",
-]
-_TIMEOUT = 30   # seconds per curl call
+_TIMEOUT = 30   # seconds per request
 _RPC_ID = 1     # stateless — reuse the same ID each call
+
+_SESSION = requests.Session()
+_SESSION.headers.update({
+    "Accept": "application/json, text/event-stream",
+    "Content-Type": "application/json",
+    "User-Agent": "positplusev/1.0",
+})
 
 
 # ---------------------------------------------------------------------------
@@ -61,29 +64,21 @@ def _rpc(method: str, params: dict) -> Any:
     The server responds with a Server-Sent Events stream. We find the line
     beginning with ``data: `` and parse the embedded JSON.
     """
-    payload = json.dumps({
+    payload = {
         "jsonrpc": "2.0",
         "id": _RPC_ID,
         "method": method,
         "params": params,
-    })
-
-    cmd = [
-        "curl", "-s", "--max-time", str(_TIMEOUT),
-        *_HEADERS,
-        "-X", "POST",
-        "-d", payload,
-        _BASE_URL,
-    ]
+    }
 
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=_TIMEOUT + 5)
-        raw = result.stdout.strip()
-    except subprocess.TimeoutExpired:
-        log.warning("Optimal MCP: curl timed out for method=%s", method)
+        resp = _SESSION.post(_BASE_URL, json=payload, timeout=_TIMEOUT)
+        raw = resp.text.strip()
+    except requests.Timeout:
+        log.warning("Optimal MCP: request timed out for method=%s", method)
         return None
     except Exception as exc:
-        log.error("Optimal MCP: subprocess error for method=%s: %s", method, exc)
+        log.error("Optimal MCP: request error for method=%s: %s", method, exc)
         return None
 
     # Parse SSE: find first `data: {...}` line
@@ -313,6 +308,71 @@ class OptimalClient:
         if league:
             args["league"] = league
         return _call_tool("search_teams", args)
+
+    # ── Game projections ───────────────────────────────────────────────────
+
+    def get_game_projections(self, event_id: str) -> Optional[Any]:
+        """
+        Return score projections for a specific game.
+
+        Queries the game_projections table via LATERAL join to unpack the
+        projections JSONB array. Returns a dict with keys:
+            spread_mean, total_mean, home_score_mean, away_score_mean,
+            home_win_probability, updated_at
+
+        Parameters
+        ----------
+        event_id : str
+            UUID from the events table (use get_events or fetch_game_projections
+            to resolve a game name → event_id).
+        """
+        sql = (
+            "SELECT "
+            "  gp.event_id, "
+            "  (gp.projections->>'homeWinProbability')::float AS home_win_probability, "
+            "  gp.updated_at, "
+            "  proj_item->>'projectionType' AS proj_type, "
+            "  (proj_item->>'mean')::float AS mean, "
+            "  (proj_item->>'p25')::float AS p25, "
+            "  (proj_item->>'p75')::float AS p75 "
+            "FROM game_projections gp, "
+            "  LATERAL jsonb_array_elements(gp.projections->'projections') AS proj_item "
+            f"WHERE gp.event_id = '{event_id}'"
+        )
+        rows = _call_tool("query", {"sql": sql})
+        if not rows or not isinstance(rows, list):
+            return None
+
+        # Pivot the flat rows into a structured dict
+        result: dict = {"event_id": event_id}
+        for row in rows:
+            pt   = row.get("proj_type", "")
+            mean = row.get("mean")
+            p25  = row.get("p25")
+            p75  = row.get("p75")
+            if pt == "spread":
+                result["spread_mean"] = mean
+                result["spread_p25"]  = p25
+                result["spread_p75"]  = p75
+            elif pt == "total":
+                result["total_mean"] = mean
+                result["total_p25"]  = p25
+                result["total_p75"]  = p75
+            elif pt == "homeScore":
+                result["home_score_mean"] = mean
+                result["home_score_p25"]  = p25
+                result["home_score_p75"]  = p75
+            elif pt == "awayScore":
+                result["away_score_mean"] = mean
+                result["away_score_p25"]  = p25
+                result["away_score_p75"]  = p75
+            # homeWinProbability is the same on every row — grab once
+            if "home_win_probability" not in result and row.get("home_win_probability") is not None:
+                result["home_win_probability"] = row["home_win_probability"]
+            if "updated_at" not in result and row.get("updated_at"):
+                result["updated_at"] = row["updated_at"]
+
+        return result if len(result) > 2 else None   # must have at least one proj type
 
     # ── Freeform query ─────────────────────────────────────────────────────
 

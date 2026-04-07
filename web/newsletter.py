@@ -613,7 +613,7 @@ def send_daily_newsletter() -> dict:
    style="display:inline-block; background:#534AB7; color:#ffffff;
           text-decoration:none; padding:13px 32px; border-radius:8px;
           font-weight:700; font-size:15px;">
-  Unlock All Today&rsquo;s Picks &mdash; $29/month &rarr;
+  Unlock All Today&rsquo;s Picks &mdash; $19.99/month &rarr;
 </a>
 """
         subtitle = f"Today's top +EV pick: {team} at {odds_str} ({ev_pct:.1f}% EV)"
@@ -689,7 +689,7 @@ def send_newsletter_welcome(to_email: str) -> bool:
     </table>
 
     <a class="cta-btn" href="{_base_url}/pricing">
-      Unlock All Today&rsquo;s Picks &mdash; $29/month &rarr;
+      Unlock All Today&rsquo;s Picks &mdash; $19.99/month &rarr;
     </a>
     <p style="font-size:12px; color:#AFA9EC; margin-top:6px;">
       Cancel any time. No contracts.

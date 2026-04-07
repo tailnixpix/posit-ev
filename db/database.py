@@ -84,6 +84,7 @@ class User(Base):
     is_subscribed          = Column(Boolean, default=False, nullable=False)
     stripe_customer_id     = Column(String, nullable=True)
     stripe_subscription_id = Column(String, nullable=True)
+    trial_ends_at          = Column(DateTime(timezone=True), nullable=True)
     created_at             = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
     def __repr__(self) -> str:
