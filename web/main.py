@@ -710,6 +710,48 @@ async def health():
 # AI Analysis endpoint
 # ---------------------------------------------------------------------------
 
+def _projection_supports_bet(bet_row, proj: dict) -> bool:
+    """
+    Return True only when the Optimal model projection supports the bet direction.
+    Suppresses display when the model contradicts the pick.
+
+    Rules:
+      h2h      — model win-probability favours the same team as the bet
+      totals   — model total is on the same side (over/under) as the bet line
+      spreads  — model margin is larger/smaller than the spread in the right direction
+    """
+    market      = bet_row.market or ""
+    team        = (bet_row.team or "").strip()
+    point       = bet_row.point
+    game        = bet_row.game or ""
+
+    spread_mean    = proj.get("spread_mean")      # positive = home team margin
+    total_mean     = proj.get("total_mean")
+    home_win_prob  = proj.get("home_win_probability")
+
+    # Determine home team keyword for is_home_bet check
+    try:
+        _, home_str = game.split(" @ ", 1)
+        home_kw = home_str.strip().split()[-1].lower()
+        is_home_bet = home_kw in team.lower()
+    except Exception:
+        return True  # can't parse → show anyway
+
+    if market == "h2h" and home_win_prob is not None:
+        return home_win_prob > 0.5 if is_home_bet else home_win_prob < 0.5
+
+    if market == "totals" and total_mean is not None and point is not None:
+        is_over = team.lower().startswith("over")
+        return total_mean > point if is_over else total_mean < point
+
+    if market == "spreads" and spread_mean is not None and point is not None:
+        # bet.point is negative for home team (-1.5 = home gives 1.5 pts)
+        threshold = abs(point)
+        return spread_mean > threshold if is_home_bet else spread_mean < threshold
+
+    return True  # unknown market → show anyway
+
+
 @app.get("/api/projection/{bet_id}")
 async def get_projection(bet_id: int, request: Request, db: Session = Depends(get_db)):
     """
@@ -772,6 +814,12 @@ async def get_projection(bet_id: int, request: Request, db: Session = Depends(ge
 
     if not proj:
         raise HTTPException(status_code=422, detail="No projection available for this game")
+
+    # Only surface the projection if it supports the bet direction.
+    # Contradictory projections are suppressed — they confuse rather than inform.
+    if not _projection_supports_bet(bet_row, proj):
+        log.info("Projection suppressed (fades bet) for bet_id=%d", bet_id)
+        raise HTTPException(status_code=422, detail="Projection not available for this pick")
 
     return JSONResponse(proj)
 

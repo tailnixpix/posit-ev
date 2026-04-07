@@ -2528,9 +2528,9 @@ function toggleProjPanel(btn) {
         : '';
 
       const html =
-        // Header
+        // Header — confirmed framing
         `<div class="proj-panel-header">
-           <span>📊 Model Projection</span>
+           <span>✅ Model Confirms Pick</span>
            ${updatedStr ? `<span class="proj-panel-timestamp">Updated ${updatedStr}</span>` : ''}
          </div>` +
 
@@ -2547,17 +2547,15 @@ function toggleProjPanel(btn) {
            </div>
          </div>` +
 
-        // Stats grid
+        // Stats grid — no alignment badges (server already filtered for agreement)
         `<div class="proj-stats">
            <div class="proj-stat-item">
              <div class="proj-stat-lbl">Spread</div>
              <div class="proj-stat-val">${spreadVal}</div>
-             ${spreadBadge}
            </div>
            <div class="proj-stat-item">
              <div class="proj-stat-lbl">Total</div>
              <div class="proj-stat-val">${fmt(totalProj)}</div>
-             ${totalBadge}
            </div>
            <div class="proj-stat-item">
              <div class="proj-stat-lbl">Win Prob</div>
