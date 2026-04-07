@@ -755,6 +755,59 @@ main { max-width: 1200px; padding-top: var(--space-5); overflow-x: hidden; }
 .proj-align-no  { background: rgba(239,68,68,0.08); color: #B91C1C; }
 .proj-align-neu { background: rgba(107,114,128,0.1); color: #6B7280; }
 
+/* ── Model Signal inline strip (auto-loads on page open) ─────────────── */
+.model-signal { margin: 0; }
+
+.model-sig-loading {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 0.65rem; color: #9CA3AF; padding: 3px 0;
+}
+.model-sig-spin {
+  width: 10px; height: 10px;
+  border: 1.5px solid #D1FAE5; border-top-color: #059669;
+  border-radius: 50%; animation: ai-spin 0.7s linear infinite; flex-shrink: 0;
+}
+.model-sig-row {
+  display: flex; align-items: center; gap: 8px;
+  background: linear-gradient(90deg, rgba(5,150,105,0.08) 0%, rgba(5,150,105,0.02) 100%);
+  border: 1px solid rgba(5,150,105,0.22); border-radius: 8px;
+  padding: 7px 10px;
+}
+.model-sig-label {
+  font-size: 0.58rem; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 0.6px; color: #059669; white-space: nowrap; flex-shrink: 0;
+}
+.model-sig-sep { width: 1px; align-self: stretch; background: rgba(5,150,105,0.25); flex-shrink: 0; }
+.model-sig-metrics { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+.model-sig-stat { text-align: center; flex-shrink: 0; }
+.model-sig-val {
+  font-size: 0.92rem; font-weight: 800; color: #059669; line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.model-sig-lbl {
+  font-size: 0.54rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.4px; color: #6B7280; margin-top: 2px;
+}
+.model-sig-bar-wrap { flex: 1; min-width: 40px; }
+.model-sig-bar-track { height: 4px; background: #D1FAE5; border-radius: 2px; overflow: hidden; }
+.model-sig-bar-fill {
+  height: 100%; border-radius: 2px;
+  background: linear-gradient(90deg, #16A34A 0%, #22C55E 100%);
+  transition: width 0.5s ease;
+}
+.model-sig-score { font-size: 0.8rem; font-weight: 800; color: var(--brand-dark); font-variant-numeric: tabular-nums; }
+.model-sig-score-lbl { font-size: 0.54rem; color: #6B7280; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.3px; }
+
+/* ── Top Pick ribbon (injected by JS for top model-backed cards) ──────── */
+.top-pick-ribbon {
+  display: flex; align-items: center; gap: 7px;
+  padding: 6px 16px;
+  font-size: 0.6rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.7px;
+  color: #fff; flex-shrink: 0;
+}
+.top-pick-ribbon.rank-1 { background: linear-gradient(90deg, #1E1A47 0%, #534AB7 55%, #7C3AED 100%); }
+.top-pick-ribbon.rank-2 { background: linear-gradient(90deg, #065F46 0%, #059669 55%, #10B981 100%); }
+
 .proj-loading { color: var(--text-muted); font-size: 0.78rem; padding: 12px 0; text-align: center; }
 .proj-error   { color: #C53030; font-size: 0.75rem; padding: 8px 12px; }
 
@@ -1655,6 +1708,16 @@ main { max-width: 1200px; padding-top: var(--space-5); overflow-x: hidden; }
             </div>
           </div>
 
+          {# Model Signal strip — auto-loads projection inline on page open #}
+          {% if not bet.is_prop and bet.game and ' @ ' in (bet.game or '') %}
+          <div class="model-signal" id="model-signal-{{ bet.id }}">
+            <div class="model-sig-loading" id="model-sig-loading-{{ bet.id }}">
+              <div class="model-sig-spin"></div>
+              <span>Loading model signal&hellip;</span>
+            </div>
+          </div>
+          {% endif %}
+
           {# CLV line movement badge #}
           {% if bet.opening_odds and bet.opening_odds != bet.odds %}
             {% set op = ('+' if bet.opening_odds > 0 else '') ~ bet.opening_odds %}
@@ -1721,7 +1784,7 @@ main { max-width: 1200px; padding-top: var(--space-5); overflow-x: hidden; }
               {% if not bet.is_prop and bet.game and ' @ ' in (bet.game or '') %}
               <span class="sec-divider">·</span>
               <button class="proj-btn" data-bet-id="{{ bet.id }}" onclick="toggleProjPanel(this)">
-                📊 Projection
+                📊 Full Projection
               </button>
               {% endif %}
             </div>
@@ -2438,6 +2501,195 @@ function toggleAiPanel(btn) {
 // ── Game Projection panel ─────────────────────────────────────────────────
 
 const _projCache = {};   // betId → rendered HTML string
+const _projData  = {};   // betId → raw projection JSON (from auto-fetch or panel fetch)
+
+// Build the full projection panel HTML from raw data
+function _buildProjHtml(d) {
+  const fmt  = v => (v != null ? parseFloat(v).toFixed(1) : '—');
+  const fmtI = v => (v != null ? Math.round(v)            : '—');
+  const away = d.away_display || d.away_team || 'Away';
+  const home = d.home_display || d.home_team || 'Home';
+  const spreadProj  = d.spread_mean;
+  const totalProj   = d.total_mean;
+  const homeWinProb = d.home_win_probability;
+  const spreadVal = spreadProj != null
+    ? (spreadProj >= 0
+        ? home + ' \u2212' + fmt(Math.abs(spreadProj))
+        : away + ' \u2212' + fmt(Math.abs(spreadProj)))
+    : '—';
+  const updatedStr = d.updated_at
+    ? new Date(d.updated_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
+    : '';
+  return (
+    `<div class="proj-panel-header">
+       <span>✅ Model Confirms Pick</span>
+       ${updatedStr ? `<span class="proj-panel-timestamp">Updated ${updatedStr}</span>` : ''}
+     </div>` +
+    `<div class="proj-scoreline">
+       <div class="proj-team">
+         <div class="proj-team-score">${fmtI(d.away_score_mean)}</div>
+         <div class="proj-team-name">${away}</div>
+       </div>
+       <div class="proj-sep">@</div>
+       <div class="proj-team">
+         <div class="proj-team-score">${fmtI(d.home_score_mean)}</div>
+         <div class="proj-team-name">${home}</div>
+       </div>
+     </div>` +
+    `<div class="proj-stats">
+       <div class="proj-stat-item">
+         <div class="proj-stat-lbl">Spread</div>
+         <div class="proj-stat-val">${spreadVal}</div>
+       </div>
+       <div class="proj-stat-item">
+         <div class="proj-stat-lbl">Total</div>
+         <div class="proj-stat-val">${fmt(totalProj)}</div>
+       </div>
+       <div class="proj-stat-item">
+         <div class="proj-stat-lbl">Win Prob</div>
+         <div class="proj-stat-val">${homeWinProb != null ? (homeWinProb * 100).toFixed(0) + '%' : '—'}</div>
+         ${homeWinProb != null ? `<div class="proj-stat-sub">${home} win</div>` : ''}
+       </div>
+     </div>`
+  );
+}
+
+// Populate the inline Model Signal strip from projection data
+function _updateModelSignal(betId, d, card) {
+  const sigEl = document.getElementById('model-signal-' + betId);
+  if (!sigEl) return;
+
+  const market    = (card.dataset.market || '').toLowerCase();
+  const game      = card.dataset.game || '';
+  const teamLower = (card.dataset.team || '').toLowerCase();
+
+  const gameParts = game.split(' @ ');
+  const awayFull  = gameParts[0] ? gameParts[0].trim() : '';
+  const homeFull  = gameParts[1] ? gameParts[1].trim() : '';
+  const awayShort = awayFull.split(' ').pop() || '?';
+  const homeShort = homeFull.split(' ').pop() || '?';
+
+  let primaryHtml = '';
+
+  if (market === 'h2h' && d.home_win_probability != null) {
+    const isHomeBet = homeShort && teamLower.includes(homeShort.toLowerCase());
+    const betProb   = Math.round((isHomeBet ? d.home_win_probability : (1 - d.home_win_probability)) * 100);
+    primaryHtml = `
+      <div class="model-sig-stat">
+        <div class="model-sig-val">${betProb}%</div>
+        <div class="model-sig-lbl">Win Prob</div>
+      </div>
+      <div class="model-sig-bar-wrap">
+        <div class="model-sig-bar-track">
+          <div class="model-sig-bar-fill" style="width:${betProb}%"></div>
+        </div>
+      </div>`;
+  } else if (market === 'spreads' && d.spread_mean != null) {
+    const sm      = d.spread_mean;
+    const favTeam = sm >= 0 ? homeShort : awayShort;
+    const margin  = Math.abs(sm).toFixed(1);
+    primaryHtml = `
+      <div class="model-sig-stat">
+        <div class="model-sig-val">${favTeam} \u2212${margin}</div>
+        <div class="model-sig-lbl">Proj. Spread</div>
+      </div>`;
+  } else if (market === 'totals' && d.total_mean != null) {
+    primaryHtml = `
+      <div class="model-sig-stat">
+        <div class="model-sig-val">${d.total_mean.toFixed(1)}</div>
+        <div class="model-sig-lbl">Proj. Total</div>
+      </div>`;
+  }
+
+  let scoreHtml = '';
+  if (d.home_score_mean != null && d.away_score_mean != null) {
+    const awayScore = Math.round(d.away_score_mean);
+    const homeScore = Math.round(d.home_score_mean);
+    scoreHtml = `
+      <div class="model-sig-sep"></div>
+      <div class="model-sig-stat">
+        <div class="model-sig-score">${awayScore}&ndash;${homeScore}</div>
+        <div class="model-sig-score-lbl">${awayShort} &middot; ${homeShort}</div>
+      </div>`;
+  }
+
+  if (!primaryHtml && !scoreHtml) { sigEl.style.display = 'none'; return; }
+
+  sigEl.innerHTML = `
+    <div class="model-sig-row">
+      <div class="model-sig-label">🤖 Model Signal</div>
+      <div class="model-sig-sep"></div>
+      <div class="model-sig-metrics">
+        ${primaryHtml}
+        ${scoreHtml}
+      </div>
+    </div>`;
+}
+
+function _hideModelSignal(betId) {
+  const el = document.getElementById('model-signal-' + betId);
+  if (el) el.style.display = 'none';
+}
+
+// Background-fetch projection for one card and populate its model signal
+function _autoFetchOne(betId) {
+  const sigEl = document.getElementById('model-signal-' + betId);
+  if (!sigEl) return;
+  const card = sigEl.closest('.bet-card');
+  if (!card) return;
+
+  fetch('/api/projection/' + betId, {credentials: 'include'})
+    .then(r => { if (!r.ok) return null; return r.json(); })
+    .then(d => {
+      if (!d) { _hideModelSignal(betId); return; }
+      _projData[betId] = d;
+      card.dataset.modelConfirmed = '1';
+      _updateModelSignal(betId, d, card);
+      _scheduleTopPickBadging();
+    })
+    .catch(() => _hideModelSignal(betId));
+}
+
+// Top-pick badging — debounced so it runs once after all auto-fetches settle
+let _topPickTimer = null;
+function _scheduleTopPickBadging() {
+  clearTimeout(_topPickTimer);
+  _topPickTimer = setTimeout(_applyTopPickBadges, 1400);
+}
+
+function _applyTopPickBadges() {
+  // Remove any previously added ribbons (safe on re-run)
+  document.querySelectorAll('.top-pick-ribbon').forEach(r => r.remove());
+
+  // Score every visible card: EV × 1.5 if model-confirmed, EV otherwise
+  const cards = [...document.querySelectorAll('.bet-card')].filter(c => {
+    return c.offsetParent !== null;  // visible (not hidden by filters)
+  });
+
+  const scored = cards.map(card => {
+    const ev        = parseFloat(card.dataset.ev || 0);
+    const confirmed = card.dataset.modelConfirmed === '1';
+    return { card, score: ev * (confirmed ? 1.5 : 1.0), confirmed };
+  }).sort((a, b) => b.score - a.score);
+
+  // Badge top 2 model-confirmed picks only
+  scored.filter(s => s.confirmed).slice(0, 2).forEach((item, idx) => {
+    const ribbon = document.createElement('div');
+    ribbon.className = 'top-pick-ribbon rank-' + (idx + 1);
+    ribbon.innerHTML = idx === 0
+      ? '🏆&nbsp; Top Model Pick &mdash; Highest EV + Model Confirmed'
+      : '✅&nbsp; Strong Model Pick &mdash; High EV + Model Confirmed';
+    item.card.insertBefore(ribbon, item.card.firstChild);
+  });
+}
+
+// Kick off auto-fetch for all eligible bet cards, staggered 200ms apart
+function autoLoadAllProjections() {
+  document.querySelectorAll('.model-signal[id]').forEach((el, idx) => {
+    const betId = el.id.replace('model-signal-', '');
+    setTimeout(() => _autoFetchOne(betId), idx * 200);
+  });
+}
 
 function toggleProjPanel(btn) {
   const betId   = btn.dataset.betId;
@@ -2447,7 +2699,7 @@ function toggleProjPanel(btn) {
   // Toggle closed
   if (panel.style.display === 'block') {
     panel.style.display = 'none';
-    btn.textContent = '📊 Projection';
+    btn.textContent = '📊 Full Projection';
     return;
   }
 
@@ -2455,16 +2707,27 @@ function toggleProjPanel(btn) {
   panel.style.display = 'block';
   btn.textContent = '✕ Close';
 
-  // Already loaded — just show cached HTML
-  if (_projCache[betId]) {
-    document.getElementById('proj-loading-' + betId).style.display = 'none';
-    document.getElementById('proj-content-' + betId).style.display = 'block';
-    return;
-  }
-
   const loadEl    = document.getElementById('proj-loading-' + betId);
   const contentEl = document.getElementById('proj-content-' + betId);
   const errorEl   = document.getElementById('proj-error-'   + betId);
+
+  // Already have cached HTML — render immediately
+  if (_projCache[betId]) {
+    if (loadEl)    loadEl.style.display    = 'none';
+    if (contentEl) { contentEl.innerHTML = _projCache[betId]; contentEl.style.display = 'block'; }
+    return;
+  }
+
+  // Have raw data from auto-fetch — build HTML without re-fetching
+  if (_projData[betId]) {
+    const html = _buildProjHtml(_projData[betId]);
+    _projCache[betId] = html;
+    if (loadEl)    loadEl.style.display    = 'none';
+    if (contentEl) { contentEl.innerHTML = html; contentEl.style.display = 'block'; }
+    return;
+  }
+
+  // Cold fetch (auto-fetch hasn't completed yet or wasn't eligible)
   if (loadEl)    loadEl.style.display    = 'block';
   if (contentEl) contentEl.style.display = 'none';
   if (errorEl)   errorEl.style.display   = 'none';
@@ -2472,101 +2735,16 @@ function toggleProjPanel(btn) {
 
   fetch('/api/projection/' + betId)
     .then(r => {
-      if (r.status === 404) { window.location.reload(); return Promise.reject('stale'); }  // bet no longer in DB
-      if (r.status === 422) return Promise.reject('unavailable');  // no projection for this game
+      if (r.status === 404) { window.location.reload(); return Promise.reject('stale'); }
+      if (r.status === 422) return Promise.reject('unavailable');
       return r.ok ? r.json() : Promise.reject(r.status);
     })
     .then(d => {
-      // Helper: format a score value
-      const fmt   = v => (v != null ? parseFloat(v).toFixed(1) : '—');
-      const fmtI  = v => (v != null ? Math.round(v)            : '—');
-
-      const away  = d.away_display || d.away_team || 'Away';
-      const home  = d.home_display || d.home_team || 'Home';
-
-      // Spread alignment badge
-      const spreadProj    = d.spread_mean;          // positive = home favoured
-      const spreadLine    = d.consensus_line;        // positive = home favoured
-      const totalProj     = d.total_mean;
-      const totalLine     = d.consensus_total;
-      const homeWinProb   = d.home_win_probability;
-
-      let spreadBadge = '';
-      if (spreadProj != null && spreadLine != null) {
-        const diff = Math.abs(spreadProj - spreadLine);
-        if (diff <= 1.0) {
-          spreadBadge = `<span class="proj-align-badge proj-align-neu">≈ On number</span>`;
-        } else if (Math.sign(spreadProj) === Math.sign(spreadLine)) {
-          spreadBadge = `<span class="proj-align-badge proj-align-yes">✓ Agrees</span>`;
-        } else {
-          spreadBadge = `<span class="proj-align-badge proj-align-no">✗ Fades</span>`;
-        }
-      }
-
-      let totalBadge = '';
-      if (totalProj != null && totalLine != null) {
-        const diff = Math.abs(totalProj - totalLine);
-        if (diff <= 1.5) {
-          totalBadge = `<span class="proj-align-badge proj-align-neu">≈ On number</span>`;
-        } else if (totalProj > totalLine) {
-          totalBadge = `<span class="proj-align-badge proj-align-yes">↑ Over</span>`;
-        } else {
-          totalBadge = `<span class="proj-align-badge proj-align-no">↓ Under</span>`;
-        }
-      }
-
-      // Spread display value — show favoured team + margin
-      const spreadVal = spreadProj != null
-        ? (spreadProj >= 0
-            ? home + ' \u2212' + fmt(Math.abs(spreadProj))
-            : away + ' \u2212' + fmt(Math.abs(spreadProj)))
-        : '—';
-
-      // Timestamp
-      const updatedStr = d.updated_at
-        ? new Date(d.updated_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
-        : '';
-
-      const html =
-        // Header — confirmed framing
-        `<div class="proj-panel-header">
-           <span>✅ Model Confirms Pick</span>
-           ${updatedStr ? `<span class="proj-panel-timestamp">Updated ${updatedStr}</span>` : ''}
-         </div>` +
-
-        // Score row
-        `<div class="proj-scoreline">
-           <div class="proj-team">
-             <div class="proj-team-score">${fmtI(d.away_score_mean)}</div>
-             <div class="proj-team-name">${away}</div>
-           </div>
-           <div class="proj-sep">@</div>
-           <div class="proj-team">
-             <div class="proj-team-score">${fmtI(d.home_score_mean)}</div>
-             <div class="proj-team-name">${home}</div>
-           </div>
-         </div>` +
-
-        // Stats grid — no alignment badges (server already filtered for agreement)
-        `<div class="proj-stats">
-           <div class="proj-stat-item">
-             <div class="proj-stat-lbl">Spread</div>
-             <div class="proj-stat-val">${spreadVal}</div>
-           </div>
-           <div class="proj-stat-item">
-             <div class="proj-stat-lbl">Total</div>
-             <div class="proj-stat-val">${fmt(totalProj)}</div>
-           </div>
-           <div class="proj-stat-item">
-             <div class="proj-stat-lbl">Win Prob</div>
-             <div class="proj-stat-val">${homeWinProb != null ? (homeWinProb * 100).toFixed(0) + '%' : '—'}</div>
-             ${homeWinProb != null ? `<div class="proj-stat-sub">${home} win</div>` : ''}
-           </div>
-         </div>`;
-
+      _projData[betId]  = d;
+      const html        = _buildProjHtml(d);
       _projCache[betId] = html;
       if (contentEl) { contentEl.innerHTML = html; contentEl.style.display = 'block'; }
-      if (loadEl)      loadEl.style.display = 'none';
+      if (loadEl)    loadEl.style.display = 'none';
     })
     .catch(err => {
       if (loadEl)  loadEl.style.display  = 'none';
@@ -2577,10 +2755,12 @@ function toggleProjPanel(btn) {
         errorEl.style.display = 'block';
       }
       btn.textContent = '✕ Close';
-      // Keep panel open so the error message is visible
     })
     .finally(() => { btn.disabled = false; });
 }
+
+// Auto-load model projections in background after page settles
+setTimeout(autoLoadAllProjections, 400);
 
 </script>
 {% endblock %}
