@@ -783,7 +783,7 @@ def fetch_game_projections(game: str, league: str) -> dict:
         rows = _call_tool("query", {"sql": sql})
         if not rows or not isinstance(rows, list):
             log.debug("fetch_game_projections: no rows for %s (%s)", game, league)
-            return {}
+            rows = []   # fall through to MLB fallback below instead of returning early
 
         result: dict = {
             "away_team": away_str,
