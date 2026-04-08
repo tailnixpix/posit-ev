@@ -448,7 +448,11 @@ def refresh_ev_cache() -> int:
                     return tm > point if team.lower().startswith("over") else tm < point
 
                 if market == "spreads":
-                    sm = proj.get("spread_mean")
+                    # Derive margin from projected scores — consistent with what
+                    # users see on the card.  Fall back to spread_mean if no scores.
+                    hs = proj.get("home_score_mean")
+                    as_ = proj.get("away_score_mean")
+                    sm = (hs - as_) if (hs is not None and as_ is not None) else proj.get("spread_mean")
                     if sm is None or point is None:
                         return True
                     return sm > -point if is_home else sm < point
@@ -475,6 +479,21 @@ def refresh_ev_cache() -> int:
                     "Model filter: removed %d bet(s) that contradicted projections "
                     "(%d kept).", removed, len(rows),
                 )
+
+            # Attach projection snapshot to each surviving row so the card
+            # can display it inline without any async fetch at page load.
+            for r in rows:
+                if r.is_prop or not r.game or " @ " not in (r.game or ""):
+                    continue
+                _p = _proj_map.get((r.game, r.league), {})
+                if not _p:
+                    continue
+                r.proj_away_score    = _p.get("away_score_mean")
+                r.proj_home_score    = _p.get("home_score_mean")
+                r.proj_total         = _p.get("total_mean")
+                r.proj_home_win_prob = _p.get("home_win_probability")
+                r.proj_away_display  = _p.get("away_display") or _p.get("away_team")
+                r.proj_home_display  = _p.get("home_display") or _p.get("home_team")
 
         except Exception as _mfe:
             log.warning(
@@ -531,6 +550,12 @@ async def on_startup() -> None:
             _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS bet_pct FLOAT"))
             _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS money_pct FLOAT"))
             _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS sharp_score FLOAT"))
+            _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS proj_away_score FLOAT"))
+            _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS proj_home_score FLOAT"))
+            _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS proj_total FLOAT"))
+            _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS proj_home_win_prob FLOAT"))
+            _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS proj_away_display VARCHAR"))
+            _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS proj_home_display VARCHAR"))
             _db.commit()
         except Exception:
             _db.rollback()
@@ -952,11 +977,11 @@ async def get_projection(bet_id: int, request: Request, db: Session = Depends(ge
             model_agrees = total_mean > point if is_over else total_mean < point
 
     elif market == "spreads":
-        spread_mean = proj.get("spread_mean")
+        # Derive margin from scores for consistency with what the card displays
+        hs_ep = proj.get("home_score_mean")
+        as_ep = proj.get("away_score_mean")
+        spread_mean = (hs_ep - as_ep) if (hs_ep is not None and as_ep is not None) else proj.get("spread_mean")
         if spread_mean is not None and point is not None:
-            # spread_mean is home-centric: positive = home wins by that margin
-            # For home team bet (e.g. Cavs -3.5): need spread_mean > 3.5 = -point
-            # For away team bet (e.g. Magic -3.5): need spread_mean < -3.5 = point
             model_agrees = spread_mean > -point if is_home_bet else spread_mean < point
 
     elif market == "h2h":

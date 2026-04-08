@@ -134,6 +134,13 @@ class EVBetCache(Base):
     analysis_generated_at = Column(DateTime(timezone=True), nullable=True)  # when analysis was generated
     confidence_score     = Column(Float, nullable=True)             # AI confidence 1-100
     kelly_pct            = Column(Float, nullable=True)             # 25% fractional Kelly %
+    # Model projection snapshot (stored at pipeline time so cards load instantly)
+    proj_away_score      = Column(Float, nullable=True)   # model projected away team score
+    proj_home_score      = Column(Float, nullable=True)   # model projected home team score
+    proj_total           = Column(Float, nullable=True)   # model projected total
+    proj_home_win_prob   = Column(Float, nullable=True)   # model home win probability
+    proj_away_display    = Column(String, nullable=True)  # away team name from projection source
+    proj_home_display    = Column(String, nullable=True)  # home team name from projection source
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True, nullable=False)
 
     def __repr__(self) -> str:

@@ -713,6 +713,46 @@ main { max-width: 1200px; padding-top: var(--space-5); overflow-x: hidden; }
   font-size: 0.8rem;
 }
 
+/* ── Inline projection band (shown on every game-bet card) ─────────────── */
+.proj-inline-band {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  padding: 7px 12px 6px;
+  background: linear-gradient(90deg, rgba(5,150,105,0.06) 0%, rgba(83,74,183,0.04) 100%);
+  border-bottom: 1px solid rgba(5,150,105,0.12);
+  font-size: 0.7rem;
+  line-height: 1;
+}
+.pib-icon { font-size: 0.75rem; flex-shrink: 0; }
+.pib-score {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  letter-spacing: -0.5px;
+}
+.pib-score.pib-winner { color: var(--brand-dark); }
+.pib-name {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.pib-name.pib-winner-name { color: var(--brand-dark); }
+.pib-vsep { color: var(--text-muted); font-weight: 300; margin: 0 2px; }
+.pib-dot  { color: var(--text-muted); margin: 0 1px; }
+.pib-detail { color: var(--text-muted); font-weight: 600; }
+.pib-bet-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--brand-primary);
+  opacity: 0.8;
+}
+
 /* Header bar */
 .proj-panel-header {
   display: flex;
@@ -1797,17 +1837,45 @@ main { max-width: 1200px; padding-top: var(--space-5); overflow-x: hidden; }
 
         {# B/E: Server-side Top Pick ribbon — top 2 by EV, no layout shift #}
         {% if loop.index0 == 0 %}
-        <div class="top-pick-ribbon rank-1" id="ribbon-{{ bet.id }}">
-          🏆&nbsp; Top Pick &mdash; Highest EV<span class="ribbon-model-tag" id="ribbon-tag-{{ bet.id }}"></span>
+        <div class="top-pick-ribbon rank-1">
+          🏆&nbsp; Top Pick &mdash; Highest EV{% if bet.proj_home_score is not none %} &middot; Model Confirmed{% endif %}
         </div>
         {% elif loop.index0 == 1 %}
-        <div class="top-pick-ribbon rank-2" id="ribbon-{{ bet.id }}">
-          ✅&nbsp; Strong Pick &mdash; High EV<span class="ribbon-model-tag" id="ribbon-tag-{{ bet.id }}"></span>
+        <div class="top-pick-ribbon rank-2">
+          ✅&nbsp; Strong Pick &mdash; High EV{% if bet.proj_home_score is not none %} &middot; Model Confirmed{% endif %}
         </div>
         {% endif %}
 
         {# ── Card body ── #}
         <div class="card-body">
+
+          {# Inline projection band — server-side, no async fetch needed #}
+          {% if not bet.is_prop and bet.proj_home_score is not none and bet.proj_away_score is not none %}
+            {% set _aname = (bet.proj_away_display or (bet.game or '').split(' @ ')[0]).split() | last %}
+            {% set _hname = (bet.proj_home_display or (bet.game or '').split(' @ ')[-1]).split() | last %}
+            {% set _as = (bet.proj_away_score | round(0) | int) %}
+            {% set _hs = (bet.proj_home_score | round(0) | int) %}
+          <div class="proj-inline-band">
+            <span class="pib-icon">🤖</span>
+            <span class="pib-score {{ 'pib-winner' if _as > _hs else '' }}">{{ _as }}</span>
+            <span class="pib-name {{ 'pib-winner-name' if _as > _hs else '' }}">{{ _aname }}</span>
+            <span class="pib-vsep">–</span>
+            <span class="pib-score {{ 'pib-winner' if _hs >= _as else '' }}">{{ _hs }}</span>
+            <span class="pib-name {{ 'pib-winner-name' if _hs >= _as else '' }}">{{ _hname }}</span>
+            {% if bet.proj_total is not none %}
+            <span class="pib-dot">·</span>
+            <span class="pib-detail">O/U {{ "%.1f"|format(bet.proj_total) }}</span>
+            {% endif %}
+            {% if bet.proj_home_win_prob is not none %}
+            <span class="pib-dot">·</span>
+            {% if _hs >= _as %}
+            <span class="pib-detail">{{ _hname }} {{ (bet.proj_home_win_prob * 100) | round(0) | int }}%</span>
+            {% else %}
+            <span class="pib-detail">{{ _aname }} {{ ((1 - bet.proj_home_win_prob) * 100) | round(0) | int }}%</span>
+            {% endif %}
+            {% endif %}
+          </div>
+          {% endif %}
 
           {# Row 1: badges (left) + EV% pill (right) #}
           <div class="card-top">
@@ -1827,6 +1895,8 @@ main { max-width: 1200px; padding-top: var(--space-5); overflow-x: hidden; }
             <div class="card-main-left">
               {% if bet.is_prop and bet.player_name %}
               <div class="prop-player-name">{{ bet.player_name }}</div>
+              {% elif not bet.is_prop and bet.proj_home_score is not none %}
+              <div class="pib-bet-label">Best Bet</div>
               {% endif %}
               <div class="card-team">{{ team_display }}</div>
               {% if bet.game %}
@@ -1846,13 +1916,6 @@ main { max-width: 1200px; padding-top: var(--space-5); overflow-x: hidden; }
 
           {# A/D: Compact signal bar — model (JS) + CLV + sharp on one line #}
           <div class="signal-bar" id="signal-bar-{{ bet.id }}">
-
-            {# Model probe slot — populated by JS after projection auto-fetch #}
-            {% if not bet.is_prop and bet.game and ' @ ' in (bet.game or '') %}
-            <span class="sig-model-loading" id="sig-model-{{ bet.id }}">
-              <span class="sig-model-spin"></span>Model&hellip;
-            </span>
-            {% endif %}
 
             {# CLV direction — server-side #}
             {% if bet.opening_odds and bet.opening_odds != bet.odds %}
@@ -1924,25 +1987,8 @@ main { max-width: 1200px; padding-top: var(--space-5); overflow-x: hidden; }
               <button class="why-ev-btn" onclick="openEvModal(this.closest('.bet-card'))">
                 📐 Why is this +EV?
               </button>
-              {% if not bet.is_prop and bet.game and ' @ ' in (bet.game or '') %}
-              <span class="sec-divider">·</span>
-              <button class="proj-btn" data-bet-id="{{ bet.id }}" onclick="toggleProjPanel(this)">
-                📊 Full Projection
-              </button>
-              {% endif %}
             </div>
           </div>
-
-          {# Game projection panel (non-prop game bets only) #}
-          {% if not bet.is_prop and bet.game and ' @ ' in (bet.game or '') %}
-          <div class="proj-panel" id="proj-panel-{{ bet.id }}">
-            <div class="proj-loading" id="proj-loading-{{ bet.id }}">Fetching model projection&hellip;</div>
-            <div id="proj-content-{{ bet.id }}" style="display:none;"></div>
-            <div class="proj-error" id="proj-error-{{ bet.id }}" style="display:none;">
-              No model projection found for this game yet.
-            </div>
-          </div>
-          {% endif %}
 
           {# +EV Insight collapsible panel #}
           <div class="ai-panel" id="ai-panel-{{ bet.id }}">
@@ -2701,258 +2747,10 @@ function toggleAiPanel(btn) {
     });
 }
 
-// ── Game Projection panel ─────────────────────────────────────────────────
+// ── Game Projection (projection data now stored inline on card — no async fetch) ──
 
-const _projCache = {};   // betId → rendered HTML string
-const _projData  = {};   // betId → raw projection JSON (from auto-fetch or panel fetch)
-
-// Build the full projection panel HTML from raw data
-function _buildProjHtml(d) {
-  const fmt  = v => (v != null ? parseFloat(v).toFixed(1) : '—');
-  const fmtI = v => (v != null ? Math.round(v)            : '—');
-  const away = d.away_display || d.away_team || 'Away';
-  const home = d.home_display || d.home_team || 'Home';
-  const spreadProj  = d.spread_mean;
-  const totalProj   = d.total_mean;
-  const homeWinProb = d.home_win_probability;
-  const spreadVal = spreadProj != null
-    ? (spreadProj >= 0
-        ? home + ' \u2212' + fmt(Math.abs(spreadProj))
-        : away + ' \u2212' + fmt(Math.abs(spreadProj)))
-    : '—';
-  const updatedStr = d.updated_at
-    ? new Date(d.updated_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
-    : '';
-  const disagrees = d.model_agrees_with_bet === false;
-  return (
-    (disagrees
-      ? `<div class="proj-panel-header proj-panel-header--warn">
-           <span>⚠️ Model Direction Differs</span>
-           ${updatedStr ? `<span class="proj-panel-timestamp">Updated ${updatedStr}</span>` : ''}
-         </div>
-         <div class="proj-disagree-banner">
-           Model projects a different outcome than this EV pick. The EV edge may still be valid — use this as context, not a veto.
-         </div>`
-      : `<div class="proj-panel-header">
-           <span>✅ Model Confirms Pick</span>
-           ${updatedStr ? `<span class="proj-panel-timestamp">Updated ${updatedStr}</span>` : ''}
-         </div>`) +
-    `<div class="proj-scoreline">
-       <div class="proj-team">
-         <div class="proj-team-score">${fmtI(d.away_score_mean)}</div>
-         <div class="proj-team-name">${away}</div>
-       </div>
-       <div class="proj-sep">@</div>
-       <div class="proj-team">
-         <div class="proj-team-score">${fmtI(d.home_score_mean)}</div>
-         <div class="proj-team-name">${home}</div>
-       </div>
-     </div>` +
-    `<div class="proj-stats">
-       <div class="proj-stat-item">
-         <div class="proj-stat-lbl">Spread</div>
-         <div class="proj-stat-val">${spreadVal}</div>
-       </div>
-       <div class="proj-stat-item">
-         <div class="proj-stat-lbl">Total</div>
-         <div class="proj-stat-val">${fmt(totalProj)}</div>
-       </div>
-       <div class="proj-stat-item">
-         <div class="proj-stat-lbl">Win Prob</div>
-         <div class="proj-stat-val">${homeWinProb != null ? (homeWinProb * 100).toFixed(0) + '%' : '—'}</div>
-         ${homeWinProb != null ? `<div class="proj-stat-sub">${home} win</div>` : ''}
-       </div>
-     </div>`
-  );
-}
-
-// Populate the compact signal bar model-slot from projection data (A/D)
-function _updateModelSignal(betId, d, card) {
-  const slotEl = document.getElementById('sig-model-' + betId);
-  if (!slotEl) return;
-
-  const market    = (card.dataset.market || '').toLowerCase();
-  const game      = card.dataset.game || '';
-  const teamLower = (card.dataset.team || '').toLowerCase();
-
-  const gameParts = game.split(' @ ');
-  const awayFull  = gameParts[0] ? gameParts[0].trim() : '';
-  const homeFull  = gameParts[1] ? gameParts[1].trim() : '';
-  const awayShort = awayFull.split(' ').pop() || '?';
-  const homeShort = homeFull.split(' ').pop() || '?';
-
-  let modelText = '';
-
-  if (market === 'h2h' && d.home_win_probability != null) {
-    const isHomeBet = homeShort && teamLower.includes(homeShort.toLowerCase());
-    const betProb   = Math.round((isHomeBet ? d.home_win_probability : (1 - d.home_win_probability)) * 100);
-    modelText = `🤖 ${betProb}% Win`;
-  } else if (market === 'spreads' && d.spread_mean != null) {
-    const sm      = d.spread_mean;
-    const favTeam = sm >= 0 ? homeShort : awayShort;
-    const margin  = Math.abs(sm).toFixed(1);
-    modelText = `🤖 ${favTeam} \u2212${margin}`;
-  } else if (market === 'totals' && d.total_mean != null) {
-    const proj    = d.total_mean.toFixed(1);
-    modelText = `🤖 Total ${proj}`;
-  } else if (d.away_score_mean != null && d.home_score_mean != null) {
-    modelText = `🤖 ${Math.round(d.away_score_mean)}\u2013${Math.round(d.home_score_mean)}`;
-  }
-
-  if (!modelText) { slotEl.style.display = 'none'; return; }
-
-  // Check for model disagreement (totals only)
-  const disagrees = d.model_agrees_with_bet === false;
-
-  if (disagrees) {
-    slotEl.outerHTML = `<span class="signal-item sig-model-disagree" id="sig-model-${betId}">⚠️ Model Disagrees (${modelText.replace('🤖 ', '')})</span>`;
-  } else {
-    slotEl.outerHTML = `<span class="signal-item sig-model" id="sig-model-${betId}">${modelText}</span>`;
-  }
-
-  // B/E: Update server-side ribbon tag once model confirms (only if agrees)
-  if (!disagrees) _updateRibbonTag(betId, true);
-}
-
-function _updateRibbonTag(betId, confirmed) {
-  const tagEl = document.getElementById('ribbon-tag-' + betId);
-  if (tagEl && confirmed) tagEl.textContent = ' · Model Confirmed';
-}
-
-function _hideModelSignal(betId) {
-  const el = document.getElementById('sig-model-' + betId);
-  if (el) el.style.display = 'none';
-}
-
-// Background-fetch projection for one card and populate its signal bar
-// Hide projection button + divider + signal when projection is definitively unavailable
-function _hideProjUnavailable(betId) {
-  _hideModelSignal(betId);
-  const projBtn = document.querySelector('.proj-btn[data-bet-id="' + betId + '"]');
-  if (projBtn) {
-    const divider = projBtn.previousElementSibling;
-    if (divider && divider.classList.contains('sec-divider')) divider.style.display = 'none';
-    projBtn.style.display = 'none';
-  }
-  // Also hide the projection panel entirely so it never shows the error text
-  const panel = document.getElementById('proj-panel-' + betId);
-  if (panel) panel.style.display = 'none';
-}
-
-function _autoFetchOne(betId) {
-  const slotEl = document.getElementById('sig-model-' + betId);
-  if (!slotEl) return;
-  const card = slotEl.closest('.bet-card');
-  if (!card) return;
-
-  fetch('/api/projection/' + betId, {credentials: 'include'})
-    .then(r => {
-      if (r.status === 422) { _hideProjUnavailable(betId); return null; }
-      if (!r.ok) return null;
-      return r.json();
-    })
-    .then(d => {
-      if (!d) { _hideModelSignal(betId); return; }
-      _projData[betId] = d;
-      // Model contradicts the bet direction — remove this card from view
-      if (d.model_agrees_with_bet === false) {
-        card.style.display = 'none';
-        return;
-      }
-      card.dataset.modelConfirmed = '1';
-      _updateModelSignal(betId, d, card);
-    })
-    .catch(() => _hideModelSignal(betId));
-}
-
-// Kick off auto-fetch for all eligible bet cards, staggered 200ms apart
-function autoLoadAllProjections() {
-  document.querySelectorAll('[id^="sig-model-"]').forEach((el, idx) => {
-    const betId = el.id.replace('sig-model-', '');
-    setTimeout(() => _autoFetchOne(betId), idx * 200);
-  });
-}
-
-function toggleProjPanel(btn) {
-  const betId   = btn.dataset.betId;
-  const panel   = document.getElementById('proj-panel-' + betId);
-  if (!panel) return;
-
-  // Toggle closed
-  if (panel.style.display === 'block') {
-    panel.style.display = 'none';
-    btn.textContent = '📊 Full Projection';
-    return;
-  }
-
-  // Open
-  panel.style.display = 'block';
-  btn.textContent = '✕ Close';
-
-  const loadEl    = document.getElementById('proj-loading-' + betId);
-  const contentEl = document.getElementById('proj-content-' + betId);
-  const errorEl   = document.getElementById('proj-error-'   + betId);
-
-  // Already have cached HTML — render immediately
-  if (_projCache[betId]) {
-    if (loadEl)    loadEl.style.display    = 'none';
-    if (contentEl) { contentEl.innerHTML = _projCache[betId]; contentEl.style.display = 'block'; }
-    return;
-  }
-
-  // Have raw data from auto-fetch — build HTML without re-fetching
-  if (_projData[betId]) {
-    const html = _buildProjHtml(_projData[betId]);
-    _projCache[betId] = html;
-    if (loadEl)    loadEl.style.display    = 'none';
-    if (contentEl) { contentEl.innerHTML = html; contentEl.style.display = 'block'; }
-    return;
-  }
-
-  // Cold fetch (auto-fetch hasn't completed yet or wasn't eligible)
-  if (loadEl)    loadEl.style.display    = 'block';
-  if (contentEl) contentEl.style.display = 'none';
-  if (errorEl)   errorEl.style.display   = 'none';
-  btn.disabled = true;
-
-  fetch('/api/projection/' + betId, {credentials: 'include'})
-    .then(r => {
-      if (r.status === 404) { window.location.reload(); return Promise.reject('stale'); }
-      if (r.status === 422) return Promise.reject('unavailable');
-      return r.ok ? r.json() : Promise.reject(r.status);
-    })
-    .then(d => {
-      _projData[betId]  = d;
-      if (d.model_agrees_with_bet === false) {
-        // Model contradicts bet — hide the card entirely
-        const cardEl = btn.closest('.bet-card');
-        if (cardEl) cardEl.style.display = 'none';
-        return;
-      }
-      const html        = _buildProjHtml(d);
-      _projCache[betId] = html;
-      if (contentEl) { contentEl.innerHTML = html; contentEl.style.display = 'block'; }
-      if (loadEl)    loadEl.style.display = 'none';
-    })
-    .catch(err => {
-      if (err === 'unavailable') {
-        // Projection not available for this league/game — hide the button cleanly
-        _hideProjUnavailable(betId);
-        if (loadEl) loadEl.style.display = 'none';
-      } else {
-        if (loadEl)  loadEl.style.display  = 'none';
-        if (errorEl) {
-          errorEl.textContent = 'Projection unavailable — try again shortly.';
-          errorEl.style.display = 'block';
-        }
-        btn.textContent = '✕ Close';
-      }
-    })
-    .finally(() => { btn.disabled = false; });
-}
-
-// Auto-load model projections in background after page settles
-setTimeout(autoLoadAllProjections, 400);
+// Projection data is now stored server-side in EVBetCache and rendered inline
+// on each card — no async fetching required.
 
 </script>
 {% endblock %}
