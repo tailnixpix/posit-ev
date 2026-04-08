@@ -2836,6 +2836,11 @@ function _autoFetchOne(betId) {
     .then(d => {
       if (!d) { _hideModelSignal(betId); return; }
       _projData[betId] = d;
+      // Model contradicts the bet direction — remove this card from view
+      if (d.model_agrees_with_bet === false) {
+        card.style.display = 'none';
+        return;
+      }
       card.dataset.modelConfirmed = '1';
       _updateModelSignal(betId, d, card);
     })

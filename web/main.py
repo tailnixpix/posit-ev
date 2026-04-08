@@ -853,24 +853,54 @@ async def get_projection(bet_id: int, request: Request, db: Session = Depends(ge
     if not proj:
         raise HTTPException(status_code=422, detail="No projection available for this game")
 
-    # For totals: flag when model contradicts the bet direction.
-    # h2h / spreads are not suppressed — the model's margin estimate is too
-    # coarse to reliably override an EV signal on those markets.
+    # Determine if the bet is on the home or away side
     market    = bet_row.market or ""
     team      = (bet_row.team or "").strip()
     point     = bet_row.point
-    total_mean = proj.get("total_mean")
+    game_str  = bet_row.game or ""
+    g_parts   = game_str.split(" @ ", 1)
+    away_team = g_parts[0].strip() if len(g_parts) > 1 else ""
+    home_team = g_parts[1].strip() if len(g_parts) > 1 else ""
 
-    if market == "totals" and total_mean is not None and point is not None:
-        is_over      = team.lower().startswith("over")
-        model_agrees = total_mean > point if is_over else total_mean < point
-        proj = dict(proj)                           # don't mutate cached copy
+    def _word_set(s: str) -> set:
+        skip = {"at", "the", "a", "an", "vs", "fc", "sc", "city", "state"}
+        return {w for w in s.lower().split() if w not in skip and len(w) > 2}
+
+    is_home_bet = bool(home_team) and bool(_word_set(home_team) & _word_set(team))
+
+    proj = dict(proj)  # don't mutate cached copy
+    model_agrees: Optional[bool] = None
+
+    if market == "totals":
+        total_mean = proj.get("total_mean")
+        if total_mean is not None and point is not None:
+            is_over      = team.lower().startswith("over")
+            model_agrees = total_mean > point if is_over else total_mean < point
+
+    elif market == "spreads":
+        spread_mean = proj.get("spread_mean")
+        if spread_mean is not None and point is not None:
+            # spread_mean is home-centric: positive = home wins by that margin
+            # For home team bet (e.g. Cavs -3.5): need spread_mean > 3.5 = -point
+            # For away team bet (e.g. Magic -3.5): need spread_mean < -3.5 = point
+            model_agrees = spread_mean > -point if is_home_bet else spread_mean < point
+
+    elif market == "h2h":
+        home_win_prob = proj.get("home_win_probability")
+        if home_win_prob is not None:
+            model_agrees = home_win_prob > 0.5 if is_home_bet else home_win_prob < 0.5
+
+    if model_agrees is not None:
         proj["model_agrees_with_bet"] = model_agrees
         if not model_agrees:
             log.info(
-                "Projection contradicts bet for bet_id=%d "
-                "(total_mean=%.1f, point=%.1f, is_over=%s)",
-                bet_id, total_mean, point, is_over,
+                "Projection contradicts bet for bet_id=%d market=%s team=%r "
+                "(is_home=%s spread=%.2f total=%.1f home_wp=%.2f point=%s)",
+                bet_id, market, team, is_home_bet,
+                proj.get("spread_mean") or 0,
+                proj.get("total_mean") or 0,
+                proj.get("home_win_probability") or 0,
+                point,
             )
 
     return JSONResponse(proj)
@@ -1027,8 +1057,18 @@ async def dashboard(
     Served only after SubscriptionMiddleware confirms valid JWT + active subscription.
     Reads today's +EV bets from EVBetCache — no live API calls on page load.
     """
+    from sqlalchemy import or_ as _or
     bets = (
         db.query(EVBetCache)
+        # Remove bets where the line has moved against the bet (CLV–).
+        # Keep bets with no opening odds history (no CLV signal = neutral).
+        .filter(
+            _or(
+                EVBetCache.opening_odds == None,   # noqa: E711
+                EVBetCache.odds == None,            # noqa: E711
+                EVBetCache.opening_odds >= EVBetCache.odds,
+            )
+        )
         .order_by(EVBetCache.ev_percent.desc())
         .all()
     )
