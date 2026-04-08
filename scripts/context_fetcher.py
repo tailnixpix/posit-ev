@@ -474,6 +474,234 @@ def build_context(sport_key: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# MLB local projection model (Pythagorean expectation)
+# Used as fallback when Optimal MCP has no MLB data.
+# ---------------------------------------------------------------------------
+
+_MLB_LG_ERA     = 4.20   # 2024 MLB league-average ERA (used for normalisation)
+_MLB_LG_RPG     = 4.50   # 2024 MLB league-average runs per game per team
+_MLB_HOME_BOOST = 1.025  # home-field advantage multiplier (~54% implied win rate)
+_MLB_PYTH_EXP   = 1.83   # Pythagorean exponent tuned for baseball
+
+# Within-run caches — reset every process restart (i.e. every pipeline run)
+_MLB_TEAM_STATS_CACHE: dict = {}   # team_id (int) → {rpg, era, ops}
+_MLB_SCHED_CACHE: dict      = {}   # date_str → list of enriched game entries
+
+
+def _safe_era(val) -> Optional[float]:
+    """Parse a pitcher ERA string/number; return None on failure."""
+    try:
+        return float(val) if val is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+def fetch_mlb_team_stats(team_id: int) -> dict:
+    """
+    Fetch season hitting + pitching stats for one MLB team.
+
+    Returns
+    -------
+    dict with keys: rpg (runs/game), era (team ERA), ops
+    Falls back to league-average constants on any failure.
+    """
+    if not team_id:
+        return {}
+
+    year = datetime.now().year
+    base = f"https://statsapi.mlb.com/api/v1/teams/{team_id}/stats"
+
+    hit_data = _get(base, params={"stats": "season", "group": "hitting",  "season": year})
+    pit_data = _get(base, params={"stats": "season", "group": "pitching", "season": year})
+
+    result: dict = {}
+    try:
+        splits = hit_data.get("stats", [{}])[0].get("splits", [])
+        if splits:
+            s      = splits[0].get("stat", {})
+            games  = int(s.get("gamesPlayed") or 1)
+            runs   = float(s.get("runs") or 0)
+            result["rpg"] = runs / games if games > 0 else _MLB_LG_RPG
+            result["ops"] = float(s.get("ops") or 0)
+    except Exception:
+        pass
+
+    try:
+        splits = pit_data.get("stats", [{}])[0].get("splits", [])
+        if splits:
+            s = splits[0].get("stat", {})
+            result["era"] = float(s.get("era") or _MLB_LG_ERA)
+    except Exception:
+        pass
+
+    log.debug("fetch_mlb_team_stats(%s): rpg=%.2f era=%.2f",
+              team_id, result.get("rpg", _MLB_LG_RPG), result.get("era", _MLB_LG_ERA))
+    return result
+
+
+def _fetch_mlb_team_stats_cached(team_id: int) -> dict:
+    """Cached wrapper around fetch_mlb_team_stats — fetches once per pipeline run."""
+    if not team_id:
+        return {}
+    if team_id not in _MLB_TEAM_STATS_CACHE:
+        _MLB_TEAM_STATS_CACHE[team_id] = fetch_mlb_team_stats(team_id)
+    return _MLB_TEAM_STATS_CACHE[team_id]
+
+
+def _load_mlb_sched_enriched(date_str: str) -> list:
+    """
+    Fetch the MLB schedule for one date and enrich each game with:
+      - home_team / away_team names
+      - home_team_id / away_team_id
+      - home / away pitcher dicts (id, name, era) — may be None if not announced
+
+    Returns a flat list of game-entry dicts.
+    """
+    data = _get(
+        _MLB_SCHEDULE,
+        params={
+            "sportId": 1,
+            "date":    date_str,
+            "hydrate": "probablePitcher(note),team",
+        },
+    )
+    entries = []
+    for date_entry in data.get("dates", []):
+        for game in date_entry.get("games", []):
+            teams = game.get("teams", {})
+            entry: dict = {}
+
+            for side in ("home", "away"):
+                td   = teams.get(side, {})
+                team = td.get("team", {})
+                pp   = td.get("probablePitcher")
+
+                entry[f"{side}_team"]    = team.get("name", "")
+                entry[f"{side}_team_id"] = team.get("id")
+
+                if pp:
+                    pid   = pp.get("id")
+                    stats = fetch_mlb_pitcher_stats(pid) if pid else {}
+                    entry[side] = {
+                        "id":   pid,
+                        "name": pp.get("fullName", ""),
+                        "era":  stats.get("era"),
+                    }
+                else:
+                    entry[side] = None
+
+            entries.append(entry)
+
+    log.debug("_load_mlb_sched_enriched(%s): %d games", date_str, len(entries))
+    return entries
+
+
+def _match_mlb_sched_entry(games: list, away_str: str, home_str: str) -> Optional[dict]:
+    """
+    Fuzzy-match a schedule entry to "Away @ Home" team strings.
+    Uses last-word matching (e.g. 'Yankees' matches 'New York Yankees').
+    """
+    away_kw = away_str.split()[-1].lower()
+    home_kw = home_str.split()[-1].lower()
+
+    for entry in games:
+        ht = entry.get("home_team", "").lower()
+        at = entry.get("away_team", "").lower()
+        if home_kw in ht and away_kw in at:
+            return entry
+    return None
+
+
+def build_mlb_game_projection(game: str) -> dict:
+    """
+    Compute a Pythagorean game projection for an MLB matchup.
+
+    Model
+    -----
+    away_expected = away_rpg × (home_starter_ERA / LG_ERA)
+    home_expected = home_rpg × (away_starter_ERA / LG_ERA) × HOME_BOOST
+    total         = away_expected + home_expected
+    spread_mean   = home_expected − away_expected   (positive = home favoured)
+    home_win_prob via Pythagorean: home^1.83 / (home^1.83 + away^1.83)
+
+    Falls back to league-average ERA when no pitcher is announced.
+
+    Returns same shape as fetch_game_projections() so the rest of the stack
+    needs no changes.  Adds source="mlb_pythagorean" to distinguish from Optimal.
+    """
+    if " @ " not in game:
+        return {}
+
+    away_str, home_str = [s.strip() for s in game.split(" @ ", 1)]
+
+    # Find schedule entry — check today and tomorrow so both day/next-day bets work
+    entry = None
+    for days_ahead in (0, 1):
+        date_str = (datetime.now(timezone.utc) + timedelta(days=days_ahead)).strftime("%Y-%m-%d")
+        if date_str not in _MLB_SCHED_CACHE:
+            _MLB_SCHED_CACHE[date_str] = _load_mlb_sched_enriched(date_str)
+        entry = _match_mlb_sched_entry(_MLB_SCHED_CACHE[date_str], away_str, home_str)
+        if entry:
+            break
+
+    if not entry:
+        log.debug("build_mlb_game_projection: no schedule match for '%s'", game)
+        return {}
+
+    away_team_id = entry.get("away_team_id")
+    home_team_id = entry.get("home_team_id")
+    away_pitcher = entry.get("away") or {}
+    home_pitcher = entry.get("home") or {}
+
+    # Team season stats
+    away_stats = _fetch_mlb_team_stats_cached(away_team_id)
+    home_stats = _fetch_mlb_team_stats_cached(home_team_id)
+
+    away_rpg = away_stats.get("rpg", _MLB_LG_RPG)
+    home_rpg = home_stats.get("rpg", _MLB_LG_RPG)
+
+    # Pitcher ERA — starter if known, else team bullpen ERA, else league average
+    home_pit_era = (_safe_era(home_pitcher.get("era"))
+                    or home_stats.get("era")
+                    or _MLB_LG_ERA)
+    away_pit_era = (_safe_era(away_pitcher.get("era"))
+                    or away_stats.get("era")
+                    or _MLB_LG_ERA)
+
+    # Expected runs
+    away_exp = away_rpg * (home_pit_era / _MLB_LG_ERA)
+    home_exp = home_rpg * (away_pit_era / _MLB_LG_ERA) * _MLB_HOME_BOOST
+
+    # Pythagorean win probability
+    a = home_exp ** _MLB_PYTH_EXP
+    b = away_exp ** _MLB_PYTH_EXP
+    home_win_prob = a / (a + b) if (a + b) > 0 else 0.5
+
+    total  = round(away_exp + home_exp, 2)
+    spread = round(home_exp - away_exp, 2)   # positive = home favoured
+
+    log.info(
+        "build_mlb_game_projection: %s → away=%.2f home=%.2f "
+        "total=%.2f spread=%.2f win=%.1f%%",
+        game, away_exp, home_exp, total, spread, home_win_prob * 100,
+    )
+
+    return {
+        "away_team":           away_str,
+        "home_team":           home_str,
+        "away_display":        away_str,
+        "home_display":        home_str,
+        "spread_mean":         spread,
+        "total_mean":          total,
+        "home_score_mean":     round(home_exp, 1),
+        "away_score_mean":     round(away_exp, 1),
+        "home_win_probability": round(home_win_prob, 4),
+        "updated_at":          datetime.now(timezone.utc).isoformat(),
+        "source":              "mlb_pythagorean",
+    }
+
+
+# ---------------------------------------------------------------------------
 # Game projections — Optimal MCP
 # ---------------------------------------------------------------------------
 
@@ -590,20 +818,27 @@ def fetch_game_projections(game: str, league: str) -> dict:
 
         if "spread_mean" not in result and "total_mean" not in result:
             log.debug("fetch_game_projections: matched rows but no projection data for %s", game)
-            return {}
-
-        log.info(
-            "fetch_game_projections: %s spread=%.2f total=%.2f home_win=%.1f%%",
-            game,
-            result.get("spread_mean", 0),
-            result.get("total_mean", 0),
-            (result.get("home_win_probability") or 0) * 100,
-        )
-        return result
+            # Fall through to MLB fallback below
+        else:
+            log.info(
+                "fetch_game_projections: %s spread=%.2f total=%.2f home_win=%.1f%%",
+                game,
+                result.get("spread_mean", 0),
+                result.get("total_mean", 0),
+                (result.get("home_win_probability") or 0) * 100,
+            )
+            return result
 
     except Exception as exc:
         log.warning("fetch_game_projections failed for %s: %s", game, exc)
-        return {}
+        # Fall through to MLB fallback below
+
+    # MLB fallback — Pythagorean model from team stats + pitcher ERA
+    if league == "baseball_mlb":
+        log.debug("fetch_game_projections: trying MLB Pythagorean fallback for %s", game)
+        return build_mlb_game_projection(game)
+
+    return {}
 
 
 # ---------------------------------------------------------------------------
