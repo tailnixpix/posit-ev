@@ -742,14 +742,20 @@ async def health():
 
 def _projection_supports_bet(bet_row, proj: dict) -> bool:
     """
-    Return True only when the Optimal model projection supports the bet direction.
-    Suppresses display when the model contradicts the pick.
+    Return True only when the model projection supports the bet direction.
+    Suppresses display when the model clearly contradicts the pick.
 
-    Rules:
+    The MLB Pythagorean model is a rough estimate and always shown regardless
+    of direction (it's not precise enough to confidently suppress bets).
+
+    Rules (Optimal model only):
       h2h      — model win-probability favours the same team as the bet
       totals   — model total is on the same side (over/under) as the bet line
       spreads  — model margin is larger/smaller than the spread in the right direction
     """
+    # Local Pythagorean model — always surface it; too coarse to suppress bets
+    if proj.get("source") == "mlb_pythagorean":
+        return True
     market      = bet_row.market or ""
     team        = (bet_row.team or "").strip()
     point       = bet_row.point

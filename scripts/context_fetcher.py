@@ -550,19 +550,19 @@ def _fetch_mlb_team_stats_cached(team_id: int) -> dict:
 
 def _load_mlb_sched_enriched(date_str: str) -> list:
     """
-    Fetch the MLB schedule for one date and enrich each game with:
-      - home_team / away_team names
-      - home_team_id / away_team_id
-      - home / away pitcher dicts (id, name, era) — may be None if not announced
+    Fetch the MLB schedule for one date.  Returns a flat list of game-entry dicts:
+      home_team, home_team_id, away_team, away_team_id,
+      home / away: {id, name} (pitcher IDs only — ERA fetched lazily in build step)
 
-    Returns a flat list of game-entry dicts.
+    Deliberately avoids per-pitcher API calls here; doing 20+ sequential requests
+    for a day's worth of starters would time out the projection endpoint.
     """
     data = _get(
         _MLB_SCHEDULE,
         params={
             "sportId": 1,
             "date":    date_str,
-            "hydrate": "probablePitcher(note),team",
+            "hydrate": "probablePitcher,team",
         },
     )
     entries = []
@@ -579,16 +579,8 @@ def _load_mlb_sched_enriched(date_str: str) -> list:
                 entry[f"{side}_team"]    = team.get("name", "")
                 entry[f"{side}_team_id"] = team.get("id")
 
-                if pp:
-                    pid   = pp.get("id")
-                    stats = fetch_mlb_pitcher_stats(pid) if pid else {}
-                    entry[side] = {
-                        "id":   pid,
-                        "name": pp.get("fullName", ""),
-                        "era":  stats.get("era"),
-                    }
-                else:
-                    entry[side] = None
+                # Store pitcher identity only — ERA fetched separately if needed
+                entry[side] = {"id": pp.get("id"), "name": pp.get("fullName", "")} if pp else None
 
             entries.append(entry)
 
@@ -596,19 +588,45 @@ def _load_mlb_sched_enriched(date_str: str) -> list:
     return entries
 
 
+# Per-pitcher ERA cache (id → era float) — lives for the process lifetime
+_MLB_PITCHER_ERA_CACHE: dict = {}
+
+
+def _get_pitcher_era(pitcher_id: Optional[int]) -> Optional[float]:
+    """Fetch and cache ERA for one pitcher. Returns None if unavailable."""
+    if not pitcher_id:
+        return None
+    if pitcher_id not in _MLB_PITCHER_ERA_CACHE:
+        stats = fetch_mlb_pitcher_stats(pitcher_id)
+        era = _safe_era(stats.get("era"))
+        _MLB_PITCHER_ERA_CACHE[pitcher_id] = era   # None is a valid cached result
+    return _MLB_PITCHER_ERA_CACHE[pitcher_id]
+
+
 def _match_mlb_sched_entry(games: list, away_str: str, home_str: str) -> Optional[dict]:
     """
     Fuzzy-match a schedule entry to "Away @ Home" team strings.
-    Uses last-word matching (e.g. 'Yankees' matches 'New York Yankees').
+    Tries last-word match first, then full substring match as fallback.
     """
     away_kw = away_str.split()[-1].lower()
     home_kw = home_str.split()[-1].lower()
 
+    # Pass 1: last-word match (fast, handles "Yankees" → "New York Yankees")
     for entry in games:
         ht = entry.get("home_team", "").lower()
         at = entry.get("away_team", "").lower()
         if home_kw in ht and away_kw in at:
             return entry
+
+    # Pass 2: full-string substring match (handles multi-word edge cases)
+    away_lower = away_str.lower()
+    home_lower = home_str.lower()
+    for entry in games:
+        ht = entry.get("home_team", "").lower()
+        at = entry.get("away_team", "").lower()
+        if (away_lower in at or at in away_lower) and (home_lower in ht or ht in home_lower):
+            return entry
+
     return None
 
 
@@ -653,18 +671,18 @@ def build_mlb_game_projection(game: str) -> dict:
     away_pitcher = entry.get("away") or {}
     home_pitcher = entry.get("home") or {}
 
-    # Team season stats
+    # Team season stats (2 API calls, cached after first use)
     away_stats = _fetch_mlb_team_stats_cached(away_team_id)
     home_stats = _fetch_mlb_team_stats_cached(home_team_id)
 
     away_rpg = away_stats.get("rpg", _MLB_LG_RPG)
     home_rpg = home_stats.get("rpg", _MLB_LG_RPG)
 
-    # Pitcher ERA — starter if known, else team bullpen ERA, else league average
-    home_pit_era = (_safe_era(home_pitcher.get("era"))
+    # Starter ERA — lazy-fetched per pitcher (cached), falls back to team ERA
+    home_pit_era = (_get_pitcher_era(home_pitcher.get("id"))
                     or home_stats.get("era")
                     or _MLB_LG_ERA)
-    away_pit_era = (_safe_era(away_pitcher.get("era"))
+    away_pit_era = (_get_pitcher_era(away_pitcher.get("id"))
                     or away_stats.get("era")
                     or _MLB_LG_ERA)
 
