@@ -408,6 +408,80 @@ def refresh_ev_cache() -> int:
                 created_at    = datetime.now(timezone.utc),
             ))
 
+        # ── Model-agreement filter ─────────────────────────────────────────────
+        # Fetch projections for every unique game/league pair and drop any bets
+        # whose direction contradicts the model.  Bets with no projection data
+        # (soccer, golf, props, games not yet in Optimal) pass through unchanged.
+        try:
+            from scripts.context_fetcher import fetch_game_projections as _fgp
+
+            _proj_map: dict = {}
+            for r in rows:
+                if r.is_prop or not r.game or " @ " not in (r.game or ""):
+                    continue
+                key = (r.game, r.league)
+                if key not in _proj_map:
+                    try:
+                        _proj_map[key] = _fgp(r.game, r.league)
+                    except Exception as _pe:
+                        log.warning("Proj fetch skipped for %s: %s", r.game, _pe)
+                        _proj_map[key] = {}
+
+            def _ws(s: str) -> set:
+                skip = {"at", "the", "a", "an", "vs", "fc", "sc"}
+                return {w for w in s.lower().split() if w not in skip and len(w) > 2}
+
+            def _model_ok(r: EVBetCache, proj: dict) -> bool:
+                if not proj:
+                    return True
+                market = r.market or ""
+                team   = (r.team or "").strip()
+                point  = r.point
+                gp     = (r.game or "").split(" @ ", 1)
+                home_t = gp[1].strip() if len(gp) > 1 else ""
+                is_home = bool(home_t) and bool(_ws(home_t) & _ws(team))
+
+                if market == "totals":
+                    tm = proj.get("total_mean")
+                    if tm is None or point is None:
+                        return True
+                    return tm > point if team.lower().startswith("over") else tm < point
+
+                if market == "spreads":
+                    sm = proj.get("spread_mean")
+                    if sm is None or point is None:
+                        return True
+                    return sm > -point if is_home else sm < point
+
+                if market == "h2h":
+                    wp = proj.get("home_win_probability")
+                    if wp is None:
+                        return True
+                    return wp > 0.5 if is_home else wp < 0.5
+
+                return True  # other markets (e.g. outright futures) → keep
+
+            before = len(rows)
+            rows = [
+                r for r in rows
+                if r.is_prop
+                or not r.game
+                or " @ " not in (r.game or "")
+                or _model_ok(r, _proj_map.get((r.game, r.league), {}))
+            ]
+            removed = before - len(rows)
+            if removed:
+                log.info(
+                    "Model filter: removed %d bet(s) that contradicted projections "
+                    "(%d kept).", removed, len(rows),
+                )
+
+        except Exception as _mfe:
+            log.warning(
+                "Model-agreement filter failed (non-fatal, keeping all rows): %s", _mfe
+            )
+        # ── End model filter ───────────────────────────────────────────────────
+
         db.bulk_save_objects(rows)
         db.commit()
         count = len(rows)
