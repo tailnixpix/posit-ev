@@ -1700,9 +1700,22 @@ main { max-width: 1200px; padding-top: var(--space-5); overflow-x: hidden; }
       {% set market_map = {
         "h2h":    "Moneyline",
         "spreads": "Spread",
-        "totals":  "Total"
+        "totals":  "Total",
+        "player_points":        "Points",
+        "player_rebounds":      "Rebounds",
+        "player_assists":       "Assists",
+        "player_threes":        "3-Pointers",
+        "player_blocks":        "Blocks",
+        "player_steals":        "Steals",
+        "player_goals":         "Goals",
+        "player_shots_on_goal": "Shots on Goal",
+        "player_blocked_shots": "Blocked Shots",
+        "batter_home_runs":     "Home Runs",
+        "batter_hits":          "Hits",
+        "batter_rbis":          "RBIs",
+        "pitcher_strikeouts":   "Strikeouts"
       } %}
-      {% set market_display = market_map.get(bet.market, bet.market | title) %}
+      {% set market_display = market_map.get(bet.market, bet.market | replace('_', ' ') | title) %}
 
       {# Odds display #}
       {% if bet.odds > 0 %}{% set odds_str = "+" ~ bet.odds %}
