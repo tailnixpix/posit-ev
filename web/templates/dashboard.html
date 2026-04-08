@@ -2518,30 +2518,23 @@ document.querySelectorAll('.filter-chip').forEach(btn => {
     const value      = btn.dataset.value;
 
     if (filterType === 'is_prop') {
+      // Toggle Props independently — never touches the active league
       if (activeIsProp === 'true') {
-        // Deactivate props filter
         activeIsProp   = 'all';
         activePropType = 'all';
         btn.classList.remove('active');
-        document.querySelector('.filter-chip[data-filter="league"][data-value="all"]').classList.add('active');
         _hidePropTypeRow();
       } else {
-        // Activate props filter
         activeIsProp   = 'true';
         activePropType = 'all';
-        activeLeague   = 'all';
-        document.querySelectorAll('.filter-chip[data-filter="league"]').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         _buildPropTypeRow();
       }
     } else {
+      // League chip — never touches the Props toggle
       document.querySelectorAll('.filter-chip[data-filter="league"]').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.filter-chip[data-filter="is_prop"]').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      activeLeague   = value;
-      activeIsProp   = 'all';
-      activePropType = 'all';
-      _hidePropTypeRow();
+      activeLeague = value;
     }
     applyFilters();
   });
