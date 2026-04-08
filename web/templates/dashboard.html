@@ -727,6 +727,19 @@ main { max-width: 1200px; padding-top: var(--space-5); overflow-x: hidden; }
   letter-spacing: 0.6px;
   color: #059669;
 }
+.proj-panel-header--warn {
+  background: rgba(217,119,6,0.06);
+  border-bottom-color: rgba(217,119,6,0.15);
+  color: #D97706;
+}
+.proj-disagree-banner {
+  padding: 7px 12px;
+  background: rgba(217,119,6,0.05);
+  border-bottom: 1px solid rgba(217,119,6,0.10);
+  font-size: 0.65rem;
+  color: #92400E;
+  line-height: 1.4;
+}
 .proj-panel-timestamp {
   font-size: 0.6rem;
   font-weight: 400;
@@ -859,6 +872,7 @@ main { max-width: 1200px; padding-top: var(--space-5); overflow-x: hidden; }
   border-radius: 50%; animation: ai-spin 0.7s linear infinite; flex-shrink: 0;
 }
 .sig-model { color: #059669; font-weight: 700; }
+.sig-model-disagree { color: #D97706; font-weight: 700; }
 .sig-score { color: var(--brand-dark); font-weight: 700; }
 /* CLV items */
 .sig-clv-pos { color: #15803D; }
@@ -2709,11 +2723,20 @@ function _buildProjHtml(d) {
   const updatedStr = d.updated_at
     ? new Date(d.updated_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
     : '';
+  const disagrees = d.model_agrees_with_bet === false;
   return (
-    `<div class="proj-panel-header">
-       <span>✅ Model Confirms Pick</span>
-       ${updatedStr ? `<span class="proj-panel-timestamp">Updated ${updatedStr}</span>` : ''}
-     </div>` +
+    (disagrees
+      ? `<div class="proj-panel-header proj-panel-header--warn">
+           <span>⚠️ Model Direction Differs</span>
+           ${updatedStr ? `<span class="proj-panel-timestamp">Updated ${updatedStr}</span>` : ''}
+         </div>
+         <div class="proj-disagree-banner">
+           Model projects a different outcome than this EV pick. The EV edge may still be valid — use this as context, not a veto.
+         </div>`
+      : `<div class="proj-panel-header">
+           <span>✅ Model Confirms Pick</span>
+           ${updatedStr ? `<span class="proj-panel-timestamp">Updated ${updatedStr}</span>` : ''}
+         </div>`) +
     `<div class="proj-scoreline">
        <div class="proj-team">
          <div class="proj-team-score">${fmtI(d.away_score_mean)}</div>
@@ -2770,7 +2793,6 @@ function _updateModelSignal(betId, d, card) {
     const margin  = Math.abs(sm).toFixed(1);
     modelText = `🤖 ${favTeam} \u2212${margin}`;
   } else if (market === 'totals' && d.total_mean != null) {
-    const isOver  = teamLower.startsWith('over');
     const proj    = d.total_mean.toFixed(1);
     modelText = `🤖 Total ${proj}`;
   } else if (d.away_score_mean != null && d.home_score_mean != null) {
@@ -2779,10 +2801,17 @@ function _updateModelSignal(betId, d, card) {
 
   if (!modelText) { slotEl.style.display = 'none'; return; }
 
-  slotEl.outerHTML = `<span class="signal-item sig-model" id="sig-model-${betId}">${modelText}</span>`;
+  // Check for model disagreement (totals only)
+  const disagrees = d.model_agrees_with_bet === false;
 
-  // B/E: Update server-side ribbon tag once model confirms
-  _updateRibbonTag(betId, true);
+  if (disagrees) {
+    slotEl.outerHTML = `<span class="signal-item sig-model-disagree" id="sig-model-${betId}">⚠️ Model Disagrees (${modelText.replace('🤖 ', '')})</span>`;
+  } else {
+    slotEl.outerHTML = `<span class="signal-item sig-model" id="sig-model-${betId}">${modelText}</span>`;
+  }
+
+  // B/E: Update server-side ribbon tag once model confirms (only if agrees)
+  if (!disagrees) _updateRibbonTag(betId, true);
 }
 
 function _updateRibbonTag(betId, confirmed) {

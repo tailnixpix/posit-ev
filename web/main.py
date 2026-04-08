@@ -853,6 +853,26 @@ async def get_projection(bet_id: int, request: Request, db: Session = Depends(ge
     if not proj:
         raise HTTPException(status_code=422, detail="No projection available for this game")
 
+    # For totals: flag when model contradicts the bet direction.
+    # h2h / spreads are not suppressed — the model's margin estimate is too
+    # coarse to reliably override an EV signal on those markets.
+    market    = bet_row.market or ""
+    team      = (bet_row.team or "").strip()
+    point     = bet_row.point
+    total_mean = proj.get("total_mean")
+
+    if market == "totals" and total_mean is not None and point is not None:
+        is_over      = team.lower().startswith("over")
+        model_agrees = total_mean > point if is_over else total_mean < point
+        proj = dict(proj)                           # don't mutate cached copy
+        proj["model_agrees_with_bet"] = model_agrees
+        if not model_agrees:
+            log.info(
+                "Projection contradicts bet for bet_id=%d "
+                "(total_mean=%.1f, point=%.1f, is_over=%s)",
+                bet_id, total_mean, point, is_over,
+            )
+
     return JSONResponse(proj)
 
 
