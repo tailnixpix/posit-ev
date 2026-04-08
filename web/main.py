@@ -853,12 +853,6 @@ async def get_projection(bet_id: int, request: Request, db: Session = Depends(ge
     if not proj:
         raise HTTPException(status_code=422, detail="No projection available for this game")
 
-    # Only surface the projection if it supports the bet direction.
-    # Contradictory projections are suppressed — they confuse rather than inform.
-    if not _projection_supports_bet(bet_row, proj):
-        log.info("Projection suppressed (fades bet) for bet_id=%d", bet_id)
-        raise HTTPException(status_code=422, detail="Projection not available for this pick")
-
     return JSONResponse(proj)
 
 
