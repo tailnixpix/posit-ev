@@ -1791,6 +1791,7 @@ main { max-width: 1200px; padding-top: var(--space-5); overflow-x: hidden; }
            data-source="{{ bet.source_type or 'sportsbook' }}"
            data-book="{{ bet.book | lower }}"
            data-is-prop="{{ 'true' if bet.is_prop else 'false' }}"
+           data-prop-market="{{ bet.market if bet.is_prop else '' }}"
            data-player-name="{{ bet.player_name or '' }}"
            data-ev="{{ '%.2f'|format(bet.ev_percent) }}"
            data-true-prob="{{ '%.4f'|format(bet.true_prob) }}"
@@ -2419,7 +2420,7 @@ function applyFilters() {
     const sourceMatch = activeSource === 'all' || (card.dataset.source || 'sportsbook') === activeSource;
     const bookMatch   = activeBook   === 'all' || (card.dataset.book || '') === activeBook;
     const isPropMatch    = activeIsProp   === 'all' || card.dataset.isProp === activeIsProp;
-    const propTypeMatch  = activePropType === 'all' || card.dataset.market === activePropType;
+    const propTypeMatch  = activePropType === 'all' || card.dataset.propMarket === activePropType;
 
     let dayMatch = true;
     const commenceIso = card.dataset.commence;
@@ -2479,7 +2480,7 @@ function _buildPropTypeRow() {
   // Collect unique prop market keys from all prop cards
   const markets = new Set();
   document.querySelectorAll('.bet-card[data-is-prop="true"]').forEach(card => {
-    if (card.dataset.market) markets.add(card.dataset.market);
+    if (card.dataset.propMarket) markets.add(card.dataset.propMarket);
   });
 
   if (markets.size === 0) { row.classList.remove('open'); return; }
