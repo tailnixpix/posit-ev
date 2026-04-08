@@ -157,6 +157,43 @@ main { max-width: 1200px; padding-top: var(--space-5); overflow-x: hidden; }
 .filter-chip.chip-props:hover { background: #F5F3FF; }
 .filter-chip.chip-props.active { background: #6D28D9; color: #fff; border-color: #6D28D9; }
 
+/* Prop type sub-filter row */
+.prop-type-chips-row {
+  display: none;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-top: 7px;
+  padding-top: 7px;
+  border-top: 1px dashed rgba(109,40,217,0.18);
+}
+.prop-type-chips-row.open { display: flex; align-items: center; }
+.prop-type-row-label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #8B5CF6;
+  margin-right: 2px;
+  white-space: nowrap;
+}
+.prop-type-chip {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(109,40,217,0.06);
+  border: 1.5px solid rgba(109,40,217,0.2);
+  border-radius: 20px;
+  padding: 3px 11px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #6D28D9;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  white-space: nowrap;
+  font-family: inherit;
+}
+.prop-type-chip:hover { background: rgba(109,40,217,0.12); border-color: rgba(109,40,217,0.4); }
+.prop-type-chip.active { background: #6D28D9; color: #fff; border-color: #6D28D9; }
+
 /* Count badge in primary row */
 #bet-count-badge {
   font-size: 0.75rem;
@@ -1527,6 +1564,9 @@ main { max-width: 1200px; padding-top: var(--space-5); overflow-x: hidden; }
     <button type="button" class="filter-chip chip-props" data-filter="is_prop" data-value="true">🎯 Props</button>
   </div>
 
+  {# Prop type sub-filter — injected by JS when Props chip is active #}
+  <div class="prop-type-chips-row" id="propTypeChips"></div>
+
   {# ── Advanced panel (hidden by default) ── #}
   <div class="filter-advanced" id="advancedFilters">
 
@@ -2299,12 +2339,13 @@ updateKellyDisplays(); // run on page load with saved value
 })();
 
 // ── Filter logic ─────────────────────────────────────────────────────────
-let activeLeague = 'all';
-let activeMarket = 'all';
-let activeSource = 'all';
-let activeBook   = 'all';
-let activeIsProp = 'all';
-let activeDay    = 'today';
+let activeLeague    = 'all';
+let activeMarket    = 'all';
+let activeSource    = 'all';
+let activeBook      = 'all';
+let activeIsProp    = 'all';
+let activePropType  = 'all';   // sub-filter within Props
+let activeDay       = 'today';
 let activeSort   = 'ev_desc';
 
 // Returns a date string in the user's selected timezone
@@ -2377,7 +2418,8 @@ function applyFilters() {
     const marketMatch = activeMarket === 'all' || card.dataset.market === activeMarket;
     const sourceMatch = activeSource === 'all' || (card.dataset.source || 'sportsbook') === activeSource;
     const bookMatch   = activeBook   === 'all' || (card.dataset.book || '') === activeBook;
-    const isPropMatch = activeIsProp === 'all' || card.dataset.isProp === activeIsProp;
+    const isPropMatch    = activeIsProp   === 'all' || card.dataset.isProp === activeIsProp;
+    const propTypeMatch  = activePropType === 'all' || card.dataset.market === activePropType;
 
     let dayMatch = true;
     const commenceIso = card.dataset.commence;
@@ -2389,7 +2431,7 @@ function applyFilters() {
       dayMatch = (activeDay === 'today');
     }
 
-    const show = leagueMatch && marketMatch && sourceMatch && bookMatch && isPropMatch && dayMatch;
+    const show = leagueMatch && marketMatch && sourceMatch && bookMatch && isPropMatch && propTypeMatch && dayMatch;
     card.style.display = show ? '' : 'none';
     if (show) visible++;
   });
@@ -2412,6 +2454,63 @@ function applyFilters() {
   updateActiveFilterDot();
 }
 
+// ── Prop type sub-filter ──────────────────────────────────────────
+
+const _PROP_LABELS = {
+  player_points:        'Points',
+  player_rebounds:      'Rebounds',
+  player_assists:       'Assists',
+  player_threes:        '3-Pointers',
+  player_blocks:        'Blocks',
+  player_steals:        'Steals',
+  player_goals:         'Goals',
+  player_shots_on_goal: 'Shots on Goal',
+  player_blocked_shots: 'Blocked Shots',
+  batter_home_runs:     'Home Runs',
+  batter_hits:          'Hits',
+  batter_rbis:          'RBIs',
+  pitcher_strikeouts:   'Strikeouts',
+};
+
+function _buildPropTypeRow() {
+  const row = document.getElementById('propTypeChips');
+  if (!row) return;
+
+  // Collect unique prop market keys from all prop cards
+  const markets = new Set();
+  document.querySelectorAll('.bet-card[data-is-prop="true"]').forEach(card => {
+    if (card.dataset.market) markets.add(card.dataset.market);
+  });
+
+  if (markets.size === 0) { row.classList.remove('open'); return; }
+
+  const chips = ['<span class="prop-type-row-label">Type:</span>',
+    `<button class="prop-type-chip active" data-prop-type="all">All Props</button>`];
+
+  [...markets].sort().forEach(mkt => {
+    const label = _PROP_LABELS[mkt] || mkt.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    chips.push(`<button class="prop-type-chip" data-prop-type="${mkt}">${label}</button>`);
+  });
+
+  row.innerHTML = chips.join('');
+  row.classList.add('open');
+
+  // Attach click handlers to the newly created chips
+  row.querySelectorAll('.prop-type-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      activePropType = chip.dataset.propType;
+      row.querySelectorAll('.prop-type-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      applyFilters();
+    });
+  });
+}
+
+function _hidePropTypeRow() {
+  const row = document.getElementById('propTypeChips');
+  if (row) { row.classList.remove('open'); row.innerHTML = ''; }
+}
+
 // ── League chips ──────────────────────────────────────────────────
 document.querySelectorAll('.filter-chip').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -2420,21 +2519,29 @@ document.querySelectorAll('.filter-chip').forEach(btn => {
 
     if (filterType === 'is_prop') {
       if (activeIsProp === 'true') {
-        activeIsProp = 'all';
+        // Deactivate props filter
+        activeIsProp   = 'all';
+        activePropType = 'all';
         btn.classList.remove('active');
         document.querySelector('.filter-chip[data-filter="league"][data-value="all"]').classList.add('active');
+        _hidePropTypeRow();
       } else {
-        activeIsProp = 'true';
-        activeLeague = 'all';
+        // Activate props filter
+        activeIsProp   = 'true';
+        activePropType = 'all';
+        activeLeague   = 'all';
         document.querySelectorAll('.filter-chip[data-filter="league"]').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
+        _buildPropTypeRow();
       }
     } else {
       document.querySelectorAll('.filter-chip[data-filter="league"]').forEach(b => b.classList.remove('active'));
       document.querySelectorAll('.filter-chip[data-filter="is_prop"]').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      activeLeague = value;
-      activeIsProp = 'all';
+      activeLeague   = value;
+      activeIsProp   = 'all';
+      activePropType = 'all';
+      _hidePropTypeRow();
     }
     applyFilters();
   });
