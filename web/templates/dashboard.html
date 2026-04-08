@@ -2316,7 +2316,7 @@ let activeLeague    = 'all';
 let activeMarket    = 'all';
 let activeSource    = 'all';
 let activeBook      = 'all';
-let activeIsProp    = 'all';
+let activeIsProp    = 'false';   // props hidden by default; toggled by Props chip
 let activePropType  = 'all';   // sub-filter within Props
 let activeDay       = 'today';
 let activeSort   = 'ev_desc';
@@ -2491,9 +2491,9 @@ document.querySelectorAll('.filter-chip').forEach(btn => {
     const value      = btn.dataset.value;
 
     if (filterType === 'is_prop') {
-      // Toggle Props independently — never touches the active league
+      // Toggle Props chip: hidden-by-default → show props → back to non-props
       if (activeIsProp === 'true') {
-        activeIsProp   = 'all';
+        activeIsProp   = 'false';
         activePropType = 'all';
         btn.classList.remove('active');
         _hidePropTypeRow();
@@ -2549,7 +2549,7 @@ document.getElementById('sortSelect').addEventListener('change', function() {
 
 function clearFilters() {
   activeDay = 'today'; activeLeague = 'all'; activeMarket = 'all';
-  activeSource = 'all'; activeBook = 'all'; activeIsProp = 'all'; activeSort = 'ev_desc';
+  activeSource = 'all'; activeBook = 'all'; activeIsProp = 'false'; activeSort = 'ev_desc';
   document.getElementById('sortSelect').value = 'ev_desc';
   document.getElementById('dayToday').classList.add('active');
   document.getElementById('dayTomorrow').classList.remove('active');
