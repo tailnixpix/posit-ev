@@ -45,7 +45,7 @@ _SPORT_MAP: dict = {
     "baseball_mlb":         "mlb",
     "icehockey_nhl":        "nhl",
     "americanfootball_nfl": "nfl",
-    "basketball_ncaab":     "ncaab",
+
 }
 
 # ---------------------------------------------------------------------------

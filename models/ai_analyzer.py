@@ -60,7 +60,7 @@ _LEAGUE_MAP = {
     "basketball_nba":          "NBA",
     "baseball_mlb":            "MLB",
     "icehockey_nhl":           "NHL",
-    "basketball_ncaab":        "NCAAB",
+
     "soccer_epl":              "EPL",
     "soccer_spain_la_liga":    "La Liga",
     "soccer_germany_bundesliga": "Bundesliga",

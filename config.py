@@ -24,7 +24,7 @@ LEAGUES = {
 
     # Basketball
     "NBA": "basketball_nba",
-    "NCAAB": "basketball_ncaab",
+
     "WNBA": "basketball_wnba",
     "EuroLeague": "basketball_euroleague",
 

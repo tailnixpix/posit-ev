@@ -605,7 +605,7 @@ def send_daily_newsletter() -> dict:
 
 <p style="font-size:14px; color:#555270; line-height:1.7; margin:0 0 20px;">
   This is your free daily pick from Posit+EV. EV Pro members get the
-  <strong>full daily scan</strong> — usually 10&ndash;30 picks across NHL, NBA, NCAAB,
+  <strong>full daily scan</strong> — usually 10&ndash;30 picks across NHL, NBA,
   MLB, and more — refreshed every hour on a live dashboard.
 </p>
 

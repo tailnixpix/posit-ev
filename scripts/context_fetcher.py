@@ -486,7 +486,7 @@ _OPTIMAL_LEAGUE_MAP = {
     "soccer_spain_la_liga":       "laliga",
     "soccer_germany_bundesliga":  "bundesliga",
     "soccer_usa_mls":             "mls",
-    "basketball_ncaab":           "ncaab",
+
 }
 
 
