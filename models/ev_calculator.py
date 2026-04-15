@@ -12,8 +12,11 @@ Supports: moneyline (h2h), spreads, totals, player_props
 
 import sys
 import os
+import logging
 from typing import Optional
 import pandas as pd
+
+log = logging.getLogger(__name__)
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from models.no_vig import (
@@ -27,8 +30,12 @@ from models.no_vig import (
 # Config
 # ---------------------------------------------------------------------------
 
-EV_THRESHOLD_PCT = 3.0   # flag bets with EV% above this value
+EV_THRESHOLD_PCT = 2.0   # flag bets with EV% above this value
 DEFAULT_STAKE = 100.0     # notional stake used for EV dollar calculation
+
+# Anything above this is almost certainly a data / matching error, not a real edge.
+# Professional sharps rarely see sustained EV > 8%; 25% is a hard credibility ceiling.
+MAX_CREDIBLE_EV_PCT = 25.0
 
 # ---------------------------------------------------------------------------
 # Core EV math
@@ -70,11 +77,44 @@ def expected_value(true_prob: float, american_odds: int, stake: float = DEFAULT_
     >>> r["positive_ev"]
     False
     """
+    # ── Input validation ───────────────────────────────────────────────────────
+    if not (0.0 <= true_prob <= 1.0):
+        log.error(
+            "expected_value: invalid probability %.4f (must be in [0,1]) "
+            "for odds=%s — returning zero EV to suppress bad bet.",
+            true_prob, american_odds,
+        )
+        return {
+            "decimal_odds": american_to_decimal(american_odds),
+            "profit_if_win": 0.0,
+            "ev": 0.0,
+            "ev_pct": 0.0,
+            "positive_ev": False,
+        }
+
     decimal = american_to_decimal(american_odds)
     profit_if_win = stake * (decimal - 1)
     loss_if_lose = stake
     ev = (true_prob * profit_if_win) - ((1 - true_prob) * loss_if_lose)
     ev_pct = (ev / stake) * 100
+
+    # ── Credibility ceiling ────────────────────────────────────────────────────
+    # EV above MAX_CREDIBLE_EV_PCT almost always indicates a data/matching error
+    # (stale line, wrong game projection attached, prediction-market/sportsbook
+    # mismatch).  Cap it so no obviously-wrong bet reaches the dashboard.
+    if ev_pct > MAX_CREDIBLE_EV_PCT:
+        log.warning(
+            "expected_value: EV%.1f%% exceeds credibility ceiling %.1f%% "
+            "(prob=%.4f odds=%s) — clamping to 0 to suppress likely bad bet.",
+            ev_pct, MAX_CREDIBLE_EV_PCT, true_prob, american_odds,
+        )
+        return {
+            "decimal_odds": decimal,
+            "profit_if_win": round(profit_if_win, 2),
+            "ev": 0.0,
+            "ev_pct": 0.0,
+            "positive_ev": False,
+        }
 
     return {
         "decimal_odds": decimal,

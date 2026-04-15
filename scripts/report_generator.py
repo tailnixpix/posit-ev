@@ -28,14 +28,15 @@ from rich.text import Text
 from rich import box
 
 from scripts.odds_fetcher import get_odds_df, SPORT_KEYS, MARKETS
-from models.ev_calculator import find_all_positive_ev, EV_THRESHOLD_PCT, DEFAULT_STAKE
+from models.ev_calculator import find_all_positive_ev, EV_THRESHOLD_PCT, DEFAULT_STAKE, MAX_CREDIBLE_EV_PCT
+from models.projection_ev import find_positive_ev_model
 from models.sport_adjustments import (
     apply_adjustments,
     GameContext,
     ADJUSTMENT_CONFIG,
     SOCCER_SPORT_KEYS,
 )
-from scripts.context_fetcher import build_context, match_team
+from scripts.context_fetcher import build_context, fetch_game_projections, match_team
 from config import LEAGUES, LOG_LEVEL, LOCAL_TZ
 
 # ---------------------------------------------------------------------------
@@ -144,6 +145,51 @@ def _apply_sport_adjustments(
 
 
 # ---------------------------------------------------------------------------
+# Projection map builder
+# ---------------------------------------------------------------------------
+
+def _build_projection_map(odds_df: pd.DataFrame) -> dict:
+    """
+    Fetch Optimal game projections for every unique game in odds_df.
+
+    Returns
+    -------
+    dict  {game_id (str): projection_dict}
+
+    Projection dict shape (from fetch_game_projections):
+        home_win_probability, total_mean, total_p25, total_p75,
+        spread_mean, spread_p25, spread_p75,
+        home_score_mean, away_score_mean,
+        home_team, away_team
+    """
+    proj_map: dict = {}
+
+    # Deduplicate by game_id
+    unique = (
+        odds_df.groupby("game_id", as_index=False)
+        .first()[["game_id", "away_team", "home_team", "sport_key"]]
+    )
+    total = len(unique)
+
+    for _, row in unique.iterrows():
+        gid        = str(row["game_id"])
+        game_str   = f"{row['away_team']} @ {row['home_team']}"
+        sport_key  = str(row["sport_key"])
+        try:
+            proj = fetch_game_projections(game_str, sport_key)
+            if proj:
+                proj_map[gid] = proj
+        except Exception as exc:
+            log.debug("Projection fetch skipped for %s: %s", game_str, exc)
+
+    log.info(
+        "Projection map: %d/%d games covered by model projections.",
+        len(proj_map), total,
+    )
+    return proj_map
+
+
+# ---------------------------------------------------------------------------
 # Pipeline
 # ---------------------------------------------------------------------------
 
@@ -155,15 +201,22 @@ def run_pipeline(
     apply_adjustments_flag: bool = True,
 ) -> pd.DataFrame:
     """
-    Fetch odds → compute EV → apply adjustments → return final DataFrame.
+    Fetch odds → build projection map → compute model-based EV →
+    apply adjustments → return final DataFrame.
+
+    The Optimal model projections are the primary probability source.
+    Games not covered by Optimal (e.g. some soccer fixtures) fall back
+    to the traditional no-vig sportsbook-consensus approach.
 
     Returns
     -------
     pd.DataFrame with columns:
         game, market, outcome_name, bookmaker, american_odds, true_prob,
         implied_prob, ev, ev_pct, positive_ev, commence_time, sport_key,
-        game_id, sharp_book, sharp_vig_pct,
-        adjusted_prob, confidence_mult, adj_flags, adj_warnings, effective_ev_pct
+        game_id, sharp_book, sharp_vig_pct, prob_source,
+        adjusted_prob, confidence_mult, adj_flags, adj_warnings, effective_ev_pct,
+        proj_away_score, proj_home_score, proj_total, proj_home_win_prob,
+        proj_away_display, proj_home_display
     """
     sport_keys = sport_keys or SPORT_KEYS
     markets = markets or MARKETS
@@ -175,27 +228,80 @@ def run_pipeline(
         log.warning("No odds data returned from API.")
         return pd.DataFrame()
 
-    log.info("Computing EV (threshold=%.1f%%)...", ev_threshold)
-    ev_df = find_all_positive_ev(odds_df, markets=markets, ev_threshold=ev_threshold, stake=stake)
+    # ── Fetch model projections for all games ─────────────────────────────────
+    log.info("Fetching Optimal model projections...")
+    proj_map = _build_projection_map(odds_df)
+
+    # ── Model-based EV calculation ────────────────────────────────────────────
+    log.info("Computing model-based EV (threshold=%.1f%%)...", ev_threshold)
+    ev_df = find_positive_ev_model(
+        odds_df, proj_map,
+        markets=markets,
+        ev_threshold=ev_threshold,
+        stake=stake,
+    )
 
     if ev_df.empty:
         log.info("No +EV bets found above %.1f%% threshold.", ev_threshold)
         return ev_df
 
+    # ── Attach projection snapshot columns for display ────────────────────────
+    # IMPORTANT: only attach to model-backed bets (prob_source == "model").
+    # No-vig fallback bets must NOT receive projection scores — the model
+    # probability was NOT used for those bets, so the scores could contradict
+    # the displayed bet direction.
+    def _safe_f(val):
+        try:
+            v = float(val)
+            return None if (v != v) else v   # NaN check
+        except (TypeError, ValueError):
+            return None
+
+    def _proj_val(row, field, as_float=True):
+        """Return projection field only for model-backed bets."""
+        if row.get("prob_source") != "model":
+            return None
+        val = proj_map.get(str(row.get("game_id", "")), {}).get(field)
+        if as_float:
+            return _safe_f(val)
+        s = str(val) if val is not None else ""
+        return s if s not in ("", "nan", "None") else None
+
+    ev_df["proj_away_score"]    = ev_df.apply(lambda r: _proj_val(r, "away_score_mean"),         axis=1)
+    ev_df["proj_home_score"]    = ev_df.apply(lambda r: _proj_val(r, "home_score_mean"),         axis=1)
+    ev_df["proj_total"]         = ev_df.apply(lambda r: _proj_val(r, "total_mean"),              axis=1)
+    ev_df["proj_home_win_prob"] = ev_df.apply(lambda r: _proj_val(r, "home_win_probability"),    axis=1)
+    ev_df["proj_away_display"]  = ev_df.apply(lambda r: _proj_val(r, "away_team", False),        axis=1)
+    ev_df["proj_home_display"]  = ev_df.apply(lambda r: _proj_val(r, "home_team", False),        axis=1)
+
+    # ── Sport-specific adjustments ────────────────────────────────────────────
     if apply_adjustments_flag:
         log.info("Applying sport-specific adjustments...")
-        # Fetch real-time context data once per sport (fault-tolerant)
         sport_context: dict = {}
         for sport in ev_df["sport_key"].unique():
             if sport in ("icehockey_nhl", "basketball_nba"):
                 sport_context[sport] = build_context(sport)
         ev_df = _apply_sport_adjustments(ev_df, sport_context=sport_context)
     else:
-        ev_df["adjusted_prob"] = ev_df["true_prob"]
-        ev_df["confidence_mult"] = 1.0
-        ev_df["adj_flags"] = ""
-        ev_df["adj_warnings"] = ""
+        ev_df["adjusted_prob"]    = ev_df["true_prob"]
+        ev_df["confidence_mult"]  = 1.0
+        ev_df["adj_flags"]        = ""
+        ev_df["adj_warnings"]     = ""
         ev_df["effective_ev_pct"] = ev_df["ev_pct"]
+
+    # ── Final sanity filter ───────────────────────────────────────────────────
+    # Remove any bets still showing EV above the credibility ceiling.
+    # expected_value() already clamps these to 0, but this catches any path
+    # that bypassed that function (e.g., future code additions).
+    pre_len = len(ev_df)
+    ev_df = ev_df[ev_df["ev_pct"] <= MAX_CREDIBLE_EV_PCT].copy()
+    removed = pre_len - len(ev_df)
+    if removed:
+        log.warning(
+            "Sanity filter removed %d bet(s) with EV > %.1f%% — "
+            "likely a data/projection matching error.",
+            removed, MAX_CREDIBLE_EV_PCT,
+        )
 
     return ev_df.sort_values("effective_ev_pct", ascending=False).reset_index(drop=True)
 

@@ -51,9 +51,6 @@ LEAGUES = {
     # MMA / Boxing
     "UFC/MMA": "mma_mixed_martial_arts",
 
-    # Golf
-    "PGA Tour": "golf_pga_championship",
-
     # Australian Rules
     "AFL": "aussierules_afl",
 

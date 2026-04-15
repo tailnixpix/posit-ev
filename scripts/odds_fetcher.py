@@ -36,7 +36,7 @@ SPORT_KEYS = [
     "soccer_spain_la_liga",
     "soccer_germany_bundesliga",
     "soccer_usa_mls",
-    "golf_masters_tournament_winner",   # The Masters — outright winner market
+    "soccer_uefa_champs_league",
 ]
 
 SPORTSBOOK_BOOKMAKERS = [
@@ -48,48 +48,72 @@ SPORTSBOOK_BOOKMAKERS = [
     "betfair_ex_uk",   # Betfair Exchange — lowest vig (~2%), gold-standard sharp reference
 ]
 
-# Prediction markets: regulated exchanges with very low vig.
-# Available in all US states (Kalshi/Polymarket are federally regulated;
-# NoVig is an exchange-style book). They only offer h2h (moneyline) markets.
+# Prediction markets: federally regulated contract exchanges (CFTC / commodity law).
+# Available in all 50 states. Only offer h2h markets.
 PREDICTION_MARKET_BOOKMAKERS = [
-    "kalshi",
-    "novig",
-    "polymarket",
-    "prophetx",
+    "kalshi",      # CFTC-regulated, ~0% vig
+    "polymarket",  # Global prediction exchange, ~1% vig
 ]
 
-# Combined list — prediction markets are included in h2h fetches.
+# Betting exchanges: peer-to-peer platforms where users bet against each other.
+# No traditional house edge — commission only (~1-2%). Only h2h markets.
+EXCHANGE_BOOKMAKERS = [
+    "novig",       # P2P exchange, select US states, ~2% commission
+    "prophetx",    # Sports prediction exchange, all 50 states, ~0% commission
+    "betopenly",   # P2P betting exchange, ~1% commission
+]
+
+# Combined list — prediction markets and exchanges are included in h2h fetches.
 # For spreads/totals they have no data and simply don't appear in results.
 BOOKMAKERS = SPORTSBOOK_BOOKMAKERS  # backward-compat alias (sportsbooks only)
-ALL_BOOKMAKERS = SPORTSBOOK_BOOKMAKERS + PREDICTION_MARKET_BOOKMAKERS
+ALL_BOOKMAKERS = SPORTSBOOK_BOOKMAKERS + PREDICTION_MARKET_BOOKMAKERS + EXCHANGE_BOOKMAKERS
 
-# Props use sportsbooks only — Betfair Exchange doesn't offer US player props
-# and including it causes 422 errors that silently drop entire event responses.
+# Props use sportsbooks only — exchanges don't offer US player props.
 PROPS_BOOKMAKERS = [b for b in SPORTSBOOK_BOOKMAKERS if b != "betfair_ex_uk"]
 
 # Maps each bookmaker key to its source type
 BOOKMAKER_SOURCE_TYPE: dict = {
     **{b: "sportsbook"         for b in SPORTSBOOK_BOOKMAKERS},
     **{b: "prediction_market"  for b in PREDICTION_MARKET_BOOKMAKERS},
+    **{b: "exchange"           for b in EXCHANGE_BOOKMAKERS},
 }
 
 MARKETS = ["h2h", "spreads", "totals"]
 PROP_MARKETS = ["player_props"]  # fetched separately (event-level endpoint)
 
+# Game-level markets that are only valid for specific sports.
+# These are merged into the fetch for the relevant sport only — bundling
+# unsupported markets into the global request causes a 422 for the entire sport.
+# NOTE: team_totals caused 422 across all sports (unsupported by prediction-market
+# bookmakers in our list). NRFI is pending validation — left empty until confirmed.
+SPORT_MARKETS_EXTRA: dict = {}
+
 # Sports that support player prop fetching via event-level endpoint
 PROP_SPORTS = ["basketball_nba", "baseball_mlb", "icehockey_nhl"]
 
-# Prop market keys per sport (Odds API event-level endpoint)
+# Prop market keys per sport (Odds API event-level endpoint).
+# Only include keys confirmed valid by The Odds API — invalid keys return a 422
+# for the entire event request, wiping out all props for that game.
 PROP_MARKETS_BY_SPORT: dict = {
     "basketball_nba": [
         "player_points", "player_rebounds", "player_assists",
         "player_threes", "player_blocks", "player_steals",
+        "player_turnovers",       # turnovers over/under
+        "player_double_double",   # yes/no double-double
     ],
     "baseball_mlb": [
+        # Batter props
         "batter_home_runs", "batter_hits", "batter_rbis",
-        "pitcher_strikeouts",
+        "batter_total_bases",     # total bases over/under
+        "batter_stolen_bases",    # stolen bases over/under
+        "batter_strikeouts",      # batter strikeout yes/no
+        # Pitcher props
+        "pitcher_strikeouts", "pitcher_hits_allowed",
+        "pitcher_earned_runs",
     ],
     "icehockey_nhl": [
+        # player_anytime_goalscorer and player_power_play_points removed —
+        # The Odds API returns 422 for these keys (unrecognised market names).
         "player_points", "player_goals", "player_assists",
         "player_shots_on_goal", "player_blocked_shots",
     ],
@@ -220,12 +244,14 @@ def _parse_game_markets(game: dict) -> list[dict]:
     return rows
 
 
-def _parse_props(event_odds: dict) -> list[dict]:
+def _parse_props(event_odds: dict, sport_key: str = None) -> list[dict]:
     """Flatten event-level player prop data into rows."""
     rows = []
+    # The event-level endpoint doesn't echo sport_key in the response body,
+    # so we accept it as an explicit argument and fall back to the field if present.
     base = {
         "game_id": event_odds.get("id"),
-        "sport_key": event_odds.get("sport_key"),
+        "sport_key": sport_key or event_odds.get("sport_key"),
         "home_team": event_odds.get("home_team"),
         "away_team": event_odds.get("away_team"),
         "commence_time": event_odds.get("commence_time"),
@@ -272,7 +298,11 @@ def get_odds_df(
     all_rows = []
 
     for sport in sport_keys:
-        games = fetch_odds(sport, markets=markets, bookmakers=bookmakers)
+        # Merge base markets with any sport-specific extras (e.g. nrfi for MLB).
+        # Keeping extras separate avoids 422 errors on sports that don't
+        # recognise the market key.
+        sport_markets = list(markets) + SPORT_MARKETS_EXTRA.get(sport, [])
+        games = fetch_odds(sport, markets=sport_markets, bookmakers=bookmakers)
         for game in games:
             all_rows.extend(_parse_game_markets(game))
 
@@ -296,6 +326,16 @@ def get_odds_df(
     dropped = before - len(df)
     if dropped:
         log.info("Filtered out %d rows belonging to live/started game(s).", dropped)
+
+    # Drop games more than 7 days away — keeps cache focused on actionable bets
+    # while allowing playoff series (scheduled 4-7 days out) to appear as soon
+    # as bookmakers post lines.
+    cutoff = now + pd.Timedelta(hours=168)
+    before2 = len(df)
+    df = df[df["commence_time"] <= cutoff]
+    far_dropped = before2 - len(df)
+    if far_dropped:
+        log.info("Filtered out %d rows for games >7 days away.", far_dropped)
 
     return df
 
@@ -328,11 +368,11 @@ def get_props_df(
         for game in upcoming:
             event_data = fetch_player_props(sport, game["id"], bookmakers=bookmakers)
             if isinstance(event_data, dict) and event_data:
-                all_rows.extend(_parse_props(event_data))
+                all_rows.extend(_parse_props(event_data, sport_key=sport))
             elif isinstance(event_data, list):
                 for item in event_data:
                     if isinstance(item, dict):
-                        all_rows.extend(_parse_props(item))
+                        all_rows.extend(_parse_props(item, sport_key=sport))
 
     if not all_rows:
         log.debug("No player props data returned.")

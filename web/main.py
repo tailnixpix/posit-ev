@@ -29,7 +29,7 @@ import math
 import os
 import secrets
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import sentry_sdk
@@ -96,6 +96,31 @@ if _sentry_dsn:
 def _is_admin(request: Request) -> bool:
     """Return True if the current session has a valid admin PIN login."""
     return bool(request.session.get("admin_authenticated"))
+
+
+# ---------------------------------------------------------------------------
+# Projection cache — in-memory, TTL 30 min
+# Keyed by (game_str, league) so the same game hit by multiple bets reuses
+# the cached result.  Cleared automatically when entries are stale.
+# ---------------------------------------------------------------------------
+
+import time as _time
+
+_PROJ_CACHE: dict = {}       # key → {"result": dict, "ts": float}
+_PROJ_CACHE_TTL = 1800       # 30 minutes
+
+
+def _proj_cache_get(key: str) -> Optional[dict]:
+    entry = _PROJ_CACHE.get(key)
+    if entry and (_time.monotonic() - entry["ts"]) < _PROJ_CACHE_TTL:
+        return entry["result"]
+    if key in _PROJ_CACHE:
+        del _PROJ_CACHE[key]
+    return None
+
+
+def _proj_cache_set(key: str, result: dict) -> None:
+    _PROJ_CACHE[key] = {"result": result, "ts": _time.monotonic()}
 
 
 # ---------------------------------------------------------------------------
@@ -347,7 +372,8 @@ def refresh_ev_cache() -> int:
 
             point_val = row.get("point")
             try:
-                point_val = float(point_val) if point_val is not None else None
+                _pv = float(point_val) if point_val is not None else None
+                point_val = None if (_pv is None or _pv != _pv) else _pv  # _pv != _pv catches NaN
             except (ValueError, TypeError):
                 point_val = None
 
@@ -383,7 +409,19 @@ def refresh_ev_cache() -> int:
             _bet_pct, _money_pct = _handle_map.get(_hk, (None, None))
             _sharp = _sharp_score(_bet_pct, _money_pct, opening_odds_val, odds_val) if (_bet_pct is not None or _money_pct is not None) else None
 
-            rows.append(EVBetCache(
+            # ── Attach projection snapshot (pre-fetched by report_generator) ──
+            def _safe_proj_float(val):
+                try:
+                    v = float(val)
+                    return None if (v != v) else v
+                except (TypeError, ValueError):
+                    return None
+
+            def _safe_proj_str(val):
+                s = str(val) if val is not None else ""
+                return s if s not in ("", "nan", "None") else None
+
+            cache_row = EVBetCache(
                 game_id       = row_game_id or None,
                 league        = str(row.get("sport_key",      "")),
                 market        = row_market,
@@ -406,102 +444,17 @@ def refresh_ev_cache() -> int:
                 money_pct     = _money_pct,
                 sharp_score   = _sharp,
                 created_at    = datetime.now(timezone.utc),
-            ))
-
-        # ── Model-agreement filter ─────────────────────────────────────────────
-        # Fetch projections for every unique game/league pair and drop any bets
-        # whose direction contradicts the model.  Bets with no projection data
-        # (soccer, golf, props, games not yet in Optimal) pass through unchanged.
-        try:
-            from scripts.context_fetcher import fetch_game_projections as _fgp
-
-            _proj_map: dict = {}
-            for r in rows:
-                if r.is_prop or not r.game or " @ " not in (r.game or ""):
-                    continue
-                key = (r.game, r.league)
-                if key not in _proj_map:
-                    try:
-                        _proj_map[key] = _fgp(r.game, r.league)
-                    except Exception as _pe:
-                        log.warning("Proj fetch skipped for %s: %s", r.game, _pe)
-                        _proj_map[key] = {}
-
-            def _ws(s: str) -> set:
-                skip = {"at", "the", "a", "an", "vs", "fc", "sc"}
-                return {w for w in s.lower().split() if w not in skip and len(w) > 2}
-
-            def _model_ok(r: EVBetCache, proj: dict) -> bool:
-                if not proj:
-                    return True
-                market = r.market or ""
-                team   = (r.team or "").strip()
-                point  = r.point
-                gp     = (r.game or "").split(" @ ", 1)
-                home_t = gp[1].strip() if len(gp) > 1 else ""
-                is_home = bool(home_t) and bool(_ws(home_t) & _ws(team))
-
-                if market == "totals":
-                    tm = proj.get("total_mean")
-                    if tm is None or point is None:
-                        return True
-                    return tm > point if team.lower().startswith("over") else tm < point
-
-                if market == "spreads":
-                    # Derive margin from projected scores — consistent with what
-                    # users see on the card.  Fall back to spread_mean if no scores.
-                    hs = proj.get("home_score_mean")
-                    as_ = proj.get("away_score_mean")
-                    sm = (hs - as_) if (hs is not None and as_ is not None) else proj.get("spread_mean")
-                    if sm is None or point is None:
-                        return True
-                    return sm > -point if is_home else sm < point
-
-                if market == "h2h":
-                    wp = proj.get("home_win_probability")
-                    if wp is None:
-                        return True
-                    return wp > 0.5 if is_home else wp < 0.5
-
-                return True  # other markets (e.g. outright futures) → keep
-
-            before = len(rows)
-            rows = [
-                r for r in rows
-                if r.is_prop
-                or not r.game
-                or " @ " not in (r.game or "")
-                or _model_ok(r, _proj_map.get((r.game, r.league), {}))
-            ]
-            removed = before - len(rows)
-            if removed:
-                log.info(
-                    "Model filter: removed %d bet(s) that contradicted projections "
-                    "(%d kept).", removed, len(rows),
-                )
-
-            # Attach projection snapshot to each surviving row so the card
-            # can display it inline without any async fetch at page load.
-            for r in rows:
-                if r.is_prop or not r.game or " @ " not in (r.game or ""):
-                    continue
-                _p = _proj_map.get((r.game, r.league), {})
-                if not _p:
-                    continue
-                r.proj_away_score    = _p.get("away_score_mean")
-                r.proj_home_score    = _p.get("home_score_mean")
-                r.proj_total         = _p.get("total_mean")
-                r.proj_home_win_prob = _p.get("home_win_probability")
-                r.proj_away_display  = _p.get("away_display") or _p.get("away_team")
-                r.proj_home_display  = _p.get("home_display") or _p.get("home_team")
-
-        except Exception as _mfe:
-            log.warning(
-                "Model-agreement filter failed (non-fatal, keeping all rows): %s", _mfe
+                # Projection snapshot — passed through from report_generator pipeline
+                proj_away_score    = _safe_proj_float(row.get("proj_away_score")),
+                proj_home_score    = _safe_proj_float(row.get("proj_home_score")),
+                proj_total         = _safe_proj_float(row.get("proj_total")),
+                proj_home_win_prob = _safe_proj_float(row.get("proj_home_win_prob")),
+                proj_away_display  = _safe_proj_str(row.get("proj_away_display")),
+                proj_home_display  = _safe_proj_str(row.get("proj_home_display")),
             )
-        # ── End model filter ───────────────────────────────────────────────────
+            rows.append(cache_row)
 
-        db.bulk_save_objects(rows)
+        db.add_all(rows)
         db.commit()
         count = len(rows)
         log.info("EV cache refresh: wrote %d bets.", count)
@@ -556,6 +509,8 @@ async def on_startup() -> None:
             _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS proj_home_win_prob FLOAT"))
             _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS proj_away_display VARCHAR"))
             _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS proj_home_display VARCHAR"))
+            _db.execute(text("ALTER TABLE daily_picks ADD COLUMN IF NOT EXISTS player_name VARCHAR"))
+            _db.execute(text("ALTER TABLE daily_picks ADD COLUMN IF NOT EXISTS is_prop BOOLEAN DEFAULT FALSE"))
             _db.commit()
         except Exception:
             _db.rollback()
@@ -933,24 +888,48 @@ async def get_projection(bet_id: int, request: Request, db: Session = Depends(ge
     if bet_row.is_prop or not bet_row.game or " @ " not in (bet_row.game or ""):
         raise HTTPException(status_code=422, detail="No game projection for this bet type")
 
+    import asyncio
+    from scripts.context_fetcher import fetch_game_projections, fetch_game_context as _fgc
+
+    cache_key = f"{bet_row.league}:{bet_row.game}"
+    cached = _proj_cache_get(cache_key)
+    if cached:
+        log.info("Projection cache HIT for %s", cache_key)
+        return JSONResponse(cached)
+
     log.info("Projection request: game=%r league=%r bet_id=%d", bet_row.game, bet_row.league, bet_id)
 
-    import asyncio
-    from scripts.context_fetcher import fetch_game_projections
-
     loop = asyncio.get_event_loop()
-    try:
-        proj = await loop.run_in_executor(
-            None, fetch_game_projections, bet_row.game, bet_row.league
+
+    # Fetch projection + context in parallel to halve latency
+    proj_future = loop.run_in_executor(
+        None, fetch_game_projections, bet_row.game, bet_row.league
+    )
+    ctx_future = loop.run_in_executor(
+        None, _fgc, bet_row.game, bet_row.league, bet_row.commence_time
+    )
+
+    results = await asyncio.gather(proj_future, ctx_future, return_exceptions=True)
+    proj = results[0] if not isinstance(results[0], Exception) else None
+    ctx  = results[1] if not isinstance(results[1], Exception) else {}
+
+    if isinstance(results[0], Exception):
+        log.error("Projection fetch error for bet_id=%d: %s", bet_id, results[0])
+    if isinstance(results[1], Exception):
+        log.warning("Context fetch error for bet_id=%d: %s", bet_id, results[1])
+
+    log.info("Projection result for bet_id=%d: proj=%s ctx_keys=%s",
+             bet_id, bool(proj), list((ctx or {}).keys())[:6])
+
+    if not proj and not ctx:
+        raise HTTPException(
+            status_code=503,
+            detail="Projection service is temporarily unavailable — please try again in a moment"
         )
-    except Exception as exc:
-        log.error("Projection fetch failed for bet_id=%d: %s", bet_id, exc)
-        raise HTTPException(status_code=500, detail="Projection service unavailable")
 
-    log.info("Projection result for bet_id=%d: %s", bet_id, proj or "EMPTY")
-
-    if not proj:
-        raise HTTPException(status_code=422, detail="No projection available for this game")
+    # Merge context into proj (context fills in fields Optimal doesn't provide)
+    merged = dict(ctx)
+    merged.update({k: v for k, v in (proj or {}).items() if v is not None})
 
     # Determine if the bet is on the home or away side
     market    = bet_row.market or ""
@@ -967,45 +946,49 @@ async def get_projection(bet_id: int, request: Request, db: Session = Depends(ge
 
     is_home_bet = bool(home_team) and bool(_word_set(home_team) & _word_set(team))
 
-    proj = dict(proj)  # don't mutate cached copy
     model_agrees: Optional[bool] = None
 
     if market == "totals":
-        total_mean = proj.get("total_mean")
+        total_mean = merged.get("total_mean")
         if total_mean is not None and point is not None:
             is_over      = team.lower().startswith("over")
             model_agrees = total_mean > point if is_over else total_mean < point
 
     elif market == "spreads":
         # Derive margin from scores for consistency with what the card displays
-        hs_ep = proj.get("home_score_mean")
-        as_ep = proj.get("away_score_mean")
-        spread_mean = (hs_ep - as_ep) if (hs_ep is not None and as_ep is not None) else proj.get("spread_mean")
+        hs_ep = merged.get("home_score_mean")
+        as_ep = merged.get("away_score_mean")
+        spread_mean = (hs_ep - as_ep) if (hs_ep is not None and as_ep is not None) else merged.get("spread_mean")
         if spread_mean is not None and point is not None:
             model_agrees = spread_mean > -point if is_home_bet else spread_mean < point
 
     elif market == "h2h":
-        home_win_prob = proj.get("home_win_probability")
+        home_win_prob = merged.get("home_win_probability")
         if home_win_prob is not None:
             model_agrees = home_win_prob > 0.5 if is_home_bet else home_win_prob < 0.5
 
     if model_agrees is not None:
-        proj["model_agrees_with_bet"] = model_agrees
+        merged["model_agrees_with_bet"] = model_agrees
         if not model_agrees:
             log.info(
                 "Projection contradicts bet for bet_id=%d market=%s team=%r "
                 "(is_home=%s spread=%.2f total=%.1f home_wp=%.2f point=%s)",
                 bet_id, market, team, is_home_bet,
-                proj.get("spread_mean") or 0,
-                proj.get("total_mean") or 0,
-                proj.get("home_win_probability") or 0,
+                merged.get("spread_mean") or 0,
+                merged.get("total_mean") or 0,
+                merged.get("home_win_probability") or 0,
                 point,
             )
 
-    return JSONResponse(proj)
+    # Cache successful result so repeat requests are instant
+    if merged:
+        _proj_cache_set(cache_key, merged)
+
+    return JSONResponse(merged)
 
 
 @app.get("/api/analysis/{bet_id}")
+@app.get("/api/analyze/{bet_id}")   # alias — keep both working
 async def get_analysis(bet_id: int, request: Request, db: Session = Depends(get_db)):
     """
     Return AI analysis for a specific bet (by EVBetCache.id).
@@ -1046,17 +1029,18 @@ async def get_analysis(bet_id: int, request: Request, db: Session = Depends(get_
 
     # Build bet dict for analyzer
     bet_dict = {
-        "id":         bet_row.id,
-        "game":       bet_row.game or "",
-        "league":     bet_row.league or "",
-        "market":     bet_row.market or "",
-        "team":       bet_row.team or "",
-        "odds":       bet_row.odds or 0,
-        "true_prob":  bet_row.true_prob or 0.5,
-        "ev_percent": bet_row.ev_percent or 0.0,
-        "point":      bet_row.point,
-        "player_name": bet_row.player_name,
-        "is_prop":    bool(bet_row.is_prop),
+        "id":            bet_row.id,
+        "game":          bet_row.game or "",
+        "league":        bet_row.league or "",
+        "market":        bet_row.market or "",
+        "team":          bet_row.team or "",
+        "odds":          bet_row.odds or 0,
+        "true_prob":     bet_row.true_prob or 0.5,
+        "ev_percent":    bet_row.ev_percent or 0.0,
+        "point":         bet_row.point,
+        "player_name":   bet_row.player_name,
+        "is_prop":       bool(bet_row.is_prop),
+        "commence_time": bet_row.commence_time,  # needed so analyzer targets the right game date
     }
 
     # Run analysis in a thread (it's sync/blocking)
@@ -1065,7 +1049,13 @@ async def get_analysis(bet_id: int, request: Request, db: Session = Depends(get_
 
     loop = asyncio.get_event_loop()
     try:
-        result = await loop.run_in_executor(None, analyze_bet, bet_dict)
+        result = await asyncio.wait_for(
+            loop.run_in_executor(None, analyze_bet, bet_dict),
+            timeout=55.0,   # stay under Railway's 60s hard timeout
+        )
+    except asyncio.TimeoutError:
+        log.error("AI analysis timed out for bet_id=%d", bet_id)
+        raise HTTPException(status_code=504, detail="Analysis timed out — try again")
     except Exception as exc:
         log.error("AI analysis failed for bet_id=%d: %s", bet_id, exc)
         raise HTTPException(status_code=500, detail="Analysis generation failed")
@@ -1093,15 +1083,8 @@ async def get_analysis(bet_id: int, request: Request, db: Session = Depends(get_
 
 
 @app.get("/", response_class=HTMLResponse)
-async def landing(request: Request, db: Session = Depends(get_db)):
-    settled_picks = (
-        db.query(DailyPick)
-        .filter(DailyPick.result.in_(["won", "lost", "push"]))
-        .order_by(DailyPick.pick_date.desc())
-        .all()
-    )
-    pick_record = _compute_pick_record(settled_picks)
-    return templates.TemplateResponse(request, "index.html", {"pick_record": pick_record})
+async def landing(request: Request):
+    return templates.TemplateResponse(request, "index.html", {})
 
 
 @app.get("/register", response_class=HTMLResponse)
@@ -1156,18 +1139,12 @@ async def dashboard(
     Served only after SubscriptionMiddleware confirms valid JWT + active subscription.
     Reads today's +EV bets from EVBetCache — no live API calls on page load.
     """
-    from sqlalchemy import or_ as _or
+    # Show all cached +EV bets — CLV direction is surfaced as a signal badge on
+    # each card so users can weigh it themselves.  Hiding bets based on line
+    # movement is too aggressive, especially for future games where lines are
+    # still opening and moving before sharp consensus settles.
     bets = (
         db.query(EVBetCache)
-        # Remove bets where the line has moved against the bet (CLV–).
-        # Keep bets with no opening odds history (no CLV signal = neutral).
-        .filter(
-            _or(
-                EVBetCache.opening_odds == None,   # noqa: E711
-                EVBetCache.odds == None,            # noqa: E711
-                EVBetCache.opening_odds >= EVBetCache.odds,
-            )
-        )
         .order_by(EVBetCache.ev_percent.desc())
         .all()
     )
@@ -1192,15 +1169,6 @@ async def dashboard(
             and b.point  == today_pick.point
             for b in bets
         )
-
-    # All-time pick record (settled picks only)
-    settled_picks = (
-        db.query(DailyPick)
-        .filter(DailyPick.result.in_(["won", "lost", "push"]))
-        .order_by(DailyPick.pick_date.desc())
-        .all()
-    )
-    pick_record = _compute_pick_record(settled_picks)
 
     # Compute next scheduled refresh time from the scheduler
     job = scheduler.get_job("ev_cache_refresh")
@@ -1228,7 +1196,6 @@ async def dashboard(
             "show_welcome":         welcome == "1",
             "today_pick":           today_pick,
             "pick_still_live":      pick_still_live,
-            "pick_record":          pick_record,
             "trial_days_remaining": trial_days_remaining,
             "trial_ends_at":        trial_ends_at,
         },
@@ -1301,14 +1268,30 @@ async def admin_dashboard(
     )
 
     # Global stats — always unfiltered counts (efficient, no full table load)
-    user_total = db.query(User).count()
-    user_paid  = db.query(User).filter(User.is_subscribed.is_(True)).count()
+    user_total       = db.query(User).count()
+    user_paid_stripe = db.query(User).filter(
+        User.is_subscribed.is_(True),
+        User.stripe_subscription_id.isnot(None),
+    ).count()
+    user_comped = db.query(User).filter(
+        User.is_subscribed.is_(True),
+        User.stripe_subscription_id.is_(None),
+    ).count()
+    user_paid  = user_paid_stripe + user_comped   # backward-compat total
     user_free  = user_total - user_paid
 
     # Build filtered query
     query = db.query(User)
     if tier == "paid":
-        query = query.filter(User.is_subscribed.is_(True))
+        query = query.filter(
+            User.is_subscribed.is_(True),
+            User.stripe_subscription_id.isnot(None),
+        )
+    elif tier == "comped":
+        query = query.filter(
+            User.is_subscribed.is_(True),
+            User.stripe_subscription_id.is_(None),
+        )
     elif tier == "free":
         query = query.filter(User.is_subscribed.is_(False))
     if q and q.strip():
@@ -1352,6 +1335,55 @@ async def admin_dashboard(
         "avg_clv":    round(sum(clv_values) / len(clv_values), 2) if clv_values else None,
     }
 
+    # ── Growth metrics ──────────────────────────────────────────────────────
+    _seven_ago  = _now_utc - timedelta(days=7)
+    _thirty_ago = _now_utc - timedelta(days=30)
+    nl_active_count = sum(1 for s in newsletter_subs if s.is_active)
+    new_nl_7d   = sum(1 for s in newsletter_subs if s.subscribed_at and s.subscribed_at > _seven_ago)
+    new_nl_30d  = sum(1 for s in newsletter_subs if s.subscribed_at and s.subscribed_at > _thirty_ago)
+    new_users_7d  = db.query(User).filter(User.created_at > _seven_ago).count()
+    new_users_30d = db.query(User).filter(User.created_at > _thirty_ago).count()
+    nl_unsub_count   = sum(1 for s in newsletter_subs if not s.is_active)
+    conversion_rate  = round(user_paid_stripe / user_total * 100, 1) if user_total > 0 else 0.0
+    nl_to_user_rate  = round(user_total / len(newsletter_subs) * 100, 1) if newsletter_subs else 0.0
+
+    # ── Pipeline health ──────────────────────────────────────────────────────
+    ev_bets_count  = db.query(EVBetCache).count()
+    _ev_leagues    = db.query(EVBetCache.league).distinct().all()
+    sports_active  = [r[0] for r in _ev_leagues]
+    _last_cache    = db.query(EVBetCache.created_at).order_by(EVBetCache.created_at.desc()).first()
+    last_cache_at  = _last_cache[0].strftime("%b %-d at %-I:%M %p UTC") if _last_cache and _last_cache[0] else "—"
+    _ev_rows       = db.query(EVBetCache.ev_percent, EVBetCache.odds).all()
+    _ev_vals       = [r[0] for r in _ev_rows if r[0] is not None]
+    _odds_vals     = [r[1] for r in _ev_rows if r[1] is not None]
+    cache_avg_ev   = round(sum(_ev_vals) / len(_ev_vals), 2) if _ev_vals else None
+    cache_avg_odds = round(sum(_odds_vals) / len(_odds_vals)) if _odds_vals else None
+
+    # ── Model performance ────────────────────────────────────────────────────
+    _sport_label_map = {
+        "basketball_nba": "NBA", "icehockey_nhl": "NHL", "baseball_mlb": "MLB",
+        "soccer_epl": "EPL", "soccer_spain_la_liga": "La Liga",
+        "soccer_germany_bundesliga": "Bundesliga", "soccer_usa_mls": "MLS",
+        "americanfootball_nfl": "NFL",
+    }
+    total_won_count    = sum(1 for p in settled if p.result == "won")
+    total_lost_count   = sum(1 for p in settled if p.result == "lost")
+    total_push_count   = sum(1 for p in settled if p.result == "push")
+    total_settled_count = len(settled)
+    model_win_rate = round(total_won_count / total_settled_count * 100, 1) if total_settled_count > 0 else None
+    _ev_picks    = [p.ev_percent for p in daily_picks_all if p.ev_percent is not None]
+    picks_avg_ev = round(sum(_ev_picks) / len(_ev_picks), 2) if _ev_picks else None
+    picks_by_sport: dict = {}
+    for _pick in daily_picks_all:
+        _k = _pick.league or "other"
+        if _k not in picks_by_sport:
+            picks_by_sport[_k] = {"label": _sport_label_map.get(_k, _k.upper()), "won": 0, "lost": 0, "push": 0, "pending": 0}
+        if   _pick.result == "won":  picks_by_sport[_k]["won"]     += 1
+        elif _pick.result == "lost": picks_by_sport[_k]["lost"]    += 1
+        elif _pick.result == "push": picks_by_sport[_k]["push"]    += 1
+        else:                        picks_by_sport[_k]["pending"] += 1
+    picks_by_sport = dict(sorted(picks_by_sport.items(), key=lambda x: x[1]["won"] + x[1]["lost"], reverse=True))
+
     return templates.TemplateResponse(
         request,
         "admin.html",
@@ -1359,11 +1391,13 @@ async def admin_dashboard(
             "newsletter_subs":  newsletter_subs,
             "users":            users,
             "nl_total":         len(newsletter_subs),
-            "nl_active":        sum(1 for s in newsletter_subs if s.is_active),
+            "nl_active":        nl_active_count,
             # Global counts (unaffected by filter/search)
-            "user_total":       user_total,
-            "user_paid":        user_paid,
-            "user_free":        user_free,
+            "user_total":        user_total,
+            "user_paid":         user_paid,
+            "user_paid_stripe":  user_paid_stripe,
+            "user_comped":       user_comped,
+            "user_free":         user_free,
             # Pagination metadata
             "filtered_total":   filtered_total,
             "total_pages":      total_pages,
@@ -1380,6 +1414,28 @@ async def admin_dashboard(
             "now":              datetime.now(timezone.utc).strftime("%b %-d, %Y at %-I:%M %p UTC"),
             "admin_key":        "",   # no longer used
             "is_admin_page":    True,
+            # Growth metrics
+            "new_nl_7d":        new_nl_7d,
+            "new_nl_30d":       new_nl_30d,
+            "new_users_7d":     new_users_7d,
+            "new_users_30d":    new_users_30d,
+            "nl_unsub_count":   nl_unsub_count,
+            "conversion_rate":  conversion_rate,
+            "nl_to_user_rate":  nl_to_user_rate,
+            # Pipeline health
+            "ev_bets_count":    ev_bets_count,
+            "sports_active":    sports_active,
+            "last_cache_at":    last_cache_at,
+            "cache_avg_ev":     cache_avg_ev,
+            "cache_avg_odds":   cache_avg_odds,
+            # Model performance
+            "total_won_count":      total_won_count,
+            "total_lost_count":     total_lost_count,
+            "total_push_count":     total_push_count,
+            "total_settled_count":  total_settled_count,
+            "model_win_rate":       model_win_rate,
+            "picks_avg_ev":         picks_avg_ev,
+            "picks_by_sport":       picks_by_sport,
         },
     )
 

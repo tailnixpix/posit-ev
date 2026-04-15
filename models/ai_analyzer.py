@@ -8,7 +8,7 @@ For each +EV bet, this module:
    analysis including:
    - Improved true probability estimate
    - Confidence score (1–100)
-   - Kelly criterion sizing (full + 25% fractional)
+   - Kelly criterion sizing (¼ Kelly / 25% fractional)
    - Natural language "Why This Pick Makes Sense" with:
        (A) Mathematical Justification
        (B) Real-World Contextual Validation
@@ -61,10 +61,11 @@ _LEAGUE_MAP = {
     "baseball_mlb":            "MLB",
     "icehockey_nhl":           "NHL",
 
-    "soccer_epl":              "EPL",
-    "soccer_spain_la_liga":    "La Liga",
+    "soccer_epl":                "EPL",
+    "soccer_spain_la_liga":      "La Liga",
     "soccer_germany_bundesliga": "Bundesliga",
-    "soccer_usa_mls":          "MLS",
+    "soccer_usa_mls":            "MLS",
+    "soccer_uefa_champs_league": "Champions League",
 }
 
 # ---------------------------------------------------------------------------
@@ -162,9 +163,21 @@ def _build_context(bet: dict, client: OptimalClient) -> dict:
     player_name = bet.get("player_name")
     market = bet.get("market", "h2h")
 
+    # Derive game_date (YYYY-MM-DD in ET) from commence_time so get_events
+    # targets the correct calendar day — essential for tomorrow's bets.
+    game_date: Optional[str] = None
+    ct = bet.get("commence_time")
+    if ct is not None:
+        try:
+            from zoneinfo import ZoneInfo
+            if hasattr(ct, "astimezone"):
+                game_date = ct.astimezone(ZoneInfo("America/New_York")).strftime("%Y-%m-%d")
+        except Exception:
+            pass
+
     # ── 1. Upcoming events to find game_id ───────────────────────────────
     try:
-        events = client.get_events(league_key) or []
+        events = client.get_events(league_key, date=game_date) or []
         if isinstance(events, list) and events:
             # Try to locate the specific game from the event list
             home, away = "", ""
@@ -268,9 +281,10 @@ def _build_context(bet: dict, client: OptimalClient) -> dict:
         # Fallback: Optimal query() if Stats API returned nothing
         if not ctx.get("pitcher_matchup"):
             try:
+                _date_phrase = f"on {game_date}" if game_date else "today"
                 q = (
                     f"Who are the confirmed starting pitchers for the {away_team} vs {home_team} "
-                    f"MLB game today? Include each pitcher's name, current ERA, WHIP, and their "
+                    f"MLB game {_date_phrase}? Include each pitcher's name, current ERA, WHIP, and their "
                     f"last 3 outings with IP, ER, and strikeouts."
                 )
                 pitcher_data = client.query(q)
@@ -365,6 +379,16 @@ _SPORT_CONTEXT = {
 - Home/away record (MLS home advantage is significant)
 - Travel distance and schedule congestion
 - Key player availability
+""",
+    "soccer_uefa_champs_league": """
+**UEFA Champions League-Specific Factors to Address (use data from context where available):**
+- If this is a knockout-stage second leg, state the aggregate score and what each team needs to advance
+- Yellow card accumulation: players one booking away from a suspension ban (critical in UCL)
+- Squad rotation risk: clubs juggling heavy domestic and European schedules
+- Form in European competition vs. domestic form (elite clubs often elevate for UCL)
+- Home/away record in this competition specifically
+- Key absences: suspensions, injuries, and squad depth
+- Historical head-to-head record in European competition if relevant
 """,
 }
 
@@ -681,13 +705,15 @@ def analyze_bet(bet: dict, optimal_client: Optional[OptimalClient] = None) -> Op
 
     system_prompt, user_prompt = _build_prompt(bet, ctx)
 
-    # Call Claude
+    # Call Claude — no extended thinking, keeps latency predictable on Railway
     try:
-        client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        client = anthropic.Anthropic(
+            api_key=os.getenv("ANTHROPIC_API_KEY"),
+            timeout=30.0,   # hard 30-second cap so Railway never times out
+        )
         message = client.messages.create(
             model=_MODEL,
-            max_tokens=4096,
-            thinking={"type": "enabled", "budget_tokens": 1024},
+            max_tokens=2048,
             system=system_prompt,
             messages=[{"role": "user", "content": user_prompt}],
         )
@@ -695,11 +721,14 @@ def analyze_bet(bet: dict, optimal_client: Optional[OptimalClient] = None) -> Op
         log.error("analyze_bet: Claude API call failed: %s", exc)
         return None
 
-    # Extract text response — explicitly skip thinking blocks
+    # Extract text response
     response_text = ""
     for block in message.content:
         if getattr(block, "type", None) == "text" and hasattr(block, "text"):
             response_text = block.text.strip()
+            break
+        elif isinstance(block, str):
+            response_text = block.strip()
             break
 
     if not response_text:

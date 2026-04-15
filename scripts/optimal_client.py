@@ -41,7 +41,7 @@ import requests
 log = logging.getLogger(__name__)
 
 _BASE_URL = "https://mcp.tangiers.ai/"
-_TIMEOUT = 30   # seconds per request
+_TIMEOUT = 12   # seconds per request — fail fast; caller retries or falls back
 _RPC_ID = 1     # stateless — reuse the same ID each call
 
 _SESSION = requests.Session()
@@ -56,14 +56,18 @@ _SESSION.headers.update({
 # Low-level transport
 # ---------------------------------------------------------------------------
 
-def _rpc(method: str, params: dict) -> Any:
+def _rpc(method: str, params: dict, _retry: bool = True) -> Any:
     """
     Send one JSON-RPC 2.0 request to the Optimal MCP server and return
     the parsed result. Returns None on failure.
 
     The server responds with a Server-Sent Events stream. We find the line
     beginning with ``data: `` and parse the embedded JSON.
+
+    Retries once automatically on timeout or connection error.
     """
+    import time
+
     payload = {
         "jsonrpc": "2.0",
         "id": _RPC_ID,
@@ -75,7 +79,16 @@ def _rpc(method: str, params: dict) -> Any:
         resp = _SESSION.post(_BASE_URL, json=payload, timeout=_TIMEOUT)
         raw = resp.text.strip()
     except requests.Timeout:
-        log.warning("Optimal MCP: request timed out for method=%s", method)
+        log.warning("Optimal MCP: request timed out for method=%s (retry=%s)", method, _retry)
+        if _retry:
+            time.sleep(1)
+            return _rpc(method, params, _retry=False)
+        return None
+    except requests.ConnectionError as exc:
+        log.warning("Optimal MCP: connection error for method=%s: %s (retry=%s)", method, exc, _retry)
+        if _retry:
+            time.sleep(2)
+            return _rpc(method, params, _retry=False)
         return None
     except Exception as exc:
         log.error("Optimal MCP: request error for method=%s: %s", method, exc)

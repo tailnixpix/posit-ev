@@ -338,9 +338,10 @@ def sharpest_no_vig(
     # ── Outlier guard ────────────────────────────────────────────────────────
     # If the sharpest book's devigged probability deviates more than
     # MAX_DIVERGENCE from the trimmed-mean consensus of all books, the
-    # "sharpest" book likely has a stale or erroneous line.  Fall back to
-    # the consensus probability so one bad book cannot poison all EV calcs.
-    _MAX_DIVERGENCE = 0.12   # 12 percentage-point threshold
+    # "sharpest" book likely has a stale or erroneous line (or a prediction
+    # market pricing a very different event).  Fall back to consensus.
+    # Lowered from 12 pp → 8 pp to catch prediction-market outliers earlier.
+    _MAX_DIVERGENCE = 0.08   # 8 percentage-point threshold
     if len(book_odds) >= 2:
         _cons = consensus_no_vig(book_odds, outcome_names)
         _max_delta = max(

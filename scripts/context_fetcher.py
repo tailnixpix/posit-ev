@@ -302,16 +302,26 @@ def fetch_mlb_probable_pitchers() -> dict:
     Return {game_pk: {"home": {...pitcher info...}, "away": {...pitcher info...}}}
     using the MLB Stats API schedule endpoint with probablePitcher hydration.
 
+    Fetches both today AND tomorrow so the AI analysis has pitcher data for
+    next-day games (starters are posted 24+ hours in advance).
+
     Also fetches season ERA/WHIP/K9 for each pitcher via the people/stats endpoint.
     """
     result: dict = {}
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    now_utc = datetime.now(timezone.utc)
+
+    # Build date range: today through tomorrow (start_date=today&end_date=tomorrow
+    # fetches both in one request, reducing latency and API calls)
+    start_date = now_utc.strftime("%Y-%m-%d")
+    end_date   = (now_utc + timedelta(days=1)).strftime("%Y-%m-%d")
+
     data = _get(
         _MLB_SCHEDULE,
         params={
-            "sportId": 1,
-            "date": today,
-            "hydrate": "probablePitcher(note),linescore",
+            "sportId":    1,
+            "startDate":  start_date,
+            "endDate":    end_date,
+            "hydrate":    "probablePitcher(note),linescore",
         },
     )
 
@@ -347,9 +357,14 @@ def fetch_mlb_probable_pitchers() -> dict:
             # Attach team names for easier downstream matching
             entry["home_team"] = teams.get("home", {}).get("team", {}).get("name", "")
             entry["away_team"] = teams.get("away", {}).get("team", {}).get("name", "")
+            # Tag which calendar date this game falls on (useful for debugging)
+            entry["game_date"] = date_entry.get("date", "")
             result[gk] = entry
 
-    log.debug("fetch_mlb_probable_pitchers: %d games found", len(result))
+    log.debug(
+        "fetch_mlb_probable_pitchers: %d games found across %s→%s",
+        len(result), start_date, end_date,
+    )
     return result
 
 
@@ -786,13 +801,15 @@ def fetch_game_projections(game: str, league: str) -> dict:
             "  (gp.projections->>'homeWinProbability')::float AS home_win_probability, "
             "  gp.updated_at, "
             "  proj_item->>'projectionType' AS proj_type, "
-            "  (proj_item->>'mean')::float AS mean "
+            "  (proj_item->>'mean')::float  AS mean, "
+            "  (proj_item->>'p25')::float   AS p25, "
+            "  (proj_item->>'p75')::float   AS p75 "
             "FROM events e "
             "JOIN game_projections gp ON gp.event_id = e.id, "
             "  LATERAL jsonb_array_elements(gp.projections->'projections') AS proj_item "
             f"WHERE e.league = '{opt_league}' "
             f"  AND e.start_date > NOW() - INTERVAL '4 hours' "
-            f"  AND e.start_date < NOW() + INTERVAL '36 hours' "
+            f"  AND e.start_date < NOW() + INTERVAL '48 hours' "
             f"  AND LOWER(e.away_display) LIKE '%{away_kw}%' "
             f"  AND LOWER(e.home_display) LIKE '%{home_kw}%' "
             "LIMIT 20"
@@ -822,13 +839,19 @@ def fetch_game_projections(game: str, league: str) -> dict:
             if "home_win_probability" not in result and row.get("home_win_probability") is not None:
                 result["home_win_probability"] = row["home_win_probability"]
 
-            # Pivot projection rows
+            # Pivot projection rows — capture mean + percentile bands (p25/p75)
             pt   = row.get("proj_type", "")
             mean = row.get("mean")
+            p25  = row.get("p25")
+            p75  = row.get("p75")
             if pt == "spread":
-                result["spread_mean"]     = mean
+                result["spread_mean"] = mean
+                if p25 is not None: result["spread_p25"] = p25
+                if p75 is not None: result["spread_p75"] = p75
             elif pt == "total":
-                result["total_mean"]      = mean
+                result["total_mean"] = mean
+                if p25 is not None: result["total_p25"] = p25
+                if p75 is not None: result["total_p75"] = p75
             elif pt == "homeScore":
                 result["home_score_mean"] = mean
             elif pt == "awayScore":
@@ -857,6 +880,244 @@ def fetch_game_projections(game: str, league: str) -> dict:
         return build_mlb_game_projection(game)
 
     return {}
+
+
+def fetch_game_context(game: str, league: str, commence_dt=None) -> dict:
+    """
+    Fetch contextual betting data for a specific game:
+    team records, streaks, last 10 games, playoff position/note,
+    key injuries, starting goalie (NHL), probable pitcher (MLB).
+
+    Returns {} on failure — never raises.
+    """
+    if " @ " not in game:
+        return {}
+
+    _SPORT_ESPN = {
+        "icehockey_nhl":              "hockey/nhl",
+        "basketball_nba":             "basketball/nba",
+        "baseball_mlb":               "baseball/mlb",
+        "soccer_epl":                 "soccer/eng.1",
+        "soccer_spain_la_liga":       "soccer/esp.1",
+        "soccer_germany_bundesliga":  "soccer/ger.1",
+        "soccer_usa_mls":             "soccer/usa.1",
+    }
+
+    sport_path = _SPORT_ESPN.get(league)
+    if not sport_path:
+        return {}
+
+    away_name, home_name = [s.strip() for s in game.split(" @ ", 1)]
+
+    # Game date in ET (US sports use ET scheduling)
+    if commence_dt:
+        try:
+            from zoneinfo import ZoneInfo
+            dt_et = commence_dt.astimezone(ZoneInfo("America/New_York"))
+            date_str = dt_et.strftime("%Y%m%d")
+        except Exception:
+            date_str = datetime.now(timezone.utc).strftime("%Y%m%d")
+    else:
+        date_str = datetime.now(timezone.utc).strftime("%Y%m%d")
+
+    result: dict = {"away_team": away_name, "home_team": home_name}
+
+    def _overlap(a: str, b: str) -> bool:
+        skip = {"at", "the", "a", "an", "city", "state", "fc", "sc",
+                "united", "de", "los", "san", "new", "red", "bay"}
+        wa = {w for w in a.lower().split() if w not in skip and len(w) > 2}
+        wb = {w for w in b.lower().split() if w not in skip and len(w) > 2}
+        return bool(wa & wb)
+
+    # ── ESPN scoreboard: records + streaks ───────────────────────────────
+    try:
+        board = _get(
+            f"https://site.api.espn.com/apis/site/v2/sports/{sport_path}/scoreboard",
+            params={"dates": date_str},
+        )
+        matched = None
+        for event in board.get("events", []):
+            for comp in event.get("competitions", []):
+                comps = comp.get("competitors", [])
+                away_e = next((c.get("team", {}).get("displayName", "")
+                               for c in comps if c.get("homeAway") == "away"), "")
+                home_e = next((c.get("team", {}).get("displayName", "")
+                               for c in comps if c.get("homeAway") == "home"), "")
+                if _overlap(away_e, away_name) and _overlap(home_e, home_name):
+                    matched = comp
+                    break
+            if matched:
+                break
+
+        if matched:
+            for c in matched.get("competitors", []):
+                side = c.get("homeAway", "")          # "home" or "away"
+                recs  = {r.get("type"): r.get("summary", "")
+                         for r in c.get("records", [])}
+                result[f"{side}_record"] = recs.get("total", "")
+                sk = c.get("streak", {})
+                if sk:
+                    result[f"{side}_streak"] = (
+                        sk.get("shortDisplayValue") or sk.get("displayValue", "")
+                    )
+            notes = [n.get("headline", "")
+                     for n in matched.get("notes", []) if n.get("headline")]
+            if notes:
+                result["game_notes"] = notes
+    except Exception as _e:
+        log.debug("fetch_game_context: ESPN scoreboard error: %s", _e)
+
+    # ── NHL: standings (points, last-10, playoff position/clinch) ────────
+    if league == "icehockey_nhl":
+        try:
+            standings = _get(_NHL_STANDINGS)
+            away_kw = away_name.split()[-1].lower()
+            home_kw = home_name.split()[-1].lower()
+
+            for entry in standings.get("standings", []):
+                tname = (
+                    entry.get("teamName", {}).get("default", "")
+                    or entry.get("teamCommonName", {}).get("default", "")
+                    or entry.get("teamAbbrev", {}).get("default", "")
+                ).lower()
+                if not tname:
+                    continue
+
+                if away_kw in tname:
+                    side = "away"
+                elif home_kw in tname:
+                    side = "home"
+                else:
+                    continue
+
+                result[f"{side}_pts"]        = entry.get("points", 0)
+                result[f"{side}_conf_rank"]  = entry.get("conferenceSequence", 0)
+                result[f"{side}_wc_rank"]    = entry.get("wildcardSequence", 0)
+                l10 = (f"{entry.get('l10Wins',0)}-"
+                       f"{entry.get('l10Losses',0)}-"
+                       f"{entry.get('l10OtLosses',0)}")
+                result[f"{side}_last10"]     = l10
+
+                ci = entry.get("clinchIndicator", "")
+                playoff_note = {
+                    "p": "Clinched playoff berth",
+                    "z": "Clinched division",
+                    "y": "Clinched conference",
+                    "x": "Clinched Presidents' Trophy",
+                    "e": "Eliminated from playoffs",
+                }.get(ci, "")
+                if playoff_note:
+                    result[f"{side}_playoff_note"] = playoff_note
+        except Exception as _e:
+            log.debug("fetch_game_context: NHL standings error: %s", _e)
+
+        # Goalie
+        try:
+            goalies = fetch_nhl_goalies()
+            away_kw2 = away_name.split()[-1]
+            home_kw2 = home_name.split()[-1]
+            for gname, ginfo in goalies.items():
+                gname_l = gname.lower()
+                if away_kw2.lower() in gname_l:
+                    result["away_goalie"]           = ginfo.get("starter") or "TBD"
+                    result["away_goalie_confirmed"] = ginfo.get("confirmed", False)
+                elif home_kw2.lower() in gname_l:
+                    result["home_goalie"]           = ginfo.get("starter") or "TBD"
+                    result["home_goalie_confirmed"] = ginfo.get("confirmed", False)
+        except Exception:
+            pass
+
+        # Injuries
+        try:
+            inj = fetch_nhl_injuries()
+            away_kw2 = away_name.split()[-1]
+            home_kw2 = home_name.split()[-1]
+            for tname, players in inj.items():
+                if not players:
+                    continue
+                tl = tname.lower()
+                if away_kw2.lower() in tl:
+                    result["away_injuries"] = players[:6]
+                elif home_kw2.lower() in tl:
+                    result["home_injuries"] = players[:6]
+        except Exception:
+            pass
+
+    # ── NBA: playoff seed + injuries ─────────────────────────────────────
+    elif league == "basketball_nba":
+        try:
+            sd = _get(_ESPN_NBA_STAND)
+            away_kw = away_name.split()[-1].lower()
+            home_kw = home_name.split()[-1].lower()
+            all_entries = []
+            for child in sd.get("children", []):
+                all_entries.extend(
+                    child.get("standings", {}).get("entries", []))
+            for entry in all_entries:
+                tname = entry.get("team", {}).get("displayName", "").lower()
+                stats = {s.get("name"): s for s in entry.get("stats", [])}
+                if away_kw in tname:
+                    side = "away"
+                elif home_kw in tname:
+                    side = "home"
+                else:
+                    continue
+                if not result.get(f"{side}_record"):
+                    ov = stats.get("overall", {})
+                    result[f"{side}_record"] = ov.get("displayValue", "")
+                ps = stats.get("playoffSeed", {})
+                if ps:
+                    result[f"{side}_playoff_seed"] = int(ps.get("value", 0) or 0)
+                l10 = stats.get("Last Ten Games", {}) or stats.get("L10", {})
+                if l10:
+                    result[f"{side}_last10"] = l10.get("displayValue", "")
+        except Exception as _e:
+            log.debug("fetch_game_context: NBA standings error: %s", _e)
+
+        try:
+            inj = fetch_nba_injuries()
+            away_kw = away_name.split()[-1]
+            home_kw = home_name.split()[-1]
+            for tname, players in inj.items():
+                if not players:
+                    continue
+                tl = tname.lower()
+                if away_kw.lower() in tl:
+                    result["away_injuries"] = players[:6]
+                elif home_kw.lower() in tl:
+                    result["home_injuries"] = players[:6]
+        except Exception:
+            pass
+
+    # ── MLB: probable pitchers ────────────────────────────────────────────
+    elif league == "baseball_mlb":
+        try:
+            pit_date = (commence_dt.strftime("%Y-%m-%d")
+                        if commence_dt
+                        else datetime.now(timezone.utc).strftime("%Y-%m-%d"))
+            sched = _get(
+                _MLB_SCHEDULE,
+                params={"sportId": 1, "date": pit_date,
+                        "hydrate": "probablePitcher"},
+            )
+            away_kw = away_name.split()[-1].lower()
+            home_kw = home_name.split()[-1].lower()
+            for de in sched.get("dates", []):
+                for g in de.get("games", []):
+                    teams = g.get("teams", {})
+                    ht = teams.get("home", {}).get("team", {}).get("name", "").lower()
+                    at = teams.get("away", {}).get("team", {}).get("name", "").lower()
+                    if home_kw in ht and away_kw in at:
+                        for side in ("home", "away"):
+                            pp = teams.get(side, {}).get("probablePitcher")
+                            if pp:
+                                result[f"{side}_pitcher"] = pp.get("fullName", "TBD")
+                        break
+        except Exception:
+            pass
+
+    log.debug("fetch_game_context: %s → %d context fields", game, len(result))
+    return result
 
 
 # ---------------------------------------------------------------------------

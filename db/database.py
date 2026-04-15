@@ -177,6 +177,8 @@ class DailyPick(Base):
     sent_at       = Column(DateTime(timezone=True), nullable=True)
     result        = Column(String, nullable=True)  # "won"|"lost"|"push"|"pending" — future use
     game_id       = Column(String, nullable=True)  # Odds API game ID — used for CLV closing line lookup
+    player_name   = Column(String, nullable=True)  # player name for prop picks
+    is_prop       = Column(Boolean, nullable=True, default=False)
 
     def __repr__(self) -> str:
         return (

@@ -29,11 +29,15 @@ h1 { color: var(--brand-dark); font-size: 1.5rem; font-weight: 800; margin: 0 0 
 /* ── Stats ── */
 .stats-row {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: 12px;
-  margin-bottom: 28px;
+  margin-bottom: 12px;
 }
+.stats-row.last { margin-bottom: 28px; }
 @media (max-width: 700px) { .stats-row { grid-template-columns: repeat(2, 1fr); gap: 10px; } }
+.stat-box.growth .num { color: #0F6E56; font-size: 1.7rem; }
+.stat-box.neutral .num { color: var(--brand-dark); font-size: 1.7rem; }
+.stat-sub { font-size: 0.7rem; color: var(--text-muted); margin-top: 1px; }
 .stat-box {
   background: #fff;
   border: 1px solid var(--brand-border);
@@ -323,12 +327,6 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
       <p class="subtitle">Last refreshed: {{ now }}</p>
     </div>
     <div class="admin-actions">
-      <button id="adminRefreshBtn" onclick="adminTriggerRefresh()"
-              style="font-size:0.82rem; font-weight:600; padding:8px 16px;
-                     background:#534AB7; color:#fff; border:1px solid #534AB7;
-                     border-radius:8px; cursor:pointer; font-family:inherit;">
-        &#8635; Refresh EV Cache
-      </button>
       <form action="/admin/logout" method="post" style="margin:0;">
         <button type="submit"
                 style="font-size:0.82rem; font-weight:600; padding:8px 16px;
@@ -341,23 +339,239 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
     </div>
   </div>
 
-  {# ── Stats ── #}
+  {# ── Stats row 1: Totals ── #}
   <div class="stats-row">
-    <div class="stat-box">
-      <div class="num">{{ nl_total }}</div>
-      <div class="lbl">Newsletter signups</div>
-    </div>
     <div class="stat-box">
       <div class="num">{{ nl_active }}</div>
       <div class="lbl">Active subscribers</div>
+    </div>
+    <div class="stat-box">
+      <div class="num">{{ user_paid_stripe }}</div>
+      <div class="lbl">Paid subscribers</div>
+    </div>
+    <div class="stat-box">
+      <div class="num">{{ user_comped }}</div>
+      <div class="lbl">Comp / free access</div>
     </div>
     <div class="stat-box">
       <div class="num">{{ user_total }}</div>
       <div class="lbl">Registered users</div>
     </div>
     <div class="stat-box">
-      <div class="num">{{ user_paid }}</div>
-      <div class="lbl">EV Pro subscribers</div>
+      <div class="num">{{ nl_total }}</div>
+      <div class="lbl">Newsletter signups</div>
+    </div>
+  </div>
+
+  {# ── Stats row 2: Growth indicators ── #}
+  <div class="stats-row last">
+    <div class="stat-box growth">
+      <div class="num">+{{ new_nl_7d }}</div>
+      <div class="lbl">New subscribers (7d)</div>
+      <div class="stat-sub">+{{ new_nl_30d }} this month</div>
+    </div>
+    <div class="stat-box growth">
+      <div class="num">+{{ new_users_7d }}</div>
+      <div class="lbl">New users (7d)</div>
+      <div class="stat-sub">+{{ new_users_30d }} this month</div>
+    </div>
+    <div class="stat-box neutral">
+      <div class="num">{{ conversion_rate }}%</div>
+      <div class="lbl">Free → Paid conversion</div>
+      <div class="stat-sub">{{ user_paid }} of {{ user_total }} users</div>
+    </div>
+    <div class="stat-box neutral">
+      <div class="num">{{ ev_bets_count }}</div>
+      <div class="lbl">+EV bets live</div>
+      <div class="stat-sub">{% if cache_avg_ev %}avg +{{ cache_avg_ev }}% EV{% else %}cache empty{% endif %}</div>
+    </div>
+  </div>
+
+  {# ── Pipeline Health ── #}
+  <div class="section-card" style="margin-bottom:16px;">
+    <div class="section-card-header">
+      <h2>⚙️ Pipeline Health</h2>
+      <span class="badge {% if ev_bets_count > 0 %}badge-green{% else %}badge-red{% endif %}">
+        {% if ev_bets_count > 0 %}Live{% else %}Cache Empty{% endif %}
+      </span>
+      <button id="adminRefreshBtn" onclick="adminTriggerRefresh()"
+              style="margin-left:auto;font-size:0.8rem;font-weight:600;padding:6px 14px;
+                     background:#534AB7;color:#fff;border:1px solid #534AB7;
+                     border-radius:8px;cursor:pointer;font-family:inherit;white-space:nowrap;">
+        &#8635; Refresh EV Cache
+      </button>
+      <span id="syncResult" style="font-size:0.78rem;color:var(--text-muted);"></span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:0;border-bottom:1px solid var(--brand-border);">
+      <div style="padding:14px 20px;border-right:1px solid var(--brand-border);">
+        <div style="font-size:1.4rem;font-weight:800;color:var(--brand-primary);">{{ ev_bets_count }}</div>
+        <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">Active +EV Bets</div>
+      </div>
+      <div style="padding:14px 20px;border-right:1px solid var(--brand-border);">
+        <div style="font-size:1.4rem;font-weight:800;color:var(--brand-primary);">{% if cache_avg_ev %}+{{ cache_avg_ev }}%{% else %}—{% endif %}</div>
+        <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">Avg EV in Cache</div>
+      </div>
+      <div style="padding:14px 20px;border-right:1px solid var(--brand-border);">
+        <div style="font-size:1.4rem;font-weight:800;color:var(--brand-primary);">{% if cache_avg_odds %}{% if cache_avg_odds > 0 %}+{% endif %}{{ cache_avg_odds }}{% else %}—{% endif %}</div>
+        <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">Avg Odds in Cache</div>
+      </div>
+      <div style="padding:14px 20px;">
+        <div style="font-size:0.88rem;font-weight:700;color:var(--brand-dark);">{{ last_cache_at }}</div>
+        <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">Last Cache Refresh</div>
+      </div>
+    </div>
+    {% if sports_active %}
+    <div style="padding:12px 20px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+      <span style="font-size:0.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-right:4px;">Active Sports:</span>
+      {% set _sl = {"basketball_nba":"NBA","icehockey_nhl":"NHL","baseball_mlb":"MLB","soccer_epl":"EPL","soccer_spain_la_liga":"La Liga","soccer_germany_bundesliga":"Bundesliga","soccer_usa_mls":"MLS","americanfootball_nfl":"NFL"} %}
+      {% for s in sports_active %}
+      <span class="tag tag-active" style="font-size:0.72rem;">{{ _sl.get(s, s | upper) }}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  {# ── Growth & Funnel ── #}
+  <div class="section-card" style="margin-bottom:16px;">
+    <div class="coll-header" onclick="toggleColl('growth-card')" id="growth-card-hdr">
+      <span class="coll-title">📈 Growth &amp; Funnel</span>
+      <span class="coll-arrow">▼</span>
+    </div>
+    <div class="coll-body" id="growth-card">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:0;">
+        <div style="padding:16px 20px;border-right:1px solid var(--brand-border);border-bottom:1px solid var(--brand-border);">
+          <div style="font-size:0.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Newsletter Growth</div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+            <span style="font-size:0.82rem;color:var(--text-secondary);">Last 7 days</span>
+            <span style="font-size:0.88rem;font-weight:700;color:#0F6E56;">+{{ new_nl_7d }}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+            <span style="font-size:0.82rem;color:var(--text-secondary);">Last 30 days</span>
+            <span style="font-size:0.88rem;font-weight:700;color:#0F6E56;">+{{ new_nl_30d }}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;">
+            <span style="font-size:0.82rem;color:var(--text-secondary);">Unsubscribed</span>
+            <span style="font-size:0.88rem;font-weight:700;color:#C53030;">{{ nl_unsub_count }}</span>
+          </div>
+        </div>
+        <div style="padding:16px 20px;border-right:1px solid var(--brand-border);border-bottom:1px solid var(--brand-border);">
+          <div style="font-size:0.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">User Growth</div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+            <span style="font-size:0.82rem;color:var(--text-secondary);">Last 7 days</span>
+            <span style="font-size:0.88rem;font-weight:700;color:#0F6E56;">+{{ new_users_7d }}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+            <span style="font-size:0.82rem;color:var(--text-secondary);">Last 30 days</span>
+            <span style="font-size:0.88rem;font-weight:700;color:#0F6E56;">+{{ new_users_30d }}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;">
+            <span style="font-size:0.82rem;color:var(--text-secondary);">Free users</span>
+            <span style="font-size:0.88rem;font-weight:700;color:var(--brand-dark);">{{ user_free }}</span>
+          </div>
+        </div>
+        <div style="padding:16px 20px;border-bottom:1px solid var(--brand-border);">
+          <div style="font-size:0.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Conversion Funnel</div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+            <span style="font-size:0.82rem;color:var(--text-secondary);">Newsletter → User</span>
+            <span style="font-size:0.88rem;font-weight:700;color:var(--brand-primary);">{{ nl_to_user_rate }}%</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+            <span style="font-size:0.82rem;color:var(--text-secondary);">Free → EV Pro</span>
+            <span style="font-size:0.88rem;font-weight:700;color:var(--brand-primary);">{{ conversion_rate }}%</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;">
+            <span style="font-size:0.82rem;color:var(--text-secondary);">Paid subscribers</span>
+            <span style="font-size:0.88rem;font-weight:700;color:var(--brand-dark);">{{ user_paid_stripe }}</span>
+          </div>
+        </div>
+      </div>
+      {# Retention signal #}
+      {% if nl_total > 0 %}
+      {% set unsub_rate = ((nl_unsub_count / nl_total) * 100) | round(1) %}
+      <div style="padding:10px 20px;background:var(--brand-surface);font-size:0.78rem;color:var(--text-muted);border-top:1px solid var(--brand-border);">
+        📊 Retention: <strong style="color:{% if unsub_rate < 10 %}#0F6E56{% elif unsub_rate < 25 %}#9A6B00{% else %}#C53030{% endif %};">{{ 100 - unsub_rate }}%</strong> of all-time newsletter signups remain active
+        &nbsp;·&nbsp; Unsubscribe rate: {{ unsub_rate }}%
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {# ── Model Performance ── #}
+  <div class="section-card" style="margin-bottom:16px;">
+    <div class="coll-header" onclick="toggleColl('model-card')" id="model-card-hdr">
+      <span class="coll-title">
+        📋 Daily Pick Record
+        {% if model_win_rate is not none %}
+        <span class="badge {% if model_win_rate >= 55 %}badge-green{% else %}badge-blue{% endif %}" style="font-size:0.7rem;">{{ model_win_rate }}% win rate</span>
+        {% endif %}
+      </span>
+      <span class="coll-arrow">▼</span>
+    </div>
+    <div class="coll-body" id="model-card">
+      {# KPI strip #}
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:0;border-bottom:1px solid var(--brand-border);">
+        <div style="padding:14px 20px;border-right:1px solid var(--brand-border);">
+          <div style="font-size:1.3rem;font-weight:800;color:var(--brand-dark);">{{ total_won_count }}–{{ total_lost_count }}{% if total_push_count %}–{{ total_push_count }}{% endif %}</div>
+          <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">W–L{% if total_push_count %}–P{% endif %} Record</div>
+        </div>
+        <div style="padding:14px 20px;border-right:1px solid var(--brand-border);">
+          <div style="font-size:1.3rem;font-weight:800;color:{% if model_win_rate is not none and model_win_rate >= 55 %}#0F6E56{% else %}var(--brand-primary){% endif %};">
+            {% if model_win_rate is not none %}{{ model_win_rate }}%{% else %}—{% endif %}
+          </div>
+          <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">Win Rate</div>
+        </div>
+        <div style="padding:14px 20px;border-right:1px solid var(--brand-border);">
+          <div style="font-size:1.3rem;font-weight:800;color:var(--brand-primary);">{% if picks_avg_ev %}+{{ picks_avg_ev }}%{% else %}—{% endif %}</div>
+          <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">Avg EV on Picks</div>
+        </div>
+        <div style="padding:14px 20px;border-right:1px solid var(--brand-border);">
+          <div style="font-size:1.3rem;font-weight:800;color:{% if clv_summary.beat_rate is not none and clv_summary.beat_rate >= 55 %}#0F6E56{% else %}var(--brand-primary){% endif %};">
+            {% if clv_summary.beat_rate is not none %}{{ clv_summary.beat_rate }}%{% else %}—{% endif %}
+          </div>
+          <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">CLV Beat Rate</div>
+        </div>
+        <div style="padding:14px 20px;">
+          <div style="font-size:1.3rem;font-weight:800;color:{% if clv_summary.avg_clv is not none and clv_summary.avg_clv > 0 %}#0F6E56{% else %}#C53030{% endif %};">
+            {% if clv_summary.avg_clv is not none %}{% if clv_summary.avg_clv > 0 %}+{% endif %}{{ "%.2f"|format(clv_summary.avg_clv) }}%{% else %}—{% endif %}
+          </div>
+          <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">Avg CLV</div>
+        </div>
+      </div>
+      {# By-sport breakdown #}
+      {% if picks_by_sport %}
+      <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Sport</th>
+            <th>W</th><th>L</th><th>P</th>
+            <th>Win %</th>
+            <th>Pending</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for key, sp in picks_by_sport.items() %}
+          {% set sp_settled = sp.won + sp.lost + sp.push %}
+          {% set sp_wr = ((sp.won / sp_settled * 100) | round(1)) if sp_settled > 0 else none %}
+          <tr>
+            <td style="font-weight:600;">{{ sp.label }}</td>
+            <td style="color:#0F6E56;font-weight:700;">{{ sp.won }}</td>
+            <td style="color:#C53030;font-weight:700;">{{ sp.lost }}</td>
+            <td style="color:var(--text-muted);">{{ sp.push }}</td>
+            <td style="font-weight:700;">
+              {% if sp_wr is not none %}
+                <span style="color:{% if sp_wr >= 55 %}#0F6E56{% elif sp_wr >= 45 %}#9A6B00{% else %}#C53030{% endif %};">{{ sp_wr }}%</span>
+              {% else %}—{% endif %}
+            </td>
+            <td style="color:var(--text-muted);">{{ sp.pending }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      </div>
+      {% else %}
+      <p class="empty">No picks recorded yet.</p>
+      {% endif %}
     </div>
   </div>
 
@@ -692,7 +906,11 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
       </a>
       <a href="/admin?tier=paid&q={{ current_q }}&page=1"
          class="tier-tab {% if current_tier == 'paid' %}active{% endif %}">
-        EV Pro ({{ user_paid }})
+        Paid ({{ user_paid_stripe }})
+      </a>
+      <a href="/admin?tier=comped&q={{ current_q }}&page=1"
+         class="tier-tab {% if current_tier == 'comped' %}active{% endif %}">
+        Comped ({{ user_comped }})
       </a>
       <a href="/admin?tier=free&q={{ current_q }}&page=1"
          class="tier-tab {% if current_tier == 'free' %}active{% endif %}">
@@ -739,8 +957,10 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
         <tr>
           <td style="font-weight:500;">{{ u.email }}</td>
           <td>
-            {% if u.is_subscribed %}
-              <span class="tag tag-paid">EV Pro</span>
+            {% if u.is_subscribed and u.stripe_subscription_id %}
+              <span class="tag tag-paid">💳 Paid</span>
+            {% elif u.is_subscribed %}
+              <span class="tag" style="background:rgba(234,179,8,0.1);color:#92400E;border:1px solid rgba(234,179,8,0.3);">🎁 Comped</span>
             {% else %}
               <span class="tag tag-free">Free</span>
             {% endif %}

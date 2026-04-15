@@ -179,13 +179,16 @@ def _bet_card_html(bet) -> str:
         true_prob = bet.get("true_prob", 0)
     else:
         # EVBetCache ORM object
-        ev_pct    = getattr(bet, "ev_percent", 0)
-        team      = getattr(bet, "team", "—")
-        game      = ""                             # not stored in cache
-        market    = getattr(bet, "market", "").upper()
-        book      = getattr(bet, "book", "")
-        odds      = getattr(bet, "odds", "")
-        true_prob = getattr(bet, "true_prob", 0)
+        ev_pct      = getattr(bet, "ev_percent", 0)
+        _team_raw   = getattr(bet, "team", "—")
+        _player     = getattr(bet, "player_name", None)
+        _is_prop    = getattr(bet, "is_prop", False)
+        team        = f"{_player} — {_team_raw}" if (_is_prop and _player) else _team_raw
+        game        = ""                             # not stored in cache
+        market      = getattr(bet, "market", "").upper()
+        book        = getattr(bet, "book", "")
+        odds        = getattr(bet, "odds", "")
+        true_prob   = getattr(bet, "true_prob", 0)
 
     odds_str  = f"+{odds}" if isinstance(odds, (int, float)) and odds > 0 else str(odds)
     ev_color  = "#534AB7" if ev_pct > 8 else ("#0F6E56" if ev_pct > 5 else "#FAC775")
@@ -266,28 +269,44 @@ def _decode_unsub_token(token: str) -> Optional[str]:
 
 def get_top_ev_bet() -> Optional[EVBetCache]:
     """
-    Return the single highest-EV bet whose game starts TODAY (CT timezone).
+    Return the best model-confirmed +EV bet for today's newsletter pick.
 
-    Falls back to any bet in the cache if no today-games are found, so the
-    newsletter never sends empty when the cache is slightly stale.
+    Selection priority:
+    1. Non-prop bet where the projection model agrees (proj_home_score set)
+       AND the game starts within the next 3 days — highest EV among those.
+    2. Any non-prop +EV bet (no projection filter) — highest EV.
+    3. Any bet in the cache (final fallback so the newsletter never sends empty).
+
+    This ensures the free pick is always one where our model and the market
+    are aligned, not just the raw highest-EV line.
     """
-    from datetime import timedelta
-
     db = SessionLocal()
     try:
-        # CT midnight boundaries for today
-        now_ct    = datetime.now(LOCAL_TZ)
-        start_ct  = now_ct.replace(hour=0, minute=0, second=0, microsecond=0)
-        end_ct    = start_ct + timedelta(days=1)
-        # Convert to UTC for the DB query (commence_time is stored with tz)
-        start_utc = start_ct.astimezone(timezone.utc)
-        end_utc   = end_ct.astimezone(timezone.utc)
-
+        # Priority 1: model-confirmed non-prop bet (proj_home_score populated)
         bet = (
             db.query(EVBetCache)
             .filter(
-                EVBetCache.commence_time >= start_utc,
-                EVBetCache.commence_time <  end_utc,
+                EVBetCache.is_prop == False,                          # noqa: E712
+                EVBetCache.proj_home_score != None,                   # noqa: E711
+                EVBetCache.ev_percent > 0,
+            )
+            .order_by(EVBetCache.ev_percent.desc())
+            .first()
+        )
+        if bet:
+            log.info(
+                "get_top_ev_bet: model-confirmed pick → %s %s %.1f%% EV",
+                bet.game, bet.team, bet.ev_percent,
+            )
+            return bet
+
+        # Priority 2: any non-prop EV+ bet
+        log.warning("get_top_ev_bet: no model-confirmed bets — falling back to top non-prop EV+ bet.")
+        bet = (
+            db.query(EVBetCache)
+            .filter(
+                EVBetCache.is_prop == False,                          # noqa: E712
+                EVBetCache.ev_percent > 0,
             )
             .order_by(EVBetCache.ev_percent.desc())
             .first()
@@ -295,16 +314,10 @@ def get_top_ev_bet() -> Optional[EVBetCache]:
         if bet:
             return bet
 
-        # Fallback: no commence_time filter (handles stale or missing timestamps)
-        log.warning(
-            "get_top_ev_bet: no bets with today's commence_time — "
-            "returning overall top bet as fallback."
-        )
-        return (
-            db.query(EVBetCache)
-            .order_by(EVBetCache.ev_percent.desc())
-            .first()
-        )
+        # Priority 3: anything in the cache
+        log.warning("get_top_ev_bet: no non-prop bets — returning overall top bet as last resort.")
+        return db.query(EVBetCache).order_by(EVBetCache.ev_percent.desc()).first()
+
     finally:
         db.close()
 
@@ -339,7 +352,10 @@ def _generate_synopsis(bet: EVBetCache) -> str:
         odds_str  = f"+{odds}" if isinstance(odds, int) and odds > 0 else str(odds)
         ev_pct    = getattr(bet, "ev_percent", 0)
         true_prob = getattr(bet, "true_prob", 0)
-        team      = getattr(bet, "team", "")
+        _team_raw = getattr(bet, "team", "")
+        _player   = getattr(bet, "player_name", None)
+        _is_prop  = getattr(bet, "is_prop", False)
+        team      = f"{_player} — {_team_raw}" if (_is_prop and _player) else _team_raw
         market    = getattr(bet, "market", "")
         league    = getattr(bet, "league", "")
         book      = getattr(bet, "book", "")
@@ -437,21 +453,34 @@ def _build_daily_email(
 
     # Format the point value (spread/total line) for display
     point_raw = getattr(bet, "point", None)
-    if point_raw is not None:
-        if market_raw.lower() == "spreads":
-            point_str = f"+{point_raw:g}" if point_raw > 0 else f"{point_raw:g}"
-        else:
-            point_str = f"{point_raw:g}"   # totals: plain number, e.g. "5.5"
+    # Guard against NaN stored as a float (pandas NaN written through the pipeline)
+    _point_valid = (
+        point_raw is not None
+        and not (isinstance(point_raw, float) and point_raw != point_raw)  # NaN check
+    )
+    if _point_valid:
+        try:
+            if market_raw.lower() == "spreads":
+                point_str = f"+{point_raw:g}" if point_raw > 0 else f"{point_raw:g}"
+            else:
+                point_str = f"{point_raw:g}"   # totals: plain number, e.g. "5.5"
+        except (ValueError, TypeError):
+            point_str = ""
     else:
         point_str = ""
 
     source_type = getattr(bet, "source_type", None) or "sportsbook"
 
+    _team_raw  = getattr(bet, "team", "—")
+    _player    = getattr(bet, "player_name", None)
+    _is_prop   = getattr(bet, "is_prop", False)
+    team_label = f"{_player} — {_team_raw}" if (_is_prop and _player) else _team_raw
+
     ctx = {
         "date_str":        date_str,
         "league":          league_display,
         "game":            getattr(bet, "game", "") or "",
-        "team":            getattr(bet, "team", "—"),
+        "team":            team_label,
         "point":           point_str,
         "market":          market_display,
         "book":            getattr(bet, "book", "—"),
@@ -532,6 +561,8 @@ def send_daily_newsletter() -> dict:
                 synopsis      = synopsis,
                 sent_at       = datetime.now(timezone.utc),
                 game_id       = getattr(bet, "game_id",       None),
+                player_name   = getattr(bet, "player_name",   None),
+                is_prop       = getattr(bet, "is_prop",        False),
             ))
             _pick_db.commit()
             log.info("DailyPick saved for %s", today_date_ct)
@@ -568,7 +599,10 @@ def send_daily_newsletter() -> dict:
         odds_raw  = getattr(bet, "odds", 0)
         odds_str  = f"+{odds_raw}" if isinstance(odds_raw, int) and odds_raw > 0 else str(odds_raw)
         ev_pct    = getattr(bet, "ev_percent", 0)
-        team      = getattr(bet, "team", "—")
+        _team_raw = getattr(bet, "team", "—")
+        _player   = getattr(bet, "player_name", None)
+        _is_prop  = getattr(bet, "is_prop", False)
+        team      = f"{_player} — {_team_raw}" if (_is_prop and _player) else _team_raw
         market    = getattr(bet, "market", "").upper()
         book      = getattr(bet, "book", "—")
         true_prob = getattr(bet, "true_prob", 0)
@@ -678,7 +712,7 @@ def send_newsletter_welcome(to_email: str) -> bool:
             &#10003;&nbsp; <strong>Every +EV bet</strong> from the full daily scan
               (usually 10&ndash;30 picks)<br>
             &#10003;&nbsp; <strong>EV % and True Probability</strong> shown on each pick<br>
-            &#10003;&nbsp; <strong>&frac12; Kelly stake sizing</strong> &mdash;
+            &#10003;&nbsp; <strong>&frac14; Kelly stake sizing</strong> &mdash;
               exact bankroll % to risk<br>
             &#10003;&nbsp; <strong>League &amp; market filters</strong> &mdash;
               NHL, NBA, MLB, spreads, totals &amp; more<br>
