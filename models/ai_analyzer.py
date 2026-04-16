@@ -60,15 +60,16 @@ _MODEL = "claude-opus-4-6"
 
 # League → Optimal league key mapping
 _LEAGUE_MAP = {
-    "basketball_nba":          "NBA",
-    "baseball_mlb":            "MLB",
-    "icehockey_nhl":           "NHL",
+    "basketball_nba":          "nba",
+    "baseball_mlb":            "mlb",
+    "icehockey_nhl":           "nhl",
 
-    "soccer_epl":                "EPL",
-    "soccer_spain_la_liga":      "La Liga",
-    "soccer_germany_bundesliga": "Bundesliga",
-    "soccer_usa_mls":            "MLS",
-    "soccer_uefa_champs_league": "Champions League",
+    # Soccer league codes — Optimal MCP uses lowercase abbreviations
+    "soccer_epl":                "epl",
+    "soccer_spain_la_liga":      "laliga",
+    "soccer_germany_bundesliga": "bundesliga",
+    "soccer_usa_mls":            "mls",
+    "soccer_uefa_champs_league": "ucl",
 }
 
 # ---------------------------------------------------------------------------
@@ -160,7 +161,7 @@ def _build_context(bet: dict, client: OptimalClient) -> dict:
     Returns a dict of context sections to pass to Claude.
     """
     ctx: dict = {}
-    league_key = _LEAGUE_MAP.get(bet.get("league", ""), "NBA")
+    league_key = _LEAGUE_MAP.get(bet.get("league", ""), "nba")
     game_str = bet.get("game", "")
     is_prop = bet.get("is_prop", False)
     player_name = bet.get("player_name")
