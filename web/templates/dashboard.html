@@ -611,7 +611,18 @@ main { max-width: none !important; padding: 0 !important; }
   margin-bottom: 16px;
 }
 .card-main-left { flex: 1; min-width: 0; }
-.prop-name { font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--d-purple); margin-bottom: 2px; }
+/* Prop card visual treatment */
+.bet-card.prop-card { border-left: 3px solid var(--d-purple); background: linear-gradient(100deg, rgba(167,139,250,0.04) 0%, transparent 45%); }
+.prop-player-name { font-size: 1rem; font-weight: 800; color: var(--d-text); line-height: 1.2; margin-bottom: 4px; }
+.prop-stat-row { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; flex-wrap: wrap; }
+.prop-stat-badge { font-size: 0.58rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 2px 7px; border-radius: 4px; background: rgba(167,139,250,0.15); color: var(--d-purple); white-space: nowrap; flex-shrink: 0; }
+.prop-direction { font-size: 0.85rem; font-weight: 700; }
+.prop-direction-over { color: var(--d-green); }
+.prop-direction-under { color: var(--d-orange); }
+.prop-line-val { font-size: 0.85rem; font-weight: 800; color: var(--d-text); }
+/* Props pill count badge */
+.pill-count { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 16px; padding: 0 4px; background: rgba(167,139,250,0.2); color: var(--d-purple); border-radius: 8px; font-size: 0.6rem; font-weight: 700; margin-left: 3px; vertical-align: middle; }
+.sport-pill.active .pill-count { background: rgba(167,139,250,0.4); }
 .card-team { font-size: 1.05rem; font-weight: 800; color: var(--d-text); line-height: 1.2; word-break: break-word; }
 .card-game { font-size: 0.7rem; color: var(--d-sub); margin-top: 3px; line-height: 1.3; }
 .card-time { font-size: 0.66rem; color: var(--d-muted); margin-top: 2px; font-variant-numeric: tabular-nums; }
@@ -1554,6 +1565,9 @@ main { max-width: none !important; padding: 0 !important; }
 
 {% block content %}
 
+{# Prop count for pill badge #}
+{% set _prop_count = namespace(v=0) %}{% for _b in bets %}{% if _b.is_prop %}{% set _prop_count.v = _prop_count.v + 1 %}{% endif %}{% endfor %}
+
 {# ── Sport bar ── #}
 <div class="sport-bar" id="sportBar">
   <button class="sport-pill active" data-filter="league" data-value="all">All Picks</button>
@@ -1561,7 +1575,7 @@ main { max-width: none !important; padding: 0 !important; }
   <button class="sport-pill" data-filter="league" data-value="basketball_nba">🏀 NBA</button>
   <button class="sport-pill" data-filter="league" data-value="baseball_mlb">⚾ MLB</button>
   <button class="sport-pill" data-filter="league" data-value="soccer">⚽ Soccer</button>
-  <button class="sport-pill" data-filter="is_prop" data-value="true">🎯 Props</button>
+  <button class="sport-pill" data-filter="is_prop" data-value="true">🎯 Props{% if _prop_count.v > 0 %}<span class="pill-count" id="propPillCount">{{ _prop_count.v }}</span>{% endif %}</button>
   <div class="search-wrap">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--d-muted);flex-shrink:0;"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
     <input type="text" id="globalSearch" placeholder="Search team, player…" autocomplete="off" />
@@ -1620,6 +1634,14 @@ main { max-width: none !important; padding: 0 !important; }
       <button class="qfilter-btn" data-filter="market" data-value="h2h">Moneyline</button>
       <button class="qfilter-btn" data-filter="market" data-value="spreads">Spread</button>
       <button class="qfilter-btn" data-filter="market" data-value="totals">Total</button>
+    </div>
+
+    {# Prop Type — revealed when Props pill is active #}
+    <div id="propTypeWrap" style="display:none;">
+      <div class="sidebar-section-label">Prop Type</div>
+      <div class="qfilter-btns" style="flex-wrap:wrap;gap:4px;" id="propTypeSection">
+        {# filled by _buildPropTypeChips() on load #}
+      </div>
     </div>
 
     <div class="sidebar-section-label">Line Movement</div>
@@ -1718,7 +1740,7 @@ main { max-width: none !important; padding: 0 !important; }
           {% else %}{% set team_display = bet.team %}{% endif %}
           {% if bet.market in ["h2h","spreads","totals"] %}{% set market_key = bet.market %}{% else %}{% set market_key = "props" %}{% endif %}
 
-          <div class="bet-card {{ tier }}"
+          <div class="bet-card {{ tier }}{{ ' prop-card' if bet.is_prop else '' }}"
                data-league="{{ bet.league }}"
                data-market="{{ market_key }}"
                data-source="{{ bet.source_type or 'sportsbook' }}"
@@ -1781,10 +1803,23 @@ main { max-width: none !important; padding: 0 !important; }
               {# Main: team + odds #}
               <div class="card-main">
                 <div class="card-main-left">
-                  {% if bet.is_prop and bet.player_name %}<div class="prop-name">{{ bet.player_name }}</div>{% endif %}
-                  <div class="card-team">{{ team_display }}</div>
-                  {% if bet.game %}<div class="card-game">{{ bet.game }}</div>{% endif %}
-                  {% if bet.commence_time %}<div class="card-time">⏰ <span data-commence-fmt="{{ bet.commence_time.isoformat() }}">—</span></div>{% endif %}
+                  {% if bet.is_prop %}
+                    {# Prop: big player name, stat badge, over/under, line value #}
+                    {% set _dir = (bet.team or '') | lower %}
+                    <div class="prop-player-name">{{ bet.player_name or bet.team }}</div>
+                    <div class="prop-stat-row">
+                      <span class="prop-stat-badge">{{ market_display }}</span>
+                      <span class="prop-direction {{ 'prop-direction-over' if _dir == 'over' else 'prop-direction-under' }}">{{ bet.team | title }}</span>
+                      {% if bet.point is not none %}<span class="prop-line-val">{{ (bet.point | int) if (bet.point == (bet.point | int)) else bet.point }}</span>{% endif %}
+                    </div>
+                    {% if bet.game %}<div class="card-game">{{ bet.game }}</div>{% endif %}
+                    {% if bet.commence_time %}<div class="card-time">⏰ <span data-commence-fmt="{{ bet.commence_time.isoformat() }}">—</span></div>{% endif %}
+                  {% else %}
+                    {# Game bet: standard layout #}
+                    <div class="card-team">{{ team_display }}</div>
+                    {% if bet.game %}<div class="card-game">{{ bet.game }}</div>{% endif %}
+                    {% if bet.commence_time %}<div class="card-time">⏰ <span data-commence-fmt="{{ bet.commence_time.isoformat() }}">—</span></div>{% endif %}
+                  {% endif %}
                 </div>
                 <div class="card-odds-col">
                   <div class="odds-val {% if bet.odds > 0 %}odds-pos{% else %}odds-neg{% endif %}">{{ odds_str }}</div>
@@ -2049,6 +2084,24 @@ main { max-width: none !important; padding: 0 !important; }
       </div>
     </div>
 
+    {# Bet Type: All / Games / Props #}
+    <div>
+      <div class="mf-section-label">Bet Type</div>
+      <div class="mf-btns">
+        <button class="qfilter-btn active" data-filter="is_prop" data-value="all">All</button>
+        <button class="qfilter-btn" data-filter="is_prop" data-value="false">🏈 Games</button>
+        <button class="qfilter-btn" data-filter="is_prop" data-value="true">🎯 Props</button>
+      </div>
+    </div>
+
+    {# Prop Type — revealed when Props is selected above #}
+    <div id="mfPropTypeWrap" style="display:none;">
+      <div class="mf-section-label">Prop Type</div>
+      <div class="mf-btns" id="mfPropTypeSection">
+        {# filled by _buildPropTypeChips() on load #}
+      </div>
+    </div>
+
     {# Books — group + individual, built from live bets #}
     {% if bets %}
     {% set _mfbn = {'draftkings':'DraftKings','fanduel':'FanDuel','betmgm':'BetMGM','caesars':'Caesars','williamhill_us':'Caesars WH','pointsbet':'Fanatics','betfair_ex_uk':'Betfair','kalshi':'Kalshi','novig':'NoVig','polymarket':'Polymarket','prophetx':'ProphetX','betopenly':'BetOpenly'} %}
@@ -2170,9 +2223,11 @@ function renderValueScores() {
 renderValueScores();
 
 // ── Filter state ───────────────────────────────────────────────────────────
+// (prop type chips are built after filter state + helpers are defined — see _buildPropTypeChips call below)
 let activeLeague = 'all', activeMarket = 'all';
 let activeBooks  = new Set();   // empty = All; multi-select (individual books + group presets)
-let activeIsProp = 'false', activeDay = 'all';
+let activeIsProp = 'all', activeDay = 'all';  // 'all' | 'true' (props only) | 'false' (games only)
+let activePropMarket = 'all';                 // prop sub-type filter
 let activeSort   = 'ev_desc', activeMinEv = 0, activeSearch = '';
 let activeCLVDir = 'all';
 let _isCompact   = localStorage.getItem('positplusev_compact') === '1';
@@ -2420,8 +2475,9 @@ function applyFilters() {
     const marketOk = activeMarket === 'all' || card.dataset.market === activeMarket;
     const bookOk   = activeBooks.size === 0 || activeBooks.has(card.dataset.book || '');
     const clvDirOk = activeCLVDir === 'all' || (card.dataset.clvDir || '') === activeCLVDir;
-    const propOk   = activeIsProp === 'all' || card.dataset.isProp === activeIsProp;
-    const evOk     = parseFloat(card.dataset.ev) >= activeMinEv;
+    const propOk       = activeIsProp === 'all' || card.dataset.isProp === activeIsProp;
+    const propMarketOk = activePropMarket === 'all' || card.dataset.propMarket === activePropMarket;
+    const evOk         = parseFloat(card.dataset.ev) >= activeMinEv;
     const searchOk = !activeSearch ||
       (card.dataset.team || '').toLowerCase().includes(activeSearch) ||
       (card.dataset.game || '').toLowerCase().includes(activeSearch) ||
@@ -2435,7 +2491,7 @@ function applyFilters() {
       if (activeDay === 'tomorrow') dayOk = cd === tomorrowStr;
     }
 
-    const show = leagueOk && marketOk && bookOk && clvDirOk && propOk && evOk && searchOk && dayOk;
+    const show = leagueOk && marketOk && bookOk && clvDirOk && propOk && propMarketOk && evOk && searchOk && dayOk;
     card.style.display = show ? '' : 'none';
     if (show) {
       visible++;
@@ -2467,8 +2523,8 @@ document.querySelectorAll('.sport-pill').forEach(btn => {
   btn.addEventListener('click', () => {
     const ft = btn.dataset.filter, val = btn.dataset.value;
     if (ft === 'is_prop') {
-      activeIsProp = activeIsProp === 'true' ? 'false' : 'true';
-      document.querySelectorAll('.sport-pill[data-filter="is_prop"]').forEach(b => b.classList.toggle('active', activeIsProp === 'true'));
+      // Toggle: if already filtering props-only → back to all; else → props-only
+      _setIsProp(activeIsProp === 'true' ? 'all' : 'true');
     } else {
       document.querySelectorAll('.sport-pill[data-filter="league"]').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
@@ -2514,6 +2570,69 @@ function _syncBookChipVisuals() {
   });
 }
 
+// ── Prop type chip builder ─────────────────────────────────────────────────
+function _buildPropTypeChips() {
+  const markets = new Map(); // propMarket key → display label
+  document.querySelectorAll('.bet-card[data-is-prop="true"]').forEach(c => {
+    const m = c.dataset.propMarket;
+    if (m && !markets.has(m)) markets.set(m, c.dataset.marketDisplay || m.replace(/_/g,' '));
+  });
+  ['propTypeSection','mfPropTypeSection'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML = '';
+    const allBtn = document.createElement('button');
+    allBtn.className = 'qfilter-btn active';
+    allBtn.dataset.filter = 'prop-market';
+    allBtn.dataset.value  = 'all';
+    allBtn.textContent    = 'All Props';
+    el.appendChild(allBtn);
+    markets.forEach((label, key) => {
+      const btn     = document.createElement('button');
+      btn.className = 'qfilter-btn';
+      btn.dataset.filter = 'prop-market';
+      btn.dataset.value  = key;
+      btn.textContent    = label;
+      el.appendChild(btn);
+    });
+    el.querySelectorAll('.qfilter-btn[data-filter="prop-market"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        activePropMarket = btn.dataset.value;
+        document.querySelectorAll('.qfilter-btn[data-filter="prop-market"]').forEach(b =>
+          b.classList.toggle('active', b.dataset.value === activePropMarket)
+        );
+        applyFilters();
+        updateFilterBadge();
+      });
+    });
+  });
+}
+
+// ── isProp unified setter ──────────────────────────────────────────────────
+function _setIsProp(val) {
+  activeIsProp = val;
+  // sport-pill: active only when showing props-only
+  document.querySelectorAll('.sport-pill[data-filter="is_prop"]').forEach(b =>
+    b.classList.toggle('active', activeIsProp === 'true')
+  );
+  // mobile sheet chips: match exact value
+  document.querySelectorAll('.qfilter-btn[data-filter="is_prop"]').forEach(b =>
+    b.classList.toggle('active', b.dataset.value === activeIsProp)
+  );
+  // show/hide prop type sub-sections
+  const show = activeIsProp === 'true';
+  ['propTypeWrap','mfPropTypeWrap'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = show ? '' : 'none';
+  });
+  if (!show) {
+    activePropMarket = 'all';
+    document.querySelectorAll('.qfilter-btn[data-filter="prop-market"]').forEach(b =>
+      b.classList.toggle('active', b.dataset.value === 'all')
+    );
+  }
+}
+
 // ── Sidebar + mobile sheet qfilter btns ───────────────────────────────────
 document.querySelectorAll('.qfilter-btn[data-filter]').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -2537,6 +2656,10 @@ document.querySelectorAll('.qfilter-btn[data-filter]').forEach(btn => {
       // If all of this type are already selected → deselect them; else select all
       booksOfType.forEach(b => allSelected ? activeBooks.delete(b) : activeBooks.add(b));
       _syncBookChipVisuals();
+
+    } else if (ft === 'is_prop') {
+      // ── Bet type (games / props / all) ────────────────────────────────────
+      _setIsProp(val);
 
     } else {
       // ── All other filters: single mutual-exclusion ────────────────────────
@@ -2576,10 +2699,11 @@ document.querySelectorAll('.qfilter-btn[data-ev]').forEach(btn => {
 
 function clearFilters() {
   activeLeague = 'all'; activeMarket = 'all';
-  activeBooks.clear(); activeIsProp = 'false'; activeDay = 'all'; activeCLVDir = 'all';
+  activeBooks.clear(); activeDay = 'all'; activeCLVDir = 'all';
   activeMinEv = 0; activeSearch = '';
   document.getElementById('globalSearch').value = '';
   _setEvSlider(0);
+  _setIsProp('all');
   document.querySelectorAll('.sport-pill').forEach(b => b.classList.toggle('active', b.dataset.value === 'all' && b.dataset.filter === 'league'));
   document.querySelectorAll('.qfilter-btn[data-filter]').forEach(b => b.classList.toggle('active', b.dataset.value === 'all'));
   _syncBookChipVisuals();
@@ -2591,10 +2715,12 @@ function clearFilters() {
 // ── Mobile filter sheet ────────────────────────────────────────────────────
 function updateFilterBadge() {
   const count = [
-    activeMarket  !== 'all',
-    activeBooks.size > 0,
-    activeCLVDir  !== 'all',
-    activeMinEv   > 0,
+    activeMarket      !== 'all',
+    activeBooks.size  > 0,
+    activeCLVDir      !== 'all',
+    activeMinEv       > 0,
+    activeIsProp      !== 'all',
+    activePropMarket  !== 'all',
   ].filter(Boolean).length;
   const badge = document.getElementById('mfBadge');
   if (!badge) return;
@@ -3304,6 +3430,7 @@ function closeTrackerDrawer() {
 sortCards();
 applyFilters();
 updateFilterBadge();
+_buildPropTypeChips();
 
 // Tracker init: badge + re-mark any bets already tracked this session
 (function() {
