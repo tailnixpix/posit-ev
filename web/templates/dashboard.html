@@ -1738,7 +1738,7 @@ main { max-width: none !important; padding: 0 !important; }
           {% elif bet.market == "spreads" and bet.point %}{% if bet.point > 0 %}{% set team_display = bet.team ~ " +" ~ bet.point %}{% else %}{% set team_display = bet.team ~ " " ~ bet.point %}{% endif %}
           {% elif bet.is_prop and bet.point is not none %}{% set point_fmt = (bet.point | int) if (bet.point == (bet.point | int)) else bet.point %}{% set team_display = bet.team ~ " " ~ point_fmt %}
           {% else %}{% set team_display = bet.team %}{% endif %}
-          {% if bet.market in ["h2h","spreads","totals"] %}{% set market_key = bet.market %}{% else %}{% set market_key = "props" %}{% endif %}
+          {% if bet.market in ["h2h","spreads","totals","nrfi"] %}{% set market_key = bet.market %}{% else %}{% set market_key = "props" %}{% endif %}
 
           <div class="bet-card {{ tier }}{{ ' prop-card' if bet.is_prop else '' }}"
                data-league="{{ bet.league }}"

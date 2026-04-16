@@ -224,6 +224,14 @@ def run_pipeline(
     log.info("Fetching odds for %d sport(s): %s", len(sport_keys), sport_keys)
     odds_df = get_odds_df(sport_keys=sport_keys, markets=markets)
 
+    # Extend markets for EV computation to include sport-specific game-level
+    # markets (e.g. nrfi for MLB).  The odds_fetcher already fetches them via
+    # SPORT_MARKETS_EXTRA; we just need to tell find_positive_ev_model to process
+    # those rows.  Empty subsets for sports that don't have the market are skipped.
+    from scripts.odds_fetcher import SPORT_MARKETS_EXTRA as _EXTRA
+    _extra_markets = {m for v in _EXTRA.values() for m in v}
+    ev_markets = list(markets) + [m for m in _extra_markets if m not in markets]
+
     if odds_df.empty:
         log.warning("No odds data returned from API.")
         return pd.DataFrame()
@@ -236,7 +244,7 @@ def run_pipeline(
     log.info("Computing model-based EV (threshold=%.1f%%)...", ev_threshold)
     ev_df = find_positive_ev_model(
         odds_df, proj_map,
-        markets=markets,
+        markets=ev_markets,
         ev_threshold=ev_threshold,
         stake=stake,
     )
