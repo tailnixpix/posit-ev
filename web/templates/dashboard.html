@@ -1560,6 +1560,25 @@ main { max-width: none !important; padding: 0 !important; }
 @media (min-width: 769px) {
   .bottom-nav { display: none; }
 }
+/* count badges on filter chips */
+.chip-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  padding: 0 4px;
+  height: 14px;
+  border-radius: 7px;
+  font-size: 0.58rem;
+  font-weight: 700;
+  background: rgba(255,255,255,0.18);
+  color: inherit;
+  margin-left: 3px;
+  vertical-align: middle;
+  letter-spacing: 0;
+}
+.qfilter-btn.active .chip-count { background: rgba(0,0,0,0.18); }
+.chip-count:empty { display: none; }
 </style>
 {% endblock %}
 
@@ -1628,12 +1647,21 @@ main { max-width: none !important; padding: 0 !important; }
       </div>
     </div>
 
-    <div class="sidebar-section-label">Market</div>
+    <div class="sidebar-section-label">Bet Type</div>
     <div class="qfilter-btns" style="flex-wrap:wrap;gap:4px;">
-      <button class="qfilter-btn active" data-filter="market" data-value="all">All</button>
-      <button class="qfilter-btn" data-filter="market" data-value="h2h">Moneyline</button>
-      <button class="qfilter-btn" data-filter="market" data-value="spreads">Spread</button>
-      <button class="qfilter-btn" data-filter="market" data-value="totals">Total</button>
+      <button class="qfilter-btn active" data-filter="is_prop" data-value="all">All <span class="chip-count"></span></button>
+      <button class="qfilter-btn" data-filter="is_prop" data-value="false">🏈 Games <span class="chip-count"></span></button>
+      <button class="qfilter-btn" data-filter="is_prop" data-value="true">🎯 Props <span class="chip-count"></span></button>
+    </div>
+
+    <div id="gameMarketsWrap">
+    <div class="sidebar-section-label">Game Markets</div>
+    <div class="qfilter-btns" style="flex-wrap:wrap;gap:4px;">
+      <button class="qfilter-btn active" data-filter="market" data-value="all">All <span class="chip-count"></span></button>
+      <button class="qfilter-btn" data-filter="market" data-value="h2h">Moneyline <span class="chip-count"></span></button>
+      <button class="qfilter-btn" data-filter="market" data-value="spreads">Spread <span class="chip-count"></span></button>
+      <button class="qfilter-btn" data-filter="market" data-value="totals">Total <span class="chip-count"></span></button>
+    </div>
     </div>
 
     {# Prop Type — revealed when Props pill is active #}
@@ -1646,9 +1674,9 @@ main { max-width: none !important; padding: 0 !important; }
 
     <div class="sidebar-section-label">Line Movement</div>
     <div class="qfilter-btns" style="flex-wrap:wrap;gap:4px;">
-      <button class="qfilter-btn active" data-filter="clvdir" data-value="all">All</button>
-      <button class="qfilter-btn" data-filter="clvdir" data-value="pos">📈 CLV+</button>
-      <button class="qfilter-btn" data-filter="clvdir" data-value="neg">⚠️ CLV−</button>
+      <button class="qfilter-btn active" data-filter="clvdir" data-value="all">All <span class="chip-count"></span></button>
+      <button class="qfilter-btn" data-filter="clvdir" data-value="pos">📈 CLV+ <span class="chip-count"></span></button>
+      <button class="qfilter-btn" data-filter="clvdir" data-value="neg">⚠️ CLV− <span class="chip-count"></span></button>
     </div>
 
     {% if bets %}
@@ -2073,24 +2101,24 @@ main { max-width: none !important; padding: 0 !important; }
       </div>
     </div>
 
-    {# Market #}
-    <div>
-      <div class="mf-section-label">Market</div>
-      <div class="mf-btns">
-        <button class="qfilter-btn active" data-filter="market" data-value="all">All</button>
-        <button class="qfilter-btn" data-filter="market" data-value="h2h">Moneyline</button>
-        <button class="qfilter-btn" data-filter="market" data-value="spreads">Spread</button>
-        <button class="qfilter-btn" data-filter="market" data-value="totals">Total</button>
-      </div>
-    </div>
-
     {# Bet Type: All / Games / Props #}
     <div>
       <div class="mf-section-label">Bet Type</div>
       <div class="mf-btns">
-        <button class="qfilter-btn active" data-filter="is_prop" data-value="all">All</button>
-        <button class="qfilter-btn" data-filter="is_prop" data-value="false">🏈 Games</button>
-        <button class="qfilter-btn" data-filter="is_prop" data-value="true">🎯 Props</button>
+        <button class="qfilter-btn active" data-filter="is_prop" data-value="all">All <span class="chip-count"></span></button>
+        <button class="qfilter-btn" data-filter="is_prop" data-value="false">🏈 Games <span class="chip-count"></span></button>
+        <button class="qfilter-btn" data-filter="is_prop" data-value="true">🎯 Props <span class="chip-count"></span></button>
+      </div>
+    </div>
+
+    {# Game Markets — hidden when Props-only selected #}
+    <div id="mfGameMarketsWrap">
+      <div class="mf-section-label">Game Markets</div>
+      <div class="mf-btns">
+        <button class="qfilter-btn active" data-filter="market" data-value="all">All <span class="chip-count"></span></button>
+        <button class="qfilter-btn" data-filter="market" data-value="h2h">Moneyline <span class="chip-count"></span></button>
+        <button class="qfilter-btn" data-filter="market" data-value="spreads">Spread <span class="chip-count"></span></button>
+        <button class="qfilter-btn" data-filter="market" data-value="totals">Total <span class="chip-count"></span></button>
       </div>
     </div>
 
@@ -2132,9 +2160,9 @@ main { max-width: none !important; padding: 0 !important; }
     <div>
       <div class="mf-section-label">Line Movement</div>
       <div class="mf-btns">
-        <button class="qfilter-btn active" data-filter="clvdir" data-value="all">All</button>
-        <button class="qfilter-btn" data-filter="clvdir" data-value="pos">📈 CLV+</button>
-        <button class="qfilter-btn" data-filter="clvdir" data-value="neg">⚠️ CLV−</button>
+        <button class="qfilter-btn active" data-filter="clvdir" data-value="all">All <span class="chip-count"></span></button>
+        <button class="qfilter-btn" data-filter="clvdir" data-value="pos">📈 CLV+ <span class="chip-count"></span></button>
+        <button class="qfilter-btn" data-filter="clvdir" data-value="neg">⚠️ CLV− <span class="chip-count"></span></button>
       </div>
     </div>
 
@@ -2459,6 +2487,73 @@ function sortCards() {
 }
 document.getElementById('sortSelect').addEventListener('change', function() { activeSort = this.value; sortCards(); });
 
+// ── Faceted filter counts ──────────────────────────────────────────────────
+// Returns how many cards would be visible if [dimension] were set to [value]
+// while all other active filters remain the same.
+function _countFor(dimension, value) {
+  const todayStr    = ctDateStr(new Date());
+  const tomorrowStr = ctDateStr(new Date(Date.now() + 86400000));
+  let count = 0;
+  document.querySelectorAll('.bet-card').forEach(card => {
+    const ip   = dimension === 'is_prop'     ? value : activeIsProp;
+    const mkt  = dimension === 'market'      ? value : activeMarket;
+    const pm   = dimension === 'prop_market' ? value : activePropMarket;
+    const clv  = dimension === 'clvdir'      ? value : activeCLVDir;
+    const lg   = dimension === 'league'      ? value : activeLeague;
+
+    const leagueOk = lg === 'all' || (lg === 'soccer' && card.dataset.league.startsWith('soccer_')) || card.dataset.league === lg;
+    const marketOk = mkt === 'all' || card.dataset.market === mkt;
+    const bookOk   = activeBooks.size === 0 || activeBooks.has(card.dataset.book || '');
+    const clvDirOk = clv === 'all' || (card.dataset.clvDir || '') === clv;
+    const propOk   = ip === 'all' || card.dataset.isProp === ip;
+    const propMktOk= pm === 'all' || card.dataset.propMarket === pm;
+    const evOk     = parseFloat(card.dataset.ev) >= activeMinEv;
+    const srchOk   = !activeSearch ||
+      (card.dataset.team   || '').toLowerCase().includes(activeSearch) ||
+      (card.dataset.game   || '').toLowerCase().includes(activeSearch) ||
+      (card.dataset.playerName || '').toLowerCase().includes(activeSearch);
+    let dayOk = true;
+    const cIso = card.dataset.commence;
+    if (activeDay !== 'all' && cIso) {
+      const cd = ctDateStr(new Date(cIso));
+      if (activeDay === 'today')    dayOk = cd === todayStr;
+      if (activeDay === 'tomorrow') dayOk = cd === tomorrowStr;
+    }
+    if (leagueOk && marketOk && bookOk && clvDirOk && propOk && propMktOk && evOk && srchOk && dayOk) count++;
+  });
+  return count;
+}
+
+function updateChipCounts() {
+  // Bet Type
+  ['all','false','true'].forEach(val => {
+    const n = _countFor('is_prop', val);
+    document.querySelectorAll(`.qfilter-btn[data-filter="is_prop"][data-value="${val}"] .chip-count`).forEach(el => {
+      el.textContent = n > 0 ? n : '';
+    });
+  });
+  // Market
+  ['all','h2h','spreads','totals'].forEach(val => {
+    const n = _countFor('market', val);
+    document.querySelectorAll(`.qfilter-btn[data-filter="market"][data-value="${val}"] .chip-count`).forEach(el => {
+      el.textContent = n > 0 ? n : '';
+    });
+  });
+  // CLV direction
+  ['all','pos','neg'].forEach(val => {
+    const n = _countFor('clvdir', val);
+    document.querySelectorAll(`.qfilter-btn[data-filter="clvdir"][data-value="${val}"] .chip-count`).forEach(el => {
+      el.textContent = n > 0 ? n : '';
+    });
+  });
+  // Prop market sub-types
+  document.querySelectorAll('.qfilter-btn[data-filter="prop-market"]').forEach(btn => {
+    const n = _countFor('prop_market', btn.dataset.value);
+    const el = btn.querySelector('.chip-count');
+    if (el) el.textContent = n > 0 ? n : '';
+  });
+}
+
 // ── Apply filters ──────────────────────────────────────────────────────────
 function applyFilters() {
   const todayStr    = ctDateStr(new Date());
@@ -2516,6 +2611,9 @@ function applyFilters() {
 
   // Keep table view in sync with the filtered card set
   if (_viewMode === 'table') rebuildTable();
+
+  // Update count badges on all filter chips
+  updateChipCounts();
 }
 
 // ── Sport pills ────────────────────────────────────────────────────────────
@@ -2586,6 +2684,9 @@ function _buildPropTypeChips() {
     allBtn.dataset.filter = 'prop-market';
     allBtn.dataset.value  = 'all';
     allBtn.textContent    = 'All Props';
+    const allCc = document.createElement('span');
+    allCc.className = 'chip-count';
+    allBtn.appendChild(allCc);
     el.appendChild(allBtn);
     markets.forEach((label, key) => {
       const btn     = document.createElement('button');
@@ -2593,6 +2694,9 @@ function _buildPropTypeChips() {
       btn.dataset.filter = 'prop-market';
       btn.dataset.value  = key;
       btn.textContent    = label;
+      const cc = document.createElement('span');
+      cc.className = 'chip-count';
+      btn.appendChild(cc);
       el.appendChild(btn);
     });
     el.querySelectorAll('.qfilter-btn[data-filter="prop-market"]').forEach(btn => {
@@ -2615,17 +2719,31 @@ function _setIsProp(val) {
   document.querySelectorAll('.sport-pill[data-filter="is_prop"]').forEach(b =>
     b.classList.toggle('active', activeIsProp === 'true')
   );
-  // mobile sheet chips: match exact value
+  // sidebar + mobile sheet chips: match exact value
   document.querySelectorAll('.qfilter-btn[data-filter="is_prop"]').forEach(b =>
     b.classList.toggle('active', b.dataset.value === activeIsProp)
   );
-  // show/hide prop type sub-sections
-  const show = activeIsProp === 'true';
+  // show/hide prop type sub-sections (only when Props selected)
+  const showProps = activeIsProp === 'true';
   ['propTypeWrap','mfPropTypeWrap'].forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.style.display = show ? '' : 'none';
+    if (el) el.style.display = showProps ? '' : 'none';
   });
-  if (!show) {
+  // show/hide game markets section (only when Games or All selected)
+  const showGameMkts = activeIsProp !== 'true';
+  ['gameMarketsWrap','mfGameMarketsWrap'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = showGameMkts ? '' : 'none';
+  });
+  // reset market filter when switching to props-only
+  if (!showGameMkts) {
+    activeMarket = 'all';
+    document.querySelectorAll('.qfilter-btn[data-filter="market"]').forEach(b =>
+      b.classList.toggle('active', b.dataset.value === 'all')
+    );
+  }
+  // reset prop market filter when switching away from props
+  if (!showProps) {
     activePropMarket = 'all';
     document.querySelectorAll('.qfilter-btn[data-filter="prop-market"]').forEach(b =>
       b.classList.toggle('active', b.dataset.value === 'all')
