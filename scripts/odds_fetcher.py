@@ -103,6 +103,8 @@ PROP_MARKETS_BY_SPORT: dict = {
         "player_double_double",   # yes/no double-double
     ],
     "baseball_mlb": [
+        # Team markets (event-level, same fetch/parse path as props)
+        "team_totals",            # per-team run total Over/Under
         # Batter props
         "batter_home_runs", "batter_hits", "batter_rbis",
         "batter_total_bases",     # total bases over/under
