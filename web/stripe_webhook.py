@@ -69,11 +69,16 @@ def _set_subscribed(
     subscription_id: str,
     subscribed: bool,
     trial_ends_at: "datetime | None" = None,
+    customer_email: str = "",
 ) -> bool:
     """
     Find a User by stripe_customer_id and update their subscription state.
 
-    Also stores subscription_id when subscribing and trial_ends_at if provided.
+    Falls back to email lookup when the stored customer_id is stale (e.g.
+    after a test-mode → live-mode switch).  When found via email, the stored
+    stripe_customer_id is updated to the new live-mode value so future
+    webhook events resolve correctly.
+
     Returns True if a matching user was found and updated.
     """
     db = SessionLocal()
@@ -83,10 +88,28 @@ def _set_subscribed(
             .filter(User.stripe_customer_id == customer_id)
             .first()
         )
+
+        if not user and customer_email:
+            # Fallback: match by email (handles test→live mode transition where
+            # the stored customer_id is a stale test-mode ID).
+            user = (
+                db.query(User)
+                .filter(User.email == customer_email)
+                .first()
+            )
+            if user:
+                log.info(
+                    "Webhook: matched user %s by email fallback "
+                    "(old customer_id=%s → new %s)",
+                    user.email, user.stripe_customer_id, customer_id,
+                )
+                # Persist the new live-mode customer ID so future events work.
+                user.stripe_customer_id = customer_id
+
         if not user:
             log.warning(
-                "Webhook: no user found for customer_id=%s sub=%s",
-                customer_id, subscription_id,
+                "Webhook: no user found for customer_id=%s email=%s sub=%s",
+                customer_id, customer_email, subscription_id,
             )
             return False
 
@@ -139,8 +162,7 @@ async def subscribe(request: Request):
         if user.is_subscribed:
             return RedirectResponse(url="/dashboard", status_code=303)
 
-        customer_id = user.stripe_customer_id
-        email       = user.email
+        email = user.email
     finally:
         db.close()
 
@@ -164,10 +186,10 @@ async def subscribe(request: Request):
             "payment_method_collection": "always",
         }
 
-        if customer_id:
-            session_kwargs["customer"] = customer_id
-        else:
-            session_kwargs["customer_email"] = email
+        # Always use customer_email — avoids stale test-mode customer IDs
+        # being passed to the live-mode API after a mode switch.
+        # Stripe will match to an existing live customer or create a new one.
+        session_kwargs["customer_email"] = email
 
         session = stripe.checkout.Session.create(**session_kwargs)
         log.info("Checkout session %s created for %s", session.id, email)
@@ -220,10 +242,18 @@ async def checkout_success(request: Request, session_id: str = ""):
             if trial_end_ts else None
         )
 
-        _set_subscribed(customer_id, subscription_id, subscribed=True, trial_ends_at=trial_ends_at)
+        customer_email = (
+            (session.get("customer_details") or {}).get("email", "")
+            or session.get("customer_email", "")
+        )
+        _set_subscribed(
+            customer_id, subscription_id,
+            subscribed=True, trial_ends_at=trial_ends_at,
+            customer_email=customer_email,
+        )
         log.info(
-            "/success: activated subscription for customer %s session %s trial_ends=%s",
-            customer_id, session_id, trial_ends_at,
+            "/success: activated subscription for customer %s email=%s session %s trial_ends=%s",
+            customer_id, customer_email, session_id, trial_ends_at,
         )
 
     except stripe.error.StripeError as exc:
@@ -270,15 +300,13 @@ async def stripe_webhook(request: Request):
     if event_type == "checkout.session.completed":
         customer_id     = data.get("customer", "")
         subscription_id = data.get("subscription", "")
-        payment_status  = data.get("payment_status", "")
-
-        if payment_status == "paid":
-            _set_subscribed(customer_id, subscription_id, subscribed=True)
-        else:
-            # subscription mode: payment_status may be "no_payment_required"
-            # for trials, or the invoice is still pending — activate anyway
-            # since Stripe only fires this event on successful checkout.
-            _set_subscribed(customer_id, subscription_id, subscribed=True)
+        customer_email  = (
+            (data.get("customer_details") or {}).get("email", "")
+            or data.get("customer_email", "")
+        )
+        # Activate regardless of payment_status — Stripe only fires this event
+        # on successful checkout; trials show "no_payment_required".
+        _set_subscribed(customer_id, subscription_id, subscribed=True, customer_email=customer_email)
 
     # ── customer.subscription.updated ─────────────────────────────────────
     elif event_type == "customer.subscription.updated":
