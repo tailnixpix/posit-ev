@@ -85,10 +85,9 @@ PROP_MARKETS = ["player_props"]  # fetched separately (event-level endpoint)
 # These are merged into the fetch for the relevant sport only — bundling
 # unsupported markets into the global request causes a 422 for the entire sport.
 # NOTE: team_totals caused 422 across all sports (unsupported by prediction-market
-# bookmakers in our list). NRFI/YRFI are MLB-only game-level markets.
-SPORT_MARKETS_EXTRA: dict = {
-    "baseball_mlb": ["nrfi"],  # No Runs First Inning / Yes Runs First Inning
-}
+# bookmakers in our list). NRFI/YRFI are NOT available via The Odds API — all
+# variant keys (nrfi, first_inning_nrfi, game_nrfi, etc.) return 422.
+SPORT_MARKETS_EXTRA: dict = {}
 
 # Sports that support player prop fetching via event-level endpoint
 PROP_SPORTS = ["basketball_nba", "baseball_mlb", "icehockey_nhl"]
