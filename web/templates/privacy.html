@@ -1,0 +1,309 @@
+{% extends "base.html" %}
+
+{% block head %}
+<style>
+:root {
+  --pp-text:    #111827;
+  --pp-sub:     #374151;
+  --pp-muted:   #6B7280;
+  --pp-border:  #E5E7EB;
+  --pp-bg:      #F9FAFB;
+  --pp-accent:  #534AB7;
+}
+.pp-wrap {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 64px 24px 96px;
+}
+.pp-hero {
+  margin-bottom: 48px;
+  border-bottom: 1px solid var(--pp-border);
+  padding-bottom: 32px;
+}
+.pp-hero h1 {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--pp-text);
+  margin: 0 0 8px;
+  letter-spacing: -0.5px;
+}
+.pp-hero p {
+  font-size: 0.88rem;
+  color: var(--pp-muted);
+  margin: 0;
+}
+.pp-section {
+  margin-bottom: 40px;
+}
+.pp-section h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--pp-text);
+  margin: 0 0 12px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--pp-accent);
+  display: inline-block;
+}
+.pp-section p, .pp-section li {
+  font-size: 0.9rem;
+  color: var(--pp-sub);
+  line-height: 1.8;
+  margin: 0 0 12px;
+}
+.pp-section ul {
+  padding-left: 20px;
+  margin: 0 0 12px;
+}
+.pp-section li { margin-bottom: 6px; }
+.pp-section strong { color: var(--pp-text); }
+.pp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  margin-bottom: 12px;
+}
+.pp-table th {
+  text-align: left;
+  padding: 10px 14px;
+  background: var(--pp-bg);
+  border: 1px solid var(--pp-border);
+  font-weight: 700;
+  color: var(--pp-text);
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.pp-table td {
+  padding: 10px 14px;
+  border: 1px solid var(--pp-border);
+  color: var(--pp-sub);
+  vertical-align: top;
+  line-height: 1.6;
+}
+.pp-contact {
+  background: var(--pp-bg);
+  border: 1px solid var(--pp-border);
+  border-radius: 10px;
+  padding: 24px 28px;
+  margin-top: 48px;
+}
+.pp-contact h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--pp-text);
+  margin: 0 0 8px;
+}
+.pp-contact p {
+  font-size: 0.88rem;
+  color: var(--pp-sub);
+  margin: 0;
+  line-height: 1.7;
+}
+.pp-contact a { color: var(--pp-accent); text-decoration: none; font-weight: 600; }
+.pp-contact a:hover { text-decoration: underline; }
+@media (max-width: 600px) {
+  .pp-wrap { padding: 40px 16px 72px; }
+  .pp-hero h1 { font-size: 1.5rem; }
+  .pp-table { font-size: 0.8rem; }
+  .pp-table th, .pp-table td { padding: 8px 10px; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pp-wrap">
+
+  <div class="pp-hero">
+    <h1>Privacy Policy</h1>
+    <p>Effective date: April 15, 2026 &nbsp;·&nbsp; Operated by PositEV &nbsp;·&nbsp; <a href="https://www.posit-ev.com" style="color:var(--pp-accent);text-decoration:none;">www.posit-ev.com</a></p>
+  </div>
+
+  <div class="pp-section">
+    <h2>Overview</h2>
+    <p>
+      PositEV ("we," "us," or "our") operates the website <strong>www.posit-ev.com</strong> and
+      the Posit+EV subscription service. This Privacy Policy explains what personal information we
+      collect, how we use it, who we share it with, and the steps we take to keep it secure.
+    </p>
+    <p>
+      By using our website or subscribing to our service, you agree to the practices described in
+      this policy. If you do not agree, please discontinue use of the service.
+    </p>
+  </div>
+
+  <div class="pp-section">
+    <h2>Information We Collect</h2>
+
+    <p><strong>Information you provide directly:</strong></p>
+    <ul>
+      <li><strong>Email address</strong> — collected at account registration and when you sign up for our free newsletter.</li>
+      <li><strong>Payment information</strong> — billing details (card number, expiry, CVV) are entered directly into Stripe's hosted checkout. We never see, store, or handle raw card data.</li>
+      <li><strong>Support messages</strong> — any text you submit through our contact/support form.</li>
+    </ul>
+
+    <p><strong>Information collected automatically:</strong></p>
+    <ul>
+      <li><strong>Log data</strong> — server logs may record your IP address, browser type, pages visited, and timestamps when you access our service.</li>
+      <li><strong>Authentication cookies</strong> — we set a short-lived JWT (JSON Web Token) cookie when you log in to keep your session active. This cookie contains your user ID and expiry time only; no sensitive personal data is stored in it.</li>
+      <li><strong>Usage data</strong> — aggregate, non-identifiable data about how features are used (e.g., which filters are applied on the dashboard) may be collected to improve the service.</li>
+    </ul>
+  </div>
+
+  <div class="pp-section">
+    <h2>How We Use Your Information</h2>
+    <ul>
+      <li>To create and manage your account and verify your identity.</li>
+      <li>To process subscription payments and manage billing via Stripe.</li>
+      <li>To deliver the daily +EV picks newsletter to subscribers who opt in.</li>
+      <li>To respond to support inquiries you submit.</li>
+      <li>To detect and prevent fraud, abuse, or unauthorized access.</li>
+      <li>To comply with applicable laws and regulations.</li>
+      <li>To improve and operate the Posit+EV service.</li>
+    </ul>
+    <p>
+      We do not sell your personal information. We do not use your data for advertising
+      or share it with data brokers.
+    </p>
+  </div>
+
+  <div class="pp-section">
+    <h2>Information Disclosed to Third Parties</h2>
+    <p>
+      We share your information only with the service providers listed below, and only to the
+      extent necessary for them to perform their specific function.
+    </p>
+
+    <table class="pp-table">
+      <thead>
+        <tr>
+          <th>Party</th>
+          <th>Purpose</th>
+          <th>Data Shared</th>
+          <th>Their Privacy Policy</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Stripe</strong></td>
+          <td>Payment processing &amp; subscription billing</td>
+          <td>Email address, billing details (entered directly into Stripe)</td>
+          <td><a href="https://stripe.com/privacy" target="_blank" rel="noopener" style="color:var(--pp-accent);">stripe.com/privacy</a></td>
+        </tr>
+        <tr>
+          <td><strong>Resend</strong></td>
+          <td>Transactional &amp; newsletter email delivery</td>
+          <td>Email address, email content</td>
+          <td><a href="https://resend.com/legal/privacy-policy" target="_blank" rel="noopener" style="color:var(--pp-accent);">resend.com/legal/privacy-policy</a></td>
+        </tr>
+        <tr>
+          <td><strong>Railway</strong></td>
+          <td>Cloud hosting &amp; infrastructure</td>
+          <td>All data processed by our application passes through Railway servers</td>
+          <td><a href="https://railway.app/legal/privacy" target="_blank" rel="noopener" style="color:var(--pp-accent);">railway.app/legal/privacy</a></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p>
+      We may also disclose information if required by law, court order, or government request,
+      or to protect the rights, property, or safety of PositEV or our users.
+    </p>
+  </div>
+
+  <div class="pp-section">
+    <h2>Method of Disclosure</h2>
+    <p>
+      All data transfers to third-party service providers occur over encrypted HTTPS connections.
+      We do not sell, rent, or trade personal information to any third party for their own
+      marketing purposes. Data is shared programmatically via secure API calls to each provider's
+      infrastructure — no data is transferred via unsecured channels, physical media, or
+      unencrypted email.
+    </p>
+  </div>
+
+  <div class="pp-section">
+    <h2>Security Practices</h2>
+    <ul>
+      <li><strong>HTTPS / TLS encryption</strong> — all traffic between your browser and our servers is encrypted in transit using TLS.</li>
+      <li><strong>No card data storage</strong> — we never store payment card numbers, CVV codes, or full card details on our servers. All payment data is handled exclusively by Stripe, which is PCI DSS Level 1 certified.</li>
+      <li><strong>JWT authentication</strong> — session tokens are cryptographically signed and expire automatically. Passwords are hashed using bcrypt before storage.</li>
+      <li><strong>Environment variable secrets</strong> — API keys and secrets are stored as encrypted environment variables, never hardcoded in source code or exposed publicly.</li>
+      <li><strong>Access controls</strong> — dashboard and subscriber data is access-controlled; only authenticated, subscribed users can view pick data.</li>
+      <li><strong>Minimal data collection</strong> — we collect only the information necessary to operate the service.</li>
+    </ul>
+    <p>
+      While we take reasonable precautions to protect your data, no system is completely secure.
+      We encourage you to use a strong, unique password and to contact us immediately if you
+      suspect unauthorized access to your account.
+    </p>
+  </div>
+
+  <div class="pp-section">
+    <h2>Data Retention</h2>
+    <p>
+      We retain your account information for as long as your account is active or as needed to
+      provide the service. If you request deletion of your account, we will remove your personal
+      data within 30 days, except where we are required to retain it by law (e.g., financial
+      records related to transactions).
+    </p>
+    <p>
+      Newsletter subscribers who unsubscribe will have their email address marked inactive and
+      will no longer receive emails. You may request complete removal at any time.
+    </p>
+  </div>
+
+  <div class="pp-section">
+    <h2>Your Rights</h2>
+    <p>You may, at any time:</p>
+    <ul>
+      <li><strong>Access</strong> the personal information we hold about you.</li>
+      <li><strong>Correct</strong> inaccurate information.</li>
+      <li><strong>Request deletion</strong> of your account and associated data.</li>
+      <li><strong>Unsubscribe</strong> from the newsletter via the unsubscribe link in any email.</li>
+      <li><strong>Cancel your subscription</strong> at any time via the Stripe billing portal.</li>
+    </ul>
+    <p>To exercise any of these rights, contact us at the address below.</p>
+  </div>
+
+  <div class="pp-section">
+    <h2>Cookies</h2>
+    <p>
+      We use one first-party cookie: a <strong>session cookie</strong> (JWT token) that
+      authenticates your login session. This cookie is strictly necessary for the service to
+      function and does not track you across other websites. We do not use third-party tracking
+      cookies, advertising cookies, or analytics cookies.
+    </p>
+  </div>
+
+  <div class="pp-section">
+    <h2>Children's Privacy</h2>
+    <p>
+      Posit+EV is intended for adults aged 18 and older. We do not knowingly collect personal
+      information from anyone under 18. If you believe a minor has provided us with personal
+      information, please contact us and we will delete it promptly.
+    </p>
+  </div>
+
+  <div class="pp-section">
+    <h2>Changes to This Policy</h2>
+    <p>
+      We may update this Privacy Policy from time to time. When we do, we will revise the
+      effective date at the top of this page. Continued use of the service after any update
+      constitutes your acceptance of the revised policy. We encourage you to review this page
+      periodically.
+    </p>
+  </div>
+
+  <div class="pp-contact">
+    <h3>Contact Us</h3>
+    <p>
+      If you have questions about this Privacy Policy, wish to exercise your data rights,
+      or need to report a privacy concern, please contact us at:<br><br>
+      <strong>PositEV</strong><br>
+      Email: <a href="mailto:support@posit-ev.com">support@posit-ev.com</a><br>
+      Website: <a href="https://www.posit-ev.com">www.posit-ev.com</a>
+    </p>
+  </div>
+
+</div>
+{% endblock %}

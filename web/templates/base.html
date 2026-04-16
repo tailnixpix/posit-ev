@@ -208,6 +208,25 @@
   </nav>
   <main>{% block content %}{% endblock %}</main>
 
+  <!-- ── Sitewide footer ─────────────────────────────────────────────── -->
+  <footer style="border-top:1px solid #E5E7EB; padding:20px 24px; text-align:center;
+                 background:#F9FAFB;">
+    <div style="max-width:900px; margin:0 auto; display:flex; align-items:center;
+                justify-content:center; flex-wrap:wrap; gap:6px 20px;
+                font-size:0.75rem; color:#9CA3AF;">
+      <span>© 2026 PositEV</span>
+      <span style="color:#D1D5DB;">·</span>
+      <a href="/privacy" style="color:#9CA3AF; text-decoration:none;"
+         onmouseover="this.style.color='#534AB7'" onmouseout="this.style.color='#9CA3AF'">Privacy Policy</a>
+      <span style="color:#D1D5DB;">·</span>
+      <a href="#" onclick="openSupportModal();return false;"
+         style="color:#9CA3AF; text-decoration:none;"
+         onmouseover="this.style.color='#534AB7'" onmouseout="this.style.color='#9CA3AF'">Contact</a>
+      <span style="color:#D1D5DB;">·</span>
+      <span>Gambling involves risk. 18+ only. If you have a gambling problem call 1-800-GAMBLER.</span>
+    </div>
+  </footer>
+
   <!-- ── Support Modal (sitewide) ───────────────────────────────────── -->
   <div class="support-modal-overlay" id="supportModalOverlay" onclick="closeSupportModal(event)">
     <div class="support-modal" role="dialog" aria-modal="true" aria-labelledby="supportModalTitle">

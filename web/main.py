@@ -1107,6 +1107,11 @@ async def pricing(request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse(request, "pricing.html", {"user": user})
 
 
+@app.get("/privacy", response_class=HTMLResponse)
+async def privacy(request: Request):
+    return templates.TemplateResponse(request, "privacy.html", {})
+
+
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
     token = get_token_from_request(request)
