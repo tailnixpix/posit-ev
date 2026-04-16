@@ -451,6 +451,8 @@ def refresh_ev_cache() -> int:
                 proj_home_win_prob = _safe_proj_float(row.get("proj_home_win_prob")),
                 proj_away_display  = _safe_proj_str(row.get("proj_away_display")),
                 proj_home_display  = _safe_proj_str(row.get("proj_home_display")),
+                home_trend    = row.get("home_trend") or None,
+                away_trend    = row.get("away_trend") or None,
             )
             rows.append(cache_row)
 
@@ -509,6 +511,8 @@ async def on_startup() -> None:
             _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS proj_home_win_prob FLOAT"))
             _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS proj_away_display VARCHAR"))
             _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS proj_home_display VARCHAR"))
+            _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS home_trend VARCHAR"))
+            _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS away_trend VARCHAR"))
             _db.execute(text("ALTER TABLE daily_picks ADD COLUMN IF NOT EXISTS player_name VARCHAR"))
             _db.execute(text("ALTER TABLE daily_picks ADD COLUMN IF NOT EXISTS is_prop BOOLEAN DEFAULT FALSE"))
             _db.commit()

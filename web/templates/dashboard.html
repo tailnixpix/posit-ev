@@ -1579,6 +1579,21 @@ main { max-width: none !important; padding: 0 !important; }
 }
 .qfilter-btn.active .chip-count { background: rgba(0,0,0,0.18); }
 .chip-count:empty { display: none; }
+/* Trend badge on game bet cards */
+.card-trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 10px;
+  margin-top: 4px;
+  letter-spacing: 0.2px;
+}
+.trend-hot  { background: rgba(239,68,68,0.12);  color: #F87171; border: 1px solid rgba(239,68,68,0.25); }
+.trend-cold { background: rgba(96,165,250,0.12); color: #93C5FD; border: 1px solid rgba(96,165,250,0.25); }
+.trend-neutral { background: rgba(107,114,128,0.1); color: #9CA3AF; border: 1px solid rgba(107,114,128,0.2); }
 </style>
 {% endblock %}
 
@@ -1784,6 +1799,8 @@ main { max-width: none !important; padding: 0 !important; }
                data-market-display="{{ market_display }}"
                data-adj-flags="{{ bet.adj_flags or '' }}"
                data-has-proj="{{ '1' if (bet.proj_home_score is not none) else '0' }}"
+               data-home-trend="{{ bet.home_trend or '' }}"
+               data-away-trend="{{ bet.away_trend or '' }}"
                data-clv-dir="{% if bet.opening_odds and bet.opening_odds != bet.odds %}{% if bet.opening_odds > bet.odds %}pos{% else %}neg{% endif %}{% endif %}"
                {% if bet.bet_pct is not none %}data-bet-pct="{{ '%.0f'|format(bet.bet_pct) }}"{% endif %}
                {% if bet.money_pct is not none %}data-money-pct="{{ '%.0f'|format(bet.money_pct) }}"{% endif %}
@@ -1845,6 +1862,20 @@ main { max-width: none !important; padding: 0 !important; }
                   {% else %}
                     {# Game bet: standard layout #}
                     <div class="card-team">{{ team_display }}</div>
+                    {% if not bet.is_prop and (bet.home_trend or bet.away_trend) %}
+                    {% if ' @ ' in (bet.game or '') %}
+                    {% set _gparts = (bet.game or '').split(' @ ') %}
+                    {% set _homename = _gparts[1].strip() if _gparts|length > 1 else '' %}
+                    {% set _is_home_side = _homename and (_homename.lower() in (bet.team or '').lower() or (bet.team or '').lower() in _homename.lower()) %}
+                    {% set _trend_str = bet.home_trend if _is_home_side else bet.away_trend %}
+                    {% if _trend_str %}
+                    {% set _tw = _trend_str.split('-')[0] | int if '-' in _trend_str else 5 %}
+                    <div class="card-trend {% if _tw >= 7 %}trend-hot{% elif _tw <= 3 %}trend-cold{% else %}trend-neutral{% endif %}">
+                      {% if _tw >= 7 %}🔥{% elif _tw <= 3 %}❄️{% else %}📊{% endif %} {{ _trend_str }} L10
+                    </div>
+                    {% endif %}
+                    {% endif %}
+                    {% endif %}
                     {% if bet.game %}<div class="card-game">{{ bet.game }}</div>{% endif %}
                     {% if bet.commence_time %}<div class="card-time">⏰ <span data-commence-fmt="{{ bet.commence_time.isoformat() }}">—</span></div>{% endif %}
                   {% endif %}

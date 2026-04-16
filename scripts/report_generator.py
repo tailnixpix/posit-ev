@@ -119,6 +119,11 @@ def _apply_sport_adjustments(
             # Injuries (shared)
             home_injuries=home_ctx.get("injuries", []),
             away_injuries=away_ctx.get("injuries", []),
+            # Recent form (NHL + NBA; None when unavailable)
+            home_last10_wins=home_ctx.get("last10_wins"),
+            away_last10_wins=away_ctx.get("last10_wins"),
+            home_streak_val=home_ctx.get("streak_val", 0),
+            away_streak_val=away_ctx.get("streak_val", 0),
         )
 
         try:
@@ -132,6 +137,19 @@ def _apply_sport_adjustments(
 
         effective_ev_pct = row["ev_pct"] * conf_mult
 
+        # Build concise trend summary strings for storage/display
+        def _trend_str(last10: int | None, streak: int) -> str:
+            if last10 is None:
+                return ""
+            w, l = last10, 10 - last10
+            streak_part = ""
+            if abs(streak) >= 2:
+                streak_part = f" W{streak}" if streak > 0 else f" L{abs(streak)}"
+            return f"{w}-{l}{streak_part}"
+
+        home_trend = _trend_str(ctx.home_last10_wins, ctx.home_streak_val)
+        away_trend = _trend_str(ctx.away_last10_wins, ctx.away_streak_val)
+
         records.append({
             **row.to_dict(),
             "adjusted_prob": round(adj_prob, 4),
@@ -139,6 +157,8 @@ def _apply_sport_adjustments(
             "adj_flags": "|".join(f for f in result.get("flags", []) if f),
             "adj_warnings": "; ".join(result.get("warnings", [])),
             "effective_ev_pct": round(effective_ev_pct, 4),
+            "home_trend": home_trend,
+            "away_trend": away_trend,
         })
 
     return pd.DataFrame(records)

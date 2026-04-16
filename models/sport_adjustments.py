@@ -42,6 +42,7 @@ ADJUSTMENT_CONFIG: dict = {
 
     # --- Shared ---
     "injury_report":              True,   # pull toward 0.5 for notable injuries
+    "trend_form":                 True,
 
     # --- Soccer ---
     "soccer_three_way_1x2":       True,   # handle home/draw/away separately
@@ -82,6 +83,12 @@ class GameContext:
     # Injuries (shared, populated by context_fetcher)
     home_injuries: list = field(default_factory=list)  # notable injured players on home team
     away_injuries: list = field(default_factory=list)  # notable injured players on away team
+
+    # Recent form (last-10 wins and current streak; populated by context_fetcher)
+    home_last10_wins: Optional[int] = None   # wins in last 10 games (0–10; 5 = neutral)
+    away_last10_wins: Optional[int] = None
+    home_streak_val: int = 0   # +N = N-game win streak; -N = N-game loss streak
+    away_streak_val: int = 0
 
     # Derived flags (populated by adjustments)
     flags: dict = field(default_factory=dict)
@@ -278,6 +285,15 @@ def apply_nhl_adjustments(
     home_adj, away_adj = nhl_home_away_split_adjustment(ctx, home_adj, away_adj, config)
     home_adj, away_adj = apply_injury_adjustment(ctx, home_adj, away_adj, config)
 
+    # Trend / recent form adjustment
+    home_adj_t, away_adj_t = _apply_trend_form(
+        home_adj.effective_prob, away_adj.effective_prob, ctx, config
+    )
+    home_adj.adjusted_prob = home_adj_t.adjusted_prob
+    away_adj.adjusted_prob = away_adj_t.adjusted_prob
+    home_adj.flags.extend(home_adj_t.flags)
+    away_adj.flags.extend(away_adj_t.flags)
+
     return home_adj, away_adj
 
 
@@ -436,6 +452,16 @@ def apply_nba_adjustments(
     home_adj, away_adj = nba_rest_adjustment(ctx, home_prob, away_prob, config)
     home_adj, away_adj = nba_home_away_split_adjustment(ctx, home_adj, away_adj, config)
     home_adj, away_adj = apply_injury_adjustment(ctx, home_adj, away_adj, config)
+
+    # Trend / recent form adjustment
+    home_adj_t, away_adj_t = _apply_trend_form(
+        home_adj.effective_prob, away_adj.effective_prob, ctx, config
+    )
+    home_adj.adjusted_prob = home_adj_t.adjusted_prob
+    away_adj.adjusted_prob = away_adj_t.adjusted_prob
+    home_adj.flags.extend(home_adj_t.flags)
+    away_adj.flags.extend(away_adj_t.flags)
+
     return home_adj, away_adj
 
 
@@ -597,6 +623,84 @@ def apply_soccer_adjustments(
         "flags": flags,
         "warnings": warnings,
     }
+
+
+# ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Trend / recent form adjustment
+# ---------------------------------------------------------------------------
+
+_TREND_MAX_SHIFT = 0.030   # maximum ±3 probability points from trend alone
+_TREND_MIN_SIGNAL = 0.003  # don't add a flag for adjustments smaller than 0.3%
+
+
+def _apply_trend_form(
+    home_prob: float,
+    away_prob: float,
+    ctx: GameContext,
+    config: dict = ADJUSTMENT_CONFIG,
+) -> tuple[AdjustedProb, AdjustedProb]:
+    """
+    Nudge moneyline probabilities based on each team's recent form.
+
+    Uses last-10 game win count as the primary signal (available for NHL and NBA).
+    A neutral team wins 5 of its last 10; each win above/below 5 contributes a
+    small, capped shift of up to ±3 probability points total.
+
+    Formula:
+        net_home_adv = ((home_last10 - 5) - (away_last10 - 5)) / 5   → [-2, +2]
+        delta        = net_home_adv * (MAX_SHIFT / 2)                  → [-0.03, +0.03]
+        home_prob   += delta   |   away_prob -= delta  (sum preserved)
+
+    Only applied when both teams have last10 data. Streak adds a small secondary
+    signal (30% weight) to the last10 primary signal (70% weight).
+    """
+    home_adj = AdjustedProb(original_prob=home_prob, adjusted_prob=home_prob)
+    away_adj = AdjustedProb(original_prob=away_prob, adjusted_prob=away_prob)
+
+    if not config.get("trend_form", True):
+        return home_adj, away_adj
+
+    if ctx.home_last10_wins is None or ctx.away_last10_wins is None:
+        return home_adj, away_adj
+
+    # Normalise last10 to [-1, +1]
+    home_l10 = (ctx.home_last10_wins - 5) / 5.0
+    away_l10 = (ctx.away_last10_wins - 5) / 5.0
+
+    # Streak component: cap influence at ±5 games
+    home_str = min(max(ctx.home_streak_val, -5), 5) / 5.0
+    away_str = min(max(ctx.away_streak_val, -5), 5) / 5.0
+
+    # Weighted combination: 70% last10, 30% streak
+    home_score = 0.70 * home_l10 + 0.30 * home_str
+    away_score = 0.70 * away_l10 + 0.30 * away_str
+
+    # Net home advantage from form; range [-2, +2]
+    net = home_score - away_score
+
+    # Scale to probability shift; clamp at MAX_SHIFT
+    delta = max(-_TREND_MAX_SHIFT, min(_TREND_MAX_SHIFT, net * (_TREND_MAX_SHIFT / 2)))
+
+    new_home = max(0.01, min(0.99, home_prob + delta))
+    new_away = max(0.01, min(0.99, away_prob - delta))
+
+    home_adj.adjusted_prob = new_home
+    away_adj.adjusted_prob = new_away
+
+    if abs(delta) >= _TREND_MIN_SIGNAL:
+        sign = "+" if delta >= 0 else ""
+        home_adj.flags.append(
+            f"TREND_FORM(home {ctx.home_last10_wins}-{10 - ctx.home_last10_wins} last10,"
+            f" away {ctx.away_last10_wins}-{10 - ctx.away_last10_wins} last10"
+            f" → home{sign}{delta*100:.1f}%)"
+        )
+        away_adj.flags.append(
+            f"TREND_FORM(away {ctx.away_last10_wins}-{10 - ctx.away_last10_wins} last10"
+            f" → away{-delta*100:+.1f}%)"
+        )
+
+    return home_adj, away_adj
 
 
 # ---------------------------------------------------------------------------

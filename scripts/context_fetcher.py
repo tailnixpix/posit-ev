@@ -156,6 +156,40 @@ def fetch_nhl_home_away_splits() -> dict:
     return result
 
 
+def fetch_nhl_team_form() -> dict:
+    """
+    Return {team_name: {"last10_wins": int, "streak_val": int}}
+    using the NHL standings endpoint (same data as fetch_nhl_home_away_splits,
+    no additional API call — endpoint is cached in-process).
+
+    last10_wins: wins in last 10 games (0–10; 5 = league average)
+    streak_val:  +N = current N-game win streak, -N = N-game loss/OTL streak
+    """
+    result: dict = {}
+    data = _get(_NHL_STANDINGS)
+    if not data:
+        return result
+
+    for entry in data.get("standings", []):
+        name = (
+            entry.get("teamName", {}).get("default")
+            or entry.get("teamCommonName", {}).get("default")
+            or entry.get("teamAbbrev", {}).get("default", "")
+        )
+        if not name:
+            continue
+
+        l10w = int(entry.get("l10Wins", 0) or 0)
+
+        # NHL standings don't include current streak directly; approximate from
+        # recent wins/losses. The streak_val field is left at 0 here — it will
+        # be enriched by fetch_game_context() at the per-game AI analysis level.
+        result[name] = {"last10_wins": l10w, "streak_val": 0}
+
+    log.debug("fetch_nhl_team_form: %d teams", len(result))
+    return result
+
+
 def fetch_nhl_injuries() -> dict:
     """
     Return {team_name: [injured_player_names]}.
@@ -258,6 +292,59 @@ def fetch_nba_home_away_splits() -> dict:
         }
 
     log.debug("fetch_nba_home_away_splits: %d teams found", len(result))
+    return result
+
+
+def fetch_nba_team_form() -> dict:
+    """
+    Return {team_name: {"last10_wins": int, "streak_val": int}}
+    using the ESPN NBA standings endpoint.
+
+    last10_wins: wins in last 10 games (0–10; 5 = league average)
+    streak_val:  +N = current N-game win streak, -N = N-game loss streak
+                 (positive = winning, negative = losing)
+    """
+    result: dict = {}
+    data = _get(_ESPN_NBA_STAND)
+    if not data:
+        return result
+
+    try:
+        all_entries = []
+        for child in data.get("children", []):
+            all_entries.extend(child.get("standings", {}).get("entries", []))
+    except Exception:
+        return result
+
+    for entry in all_entries:
+        name = entry.get("team", {}).get("displayName", "")
+        if not name:
+            continue
+        stats = {s.get("name"): s for s in entry.get("stats", [])}
+
+        # Last 10 games
+        l10_stat = stats.get("Last Ten Games") or stats.get("L10") or {}
+        l10_str  = l10_stat.get("displayValue", "")   # e.g. "7-3"
+        try:
+            l10w = int(l10_str.split("-")[0])
+        except Exception:
+            l10w = 5  # neutral default
+
+        # Current streak from streak stat if available
+        streak_stat = stats.get("streak") or stats.get("Streak") or {}
+        streak_str  = streak_stat.get("displayValue", "")   # e.g. "W3" or "L2"
+        streak_val  = 0
+        try:
+            if streak_str.startswith("W"):
+                streak_val = int(streak_str[1:])
+            elif streak_str.startswith("L"):
+                streak_val = -int(streak_str[1:])
+        except Exception:
+            pass
+
+        result[name] = {"last10_wins": l10w, "streak_val": streak_val}
+
+    log.debug("fetch_nba_team_form: %d teams", len(result))
     return result
 
 
@@ -437,10 +524,12 @@ def build_context(sport_key: str) -> dict:
             goalies  = fetch_nhl_goalies()
             splits   = fetch_nhl_home_away_splits()
             injuries = fetch_nhl_injuries()
+            form     = fetch_nhl_team_form()
 
-            all_names = set(goalies) | set(splits) | set(injuries)
+            all_names = set(goalies) | set(splits) | set(injuries) | set(form)
             ctx: dict = {}
             for name in all_names:
+                f = form.get(name, {})
                 ctx[_normalise(name)] = {
                     "home_win_pct":     splits.get(name, {}).get("home_win_pct", 0.5),
                     "away_win_pct":     splits.get(name, {}).get("away_win_pct", 0.5),
@@ -448,6 +537,8 @@ def build_context(sport_key: str) -> dict:
                     "goalie_name":      goalies.get(name, {}).get("starter"),
                     "injuries":         injuries.get(name, []),
                     "b2b":              False,
+                    "last10_wins":      f.get("last10_wins"),   # int 0-10, None if unavailable
+                    "streak_val":       f.get("streak_val", 0),
                 }
             log.info("build_context(nhl): %d teams populated", len(ctx))
             return ctx
@@ -456,10 +547,12 @@ def build_context(sport_key: str) -> dict:
             b2b      = fetch_nba_b2b()
             splits   = fetch_nba_home_away_splits()
             injuries = fetch_nba_injuries()
+            form     = fetch_nba_team_form()
 
-            all_names = set(b2b) | set(splits) | set(injuries)
+            all_names = set(b2b) | set(splits) | set(injuries) | set(form)
             ctx = {}
             for name in all_names:
+                f = form.get(name, {})
                 ctx[_normalise(name)] = {
                     "home_win_pct":     splits.get(name, {}).get("home_win_pct", 0.5),
                     "away_win_pct":     splits.get(name, {}).get("away_win_pct", 0.5),
@@ -467,6 +560,8 @@ def build_context(sport_key: str) -> dict:
                     "goalie_name":      None,
                     "injuries":         injuries.get(name, []),
                     "b2b":              bool(b2b.get(name, False)),
+                    "last10_wins":      f.get("last10_wins"),   # int 0-10, None if unavailable
+                    "streak_val":       f.get("streak_val", 0),
                 }
             log.info("build_context(nba): %d teams populated", len(ctx))
             return ctx
