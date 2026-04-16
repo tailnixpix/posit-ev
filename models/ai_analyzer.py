@@ -45,7 +45,10 @@ import anthropic
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from scripts.optimal_client import OptimalClient
-from scripts.context_fetcher import fetch_mlb_probable_pitchers, _match_mlb_game, fetch_game_projections
+from scripts.context_fetcher import (
+    fetch_mlb_probable_pitchers, _match_mlb_game, fetch_game_projections,
+    fetch_game_context, fetch_pitcher_vs_team_stats,
+)
 
 log = logging.getLogger(__name__)
 
@@ -311,6 +314,72 @@ def _build_context(bet: dict, client: OptimalClient) -> dict:
         else:
             log.debug("context: no game projections returned for %s (%s)", game_str, league_code)
 
+    # ── 7. Situational context: records, streaks, playoff position, series notes ──
+    # fetch_game_context hits ESPN scoreboard + NHL standings / NBA standings
+    # and returns: home/away_record, home/away_streak, home/away_last10,
+    # home/away_pts (NHL), home/away_conf_rank (NHL), home/away_playoff_note,
+    # home/away_playoff_seed (NBA), game_notes.
+    if not is_prop and " @ " in game_str:
+        try:
+            gc = fetch_game_context(
+                game_str,
+                bet.get("league", ""),
+                commence_dt=bet.get("commence_time"),
+            )
+            if gc:
+                # Drop raw team name keys (already known); keep all signal fields
+                ctx["game_situation"] = {
+                    k: v for k, v in gc.items()
+                    if k not in ("away_team", "home_team")
+                }
+                log.info("context: game_situation loaded for %s — keys: %s",
+                         game_str, list(ctx["game_situation"].keys()))
+            else:
+                log.debug("context: fetch_game_context returned empty for %s", game_str)
+        except Exception as exc:
+            log.debug("context: fetch_game_context failed for %s: %s", game_str, exc)
+
+    # ── 8. Pitcher-vs-opponent historical stats (MLB only) ───────────────
+    # Uses the same pitcher_matchup data already fetched in section 5.
+    # Enriches each pitcher entry with their stats against this specific team.
+    if bet.get("league") == "baseball_mlb" and " @ " in game_str:
+        pm = ctx.get("pitcher_matchup")
+        if isinstance(pm, dict) and not pm.get("optimal_query"):
+            away_name, home_name = [s.strip() for s in game_str.split(" @ ", 1)]
+            try:
+                # Fetch opposing team IDs from the MLB schedule (embedded in pitcher_matchup)
+                away_team_id = pm.get("away", {}).get("team_id") or pm.get("away_team_id")
+                home_team_id = pm.get("home", {}).get("team_id") or pm.get("home_team_id")
+
+                # Away pitcher vs home team
+                away_p = pm.get("away", {})
+                away_pitcher_id = away_p.get("pitcher_id") or away_p.get("id")
+                if away_pitcher_id and home_team_id:
+                    vs_stats = fetch_pitcher_vs_team_stats(int(away_pitcher_id), int(home_team_id))
+                    if vs_stats and int(vs_stats.get("games", 0)) > 0:
+                        ctx.setdefault("pitcher_vs_team", {})["away_pitcher"] = {
+                            "name": away_p.get("name", "Away starter"),
+                            "vs_team": away_name.split()[-1] + " (home)",
+                            **vs_stats,
+                        }
+
+                # Home pitcher vs away team
+                home_p = pm.get("home", {})
+                home_pitcher_id = home_p.get("pitcher_id") or home_p.get("id")
+                if home_pitcher_id and away_team_id:
+                    vs_stats = fetch_pitcher_vs_team_stats(int(home_pitcher_id), int(away_team_id))
+                    if vs_stats and int(vs_stats.get("games", 0)) > 0:
+                        ctx.setdefault("pitcher_vs_team", {})["home_pitcher"] = {
+                            "name": home_p.get("name", "Home starter"),
+                            "vs_team": home_name.split()[-1] + " (away)",
+                            **vs_stats,
+                        }
+
+                if ctx.get("pitcher_vs_team"):
+                    log.info("context: pitcher_vs_team data loaded for %s", game_str)
+            except Exception as exc:
+                log.debug("context: pitcher_vs_team fetch failed for %s: %s", game_str, exc)
+
     return ctx
 
 
@@ -320,75 +389,101 @@ def _build_context(bet: dict, client: OptimalClient) -> dict:
 
 _SPORT_CONTEXT = {
     "basketball_nba": """
-**NBA-Specific Factors to Address (use data from context where available):**
-- Rest and fatigue: days of rest for each team, back-to-back situations
-- Pace matchup: fast vs. slow pace teams and how that affects totals/spreads
-- Defensive rating and offensive rating of each team recently
-- Key player availability / minutes restrictions / injury designations
-- Home/away splits for the specific teams
-- Recent head-to-head results if visible in context
-- **Game Projections (game_projections field):** If present, state the projected score for each team (home_score_mean, away_score_mean). Compare projected spread (spread_mean — positive = home favored) to the bet's spread line and note whether the model supports or fades the bet. Compare projected total (total_mean) to the consensus total. Use home_win_probability vs. model true_prob to flag any divergence.
+**NBA Analysis — address in this exact priority order. Skip any item if the data is not in context.**
+
+1. PLAYOFF STAKES: Check game_situation for playoff_seed. If both teams are in a seeding battle (within 2 games of each other, or one game separating home-court advantage), lead with the specific scenario: "Team X holds the N seed, Team Y is M games back — tonight determines home-court in a potential Round 1 matchup." State both seeds. If no playoff implications, skip this point entirely.
+
+2. REST & B2B: If either team is on a back-to-back, name the team and state it explicitly. Do not mention rest unless a B2B is confirmed in context.
+
+3. RECENT FORM: State each team's last-10 record and current streak from game_situation (e.g., "Boston is 8-2 over their last 10, on a W4 streak"). Numbers only — no hedging.
+
+4. GAME PROJECTIONS: If game_projections is present, state the projected scores (home_score_mean, away_score_mean) and whether the model's home_win_probability aligns with or contradicts the true_prob. One sentence only.
+
+5. PLAYER PROPS: If this is a prop, cite the player's actual hit rate over the line from gamelogs (e.g., "Judge has gone Over 1.5 hits in 6 of his last 9 starts, 67% hit rate vs. the 58% implied by this line"). If gamelogs are absent, say so in one sentence.
 """,
+
     "icehockey_nhl": """
-**NHL-Specific Factors to Address (use data from context where available):**
-- Goaltender matchup: who is confirmed starting and their recent save% / GAA
-- Back-to-back games and travel fatigue
-- Power play % and penalty kill % trends
-- Home ice advantage (NHL home win rate ~54%)
-- Recent form: wins/losses/OT losses in last 7 games from team history
-- Head-to-head history if visible in context
-- **Game Projections (game_projections field):** If present, state projected scores (home_score_mean, away_score_mean). Compare projected total (total_mean) to consensus total (consensus_total). Note whether projection agrees or disagrees with the bet's market.
+**NHL Analysis — address in this exact priority order. Skip any item if the data is not in context.**
+
+1. PLAYOFF STAKES (HIGHEST PRIORITY): Check game_situation for conf_rank, pts, and playoff_note. If either team has a playoff_note OR their conf_rank is ≤12 and within 5 points of a playoff cutoff or division lead, LEAD with this. State both teams' current standing: conference rank, points total, points behind/ahead of the next relevant cutoff (wild card, division lead, or elimination). Example: "Florida is 1st in the Atlantic with 112 pts; Boston is 4 pts back of the 2nd wild-card spot with 3 games remaining — tonight is effectively must-win." If both teams are fully eliminated or fully clinched with no consequence, state that briefly and skip remaining playoff discussion.
+
+2. GOALTENDER MATCHUP: Name both confirmed starters. State their season GAA and save%. If either goalie is unconfirmed, say it explicitly. Do not invent goalie stats not present in context.
+
+3. RECENT FORM: State the last-10 record and current streak from game_situation for each team. Format: "Team X is 7-3 over their last 10, W3 streak."
+
+4. GAME PROJECTIONS: If present, state projected goals for each team and note whether the total aligns with the consensus. One sentence only.
+
+DO NOT mention home ice advantage, travel fatigue, power play%, or penalty kill% unless those specific numbers appear in the context data.
 """,
+
     "baseball_mlb": """
-**MLB-Specific Factors (pitcher_matchup and pitcher_stats fields are available in the context — use them):**
-- Starting pitcher matchup is the single most important factor. Lead with it: name both starters, state their ERA and WHIP, summarize their last 3 starts (IP, ER, K). If one pitcher is clearly superior, quantify it.
-- If pitcher data is missing from context, state "Starting pitchers unconfirmed at time of analysis." and note the bet carries elevated uncertainty.
-- Bullpen fatigue: usage over last 3 days from team history if visible
-- Ballpark run environment: hitter-friendly vs. pitcher-friendly park and how it affects the total
-- Recent offensive production: runs/game over last 7 days from team history
-- Do NOT list platoon splits or weather unless the data is explicitly present in the context
-- **Game Projections (game_projections field):** If present, state projected runs for each team (home_score_mean, away_score_mean). Compare projected run total (total_mean) to consensus total. For moneyline bets, note whether the model's home_win_probability aligns with the true_prob used to compute EV.
+**MLB Analysis — address in this exact priority order. Skip any item if the data is not in context.**
+
+1. STARTING PITCHER MATCHUP (MANDATORY — highest signal): Name both starters. State season ERA and WHIP. If pitcher_vs_team is in context, LEAD with the starter's record vs. this specific opponent (e.g., "Cease is 0-3 with a 6.75 ERA in 4 starts against Atlanta this season — historically struggles with this lineup"). This is more predictive than season ERA. If only season stats are available, state the last start result (IP, ER, outcome) from last_starts if present.
+
+2. SERIES CONTEXT: Check game_situation game_notes for series standing. If present ("Team X leads the series 1-0"), state whether a team faces a series sweep or has a chance to sweep. This is high-signal motivational context. Skip if no series data.
+
+3. TEAM FORM: State each team's current streak and record from game_situation (e.g., "Cubs have lost 4 straight, 3-7 over last 10"). State it factually in one sentence per team.
+
+4. GAME PROJECTIONS: If present, state projected runs per team and whether the model total aligns with the line. One sentence.
+
+DO NOT mention weather, park factors, bullpen usage, or platoon splits unless those specific numbers are in the context data.
 """,
+
     "soccer_epl": """
-**Soccer-Specific Factors to Address (use data from context where available):**
-- Form table: W/D/L in last 5 matches from team history
-- Home/away record split
-- Goal differential and clean sheet rate
-- European competition fixture congestion if applicable
-- Key player suspensions or injuries
-- Tactical matchup: pressing style vs. defensive block
+**EPL Analysis — address in this exact priority order. Skip any item if the data is not in context.**
+
+1. FORM TABLE: State each team's W/D/L record over their last 5 matches from team_history. If game_situation has a streak, state it. Numbers anchor every claim.
+
+2. TABLE POSITION / STAKES: If either team is in a relegation battle, title race, or top-4 fight, state the specific points gap and what tonight means. Skip if no meaningful stakes.
+
+3. KEY ABSENCES: Name any confirmed injured or suspended players from context. Do not speculate.
+
+4. GAME PROJECTIONS: If present, state projected goals and whether the model total aligns with the consensus.
 """,
+
     "soccer_spain_la_liga": """
-**Soccer-Specific Factors to Address (use data from context where available):**
-- Form table: W/D/L in last 5 matches from team history
-- Home/away record split
-- Goal differential and clean sheet rate
-- Squad rotation risks from midweek competition
-- Key player suspensions or injuries
+**La Liga Analysis — address in this exact priority order. Skip any item if the data is not in context.**
+
+1. FORM TABLE: State each team's W/D/L record over their last 5 matches from team_history and current streak from game_situation.
+
+2. TABLE STAKES: If title race, top-4 UCL fight, or relegation battle is involved, state the specific gap and scenario.
+
+3. KEY ABSENCES: Name confirmed injured or suspended players from context only.
+
+4. GAME PROJECTIONS: One sentence on projected total vs. consensus if present.
 """,
+
     "soccer_germany_bundesliga": """
-**Soccer-Specific Factors to Address (use data from context where available):**
-- Form table: W/D/L in last 5 matches from team history
-- Home/away record split
-- Goal differential and clean sheet rate
-- Injury and suspension news
+**Bundesliga Analysis — address in this exact priority order. Skip any item if the data is not in context.**
+
+1. FORM TABLE: State W/D/L over last 5 and current streak from game_situation.
+
+2. TABLE STAKES: Title race, UCL qualification, or relegation context with specific points gap if applicable.
+
+3. KEY ABSENCES: Named injured or suspended players from context only.
 """,
+
     "soccer_usa_mls": """
-**Soccer-Specific Factors to Address (use data from context where available):**
-- Form table: W/D/L in last 5 matches from team history
-- Home/away record (MLS home advantage is significant)
-- Travel distance and schedule congestion
-- Key player availability
+**MLS Analysis — address in this exact priority order. Skip any item if the data is not in context.**
+
+1. FORM: State last 5 record and current streak from game_situation. MLS home advantage is significant — note home/away record split if in context.
+
+2. STANDINGS STAKES: Playoff positioning if meaningful (within 3 points of a playoff spot).
+
+3. KEY ABSENCES: Named players from context only.
 """,
+
     "soccer_uefa_champs_league": """
-**UEFA Champions League-Specific Factors to Address (use data from context where available):**
-- If this is a knockout-stage second leg, state the aggregate score and what each team needs to advance
-- Yellow card accumulation: players one booking away from a suspension ban (critical in UCL)
-- Squad rotation risk: clubs juggling heavy domestic and European schedules
-- Form in European competition vs. domestic form (elite clubs often elevate for UCL)
-- Home/away record in this competition specifically
-- Key absences: suspensions, injuries, and squad depth
-- Historical head-to-head record in European competition if relevant
+**UCL Analysis — address in this exact priority order. Skip any item if the data is not in context.**
+
+1. TIE CONTEXT (CRITICAL): If this is a knockout second leg, state the aggregate score and exactly what each team needs (win by X, any win advances, must avoid Y goals, etc.). This is the single most important fact for UCL bets.
+
+2. SUSPENSION RISK: Name any player one yellow card away from a ban if mentioned in context. This affects roster choices.
+
+3. RECENT FORM: State last 5 results and current streak from game_situation.
+
+4. KEY ABSENCES: Named injured or suspended players from context only.
 """,
 }
 
@@ -472,6 +567,39 @@ def _assess_context_quality(ctx: dict) -> tuple[str, int, list]:
     if ctx.get("pitcher_stats"):
         points += 3
         fields.append("individual pitcher stats")
+
+    if ctx.get("game_situation"):
+        gs = ctx["game_situation"]
+        gs_detail = []
+        for side in ("home", "away"):
+            if gs.get(f"{side}_last10"):
+                gs_detail.append(f"{side} last10: {gs[f'{side}_last10']}")
+            if gs.get(f"{side}_streak"):
+                gs_detail.append(f"{side} streak: {gs[f'{side}_streak']}")
+            if gs.get(f"{side}_playoff_note"):
+                gs_detail.append(f"{side} playoff: {gs[f'{side}_playoff_note']}")
+            if gs.get(f"{side}_conf_rank"):
+                gs_detail.append(f"{side} conf#{gs[f'{side}_conf_rank']}")
+            if gs.get(f"{side}_playoff_seed"):
+                gs_detail.append(f"{side} seed#{gs[f'{side}_playoff_seed']}")
+        if gs_detail:
+            points += 4
+            fields.append(f"game situation ({'; '.join(gs_detail[:4])})")
+        else:
+            points += 1
+            fields.append("game situation (basic)")
+
+    if ctx.get("pitcher_vs_team"):
+        pvt = ctx["pitcher_vs_team"]
+        parts = []
+        for side in ("away_pitcher", "home_pitcher"):
+            p = pvt.get(side, {})
+            if p and int(p.get("games", 0)) > 0:
+                parts.append(f"{p.get('name','?')} vs {p.get('vs_team','opp')}: "
+                              f"{p['games']}G ERA {p.get('era','?')}")
+        if parts:
+            points += 5
+            fields.append(f"pitcher vs opponent history ({'; '.join(parts)})")
 
     # MLB Stats API: count ERA/WHIP data embedded in pitcher_matchup
     pm = ctx.get("pitcher_matchup")
@@ -586,7 +714,7 @@ If context quality is SPARSE or NONE, you MUST lower your confidence_score accor
 Produce a structured JSON analysis. Requirements:
 
 **SPECIFICITY RULES (strictly enforced):**
-- `contextual_validation` MUST cite at least 2 specific facts from the context data (e.g. actual W/L record, specific player name and stat, actual odds movement with numbers, specific game score). If context is empty/sparse, state that explicitly and explain what data you'd want to see.
+- `contextual_validation` MUST lead with the highest-signal situational fact from the context: playoff position with specific points/rank numbers, pitcher-vs-opponent ERA with start count, player hit rate over the prop line with a fraction (e.g. "6 of last 9"), series standing (sweep scenario), or team streak. Generic observations ("the team has been playing well") are not acceptable — every claim needs a specific number or name from the context data.
 - `mathematical_justification` MUST include the specific no-vig calculation showing how {true_prob_pct}% was derived vs. the book's {implied_prob}% implied probability, and what the {edge_pct}% edge means in dollar terms on a flat $100 bet.
 - `risk_factors` MUST name a specific player, matchup attribute, or situation — not a generic disclaimer.
 - `summary` must be punchy and specific — include the team/player name and the core reason for the edge.
@@ -602,7 +730,7 @@ Produce a structured JSON analysis. Requirements:
   "analysis": {{
     "summary": "<1-2 sentences. Must name the specific team/player and state the core edge source.>",
     "mathematical_justification": "<4-6 sentences. Must include: (1) how the no-vig model derives {true_prob_pct}% true probability, (2) what {implied_prob}% book implied prob means the book thinks, (3) the {edge_pct}% gap in concrete terms, (4) expected profit on a $100 flat bet.>",
-    "contextual_validation": "<4-6 declarative sentences based only on data present in the context above. Format: [Fact] — [Implication for this bet]. If live data was unavailable, write exactly one sentence: 'Insufficient live data to validate contextually.' Do not list missing data, do not speculate about what would increase confidence, do not use hypotheticals.>",
+    "contextual_validation": "<3-5 declarative sentences. LEAD with the single highest-signal contextual fact (playoff stakes, pitcher-vs-opponent history, series context, player hit rate, sweep scenario — whichever is most relevant and present in the data). Follow with 1-2 supporting facts. Format every claim as: [Specific fact with number] — [Direct implication for this bet]. If live data was unavailable, write exactly one sentence: 'Insufficient live data to validate contextually.' Do not list missing data, do not speculate, no hypotheticals.>",
     "risk_factors": "<2-3 sentences. Must name a specific player, injury, matchup factor, or situational risk — no generic disclaimers.>",
     "recommended_action": "<'Strong Bet', 'Moderate Bet', 'Lean', or 'Pass' — Pass is valid if context contradicts the model strongly>"
   }}

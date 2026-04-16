@@ -380,6 +380,48 @@ def fetch_nba_injuries() -> dict:
     return result
 
 
+def fetch_pitcher_vs_team_stats(pitcher_id: int, opposing_team_id: int) -> dict:
+    """
+    Fetch a pitcher's historical stats against a specific opposing team.
+
+    Uses the MLB Stats API vsTeam endpoint. Returns an empty dict on any failure.
+    Data includes career and current-season stats vs. this opponent:
+    games, innings pitched, ERA, WHIP, strikeouts, walks, hits allowed.
+    """
+    if not pitcher_id or not opposing_team_id:
+        return {}
+    year = datetime.now().year
+    try:
+        url = f"https://statsapi.mlb.com/api/v1/people/{pitcher_id}/stats"
+        data = _get(url, params={
+            "stats": "vsTeam",
+            "group": "pitching",
+            "opposingTeamId": opposing_team_id,
+            "season": year,
+        })
+        if not data:
+            return {}
+        splits = data.get("stats", [{}])[0].get("splits", [])
+        if not splits:
+            return {}
+        s = splits[0].get("stat", {})
+        result = {
+            "games":    s.get("gamesStarted", s.get("gamesPitched", 0)),
+            "ip":       s.get("inningsPitched", "0.0"),
+            "era":      s.get("era", "-.--"),
+            "whip":     s.get("whip", "-.--"),
+            "strikeouts": s.get("strikeOuts", 0),
+            "walks":    s.get("baseOnBalls", 0),
+            "hits":     s.get("hits", 0),
+            "runs":     s.get("earnedRuns", 0),
+        }
+        log.debug("fetch_pitcher_vs_team_stats: pitcher %s vs team %s → %s", pitcher_id, opposing_team_id, result)
+        return result
+    except Exception as exc:
+        log.debug("fetch_pitcher_vs_team_stats: failed pitcher=%s team=%s: %s", pitcher_id, opposing_team_id, exc)
+        return {}
+
+
 # ---------------------------------------------------------------------------
 # MLB functions
 # ---------------------------------------------------------------------------
