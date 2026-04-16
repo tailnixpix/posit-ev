@@ -146,11 +146,11 @@ async def subscribe(request: Request):
 
     if not stripe.api_key or stripe.api_key.startswith("sk_test_placeholder"):
         log.warning("/subscribe: STRIPE_SECRET_KEY not configured.")
-        return RedirectResponse(url="/pricing", status_code=303)
+        return RedirectResponse(url="/pricing?error=checkout_failed", status_code=303)
 
     if not _PRICE_ID:
         log.error("/subscribe: STRIPE_PRICE_ID not set.")
-        return RedirectResponse(url="/pricing", status_code=303)
+        return RedirectResponse(url="/pricing?error=checkout_failed", status_code=303)
 
     try:
         session_kwargs = {
