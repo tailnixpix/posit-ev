@@ -141,6 +141,8 @@ class EVBetCache(Base):
     proj_home_win_prob   = Column(Float, nullable=True)   # model home win probability
     proj_away_display    = Column(String, nullable=True)  # away team name from projection source
     proj_home_display    = Column(String, nullable=True)  # home team name from projection source
+    home_trend           = Column(String, nullable=True)   # e.g. "7-3 W4"
+    away_trend           = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True, nullable=False)
 
     def __repr__(self) -> str:

@@ -68,6 +68,7 @@ from web.auth import (                                                   # noqa:
 from web.newsletter import (                                             # noqa: E402
     router as newsletter_router,
     send_daily_newsletter,
+    send_correction_newsletter,
 )
 from web.stripe_webhook import router as stripe_router                   # noqa: E402
 from web.beehiiv import bulk_sync as bh_bulk_sync, remove_subscriber as bh_remove  # noqa: E402
@@ -1641,3 +1642,39 @@ async def admin_refresh_cache(
         {"status": "error", "detail": "Scheduler job not found"},
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
     )
+
+
+@app.post("/admin/send-correction-newsletter")
+async def admin_send_correction_newsletter(
+    request: Request,
+    pin: str = Form(...),
+):
+    """
+    Send a correction newsletter email to all active subscribers.
+
+    Use this when the scheduled 8 AM pick was wrong (stale/incorrect game).
+    The email includes an apology banner and today's real top +EV pick.
+
+    Protected: requires the ADMIN_PIN submitted as a form field.
+    Call with:
+        curl -X POST https://www.posit-ev.com/admin/send-correction-newsletter \\
+             -d "pin=YOUR_PIN"
+    """
+    admin_pin = os.getenv("ADMIN_PIN", "")
+    if not admin_pin:
+        return JSONResponse(
+            {"status": "error", "detail": "ADMIN_PIN not configured on server."},
+            status_code=500,
+        )
+    if not secrets.compare_digest(pin.strip(), admin_pin.strip()):
+        log.warning(
+            "Correction newsletter: rejected bad PIN from %s",
+            request.client.host if request.client else "unknown",
+        )
+        return JSONResponse({"status": "error", "detail": "Invalid PIN."}, status_code=403)
+
+    import asyncio
+    loop = asyncio.get_event_loop()
+    result = await loop.run_in_executor(None, send_correction_newsletter)
+    log.info("Correction newsletter triggered by admin: %s", result)
+    return JSONResponse({"status": "sent", "result": result})

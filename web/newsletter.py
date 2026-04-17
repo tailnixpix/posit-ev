@@ -272,23 +272,27 @@ def get_top_ev_bet() -> Optional[EVBetCache]:
     Return the best model-confirmed +EV bet for today's newsletter pick.
 
     Selection priority:
-    1. Non-prop bet where the projection model agrees (proj_home_score set)
-       AND the game starts within the next 3 days — highest EV among those.
-    2. Any non-prop +EV bet (no projection filter) — highest EV.
-    3. Any bet in the cache (final fallback so the newsletter never sends empty).
+    1. Non-prop bet where the projection model agrees (proj_home_score set),
+       the game has NOT yet started (commence_time > now UTC), and the game
+       is within the next 3 days — highest EV among those.
+    2. Any non-prop +EV bet with commence_time > now UTC — highest EV.
+    3. Any bet in the cache with commence_time > now (final guard against
+       stale picks being re-sent).
 
-    This ensures the free pick is always one where our model and the market
-    are aligned, not just the raw highest-EV line.
+    The commence_time > now filter is the critical guard that prevents
+    yesterday's (or already-started) games from appearing in the newsletter.
     """
+    now_utc = datetime.now(timezone.utc)
     db = SessionLocal()
     try:
-        # Priority 1: model-confirmed non-prop bet (proj_home_score populated)
+        # Priority 1: model-confirmed non-prop bet for a future game
         bet = (
             db.query(EVBetCache)
             .filter(
                 EVBetCache.is_prop == False,                          # noqa: E712
                 EVBetCache.proj_home_score != None,                   # noqa: E711
                 EVBetCache.ev_percent > 0,
+                EVBetCache.commence_time > now_utc,                   # must not have started
             )
             .order_by(EVBetCache.ev_percent.desc())
             .first()
@@ -300,13 +304,14 @@ def get_top_ev_bet() -> Optional[EVBetCache]:
             )
             return bet
 
-        # Priority 2: any non-prop EV+ bet
+        # Priority 2: any non-prop EV+ bet for a future game
         log.warning("get_top_ev_bet: no model-confirmed bets — falling back to top non-prop EV+ bet.")
         bet = (
             db.query(EVBetCache)
             .filter(
                 EVBetCache.is_prop == False,                          # noqa: E712
                 EVBetCache.ev_percent > 0,
+                EVBetCache.commence_time > now_utc,
             )
             .order_by(EVBetCache.ev_percent.desc())
             .first()
@@ -314,9 +319,14 @@ def get_top_ev_bet() -> Optional[EVBetCache]:
         if bet:
             return bet
 
-        # Priority 3: anything in the cache
-        log.warning("get_top_ev_bet: no non-prop bets — returning overall top bet as last resort.")
-        return db.query(EVBetCache).order_by(EVBetCache.ev_percent.desc()).first()
+        # Priority 3: anything in the cache that hasn't started yet
+        log.warning("get_top_ev_bet: no non-prop bets — returning overall top future bet as last resort.")
+        return (
+            db.query(EVBetCache)
+            .filter(EVBetCache.commence_time > now_utc)
+            .order_by(EVBetCache.ev_percent.desc())
+            .first()
+        )
 
     finally:
         db.close()
@@ -670,6 +680,146 @@ def send_daily_newsletter() -> dict:
 
     log.info(
         "send_daily_newsletter: %d sent, %d failed (total %d subscribers) via Resend.",
+        sent, failed, len(emails),
+    )
+    return {"sent": sent, "failed": failed, "total": len(emails), "channel": "resend"}
+
+
+# ---------------------------------------------------------------------------
+# Correction email  (called when the scheduled pick was wrong)
+# ---------------------------------------------------------------------------
+
+def send_correction_newsletter() -> dict:
+    """
+    Send a correction email to all active subscribers.
+
+    Used when the scheduled 8 AM pick was incorrect (e.g. stale game data).
+    The email:
+      • Opens with an apology that the earlier pick was sent in error.
+      • Shows today's correct top +EV pick.
+      • Uses the same branded template as the daily newsletter.
+
+    Returns summary dict {"sent": int, "failed": int, "total": int}.
+    """
+    date_str = datetime.now(LOCAL_TZ).strftime("%B %-d, %Y")
+    subject  = f"Posit+EV | ⚠️ Correction — Real Pick for {date_str}"
+
+    # 1. Get the real top pick (now with commence_time > now guard)
+    bet = get_top_ev_bet()
+    if not bet:
+        log.warning("send_correction_newsletter: no valid future bets in EVBetCache — skipping.")
+        return {"sent": 0, "failed": 0, "total": 0}
+
+    # 2. AI synopsis
+    synopsis = _generate_synopsis(bet)
+
+    # 3. Fetch subscribers
+    db = SessionLocal()
+    try:
+        subscribers = (
+            db.query(NewsletterSubscriber)
+            .filter(NewsletterSubscriber.is_active.is_(True))
+            .all()
+        )
+        emails = [s.email for s in subscribers]
+    finally:
+        db.close()
+
+    if not emails:
+        log.info("send_correction_newsletter: no active subscribers.")
+        return {"sent": 0, "failed": 0, "total": 0}
+
+    # 4. Build correction-specific body
+    import os as _os
+    beehiiv_configured = bool(_os.getenv("BEEHIIV_API_KEY") and _os.getenv("BEEHIIV_PUBLICATION_ID"))
+
+    odds_raw  = getattr(bet, "odds", 0)
+    odds_str  = f"+{odds_raw}" if isinstance(odds_raw, int) and odds_raw > 0 else str(odds_raw)
+    ev_pct    = getattr(bet, "ev_percent", 0)
+    _team_raw = getattr(bet, "team", "—")
+    _player   = getattr(bet, "player_name", None)
+    _is_prop  = getattr(bet, "is_prop", False)
+    team      = f"{_player} — {_team_raw}" if (_is_prop and _player) else _team_raw
+    market    = getattr(bet, "market", "").upper()
+    book      = getattr(bet, "book", "—")
+    true_prob = getattr(bet, "true_prob", 0)
+    ev_color  = "#534AB7" if ev_pct > 8 else ("#0F6E56" if ev_pct > 5 else "#B45309")
+
+    correction_banner = """
+<div style="background:#FFF3CD; border:1px solid #FFC107; border-radius:8px;
+            padding:14px 18px; margin:0 0 20px; font-size:14px; color:#664D03;">
+  <strong>⚠️ Earlier pick sent in error.</strong> The pick we sent this morning
+  referenced a game that is not taking place today. We apologize for the confusion.
+  Below is the correct free pick for today.
+</div>
+"""
+
+    body_html = f"""
+{correction_banner}
+
+<h2 style="color:#1A1450; font-size:20px; font-weight:700; margin:0 0 16px;">
+  Today&rsquo;s Correct Free Pick &mdash; {date_str}
+</h2>
+
+<div style="background:#F5F4FE; border-radius:10px; padding:20px 24px; margin:0 0 20px;">
+  <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:8px;">
+    <div>
+      <div style="font-size:26px; font-weight:800; color:{ev_color};">{ev_pct:.1f}% EV</div>
+      <div style="font-size:12px; color:#7F77DD; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px;">
+        {market} &bull; {book}
+      </div>
+    </div>
+    <div style="background:#534AB7; color:#fff; border-radius:6px; padding:4px 14px;
+                font-size:16px; font-weight:700; align-self:center;">
+      {odds_str}
+    </div>
+  </div>
+  <div style="margin-top:14px; font-size:15px; color:#26215C; font-weight:600;">{team}</div>
+  <div style="margin-top:4px; font-size:13px; color:#7F77DD;">True probability: {true_prob:.1%}</div>
+</div>
+
+<div style="border-left:3px solid #534AB7; padding:14px 18px; background:#FAFAFE;
+            border-radius:0 8px 8px 0; margin:0 0 24px; font-size:14px;
+            color:#3D3860; line-height:1.75;">
+  {synopsis}
+</div>
+
+<p style="font-size:14px; color:#555270; line-height:1.7; margin:0 0 20px;">
+  This is today&rsquo;s corrected free pick from Posit+EV. EV Pro members get the
+  <strong>full daily scan</strong> &mdash; usually 10&ndash;30 picks across NHL, NBA,
+  MLB, and more &mdash; refreshed every hour on a live dashboard.
+</p>
+
+<a href="{_base_url}/pricing"
+   style="display:inline-block; background:#534AB7; color:#ffffff;
+          text-decoration:none; padding:13px 32px; border-radius:8px;
+          font-weight:700; font-size:15px;">
+  Unlock All Today&rsquo;s Picks &mdash; $10/month &rarr;
+</a>
+"""
+
+    if beehiiv_configured:
+        subtitle = f"Correction — today's pick: {team} at {odds_str} ({ev_pct:.1f}% EV)"
+        post = bh_post(subject, body_html, subtitle=subtitle, send=True)
+        if post:
+            log.info("send_correction_newsletter: delivered via Beehiiv.")
+            return {"sent": len(emails), "failed": 0, "total": len(emails), "channel": "beehiiv"}
+        log.warning("Beehiiv correction post failed — falling back to Resend.")
+
+    # Resend per-recipient fallback
+    sent = failed = 0
+    for email in emails:
+        unsub_token = _make_unsub_token(email)
+        unsub_url   = f"{_base_url}/newsletter/unsubscribe?token={unsub_token}"
+        html = _wrap_email(body_html, unsubscribe_url=unsub_url)
+        ok   = _send(email, subject, html)
+        if ok:
+            sent += 1
+        else:
+            failed += 1
+
+    log.info(
+        "send_correction_newsletter: %d sent, %d failed (%d total) via Resend.",
         sent, failed, len(emails),
     )
     return {"sent": sent, "failed": failed, "total": len(emails), "channel": "resend"}
