@@ -1303,21 +1303,37 @@ async def admin_dashboard(
     )
 
     # Global stats — always unfiltered counts (efficient, no full table load)
+    _now_admin = datetime.now(timezone.utc)
     user_total       = db.query(User).count()
+    # Trial: subscribed + stripe sub + trial still active
+    user_trial = db.query(User).filter(
+        User.is_subscribed.is_(True),
+        User.stripe_subscription_id.isnot(None),
+        User.trial_ends_at.isnot(None),
+        User.trial_ends_at > _now_admin,
+    ).count()
+    # Paid: subscribed + stripe sub + NOT in active trial (or no trial set)
     user_paid_stripe = db.query(User).filter(
         User.is_subscribed.is_(True),
         User.stripe_subscription_id.isnot(None),
-    ).count()
+    ).count() - user_trial
     user_comped = db.query(User).filter(
         User.is_subscribed.is_(True),
         User.stripe_subscription_id.is_(None),
     ).count()
-    user_paid  = user_paid_stripe + user_comped   # backward-compat total
-    user_free  = user_total - user_paid
+    user_paid  = user_paid_stripe + user_comped   # backward-compat total (excl. trial)
+    user_free  = user_total - user_paid - user_trial
 
     # Build filtered query
     query = db.query(User)
-    if tier == "paid":
+    if tier == "trial":
+        query = query.filter(
+            User.is_subscribed.is_(True),
+            User.stripe_subscription_id.isnot(None),
+            User.trial_ends_at.isnot(None),
+            User.trial_ends_at > _now_admin,
+        )
+    elif tier == "paid":
         query = query.filter(
             User.is_subscribed.is_(True),
             User.stripe_subscription_id.isnot(None),
@@ -1431,8 +1447,10 @@ async def admin_dashboard(
             "user_total":        user_total,
             "user_paid":         user_paid,
             "user_paid_stripe":  user_paid_stripe,
+            "user_trial":        user_trial,
             "user_comped":       user_comped,
             "user_free":         user_free,
+            "now_utc_dt":        _now_admin,
             # Pagination metadata
             "filtered_total":   filtered_total,
             "total_pages":      total_pages,
@@ -1493,6 +1511,97 @@ async def admin_grant_access(
         log.info("Admin granted access to %s", user.email)
     params = f"?tier={redirect_tier}&q={redirect_q}&page={redirect_page}"
     return RedirectResponse(url=f"/admin{params}", status_code=303)
+
+
+@app.post("/admin/sync-stripe-user")
+async def admin_sync_stripe_user(
+    request: Request,
+    email: str = Form(...),
+    redirect_tier: str = Form("all"),
+    redirect_q: str = Form(""),
+    redirect_page: int = Form(1),
+    db: Session = Depends(get_db),
+):
+    """
+    Look up a user's Stripe subscriptions by email and sync their access state.
+
+    Handles the case where a user completed a Stripe checkout but our DB
+    flag is stale (webhook missed, multiple customers created, etc.).
+
+    Also accepts Bearer JWT auth so it can be called from the CLI.
+    """
+    # Auth: admin session OR Bearer JWT
+    authorized = _is_admin(request)
+    if not authorized:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            from web.auth import decode_access_token as _dat
+            payload = _dat(auth_header[7:].strip())
+            if payload and payload.get("email"):
+                authorized = True
+    if not authorized:
+        return JSONResponse({"status": "error", "detail": "Unauthorized"}, status_code=403)
+
+    import stripe as _stripe
+    _stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
+
+    user = db.query(User).filter(User.email == email.strip().lower()).first()
+    if not user:
+        if _is_admin(request):
+            params = f"?tier={redirect_tier}&q={redirect_q}&page={redirect_page}"
+            return RedirectResponse(url=f"/admin{params}&error=user_not_found", status_code=303)
+        return JSONResponse({"status": "error", "detail": f"No user found for {email}"}, status_code=404)
+
+    # Search Stripe for all customers with this email
+    best_sub = None
+    best_customer_id = None
+    try:
+        customers = _stripe.Customer.search(query=f'email:"{user.email}"', limit=10)
+        for cust in customers.auto_paging_iter():
+            subs = _stripe.Subscription.list(customer=cust.id, status="all", limit=10)
+            for sub in subs.auto_paging_iter():
+                if sub.status in ("active", "trialing", "past_due"):
+                    # Prefer the most recently created subscription
+                    if best_sub is None or sub.created > best_sub.created:
+                        best_sub = sub
+                        best_customer_id = cust.id
+    except Exception as _exc:
+        log.error("admin_sync_stripe_user: Stripe search failed for %s: %s", email, _exc)
+        if _is_admin(request):
+            params = f"?tier={redirect_tier}&q={redirect_q}&page={redirect_page}"
+            return RedirectResponse(url=f"/admin{params}", status_code=303)
+        return JSONResponse({"status": "error", "detail": str(_exc)}, status_code=500)
+
+    if best_sub:
+        trial_end_ts = getattr(best_sub, "trial_end", None)
+        trial_ends_at = (
+            datetime.fromtimestamp(int(trial_end_ts), tz=timezone.utc)
+            if trial_end_ts else None
+        )
+        user.is_subscribed            = True
+        user.stripe_subscription_id   = best_sub.id
+        user.stripe_customer_id       = best_customer_id
+        if trial_ends_at is not None:
+            user.trial_ends_at = trial_ends_at
+        db.commit()
+        log.info(
+            "admin_sync_stripe_user: synced %s → sub=%s status=%s trial_ends=%s",
+            user.email, best_sub.id, best_sub.status, trial_ends_at,
+        )
+        result = {
+            "status": "synced", "email": user.email,
+            "sub_id": best_sub.id, "sub_status": best_sub.status,
+            "trial_ends_at": trial_ends_at.isoformat() if trial_ends_at else None,
+        }
+    else:
+        result = {"status": "no_active_sub", "email": user.email,
+                  "detail": "No active/trialing Stripe subscription found for this email."}
+        log.warning("admin_sync_stripe_user: no active sub found for %s", user.email)
+
+    if _is_admin(request):
+        params = f"?tier={redirect_tier}&q={redirect_q}&page={redirect_page}"
+        return RedirectResponse(url=f"/admin{params}", status_code=303)
+    return JSONResponse(result)
 
 
 @app.post("/admin/revoke-access")

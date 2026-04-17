@@ -350,8 +350,12 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
       <div class="lbl">Paid subscribers</div>
     </div>
     <div class="stat-box">
+      <div class="num">{{ user_trial }}</div>
+      <div class="lbl">In free trial</div>
+    </div>
+    <div class="stat-box">
       <div class="num">{{ user_comped }}</div>
-      <div class="lbl">Comp / free access</div>
+      <div class="lbl">Comped access</div>
     </div>
     <div class="stat-box">
       <div class="num">{{ user_total }}</div>
@@ -908,6 +912,10 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
          class="tier-tab {% if current_tier == 'paid' %}active{% endif %}">
         Paid ({{ user_paid_stripe }})
       </a>
+      <a href="/admin?tier=trial&q={{ current_q }}&page=1"
+         class="tier-tab {% if current_tier == 'trial' %}active{% endif %}">
+        Trial ({{ user_trial }})
+      </a>
       <a href="/admin?tier=comped&q={{ current_q }}&page=1"
          class="tier-tab {% if current_tier == 'comped' %}active{% endif %}">
         Comped ({{ user_comped }})
@@ -947,6 +955,7 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
         <tr>
           <th>Email</th>
           <th>Plan</th>
+          <th>Trial Ends</th>
           <th>Joined</th>
           <th>Stripe ID</th>
           <th>Access</th>
@@ -954,15 +963,33 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
       </thead>
       <tbody>
         {% for u in users %}
+        {% set is_trial = u.is_subscribed and u.trial_ends_at and u.trial_ends_at > now_utc_dt %}
         <tr>
           <td style="font-weight:500;">{{ u.email }}</td>
           <td>
-            {% if u.is_subscribed and u.stripe_subscription_id %}
+            {% if is_trial %}
+              <span class="tag" style="background:rgba(59,130,246,0.1);color:#1D4ED8;border:1px solid rgba(59,130,246,0.3);">🕐 Trial</span>
+            {% elif u.is_subscribed and u.stripe_subscription_id %}
               <span class="tag tag-paid">💳 Paid</span>
             {% elif u.is_subscribed %}
               <span class="tag" style="background:rgba(234,179,8,0.1);color:#92400E;border:1px solid rgba(234,179,8,0.3);">🎁 Comped</span>
             {% else %}
               <span class="tag tag-free">Free</span>
+            {% endif %}
+          </td>
+          <td style="font-size:0.82rem; color:var(--text-muted); white-space:nowrap;">
+            {% if u.trial_ends_at %}
+              {% if is_trial %}
+                <span style="color:#1D4ED8; font-weight:600;">
+                  {{ u.trial_ends_at.strftime('%b %-d') }}
+                </span>
+              {% else %}
+                <span style="color:var(--text-muted); text-decoration:line-through;">
+                  {{ u.trial_ends_at.strftime('%b %-d') }}
+                </span>
+              {% endif %}
+            {% else %}
+              —
             {% endif %}
           </td>
           <td style="font-size:0.82rem; color:var(--text-muted); white-space:nowrap;">
