@@ -144,7 +144,13 @@ async def subscribe(request: Request):
 
     - Unauthenticated users  → /register
     - Already subscribed     → /dashboard
+    - Has active Stripe sub  → heal DB flag → /dashboard  (dedup guard)
     - Authenticated + free   → create Stripe Checkout Session → redirect
+
+    Duplicate-subscription guard: before creating a new Checkout Session,
+    query Stripe for any existing active/trialing subscription on the stored
+    customer ID. If one exists the DB flag is healed and the user is sent
+    straight to the dashboard — no second subscription is ever created.
     """
     token = get_token_from_request(request)
     if not token:
@@ -162,7 +168,9 @@ async def subscribe(request: Request):
         if user.is_subscribed:
             return RedirectResponse(url="/dashboard", status_code=303)
 
-        email = user.email
+        email           = user.email
+        user_id         = user.id
+        customer_id_db  = user.stripe_customer_id   # may be None or stale
     finally:
         db.close()
 
@@ -173,6 +181,44 @@ async def subscribe(request: Request):
     if not _PRICE_ID:
         log.error("/subscribe: STRIPE_PRICE_ID not set.")
         return RedirectResponse(url="/pricing?error=checkout_failed", status_code=303)
+
+    # ── Dedup guard: check Stripe for an existing active/trialing sub ─────
+    # This catches the case where the user completed checkout but the webhook
+    # hasn't updated the DB yet, OR where a previous checkout was completed
+    # and IS_SUBSCRIBED is wrongly False due to webhook ordering.
+    if customer_id_db and stripe.api_key:
+        try:
+            subs = stripe.Subscription.list(
+                customer=customer_id_db,
+                status="all",
+                limit=10,
+            )
+            active_sub = next(
+                (s for s in subs.auto_paging_iter()
+                 if s.status in ("active", "trialing", "past_due")),
+                None,
+            )
+            if active_sub:
+                # Heal the DB flag and redirect — no new subscription needed
+                trial_end_ts = getattr(active_sub, "trial_end", None)
+                trial_ends_at = (
+                    datetime.fromtimestamp(int(trial_end_ts), tz=timezone.utc)
+                    if trial_end_ts else None
+                )
+                _set_subscribed(
+                    customer_id_db, active_sub.id,
+                    subscribed=True, trial_ends_at=trial_ends_at,
+                    customer_email=email,
+                )
+                log.info(
+                    "/subscribe: found existing %s sub %s for %s — healed DB, redirecting to dashboard.",
+                    active_sub.status, active_sub.id, email,
+                )
+                return RedirectResponse(url="/dashboard", status_code=303)
+        except stripe.error.InvalidRequestError:
+            log.warning("/subscribe: stale customer_id %s for %s — will use customer_email.", customer_id_db, email)
+        except stripe.error.StripeError as exc:
+            log.warning("/subscribe: Stripe dedup check failed (%s) — proceeding to checkout.", exc)
 
     try:
         session_kwargs = {
@@ -186,10 +232,14 @@ async def subscribe(request: Request):
             "payment_method_collection": "always",
         }
 
-        # Always use customer_email — avoids stale test-mode customer IDs
-        # being passed to the live-mode API after a mode switch.
-        # Stripe will match to an existing live customer or create a new one.
-        session_kwargs["customer_email"] = email
+        # Reuse the stored Stripe customer when available — this prevents a new
+        # Customer object from being created on each checkout attempt, which was
+        # the root cause of duplicate subscriptions.  Fall back to customer_email
+        # only when no customer ID is stored yet (first-time subscriber).
+        if customer_id_db:
+            session_kwargs["customer"] = customer_id_db
+        else:
+            session_kwargs["customer_email"] = email
 
         session = stripe.checkout.Session.create(**session_kwargs)
         log.info("Checkout session %s created for %s", session.id, email)

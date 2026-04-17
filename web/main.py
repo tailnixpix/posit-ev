@@ -647,9 +647,14 @@ class SubscriptionMiddleware(BaseHTTPMiddleware):
     """
     Intercepts every request to /dashboard.
 
-    1. Missing / invalid JWT  → redirect /login
-    2. User not subscribed    → redirect /pricing
-    3. Subscribed             → pass through
+    1. Missing / invalid JWT        → redirect /login
+    2. User not subscribed AND
+       not within active trial window → redirect /pricing
+    3. Subscribed OR in active trial → pass through
+
+    Trial safety net: if is_subscribed is False but trial_ends_at is set
+    and still in the future, the user is mid-trial and gets full access.
+    The flag is healed in-place so subsequent requests skip this check.
     """
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
@@ -670,8 +675,28 @@ class SubscriptionMiddleware(BaseHTTPMiddleware):
             user = db.query(User).filter(User.id == int(payload["sub"])).first()
             if not user:
                 return RedirectResponse(url="/login", status_code=303)
+
             if not user.is_subscribed:
-                return RedirectResponse(url="/pricing", status_code=303)
+                # Safety net: honor an active trial window even if the
+                # is_subscribed flag is wrong (webhook ordering / race condition)
+                trial_ends = getattr(user, "trial_ends_at", None)
+                now_utc    = datetime.now(timezone.utc)
+                if trial_ends and trial_ends > now_utc:
+                    # Mid-trial — heal the flag so future requests skip this branch
+                    try:
+                        user.is_subscribed = True
+                        db.commit()
+                        log.info(
+                            "SubscriptionMiddleware: healed is_subscribed for %s "
+                            "(trial active until %s)",
+                            user.email, trial_ends.isoformat(),
+                        )
+                    except Exception as _heal_exc:
+                        db.rollback()
+                        log.warning("SubscriptionMiddleware: flag heal failed: %s", _heal_exc)
+                    # Allow through regardless of whether the heal succeeded
+                else:
+                    return RedirectResponse(url="/pricing", status_code=303)
         finally:
             db.close()
 
