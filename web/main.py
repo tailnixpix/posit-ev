@@ -1647,7 +1647,7 @@ async def admin_refresh_cache(
 @app.post("/admin/send-correction-newsletter")
 async def admin_send_correction_newsletter(
     request: Request,
-    pin: str = Form(...),
+    pin: str = Form(default=""),
 ):
     """
     Send a correction newsletter email to all active subscribers.
@@ -1655,23 +1655,50 @@ async def admin_send_correction_newsletter(
     Use this when the scheduled 8 AM pick was wrong (stale/incorrect game).
     The email includes an apology banner and today's real top +EV pick.
 
-    Protected: requires the ADMIN_PIN submitted as a form field.
-    Call with:
+    Accepts one of two auth methods:
+      1. Form field: pin=ADMIN_PIN
+      2. HTTP header: Authorization: Bearer <valid-JWT>
+
+    Call with Bearer token:
+        curl -X POST https://www.posit-ev.com/admin/send-correction-newsletter \\
+             -H "Authorization: Bearer YOUR_JWT"
+    Call with PIN:
         curl -X POST https://www.posit-ev.com/admin/send-correction-newsletter \\
              -d "pin=YOUR_PIN"
     """
-    admin_pin = os.getenv("ADMIN_PIN", "")
-    if not admin_pin:
+    from web.auth import decode_access_token
+
+    authorized = False
+
+    # Method 1: valid JWT Bearer token
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        token = auth_header[7:].strip()
+        payload = decode_access_token(token)
+        if payload and payload.get("email"):
+            authorized = True
+            log.info(
+                "Correction newsletter: authorized via Bearer JWT for %s",
+                payload.get("email"),
+            )
+
+    # Method 2: admin PIN form field
+    if not authorized and pin:
+        admin_pin = os.getenv("ADMIN_PIN", "")
+        if admin_pin and secrets.compare_digest(pin.strip(), admin_pin.strip()):
+            authorized = True
+            log.info("Correction newsletter: authorized via ADMIN_PIN")
+        else:
+            log.warning(
+                "Correction newsletter: rejected bad PIN from %s",
+                request.client.host if request.client else "unknown",
+            )
+
+    if not authorized:
         return JSONResponse(
-            {"status": "error", "detail": "ADMIN_PIN not configured on server."},
-            status_code=500,
+            {"status": "error", "detail": "Unauthorized — provide a valid Bearer token or ADMIN_PIN."},
+            status_code=403,
         )
-    if not secrets.compare_digest(pin.strip(), admin_pin.strip()):
-        log.warning(
-            "Correction newsletter: rejected bad PIN from %s",
-            request.client.host if request.client else "unknown",
-        )
-        return JSONResponse({"status": "error", "detail": "Invalid PIN."}, status_code=403)
 
     import asyncio
     loop = asyncio.get_event_loop()
