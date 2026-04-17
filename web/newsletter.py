@@ -613,6 +613,7 @@ def send_daily_newsletter() -> dict:
         _player   = getattr(bet, "player_name", None)
         _is_prop  = getattr(bet, "is_prop", False)
         team      = f"{_player} — {_team_raw}" if (_is_prop and _player) else _team_raw
+        game      = getattr(bet, "game", "") or ""
         market    = getattr(bet, "market", "").upper()
         book      = getattr(bet, "book", "—")
         true_prob = getattr(bet, "true_prob", 0)
@@ -638,6 +639,7 @@ def send_daily_newsletter() -> dict:
     </div>
   </div>
   <div style="margin-top:14px; font-size:15px; color:#26215C; font-weight:600;">{team}</div>
+  {f'<div style="margin-top:3px; font-size:13px; color:#7F77DD;">{game}</div>' if game else ""}
   <div style="margin-top:4px; font-size:13px; color:#7F77DD;">True probability: {true_prob:.1%}</div>
 </div>
 
@@ -740,6 +742,7 @@ def send_correction_newsletter() -> dict:
     _player   = getattr(bet, "player_name", None)
     _is_prop  = getattr(bet, "is_prop", False)
     team      = f"{_player} — {_team_raw}" if (_is_prop and _player) else _team_raw
+    game      = getattr(bet, "game", "") or ""
     market    = getattr(bet, "market", "").upper()
     book      = getattr(bet, "book", "—")
     true_prob = getattr(bet, "true_prob", 0)
@@ -775,6 +778,7 @@ def send_correction_newsletter() -> dict:
     </div>
   </div>
   <div style="margin-top:14px; font-size:15px; color:#26215C; font-weight:600;">{team}</div>
+  {f'<div style="margin-top:3px; font-size:13px; color:#7F77DD;">{game}</div>' if game else ""}
   <div style="margin-top:4px; font-size:13px; color:#7F77DD;">True probability: {true_prob:.1%}</div>
 </div>
 
