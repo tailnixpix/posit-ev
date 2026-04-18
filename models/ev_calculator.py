@@ -341,10 +341,20 @@ def find_positive_ev_props(
 
     Groups by (game_id, prop_market, player, point) — each unique player line
     is its own mini-market with Over and Under as the two outcomes.
-    Requires at least 2 sportsbooks to establish a sharp reference.
+
+    Sharp reference strategy (mirrors the game-market approach):
+    - Exchanges (Novig, ProphetX) and sportsbooks together form the reference pool
+      for sharpest_no_vig so exchange pricing anchors the true probability.
+    - Only sportsbook bets are emitted in the output — exchanges are not shown as
+      actionable bets since not all users have accounts there.
+    - Requires at least 2 books in the reference pool.
     """
     if props_df.empty:
         return pd.DataFrame()
+
+    # Books whose source_type is "sportsbook" — these are evaluated for EV and
+    # shown to users as actionable bets.
+    SPORTSBOOK_SOURCE = "sportsbook"
 
     all_rows = []
 
@@ -359,21 +369,36 @@ def find_positive_ev_props(
         if len(outcome_order) != 2:
             continue  # props must have Over and Under
 
-        book_odds: dict = {}
+        book_odds: dict = {}        # all books — used for the sharp reference
+        sportsbook_odds: dict = {}  # sportsbooks only — used for EV evaluation / output
+
         for book, bk_df in group.groupby("bookmaker"):
             bk_df_sorted = bk_df.set_index("outcome_name").reindex(outcome_order)
             if bk_df_sorted["price"].isna().any():
                 continue
-            book_odds[book] = bk_df_sorted["price"].astype(int).tolist()
+            odds_list = bk_df_sorted["price"].astype(int).tolist()
+            book_odds[book] = odds_list
 
-        if len(book_odds) < 2:
-            continue  # single-book props are unreliable
+            src = (
+                bk_df["source_type"].iloc[0]
+                if "source_type" in bk_df.columns
+                else SPORTSBOOK_SOURCE
+            )
+            if src == SPORTSBOOK_SOURCE:
+                sportsbook_odds[book] = odds_list
+
+        # Need at least 2 books total (e.g. Novig + one sportsbook) for a
+        # meaningful sharp reference, and at least 1 sportsbook to emit a bet.
+        if len(book_odds) < 2 or not sportsbook_odds:
+            continue
 
         sharp = sharpest_no_vig(book_odds, outcome_names=outcome_order)
         true_probs = sharp["no_vig_probs"]
         sharp_book = sharp["sharpest_book"]
 
-        for book, odds_list in book_odds.items():
+        # Evaluate EV for sportsbooks only — exchanges anchor the reference but
+        # are not surfaced as bets.
+        for book, odds_list in sportsbook_odds.items():
             rows = ev_for_market(odds_list, true_probs, outcome_order, book, stake)
             for row in rows:
                 point_val = None
@@ -395,7 +420,7 @@ def find_positive_ev_props(
                     "sharp_book":       sharp_book,
                     "sharp_vig_pct":    round(sharp["sharpest_vig"] * 100, 3),
                     "point":            point_val,
-                    "source_type":      "sportsbook",
+                    "source_type":      SPORTSBOOK_SOURCE,
                     "is_prop":          True,
                     "adjusted_prob":    None,
                     "confidence_mult":  1.0,

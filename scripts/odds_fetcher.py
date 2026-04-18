@@ -83,8 +83,12 @@ EXCHANGE_BOOKMAKERS = [
 BOOKMAKERS = SPORTSBOOK_BOOKMAKERS  # backward-compat alias (sportsbooks only)
 ALL_BOOKMAKERS = SPORTSBOOK_BOOKMAKERS + PREDICTION_MARKET_BOOKMAKERS + EXCHANGE_BOOKMAKERS
 
-# Props use sportsbooks only — exchanges don't offer US player props.
-PROPS_BOOKMAKERS = [b for b in SPORTSBOOK_BOOKMAKERS if b != "betfair_ex_uk"]
+# Props fetch includes sportsbooks + Novig (P2P exchange with efficient prop pricing).
+# Novig IS used here so its sharp lines serve as the true-probability anchor and
+# prevent sportsbook-vs-sportsbook EV signals that Novig's efficient market would
+# not support.  Novig props are NOT surfaced as bets in the output — only its
+# probability reference matters.  (See find_positive_ev_props in ev_calculator.py.)
+PROPS_BOOKMAKERS = [b for b in SPORTSBOOK_BOOKMAKERS if b != "betfair_ex_uk"] + ["novig"]
 
 # Maps each bookmaker key to its source type
 BOOKMAKER_SOURCE_TYPE: dict = {
