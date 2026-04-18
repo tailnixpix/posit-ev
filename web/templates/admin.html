@@ -327,6 +327,17 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
       <p class="subtitle">Last refreshed: {{ now }}</p>
     </div>
     <div class="admin-actions">
+      <!-- Hard-form fallback so cache flush always works even if JS fails -->
+      <form action="/admin/refresh-cache" method="post" style="margin:0;">
+        <input type="hidden" name="pin" value="{{ admin_pin_for_form }}">
+        <button type="submit"
+                style="font-size:0.82rem; font-weight:600; padding:8px 16px;
+                       background:#534AB7; color:#fff;
+                       border:1px solid #534AB7;
+                       border-radius:8px; cursor:pointer; font-family:inherit;">
+          ↻ Flush &amp; Refresh Cache
+        </button>
+      </form>
       <form action="/admin/logout" method="post" style="margin:0;">
         <button type="submit"
                 style="font-size:0.82rem; font-weight:600; padding:8px 16px;

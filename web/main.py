@@ -1496,6 +1496,8 @@ async def admin_dashboard(
             "last_cache_at":    last_cache_at,
             "cache_avg_ev":     cache_avg_ev,
             "cache_avg_odds":   cache_avg_odds,
+            # PIN embedded in form for hard-refresh fallback button
+            "admin_pin_for_form": os.getenv("ADMIN_PIN", ""),
             # Model performance
             "total_won_count":      total_won_count,
             "total_lost_count":     total_lost_count,
@@ -1795,14 +1797,20 @@ async def admin_refresh_cache(
         return JSONResponse({"error": "unauthorized"}, status_code=403)
 
     job = scheduler.get_job("ev_cache_refresh")
+    # Detect whether this is a browser form POST (wants a redirect) vs AJAX (wants JSON)
+    accept = request.headers.get("accept", "")
+    wants_html = "text/html" in accept
+
     if job:
         scheduler.modify_job("ev_cache_refresh", next_run_time=datetime.now(timezone.utc))
         log.info("Manual cache refresh triggered via admin panel.")
+        if wants_html:
+            return RedirectResponse(url="/admin?msg=refresh_queued", status_code=303)
         return JSONResponse({"status": "refresh queued"})
-    return JSONResponse(
-        {"status": "error", "detail": "Scheduler job not found"},
-        status_code=500,
-    )
+
+    if wants_html:
+        return RedirectResponse(url="/admin?error=scheduler_not_found", status_code=303)
+    return JSONResponse({"status": "error", "detail": "Scheduler job not found"}, status_code=500)
 
 
 @app.post("/admin/send-correction-newsletter")
