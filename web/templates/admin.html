@@ -1096,7 +1096,8 @@ async function adminTriggerRefresh() {
   btn.disabled = true;
   btn.textContent = '⏳ Queuing…';
   try {
-    const res = await fetch('/admin/refresh-cache', { method: 'POST' });
+    const fd = new FormData(); fd.append('pin', '');
+    const res = await fetch('/admin/refresh-cache', { method: 'POST', body: fd, credentials: 'same-origin' });
     if (res.ok) {
       btn.textContent = '✓ Running — done in ~30s';
       setTimeout(() => {

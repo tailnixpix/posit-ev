@@ -1776,20 +1776,32 @@ async def admin_newsletter_resubscribe(
 
 @app.post("/admin/refresh-cache")
 async def admin_refresh_cache(
-    current_user: User = Depends(require_auth),
+    request: Request,
+    pin: str = Form(default=""),
 ):
     """
     Manually trigger an immediate EV cache refresh.
-    Protected: requires a valid JWT (any subscribed user can trigger).
-    Schedules the job to run right now via APScheduler.
+
+    Accepts either:
+      1. Admin PIN in form field: pin=ADMIN_PIN
+      2. Session-based admin auth (logged-in via /admin)
     """
+    _admin_pin = os.getenv("ADMIN_PIN", "")
+    authed = (
+        bool(request.session.get("admin_authenticated"))
+        or (pin and _admin_pin and pin == _admin_pin)
+    )
+    if not authed:
+        return JSONResponse({"error": "unauthorized"}, status_code=403)
+
     job = scheduler.get_job("ev_cache_refresh")
     if job:
         scheduler.modify_job("ev_cache_refresh", next_run_time=datetime.now(timezone.utc))
-        return JSONResponse({"status": "refresh queued", "triggered_by": current_user.email})
+        log.info("Manual cache refresh triggered via admin panel.")
+        return JSONResponse({"status": "refresh queued"})
     return JSONResponse(
         {"status": "error", "detail": "Scheduler job not found"},
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        status_code=500,
     )
 
 
