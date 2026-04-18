@@ -23,7 +23,7 @@ Environment variables:
 import logging
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import resend
@@ -271,62 +271,82 @@ def get_top_ev_bet() -> Optional[EVBetCache]:
     """
     Return the best model-confirmed +EV bet for today's newsletter pick.
 
-    Selection priority:
-    1. Non-prop bet where the projection model agrees (proj_home_score set),
-       the game has NOT yet started (commence_time > now UTC), and the game
-       is within the next 3 days — highest EV among those.
-    2. Any non-prop +EV bet with commence_time > now UTC — highest EV.
-    3. Any bet in the cache with commence_time > now (final guard against
-       stale picks being re-sent).
+    Selection priority (all tiers require commence_time > now):
+    1. Model-confirmed non-prop bet for a game playing TODAY (CT calendar day).
+    2. Any non-prop +EV bet for a game playing TODAY.
+    3. Model-confirmed non-prop bet for any future game (next 7 days).
+    4. Any non-prop +EV bet for any future game.
+    5. Any bet in the cache for any future game (last resort).
 
-    The commence_time > now filter is the critical guard that prevents
-    yesterday's (or already-started) games from appearing in the newsletter.
+    Tiers 1-2 ("today only") are strongly preferred so the newsletter always
+    features a game the reader can act on the same day.  Tiers 3-5 are safety
+    nets for days with no same-day coverage (e.g. early morning before books
+    post lines).
     """
+    from zoneinfo import ZoneInfo
+    _CT = ZoneInfo("America/Chicago")
     now_utc = datetime.now(timezone.utc)
+
+    # Compute CT midnight boundaries for "today"
+    now_ct = datetime.now(_CT)
+    today_ct = now_ct.date()
+    today_start = datetime(today_ct.year, today_ct.month, today_ct.day, tzinfo=_CT)
+    tomorrow_start = today_start + timedelta(days=1)
+
     db = SessionLocal()
     try:
-        # Priority 1: model-confirmed non-prop bet for a future game
-        bet = (
-            db.query(EVBetCache)
-            .filter(
-                EVBetCache.is_prop == False,                          # noqa: E712
-                EVBetCache.proj_home_score != None,                   # noqa: E711
-                EVBetCache.ev_percent > 0,
-                EVBetCache.commence_time > now_utc,                   # must not have started
-            )
-            .order_by(EVBetCache.ev_percent.desc())
-            .first()
-        )
-        if bet:
-            log.info(
-                "get_top_ev_bet: model-confirmed pick → %s %s %.1f%% EV",
-                bet.game, bet.team, bet.ev_percent,
-            )
-            return bet
-
-        # Priority 2: any non-prop EV+ bet for a future game
-        log.warning("get_top_ev_bet: no model-confirmed bets — falling back to top non-prop EV+ bet.")
-        bet = (
-            db.query(EVBetCache)
-            .filter(
-                EVBetCache.is_prop == False,                          # noqa: E712
-                EVBetCache.ev_percent > 0,
+        def _query(extra_filters: list, label: str):
+            base = [
                 EVBetCache.commence_time > now_utc,
+            ] + extra_filters
+            result = (
+                db.query(EVBetCache)
+                .filter(*base)
+                .order_by(EVBetCache.ev_percent.desc())
+                .first()
             )
-            .order_by(EVBetCache.ev_percent.desc())
-            .first()
-        )
+            if result:
+                log.info(
+                    "get_top_ev_bet [%s]: %s %s %.1f%% EV @ commence=%s",
+                    label, result.game, result.team, result.ev_percent,
+                    result.commence_time,
+                )
+            return result
+
+        today_filters = [
+            EVBetCache.commence_time >= today_start,
+            EVBetCache.commence_time < tomorrow_start,
+        ]
+        non_prop      = [EVBetCache.is_prop == False]                # noqa: E712
+        model_conf    = non_prop + [EVBetCache.proj_home_score != None]  # noqa: E711
+        ev_pos        = [EVBetCache.ev_percent > 0]
+
+        # Tier 1: model-confirmed, today
+        bet = _query(model_conf + ev_pos + today_filters, "model+today")
         if bet:
             return bet
 
-        # Priority 3: anything in the cache that hasn't started yet
-        log.warning("get_top_ev_bet: no non-prop bets — returning overall top future bet as last resort.")
-        return (
-            db.query(EVBetCache)
-            .filter(EVBetCache.commence_time > now_utc)
-            .order_by(EVBetCache.ev_percent.desc())
-            .first()
-        )
+        # Tier 2: any non-prop EV+, today
+        log.warning("get_top_ev_bet: no model-confirmed today bet — falling back to any non-prop today.")
+        bet = _query(non_prop + ev_pos + today_filters, "non-prop+today")
+        if bet:
+            return bet
+
+        # Tier 3: model-confirmed, any future game
+        log.warning("get_top_ev_bet: no today bets — widening to future model-confirmed bets.")
+        bet = _query(model_conf + ev_pos, "model+future")
+        if bet:
+            return bet
+
+        # Tier 4: any non-prop EV+, any future game
+        log.warning("get_top_ev_bet: no model-confirmed future bets — any non-prop future bet.")
+        bet = _query(non_prop + ev_pos, "non-prop+future")
+        if bet:
+            return bet
+
+        # Tier 5: anything that hasn't started
+        log.warning("get_top_ev_bet: last resort — returning top future bet regardless of type.")
+        return _query([], "any+future")
 
     finally:
         db.close()
