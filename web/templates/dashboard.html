@@ -625,7 +625,162 @@ main { max-width: none !important; padding: 0 !important; }
 .sport-pill.active .pill-count { background: rgba(167,139,250,0.4); }
 .card-team { font-size: 1.05rem; font-weight: 800; color: var(--d-text); line-height: 1.2; word-break: break-word; }
 .card-game { font-size: 0.7rem; color: var(--d-sub); margin-top: 3px; line-height: 1.3; }
-.card-time { font-size: 0.66rem; color: var(--d-muted); margin-top: 2px; font-variant-numeric: tabular-nums; }
+.card-time { font-size: 0.66rem; color: var(--d-muted); margin-top: 2px; font-variant-numeric: tabular-nums; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+/* Countdown badge */
+.cdwn-badge {
+  display: none;
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 20px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.cdwn-soon  { background: rgba(255,91,91,0.15); color: var(--d-red); border: 1px solid rgba(255,91,91,0.3); animation: pulse-soon 1.2s ease-in-out infinite; }
+.cdwn-close { background: rgba(255,122,69,0.12); color: var(--d-orange); border: 1px solid rgba(255,122,69,0.25); }
+.cdwn-day   { background: rgba(79,158,255,0.10); color: var(--d-blue); border: 1px solid rgba(79,158,255,0.2); }
+@keyframes pulse-soon { 0%,100%{opacity:1} 50%{opacity:0.55} }
+
+/* CLV movement pill */
+.clv-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.01em;
+  transition: opacity 0.12s;
+}
+.clv-pill:hover { opacity: 0.8; }
+.clv-pill-pos { background: rgba(0,214,143,0.10); color: var(--d-green); border: 1px solid rgba(0,214,143,0.25); }
+.clv-pill-neg { background: rgba(255,122,69,0.10); color: var(--d-orange); border: 1px solid rgba(255,122,69,0.25); }
+
+/* Card selection checkbox (bet slip) */
+.card-select-label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  margin-left: 4px;
+  flex-shrink: 0;
+}
+.card-select-cb {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--d-green);
+  cursor: pointer;
+  border-radius: 3px;
+}
+
+/* Floating bet slip bar */
+.bet-slip-bar {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: none;
+  align-items: center;
+  gap: 10px;
+  background: var(--d-card);
+  border: 1px solid var(--d-green);
+  border-radius: 14px;
+  padding: 10px 18px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,214,143,0.2);
+  z-index: 500;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--d-text);
+  white-space: nowrap;
+  animation: slideUp 0.2s ease-out;
+}
+@keyframes slideUp { from{transform:translateX(-50%) translateY(16px);opacity:0} to{transform:translateX(-50%) translateY(0);opacity:1} }
+.slip-count { color: var(--d-green); font-weight: 800; margin-right: 2px; }
+.slip-track-btn {
+  background: var(--d-green);
+  color: #000;
+  border: none;
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: opacity 0.12s;
+}
+.slip-track-btn:hover { opacity: 0.85; }
+.slip-clear-btn {
+  background: transparent;
+  border: 1px solid var(--d-border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.72rem;
+  color: var(--d-muted);
+  cursor: pointer;
+  font-family: inherit;
+  transition: color 0.12s, border-color 0.12s;
+}
+.slip-clear-btn:hover { color: var(--d-text); border-color: var(--d-sub); }
+
+/* Lines comparison panel */
+.lines-panel {
+  display: none;
+  margin-top: 8px;
+  background: rgba(79,158,255,0.04);
+  border: 1px solid rgba(79,158,255,0.18);
+  border-radius: 8px;
+  overflow: hidden;
+  font-size: 0.75rem;
+}
+.lines-panel-hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  background: rgba(79,158,255,0.07);
+  border-bottom: 1px solid rgba(79,158,255,0.12);
+  font-size: 0.58rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--d-blue);
+}
+.lines-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.lines-table td {
+  padding: 5px 12px;
+  border-bottom: 1px solid rgba(79,158,255,0.06);
+}
+.lines-table tr:last-child td { border-bottom: none; }
+.lines-table .lt-book { color: var(--d-sub); text-transform: capitalize; font-size: 0.72rem; }
+.lines-table .lt-odds { font-weight: 800; font-size: 0.85rem; text-align: right; font-variant-numeric: tabular-nums; }
+.lines-table .lt-odds.lt-best { color: var(--d-green); }
+.lines-table .lt-odds.lt-pos  { color: var(--d-green); }
+.lines-table .lt-odds.lt-neg  { color: var(--d-text); }
+.lines-table .lt-this { font-size: 0.58rem; color: var(--d-green); margin-left: 4px; }
+.lines-table tr.lt-row-active td { background: rgba(0,214,143,0.04); }
+
+/* Lines action button */
+.btn-lines {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: 1px solid var(--d-border);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--d-sub);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.12s;
+}
+.btn-lines:hover { border-color: var(--d-blue); color: var(--d-blue); }
 
 /* Odds + Kelly (right) */
 .card-odds-col { flex-shrink: 0; text-align: right; }
@@ -1594,6 +1749,46 @@ main { max-width: none !important; padding: 0 !important; }
 .trend-hot  { background: rgba(239,68,68,0.12);  color: #F87171; border: 1px solid rgba(239,68,68,0.25); }
 .trend-cold { background: rgba(96,165,250,0.12); color: #93C5FD; border: 1px solid rgba(96,165,250,0.25); }
 .trend-neutral { background: rgba(107,114,128,0.1); color: #9CA3AF; border: 1px solid rgba(107,114,128,0.2); }
+
+/* ── Enhanced props mode ── */
+/* Player header separator injected between prop groups */
+.prop-player-hdr {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 4px 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--d-purple);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.prop-player-hdr::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(167,139,250,0.2);
+}
+/* Group-by toggle */
+.props-group-toggle {
+  background: transparent;
+  border: 1px solid var(--d-border);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--d-sub);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.12s;
+  display: none;
+}
+.props-group-toggle.visible { display: inline-flex; align-items: center; gap: 5px; }
+.props-group-toggle.active { background: rgba(167,139,250,0.12); border-color: rgba(167,139,250,0.35); color: var(--d-purple); }
+/* Prop line prominence in props mode */
+.cards-grid.props-mode .prop-line-val { font-size: 1.05rem; }
+.cards-grid.props-mode .prop-player-name { font-size: 1.1rem; }
 </style>
 {% endblock %}
 
@@ -1761,6 +1956,7 @@ main { max-width: none !important; padding: 0 !important; }
           <button class="view-toggle-btn" id="viewTable" onclick="setView('table')">≡ Table</button>
         </div>
         <button class="view-toggle-btn" id="compactToggle" onclick="toggleCompact()" style="border:1px solid var(--d-border);border-radius:8px;padding:7px 11px;" title="Compact view">▤</button>
+        <button class="props-group-toggle" id="propsGroupToggle" onclick="togglePropsGrouping()" title="Group props by player">👤 Group by Player</button>
         <button class="view-toggle-btn" id="trackerToggle" onclick="openTrackerDrawer()" style="border:1px solid var(--d-border);border-radius:8px;padding:7px 11px;position:relative;" title="Bet Tracker">📊 Tracker<span class="tracker-badge" id="trackerBadge" style="display:none;"></span></button>
       </div>
     </div>
@@ -1806,7 +2002,8 @@ main { max-width: none !important; padding: 0 !important; }
                {% if bet.money_pct is not none %}data-money-pct="{{ '%.0f'|format(bet.money_pct) }}"{% endif %}
                {% if bet.sharp_score is not none %}data-sharp-score="{{ '%.0f'|format(bet.sharp_score) }}"{% endif %}
                {% if bet.opening_odds and bet.opening_odds != bet.odds %}data-opening-odds="{{ bet.opening_odds }}"{% endif %}
-               {% if bet.commence_time %}data-commence="{{ bet.commence_time.isoformat() }}"{% endif %}>
+               {% if bet.commence_time %}data-commence="{{ bet.commence_time.isoformat() }}"{% endif %}
+               {% if bet.all_book_odds %}data-all-book-odds="{{ bet.all_book_odds | e }}"{% endif %}>
 
             {# Ribbon #}
             {% if loop.index0 == 0 %}
@@ -1842,6 +2039,9 @@ main { max-width: none !important; padding: 0 !important; }
                 {% elif (bet.source_type or 'sportsbook') == 'prediction_market' %}<span class="badge badge-pm">🔮 PM</span>{% endif %}
                 <div style="margin-left:auto;display:flex;align-items:center;gap:5px;flex-shrink:0;">
                   <span class="ev-badge {{ tier }}">+{{ "%.1f"|format(bet.ev_percent) }}% EV</span>
+                  <label class="card-select-label" title="Add to bet slip">
+                    <input type="checkbox" class="card-select-cb" onchange="updateSlip()">
+                  </label>
                 </div>
               </div>
 
@@ -1858,7 +2058,7 @@ main { max-width: none !important; padding: 0 !important; }
                       {% if bet.point is not none %}<span class="prop-line-val">{{ (bet.point | int) if (bet.point == (bet.point | int)) else bet.point }}</span>{% endif %}
                     </div>
                     {% if bet.game %}<div class="card-game">{{ bet.game }}</div>{% endif %}
-                    {% if bet.commence_time %}<div class="card-time">⏰ <span data-commence-fmt="{{ bet.commence_time.isoformat() }}">—</span></div>{% endif %}
+                    {% if bet.commence_time %}<div class="card-time">⏰ <span data-commence-fmt="{{ bet.commence_time.isoformat() }}">—</span><span class="cdwn-badge" data-cdwn="{{ bet.commence_time.isoformat() }}"></span></div>{% endif %}
                   {% else %}
                     {# Game bet: standard layout #}
                     <div class="card-team">{{ team_display }}</div>
@@ -1877,7 +2077,7 @@ main { max-width: none !important; padding: 0 !important; }
                     {% endif %}
                     {% endif %}
                     {% if bet.game %}<div class="card-game">{{ bet.game }}</div>{% endif %}
-                    {% if bet.commence_time %}<div class="card-time">⏰ <span data-commence-fmt="{{ bet.commence_time.isoformat() }}">—</span></div>{% endif %}
+                    {% if bet.commence_time %}<div class="card-time">⏰ <span data-commence-fmt="{{ bet.commence_time.isoformat() }}">—</span><span class="cdwn-badge" data-cdwn="{{ bet.commence_time.isoformat() }}"></span></div>{% endif %}
                   {% endif %}
                 </div>
                 <div class="card-odds-col">
@@ -1905,11 +2105,12 @@ main { max-width: none !important; padding: 0 !important; }
                 {% if bet.opening_odds and bet.opening_odds != bet.odds %}
                   {% set op = ('+' if bet.opening_odds > 0 else '') ~ bet.opening_odds %}
                   {% set cur = ('+' if bet.odds > 0 else '') ~ bet.odds %}
-                  {% if bet.opening_odds > bet.odds %}
-                  <span class="sig sig-clv-pos sig-clv-click" onclick="showClvPopover(event,true)">📈 {{ op }} → {{ cur }} <span class="sig-why">why?</span></span>
-                  {% else %}
-                  <span class="sig sig-clv-neg sig-clv-click" onclick="showClvPopover(event,false)">⚠️ {{ op }} → {{ cur }} <span class="sig-why">why?</span></span>
-                  {% endif %}
+                  {% set _clv_pos = bet.opening_odds > bet.odds %}
+                  <span class="clv-pill {{ 'clv-pill-pos' if _clv_pos else 'clv-pill-neg' }}"
+                        onclick="showClvPopover(event,{{ 'true' if _clv_pos else 'false' }})"
+                        title="{{ 'Line steamed (shortened) — sharp money pushed this line' if _clv_pos else 'Line drifted (lengthened) — market moved away' }}">
+                    {{ '▲' if _clv_pos else '▽' }} {{ op }}→{{ cur }}
+                  </span>
                   <span class="sig-dot">·</span>
                 {% endif %}
                 {% if bet.sharp_score is not none %}
@@ -1928,6 +2129,9 @@ main { max-width: none !important; padding: 0 !important; }
                 <button class="btn-insight" data-bet-id="{{ bet.id }}" onclick="toggleAiPanel(this)">🤖 +EV Insight</button>
                 {% if not bet.is_prop and bet.game and ' @ ' in (bet.game or '') %}
                 <button class="btn-proj" id="proj-btn-{{ bet.id }}" onclick="toggleProjPanel({{ bet.id }}, this)">📊 Projection</button>
+                {% endif %}
+                {% if bet.all_book_odds %}
+                <button class="btn-lines" id="lines-btn-{{ bet.id }}" onclick="toggleLinesPanel({{ bet.id }}, this)">📖 Lines</button>
                 {% endif %}
                 <button class="btn-track" id="track-btn-{{ bet.id }}" onclick="toggleTrackPanel({{ bet.id }}, this)">📌 Track</button>
               </div>
@@ -1958,6 +2162,11 @@ main { max-width: none !important; padding: 0 !important; }
                 </div>
                 <div class="track-kelly-hint" id="track-kelly-{{ bet.id }}"></div>
               </div>
+
+              {# Lines comparison panel #}
+              {% if bet.all_book_odds %}
+              <div class="lines-panel" id="lines-panel-{{ bet.id }}" data-this-book="{{ bet.book | lower }}"></div>
+              {% endif %}
 
               {# Bet CTA #}
               {% set _bk = bet.book | lower %}
@@ -2230,6 +2439,13 @@ main { max-width: none !important; padding: 0 !important; }
   </div>
 </div>
 
+{# ── Floating Bet Slip Bar ── #}
+<div class="bet-slip-bar" id="betSlipBar">
+  <span>📌 <span class="slip-count" id="slipCount">0</span> bet<span id="slipPlural">s</span> selected</span>
+  <button class="slip-track-btn" onclick="trackAllSelected()">Track All</button>
+  <button class="slip-clear-btn" onclick="clearSlip()">✕ Clear</button>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
@@ -2287,6 +2503,122 @@ function renderValueScores() {
   });
 }
 renderValueScores();
+
+// ── Countdown badges ────────────────────────────────────────────────────────
+function _updateCountdowns() {
+  document.querySelectorAll('.cdwn-badge[data-cdwn]').forEach(el => {
+    const ms = new Date(el.dataset.cdwn) - Date.now();
+    if (ms <= 0) { el.style.display = 'none'; return; }
+    const h = Math.floor(ms / 3600000);
+    const m = Math.floor((ms % 3600000) / 60000);
+    if (ms < 900000) {                        // < 15 min
+      el.textContent = '🔴 Starting soon';
+      el.className = 'cdwn-badge cdwn-soon';
+      el.style.display = '';
+    } else if (ms < 3600000) {                // < 1 h
+      el.textContent = `⏱ ${m}m`;
+      el.className = 'cdwn-badge cdwn-close';
+      el.style.display = '';
+    } else if (h < 24) {                      // within today
+      el.textContent = `⏱ ${h}h ${m}m`;
+      el.className = 'cdwn-badge cdwn-day';
+      el.style.display = '';
+    } else {
+      el.style.display = 'none';              // > 24h — hide, just show game time
+    }
+  });
+}
+setInterval(_updateCountdowns, 30000);
+_updateCountdowns();
+
+// ── Lines comparison panel ──────────────────────────────────────────────────
+function toggleLinesPanel(betId, btn) {
+  const panel = document.getElementById('lines-panel-' + betId);
+  if (!panel) return;
+  if (panel.style.display === 'block') {
+    panel.style.display = 'none';
+    btn.textContent = '📖 Lines';
+    return;
+  }
+  const card = panel.closest('.bet-card');
+  const raw = card ? card.dataset.allBookOdds : '';
+  if (!raw) { panel.style.display = 'none'; return; }
+
+  let bookMap;
+  try { bookMap = JSON.parse(raw); } catch(e) { return; }
+
+  const thisBook = (panel.dataset.thisBook || '').toLowerCase();
+  const entries = Object.entries(bookMap);
+  if (!entries.length) return;
+
+  // Sort best odds first (highest American odds number = most value)
+  entries.sort((a, b) => b[1] - a[1]);
+  const bestOdds = entries[0][1];
+
+  const _fmt = o => o > 0 ? `+${o}` : String(o);
+  const _bookLabel = b => b.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+  const rows = entries.map(([book, odds]) => {
+    const isThis = book === thisBook;
+    const isBest = odds === bestOdds;
+    const oddsClass = isBest ? 'lt-odds lt-best' : odds > 0 ? 'lt-odds lt-pos' : 'lt-odds lt-neg';
+    return `<tr class="${isThis ? 'lt-row-active' : ''}">
+      <td class="lt-book">${_bookLabel(book)}${isThis ? ' <span class="lt-this">✓ this bet</span>' : ''}</td>
+      <td class="${oddsClass}">${_fmt(odds)}</td>
+    </tr>`;
+  }).join('');
+
+  panel.innerHTML = `
+    <div class="lines-panel-hdr">
+      <span>📖 Lines Available</span>
+      <span style="color:var(--d-sub);font-weight:500;">Best: ${_fmt(bestOdds)}</span>
+    </div>
+    <table class="lines-table">${rows}</table>`;
+
+  panel.style.display = 'block';
+  btn.textContent = '📖 Hide';
+}
+
+// ── Bet slip ────────────────────────────────────────────────────────────────
+function updateSlip() {
+  const checked = document.querySelectorAll('.card-select-cb:checked');
+  const bar = document.getElementById('betSlipBar');
+  const countEl = document.getElementById('slipCount');
+  const pluralEl = document.getElementById('slipPlural');
+  const n = checked.length;
+  if (n > 0) {
+    bar.style.display = 'flex';
+    countEl.textContent = n;
+    if (pluralEl) pluralEl.textContent = n === 1 ? '' : 's';
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
+function clearSlip() {
+  document.querySelectorAll('.card-select-cb').forEach(cb => cb.checked = false);
+  document.getElementById('betSlipBar').style.display = 'none';
+}
+
+function trackAllSelected() {
+  const checked = Array.from(document.querySelectorAll('.card-select-cb:checked'));
+  if (!checked.length) return;
+  // Expand track panel on each selected card and scroll to first
+  let first = null;
+  checked.forEach(cb => {
+    const card = cb.closest('.bet-card');
+    if (!card) return;
+    const trackBtn   = card.querySelector('[id^="track-btn-"]');
+    const trackPanel = card.querySelector('[id^="track-panel-"]');
+    if (trackPanel && !trackPanel.classList.contains('open')) {
+      const betId = trackPanel.id.replace('track-panel-', '');
+      toggleTrackPanel(betId, trackBtn);
+    }
+    if (!first) first = card;
+  });
+  if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  clearSlip();
+}
 
 // ── Filter state ───────────────────────────────────────────────────────────
 // (prop type chips are built after filter state + helpers are defined — see _buildPropTypeChips call below)
@@ -2652,6 +2984,10 @@ function applyFilters() {
 
   // Update count badges on all filter chips
   updateChipCounts();
+
+  // Reapply prop grouping if active
+  if (_propsGrouped && activeIsProp === 'true') _applyPropGrouping();
+  else if (!_propsGrouped || activeIsProp !== 'true') _clearPropGroupHeaders();
 }
 
 // ── Sport pills ────────────────────────────────────────────────────────────
@@ -2787,6 +3123,62 @@ function _setIsProp(val) {
       b.classList.toggle('active', b.dataset.value === 'all')
     );
   }
+  // Show/hide group-by-player toggle (only in props mode)
+  const groupBtn = document.getElementById('propsGroupToggle');
+  if (groupBtn) groupBtn.classList.toggle('visible', showProps);
+  // Apply or remove grid props-mode class
+  const grid = document.getElementById('cardsGrid');
+  if (grid) grid.classList.toggle('props-mode', showProps);
+  // Remove player headers if leaving props mode
+  if (!showProps) _clearPropGroupHeaders();
+}
+
+// ── Props grouping by player ───────────────────────────────────────────────
+let _propsGrouped = false;
+
+function _clearPropGroupHeaders() {
+  document.querySelectorAll('.prop-player-hdr').forEach(el => el.remove());
+}
+
+function _applyPropGrouping() {
+  const grid = document.getElementById('cardsGrid');
+  if (!grid) return;
+  _clearPropGroupHeaders();
+  if (!_propsGrouped) return;
+
+  // Collect visible prop cards
+  const propCards = Array.from(grid.querySelectorAll('.bet-card[data-is-prop="true"]'))
+    .filter(c => c.style.display !== 'none');
+  if (!propCards.length) return;
+
+  // Sort by player name, then EV desc
+  propCards.sort((a, b) => {
+    const pA = (a.dataset.playerName || '').toLowerCase();
+    const pB = (b.dataset.playerName || '').toLowerCase();
+    if (pA !== pB) return pA.localeCompare(pB);
+    return parseFloat(b.dataset.ev) - parseFloat(a.dataset.ev);
+  });
+
+  // Re-append in new order and insert player headers
+  let lastPlayer = null;
+  propCards.forEach(card => {
+    const player = card.dataset.playerName || card.dataset.team || '—';
+    if (player !== lastPlayer) {
+      const hdr = document.createElement('div');
+      hdr.className = 'prop-player-hdr';
+      hdr.textContent = player;
+      grid.insertBefore(hdr, card);
+      lastPlayer = player;
+    }
+    grid.appendChild(card);
+  });
+}
+
+function togglePropsGrouping() {
+  _propsGrouped = !_propsGrouped;
+  const btn = document.getElementById('propsGroupToggle');
+  if (btn) btn.classList.toggle('active', _propsGrouped);
+  _applyPropGrouping();
 }
 
 // ── Sidebar + mobile sheet qfilter btns ───────────────────────────────────
@@ -2985,6 +3377,47 @@ const _BOOK_URLS = {
     soccer_spain_la_liga:        "https://www.betfair.com/exchange/plus/football",
     soccer_usa_mls:              "https://www.betfair.com/exchange/plus/football",
     soccer_uefa_champs_league:   "https://www.betfair.com/exchange/plus/football",
+    _default:                    "https://www.betfair.com/exchange/plus/",
+  },
+  williamhill_us: {
+    icehockey_nhl:               "https://www.williamhill.com/us/en/bet/sports/ice-hockey",
+    basketball_nba:              "https://www.williamhill.com/us/en/bet/sports/basketball",
+    baseball_mlb:                "https://www.williamhill.com/us/en/bet/sports/baseball",
+    soccer_epl:                  "https://www.williamhill.com/us/en/bet/sports/soccer",
+    _default:                    "https://www.williamhill.com/us/en/bet",
+  },
+  mybookie: {
+    icehockey_nhl:               "https://mybookie.ag/sportsbook/hockey",
+    basketball_nba:              "https://mybookie.ag/sportsbook/basketball",
+    baseball_mlb:                "https://mybookie.ag/sportsbook/baseball",
+    soccer_epl:                  "https://mybookie.ag/sportsbook/soccer",
+    _default:                    "https://mybookie.ag/sportsbook",
+  },
+  bovada: {
+    icehockey_nhl:               "https://www.bovada.lv/sports/hockey",
+    basketball_nba:              "https://www.bovada.lv/sports/basketball",
+    baseball_mlb:                "https://www.bovada.lv/sports/baseball",
+    soccer_epl:                  "https://www.bovada.lv/sports/soccer",
+    soccer_spain_la_liga:        "https://www.bovada.lv/sports/soccer",
+    soccer_usa_mls:              "https://www.bovada.lv/sports/soccer",
+    soccer_uefa_champs_league:   "https://www.bovada.lv/sports/soccer",
+    _default:                    "https://www.bovada.lv/sports",
+  },
+  pinnacle: {
+    icehockey_nhl:               "https://www.pinnacle.com/en/hockey/nhl/matchups",
+    basketball_nba:              "https://www.pinnacle.com/en/basketball/nba/matchups",
+    baseball_mlb:                "https://www.pinnacle.com/en/baseball/mlb/matchups",
+    soccer_epl:                  "https://www.pinnacle.com/en/soccer/england-premier-league/matchups",
+    soccer_spain_la_liga:        "https://www.pinnacle.com/en/soccer/spain-la-liga/matchups",
+    soccer_usa_mls:              "https://www.pinnacle.com/en/soccer/usa-mls/matchups",
+    soccer_uefa_champs_league:   "https://www.pinnacle.com/en/soccer/champions-league/matchups",
+    _default:                    "https://www.pinnacle.com/en/sports",
+  },
+  betfair_ex_us: {
+    icehockey_nhl:               "https://www.betfair.com/exchange/plus/ice-hockey",
+    basketball_nba:              "https://www.betfair.com/exchange/plus/basketball",
+    baseball_mlb:                "https://www.betfair.com/exchange/plus/baseball",
+    soccer_epl:                  "https://www.betfair.com/exchange/plus/football",
     _default:                    "https://www.betfair.com/exchange/plus/",
   },
   // ── Prediction markets ──

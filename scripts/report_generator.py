@@ -325,7 +325,44 @@ def run_pipeline(
             removed, MAX_CREDIBLE_EV_PCT,
         )
 
-    return ev_df.sort_values("effective_ev_pct", ascending=False).reset_index(drop=True)
+    ev_df = ev_df.sort_values("effective_ev_pct", ascending=False).reset_index(drop=True)
+
+    # ── All-book odds comparison map ──────────────────────────────────────────
+    # For each +EV row, gather every book's price for the same game/market/outcome.
+    # Stored as compact JSON so the dashboard can render an inline comparison table.
+    import json as _json
+    all_book_odds_list = []
+    for _, ev_row in ev_df.iterrows():
+        gid   = str(ev_row.get("game_id", ""))
+        mkt   = str(ev_row.get("market", ""))
+        out   = str(ev_row.get("outcome_name", ""))
+        point = ev_row.get("point")
+        mask  = (
+            (odds_df["game_id"].astype(str) == gid) &
+            (odds_df["market"].astype(str) == mkt) &
+            (odds_df["outcome_name"].astype(str) == out)
+        )
+        if point is not None:
+            try:
+                _pf = float(point)
+                if _pf == _pf:  # not NaN
+                    mask = mask & (odds_df["point"].astype(float) == _pf)
+            except (TypeError, ValueError):
+                pass
+        subset = (
+            odds_df[mask][["bookmaker", "price"]]
+            .drop_duplicates(subset="bookmaker", keep="first")
+        )
+        book_map: dict = {}
+        for _, r in subset.iterrows():
+            try:
+                book_map[r["bookmaker"]] = int(r["price"])
+            except (TypeError, ValueError):
+                pass
+        all_book_odds_list.append(_json.dumps(book_map) if book_map else None)
+    ev_df["all_book_odds"] = all_book_odds_list
+
+    return ev_df
 
 
 # ---------------------------------------------------------------------------
