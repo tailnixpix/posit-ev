@@ -1006,6 +1006,19 @@ async def get_projection(bet_id: int, request: Request, db: Session = Depends(ge
     merged = dict(ctx)
     merged.update({k: v for k, v in (proj or {}).items() if v is not None})
 
+    # Derive individual score means from spread+total when Optimal doesn't
+    # provide homeScore/awayScore separately (common for NHL and soccer).
+    # home_score = (total + spread) / 2,  away_score = (total - spread) / 2
+    if (
+        merged.get("home_score_mean") is None
+        and merged.get("total_mean") is not None
+        and merged.get("spread_mean") is not None
+    ):
+        _t = float(merged["total_mean"])
+        _s = float(merged["spread_mean"])
+        merged["home_score_mean"] = round((_t + _s) / 2, 2)
+        merged["away_score_mean"] = round((_t - _s) / 2, 2)
+
     # Determine if the bet is on the home or away side
     market    = bet_row.market or ""
     team      = (bet_row.team or "").strip()

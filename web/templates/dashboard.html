@@ -3140,14 +3140,15 @@ function _buildProjHtml(d) {
       <div class="proj-sep">–</div>
       <div class="proj-team"><div class="proj-score${!aw?' winner':''}">${hTs}</div><div class="proj-name">${home.split(' ').pop()}</div></div>
     </div>`;
-    const stats = [];
-    if (d.total_mean != null) stats.push(['O/U', parseFloat(d.total_mean).toFixed(1), '']);
-    if (d.home_win_probability != null) { const fh = d.home_win_probability >= 0.5; const wp = fh ? d.home_win_probability : 1 - d.home_win_probability; const lbl = (fh ? (d.home_display||d.home_team||'Home') : (d.away_display||d.away_team||'Away')).split(' ').pop(); stats.push(['Win%', Math.round(wp*100)+'%', lbl+' fav']); }
-    if (d.consensus_line != null) stats.push(['Spread', (d.consensus_line>0?'+':'')+d.consensus_line, 'consensus']);
-    if (stats.length) h += '<div class="proj-stats">' + stats.map(([l,v,s]) => `<div class="proj-stat"><div class="ps-val">${v}</div><div class="ps-lbl">${l}</div>${s?`<div style="font-size:0.55rem;color:var(--d-muted);">${s}</div>`:''}</div>`).join('') + '</div>';
     if (d.model_agrees_with_bet === true) h += '<div class="proj-align-badge proj-align-yes">✅ Model agrees</div>';
     else if (d.model_agrees_with_bet === false) h += '<div class="proj-align-badge" style="background:rgba(255,91,91,0.08);color:var(--d-red);border:1px solid rgba(255,91,91,0.2);">⚠️ Model contradicts</div>';
   }
+  // Stats row — shown even when individual scores aren't available (e.g. NHL/soccer)
+  const stats = [];
+  if (d.total_mean != null) stats.push(['O/U', parseFloat(d.total_mean).toFixed(1), '']);
+  if (d.home_win_probability != null) { const fh = d.home_win_probability >= 0.5; const wp = fh ? d.home_win_probability : 1 - d.home_win_probability; const lbl = (fh ? (d.home_display||d.home_team||'Home') : (d.away_display||d.away_team||'Away')).split(' ').pop(); stats.push(['Win%', Math.round(wp*100)+'%', lbl+' fav']); }
+  if (d.consensus_line != null) stats.push(['Spread', (d.consensus_line>0?'+':'')+d.consensus_line, 'consensus']);
+  if (stats.length && !h.includes('proj-stats')) h += '<div class="proj-stats">' + stats.map(([l,v,s]) => `<div class="proj-stat"><div class="ps-val">${v}</div><div class="ps-lbl">${l}</div>${s?`<div style="font-size:0.55rem;color:var(--d-muted);">${s}</div>`:''}</div>`).join('') + '</div>';
   const away = d.away_team||'?', home = d.home_team||'?';
   const aSh = away.split(' ').pop(), hSh = home.split(' ').pop();
   if (d.away_record || d.home_record) {
