@@ -1207,6 +1207,19 @@ async def dashboard(
         .all()
     )
 
+    # If the cache is empty and no refresh is in flight, kick one off now.
+    # This handles the case where: (a) a deploy wiped stale rows before new data
+    # was written, or (b) the scheduler hasn't fired yet after startup.
+    # The _cache_status["running"] guard prevents concurrent duplicates.
+    if not bets and not _cache_status.get("running", False):
+        _last = _cache_status.get("last_run")
+        _stale = _last is None or (datetime.now(timezone.utc) - _last).total_seconds() > 300
+        if _stale:
+            _job = scheduler.get_job("ev_cache_refresh")
+            if _job:
+                scheduler.modify_job("ev_cache_refresh", next_run_time=datetime.now(timezone.utc))
+                log.info("Dashboard: auto-triggered cache refresh (empty cache detected).")
+
     # Today's morning pick (CT calendar date)
     from zoneinfo import ZoneInfo
     _CT = ZoneInfo("America/Chicago")

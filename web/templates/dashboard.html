@@ -2006,9 +2006,16 @@ main { max-width: none !important; padding: 0 !important; }
 
       {% else %}
       <div class="empty-state">
-        <div class="ei">📊</div>
-        <h2>No +EV bets right now</h2>
-        <p>The pipeline scans odds every hour. Check back soon.</p>
+        <div class="ei">{% if cache_status and cache_status.running %}⏳{% else %}📊{% endif %}</div>
+        <h2>{% if cache_status and cache_status.running %}Scanning the market…{% else %}No +EV bets right now{% endif %}</h2>
+        {% if cache_status and cache_status.running %}
+        <p>The pipeline is running now. Refresh the page in about a minute.</p>
+        {% elif cache_status and cache_status.last_run %}
+        <p>Last scan found {{ cache_status.last_count }} bet(s). Updated {{ cache_status.last_run.strftime('%I:%M %p UTC') }}.{% if next_refresh %} Next refresh at {{ next_refresh.strftime('%I:%M %p UTC') }}.{% endif %}</p>
+        {% else %}
+        <p>The pipeline scans odds every hour. Refresh in a minute — a scan was just triggered.</p>
+        {% endif %}
+        <button onclick="location.reload()" style="margin-top:14px;background:var(--d-green-dim);border:1px solid rgba(0,214,143,0.25);color:var(--d-green);border-radius:8px;padding:8px 18px;font-family:inherit;font-size:0.82rem;font-weight:600;cursor:pointer;">↻ Refresh Page</button>
       </div>
       {% endif %}
 
