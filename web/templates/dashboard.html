@@ -724,63 +724,6 @@ main { max-width: none !important; padding: 0 !important; }
 }
 .slip-clear-btn:hover { color: var(--d-text); border-color: var(--d-sub); }
 
-/* Lines comparison panel */
-.lines-panel {
-  display: none;
-  margin-top: 8px;
-  background: rgba(79,158,255,0.04);
-  border: 1px solid rgba(79,158,255,0.18);
-  border-radius: 8px;
-  overflow: hidden;
-  font-size: 0.75rem;
-}
-.lines-panel-hdr {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 6px 12px;
-  background: rgba(79,158,255,0.07);
-  border-bottom: 1px solid rgba(79,158,255,0.12);
-  font-size: 0.58rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.6px;
-  color: var(--d-blue);
-}
-.lines-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-.lines-table td {
-  padding: 5px 12px;
-  border-bottom: 1px solid rgba(79,158,255,0.06);
-}
-.lines-table tr:last-child td { border-bottom: none; }
-.lines-table .lt-book { color: var(--d-sub); text-transform: capitalize; font-size: 0.72rem; }
-.lines-table .lt-odds { font-weight: 800; font-size: 0.85rem; text-align: right; font-variant-numeric: tabular-nums; }
-.lines-table .lt-odds.lt-best { color: var(--d-green); }
-.lines-table .lt-odds.lt-pos  { color: var(--d-green); }
-.lines-table .lt-odds.lt-neg  { color: var(--d-text); }
-.lines-table .lt-this { font-size: 0.58rem; color: var(--d-green); margin-left: 4px; }
-.lines-table tr.lt-row-active td { background: rgba(0,214,143,0.04); }
-
-/* Lines action button */
-.btn-lines {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: transparent;
-  border: 1px solid var(--d-border);
-  border-radius: 8px;
-  padding: 9px 12px;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--d-sub);
-  cursor: pointer;
-  font-family: inherit;
-  transition: all 0.12s;
-}
-.btn-lines:hover { border-color: var(--d-blue); color: var(--d-blue); }
 
 /* Odds + Kelly (right) */
 .card-odds-col { flex-shrink: 0; text-align: right; }
@@ -1628,10 +1571,72 @@ main { max-width: none !important; padding: 0 !important; }
   html { overflow-x: hidden; }
 
   .sidebar { display: none; }
-  .dash-main { padding: 10px 12px 80px; }
-  .cards-grid { grid-template-columns: 1fr; }
+  .dash-main { padding: 10px 10px 80px; }
+  .cards-grid { grid-template-columns: 1fr; gap: 14px; }
   .sport-bar { top: 46px; padding: 8px 12px; }
   .dash-layout { min-height: auto; }
+
+  /* ── Card layout fixes for narrow screens ── */
+  .card-body { padding: 12px 14px 16px; }
+
+  /* Top badge row: allow wrap so badges never overflow the card */
+  .card-top {
+    flex-wrap: wrap;
+    row-gap: 6px;
+    gap: 5px;
+    margin-bottom: 10px;
+  }
+  /* Make the EV + checkbox group stay together and not push off-screen */
+  .card-top > div:last-child { margin-left: auto; }
+  .ev-badge { font-size: 0.78rem; padding: 3px 8px; }
+
+  /* Main bet info: constrain odds column, let team/game wrap */
+  .card-main { gap: 8px; margin-bottom: 12px; }
+  .odds-val   { font-size: 1.2rem; }
+
+  /* Why box: stack edge + probs vertically on very small screens */
+  .card-why { padding: 9px 12px; margin-bottom: 10px; }
+  .card-why-top { flex-wrap: wrap; row-gap: 3px; }
+  .card-why-prob { font-size: 0.66rem; }
+
+  /* Signal row: ensure it never forces card width wider */
+  .signal-row { margin-bottom: 12px; }
+  .clv-pill   { font-size: 0.6rem; padding: 2px 6px; }
+  .sig        { font-size: 0.6rem; }
+
+  /* Action buttons: first button full-width, secondary buttons share row */
+  .card-actions { flex-wrap: wrap; gap: 6px; }
+  .btn-insight  { flex: 1 1 100%; justify-content: center; padding: 9px 10px; font-size: 0.72rem; }
+  .btn-proj, .btn-track { flex: 1; font-size: 0.68rem; padding: 8px 8px; }
+
+  /* Bet CTA button: full width, smaller text */
+  .btn-bet { font-size: 0.8rem; padding: 11px 14px; }
+
+  /* Projection panel scoreline: reduce font on tiny screens */
+  .proj-score { font-size: 1.2rem; }
+
+  /* Stats strip: tighter */
+  .stats-strip { margin-bottom: 12px; }
+  .stat-cell .sv { font-size: 0.78rem; }
+
+  /* Track panel inputs */
+  .track-stake-input { font-size: 0.78rem; }
+  .btn-track-confirm { font-size: 0.72rem; padding: 8px 10px; }
+
+  /* Countdown badge: slightly smaller */
+  .cdwn-badge { font-size: 0.56rem; }
+
+  /* Bet slip bar: full width on mobile */
+  .bet-slip-bar {
+    left: 10px;
+    right: 10px;
+    bottom: 70px;   /* above bottom nav */
+    width: auto;
+    transform: none;
+    border-radius: 12px;
+    font-size: 0.76rem;
+    padding: 9px 14px;
+  }
 
   /* ── Mobile subheader: 3 clean rows ── */
   .dash-subheader {
@@ -2130,9 +2135,6 @@ main { max-width: none !important; padding: 0 !important; }
                 {% if not bet.is_prop and bet.game and ' @ ' in (bet.game or '') %}
                 <button class="btn-proj" id="proj-btn-{{ bet.id }}" onclick="toggleProjPanel({{ bet.id }}, this)">📊 Projection</button>
                 {% endif %}
-                {% if bet.all_book_odds %}
-                <button class="btn-lines" id="lines-btn-{{ bet.id }}" onclick="toggleLinesPanel({{ bet.id }}, this)">📖 Lines</button>
-                {% endif %}
                 <button class="btn-track" id="track-btn-{{ bet.id }}" onclick="toggleTrackPanel({{ bet.id }}, this)">📌 Track</button>
               </div>
 
@@ -2162,11 +2164,6 @@ main { max-width: none !important; padding: 0 !important; }
                 </div>
                 <div class="track-kelly-hint" id="track-kelly-{{ bet.id }}"></div>
               </div>
-
-              {# Lines comparison panel #}
-              {% if bet.all_book_odds %}
-              <div class="lines-panel" id="lines-panel-{{ bet.id }}" data-this-book="{{ bet.book | lower }}"></div>
-              {% endif %}
 
               {# Bet CTA #}
               {% set _bk = bet.book | lower %}
@@ -2530,54 +2527,6 @@ function _updateCountdowns() {
 }
 setInterval(_updateCountdowns, 30000);
 _updateCountdowns();
-
-// ── Lines comparison panel ──────────────────────────────────────────────────
-function toggleLinesPanel(betId, btn) {
-  const panel = document.getElementById('lines-panel-' + betId);
-  if (!panel) return;
-  if (panel.style.display === 'block') {
-    panel.style.display = 'none';
-    btn.textContent = '📖 Lines';
-    return;
-  }
-  const card = panel.closest('.bet-card');
-  const raw = card ? card.dataset.allBookOdds : '';
-  if (!raw) { panel.style.display = 'none'; return; }
-
-  let bookMap;
-  try { bookMap = JSON.parse(raw); } catch(e) { return; }
-
-  const thisBook = (panel.dataset.thisBook || '').toLowerCase();
-  const entries = Object.entries(bookMap);
-  if (!entries.length) return;
-
-  // Sort best odds first (highest American odds number = most value)
-  entries.sort((a, b) => b[1] - a[1]);
-  const bestOdds = entries[0][1];
-
-  const _fmt = o => o > 0 ? `+${o}` : String(o);
-  const _bookLabel = b => b.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-
-  const rows = entries.map(([book, odds]) => {
-    const isThis = book === thisBook;
-    const isBest = odds === bestOdds;
-    const oddsClass = isBest ? 'lt-odds lt-best' : odds > 0 ? 'lt-odds lt-pos' : 'lt-odds lt-neg';
-    return `<tr class="${isThis ? 'lt-row-active' : ''}">
-      <td class="lt-book">${_bookLabel(book)}${isThis ? ' <span class="lt-this">✓ this bet</span>' : ''}</td>
-      <td class="${oddsClass}">${_fmt(odds)}</td>
-    </tr>`;
-  }).join('');
-
-  panel.innerHTML = `
-    <div class="lines-panel-hdr">
-      <span>📖 Lines Available</span>
-      <span style="color:var(--d-sub);font-weight:500;">Best: ${_fmt(bestOdds)}</span>
-    </div>
-    <table class="lines-table">${rows}</table>`;
-
-  panel.style.display = 'block';
-  btn.textContent = '📖 Hide';
-}
 
 // ── Bet slip ────────────────────────────────────────────────────────────────
 function updateSlip() {
