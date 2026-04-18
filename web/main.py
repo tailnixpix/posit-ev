@@ -385,6 +385,15 @@ def refresh_ev_cache() -> int:
 
         rows = []
         for _, row in ev_df.iterrows():
+            # Skip rows where EV% is NaN (can happen for futures with missing data)
+            _raw_ev = row.get("effective_ev_pct", row.get("ev_pct", 0))
+            try:
+                _raw_ev_f = float(_raw_ev)
+                if _raw_ev_f != _raw_ev_f:  # NaN check
+                    continue
+            except (TypeError, ValueError):
+                continue
+
             try:
                 odds_val = int(row.get("american_odds", 0))
             except (ValueError, TypeError):
@@ -471,8 +480,8 @@ def refresh_ev_cache() -> int:
                 proj_home_win_prob = _safe_proj_float(row.get("proj_home_win_prob")),
                 proj_away_display  = _safe_proj_str(row.get("proj_away_display")),
                 proj_home_display  = _safe_proj_str(row.get("proj_home_display")),
-                home_trend    = row.get("home_trend") or None,
-                away_trend    = row.get("away_trend") or None,
+                home_trend    = _safe_proj_str(row.get("home_trend")),
+                away_trend    = _safe_proj_str(row.get("away_trend")),
             )
             rows.append(cache_row)
 
@@ -535,6 +544,23 @@ async def on_startup() -> None:
             _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS away_trend VARCHAR"))
             _db.execute(text("ALTER TABLE daily_picks ADD COLUMN IF NOT EXISTS player_name VARCHAR"))
             _db.execute(text("ALTER TABLE daily_picks ADD COLUMN IF NOT EXISTS is_prop BOOLEAN DEFAULT FALSE"))
+            _db.commit()
+        except Exception:
+            _db.rollback()
+
+    # Migrate: fix home_trend/away_trend column types — they may have been
+    # created as DOUBLE PRECISION instead of TEXT in some deployments.
+    # ALTER COLUMN ... TYPE TEXT USING ::TEXT safely converts any existing values.
+    with SessionLocal() as _db:
+        try:
+            _db.execute(text(
+                "ALTER TABLE ev_bet_cache "
+                "ALTER COLUMN home_trend TYPE TEXT USING home_trend::TEXT"
+            ))
+            _db.execute(text(
+                "ALTER TABLE ev_bet_cache "
+                "ALTER COLUMN away_trend TYPE TEXT USING away_trend::TEXT"
+            ))
             _db.commit()
         except Exception:
             _db.rollback()
