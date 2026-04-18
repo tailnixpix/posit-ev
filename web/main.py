@@ -277,12 +277,16 @@ def refresh_ev_cache() -> int:
 
     db: Session = SessionLocal()
     try:
-        # Full replacement — delete all rows, insert fresh batch
+        # ── Step 1: delete all stale rows and commit immediately ──────────────
+        # Committing the delete in its own transaction ensures that even if the
+        # subsequent insert fails and rolls back, the old stale rows are gone.
+        # Without this split, a failed insert rolls back the delete too and stale
+        # rows survive indefinitely.
         deleted = db.query(EVBetCache).delete()
-        log.debug("EV cache: cleared %d stale rows.", deleted)
+        db.commit()
+        log.info("EV cache: cleared %d stale rows (committed).", deleted)
 
         if ev_df.empty:
-            db.commit()
             log.info("EV cache refresh: no +EV bets found. Cache cleared.")
             _cache_status.update({
                 "running": False, "last_count": 0, "last_error": None,
@@ -1189,12 +1193,16 @@ async def dashboard(
     Served only after SubscriptionMiddleware confirms valid JWT + active subscription.
     Reads today's +EV bets from EVBetCache — no live API calls on page load.
     """
-    # Show all cached +EV bets — CLV direction is surfaced as a signal badge on
-    # each card so users can weigh it themselves.  Hiding bets based on line
-    # movement is too aggressive, especially for future games where lines are
-    # still opening and moving before sharp consensus settles.
+    # Only show bets for games that haven't started yet.
+    # Rows with NULL commence_time (rare edge case) are included so they're
+    # never silently dropped.
+    _now_utc = datetime.now(timezone.utc)
     bets = (
         db.query(EVBetCache)
+        .filter(
+            (EVBetCache.commence_time == None) |  # noqa: E711
+            (EVBetCache.commence_time > _now_utc)
+        )
         .order_by(EVBetCache.ev_percent.desc())
         .all()
     )

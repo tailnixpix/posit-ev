@@ -229,6 +229,74 @@ def create_tables() -> None:
     Base.metadata.create_all(bind=engine)
 
 
+def ensure_columns() -> None:
+    """
+    Non-destructive migration: add any columns that exist in the SQLAlchemy
+    models but are missing from the live database table.
+
+    Safe to run on every startup — uses IF NOT EXISTS so it is a no-op when
+    all columns are already present.  This handles the common case where the
+    production table was created from an older version of the model before new
+    columns were added.
+
+    Only works for nullable or default-having columns (which all our newer
+    columns are).  SQLite doesn't support IF NOT EXISTS in ALTER TABLE, so we
+    skip the check on SQLite.
+    """
+    import sqlalchemy as _sa
+
+    is_sqlite = DATABASE_URL.startswith("sqlite")
+    if is_sqlite:
+        return  # SQLite ALTER TABLE is too limited; handled by create_all instead
+
+    from sqlalchemy import inspect as _inspect, text as _text
+
+    try:
+        inspector = _inspect(engine)
+        # Map SQLAlchemy column types to SQL type strings
+        _type_map = {
+            "INTEGER":   "INTEGER",
+            "VARCHAR":   "TEXT",
+            "TEXT":      "TEXT",
+            "BOOLEAN":   "BOOLEAN",
+            "FLOAT":     "DOUBLE PRECISION",
+            "NUMERIC":   "DOUBLE PRECISION",
+            "DATETIME":  "TIMESTAMPTZ",
+            "DATE":      "DATE",
+        }
+
+        for table_name, model_class in [
+            ("ev_bet_cache",          EVBetCache),
+            ("daily_picks",           DailyPick),
+            ("odds_history",          OddsHistory),
+            ("users",                 User),
+            ("newsletter_subscribers", NewsletterSubscriber),
+        ]:
+            try:
+                existing_cols = {c["name"] for c in inspector.get_columns(table_name)}
+            except Exception:
+                continue  # table doesn't exist yet — create_tables handles this
+
+            for col in model_class.__table__.columns:
+                if col.name in existing_cols:
+                    continue
+                col_type = type(col.type).__name__.upper()
+                sql_type = _type_map.get(col_type, "TEXT")
+                # Append timezone for timestamp columns
+                if col_type == "DATETIME":
+                    sql_type = "TIMESTAMPTZ"
+                try:
+                    with engine.begin() as conn:
+                        conn.execute(
+                            _text(f'ALTER TABLE "{table_name}" ADD COLUMN IF NOT EXISTS "{col.name}" {sql_type}')
+                        )
+                    print(f"[db] Added missing column: {table_name}.{col.name} ({sql_type})")
+                except Exception as _exc:
+                    print(f"[db] Warning: could not add {table_name}.{col.name}: {_exc}")
+    except Exception as _top:
+        print(f"[db] ensure_columns failed (non-fatal): {_top}")
+
+
 def get_db():
     """
     FastAPI dependency that yields a SQLAlchemy Session and ensures it is
