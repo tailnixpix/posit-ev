@@ -239,8 +239,8 @@ def refresh_ev_cache() -> int:
         # Lazy import so the web process doesn't pay the pandas/requests import
         # cost at startup — only on the first scheduled run.
         from scripts.report_generator import run_pipeline
-        from scripts.odds_fetcher import get_props_df
-        from models.ev_calculator import find_positive_ev_props
+        from scripts.odds_fetcher import get_props_df, get_futures_df
+        from models.ev_calculator import find_positive_ev_props, find_all_positive_ev
         import pandas as _pd
         ev_df = run_pipeline()
 
@@ -254,6 +254,21 @@ def refresh_ev_cache() -> int:
                     log.info("Props: found %d +EV prop bets.", len(props_ev_df))
         except Exception as _props_exc:
             log.warning("Props fetch/calc failed (non-fatal): %s", _props_exc)
+
+        # ── Championship futures (NHL/NBA playoffs) ───────────────────────
+        # Uses separate *_championship_winner sport keys with outrights market.
+        # No 7-day filter — futures have commence_times months away.
+        try:
+            futures_df = get_futures_df()
+            if not futures_df.empty:
+                futures_ev_df = find_all_positive_ev(futures_df, markets=["outrights"])
+                if not futures_ev_df.empty:
+                    # Tag as non-prop game bets so they pass the newsletter filter
+                    futures_ev_df["is_prop"] = False
+                    ev_df = _pd.concat([ev_df, futures_ev_df], ignore_index=True)
+                    log.info("Futures: found %d +EV championship winner bets.", len(futures_ev_df))
+        except Exception as _fut_exc:
+            log.warning("Futures fetch/calc failed (non-fatal): %s", _fut_exc)
     except Exception as exc:
         log.error("EV cache refresh: pipeline failed: %s", exc, exc_info=True)
         _cache_status.update({"running": False, "last_error": str(exc),

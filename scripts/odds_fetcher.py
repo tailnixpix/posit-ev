@@ -39,6 +39,21 @@ SPORT_KEYS = [
     "soccer_uefa_champs_league",
 ]
 
+# Championship / outright futures — separate Odds API sport keys.
+# These are only active during their respective playoff seasons.
+# They use the "outrights" market and have commence_times months away
+# (Stanley Cup Finals, NBA Finals), so they bypass the 7-day window filter.
+FUTURES_SPORT_KEYS = [
+    "icehockey_nhl_championship_winner",
+    "basketball_nba_championship_winner",
+]
+
+# Friendly name for each futures key — shown as the "game" label on bet cards.
+FUTURES_LABELS: dict = {
+    "icehockey_nhl_championship_winner": "NHL Championship Winner",
+    "basketball_nba_championship_winner": "NBA Championship Winner",
+}
+
 SPORTSBOOK_BOOKMAKERS = [
     "draftkings",
     "fanduel",
@@ -389,6 +404,81 @@ def get_props_df(
     # Drop started games
     now = pd.Timestamp.now(tz="UTC")
     df = df[df["commence_time"] > now]
+    return df
+
+
+def get_futures_df(
+    sport_keys: list[str] = None,
+    bookmakers: list[str] = None,
+) -> pd.DataFrame:
+    """
+    Fetch championship winner (outright/futures) odds for playoff sports.
+
+    Unlike get_odds_df(), this function:
+    - Uses the dedicated *_championship_winner sport keys
+    - Fetches only the "outrights" market
+    - Does NOT apply the 7-day commence_time filter (finals are months away)
+    - Sets the "game" field to a friendly label (e.g. "NHL Championship Winner")
+      since futures have no home_team / away_team
+
+    Returns a tidy DataFrame compatible with find_all_positive_ev().
+    Active only when the relevant sport keys are in the Odds API active list.
+    """
+    sport_keys = sport_keys or FUTURES_SPORT_KEYS
+    bookmakers = bookmakers or ALL_BOOKMAKERS
+    all_rows = []
+
+    for sport in sport_keys:
+        games = fetch_odds(sport, markets=["outrights"], bookmakers=bookmakers)
+        for game in games:
+            label = FUTURES_LABELS.get(sport, sport)
+            for bookie in game.get("bookmakers", []):
+                for market in bookie.get("markets", []):
+                    for outcome in market.get("outcomes", []):
+                        all_rows.append({
+                            "game_id":      game.get("id"),
+                            "sport_key":    sport,
+                            "sport_title":  game.get("sport_title", label),
+                            "home_team":    label,      # use label since no team
+                            "away_team":    label,
+                            "game":         label,      # shown on bet cards
+                            "commence_time": game.get("commence_time"),
+                            "bookmaker":    bookie["key"],
+                            "market":       "outrights",
+                            "last_update":  market.get("last_update"),
+                            "outcome_name": outcome.get("name"),
+                            "price":        outcome.get("price"),
+                            "point":        None,
+                        })
+
+    if not all_rows:
+        log.info("get_futures_df: no futures data returned (playoffs may not be active).")
+        return pd.DataFrame()
+
+    df = pd.DataFrame(all_rows)
+    df["commence_time"] = pd.to_datetime(df["commence_time"], utc=True, errors="coerce")
+    df["last_update"]   = pd.to_datetime(df["last_update"],   utc=True, errors="coerce")
+    df["price"]         = pd.to_numeric(df["price"], errors="coerce")
+    df["source_type"]   = df["bookmaker"].map(BOOKMAKER_SOURCE_TYPE).fillna("sportsbook")
+
+    # Deduplicate (bookmaker, game_id, outcome_name) — exchange platforms like
+    # betfair_ex_uk list both back and lay markets as separate rows for the same
+    # outcome, causing index misalignment in the EV calculator.  Keep the row with
+    # the highest price (best available back odds for the bettor).
+    df = (
+        df.sort_values("price", ascending=False)
+          .drop_duplicates(subset=["game_id", "bookmaker", "outcome_name"], keep="first")
+          .reset_index(drop=True)
+    )
+
+    # Drop started futures (shouldn't happen, but guard anyway)
+    now = pd.Timestamp.now(tz="UTC")
+    df = df[df["commence_time"] > now]
+
+    log.info(
+        "get_futures_df: %d futures rows across %d sport(s).",
+        len(df), df["sport_key"].nunique() if not df.empty else 0,
+    )
     return df
 
 
