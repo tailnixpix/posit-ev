@@ -1983,13 +1983,18 @@ main { max-width: none !important; padding: 0 !important; }
   display: flex;
   align-items: center;
   gap: 8px;
+  flex: 1;          /* fill space left by the button */
   min-width: 0;
+  overflow: hidden; /* contain children so they can't push button */
 }
 .bs-bookname {
   font-size: 0.82rem;
   font-weight: 700;
   color: var(--d-text);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 .bs-odds {
   font-size: 1.2rem;
@@ -1997,6 +2002,7 @@ main { max-width: none !important; padding: 0 !important; }
   color: var(--d-text);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.3px;
+  flex-shrink: 0; /* odds never squish */
 }
 .bs-odds-pos { color: var(--d-green); }
 .btn-bet-now {
