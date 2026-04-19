@@ -1846,6 +1846,244 @@ main { max-width: none !important; padding: 0 !important; }
 /* Prop line prominence in props mode */
 .cards-grid.props-mode .prop-line-val { font-size: 1.05rem; }
 .cards-grid.props-mode .prop-player-name { font-size: 1.1rem; }
+
+/* ═══════════════════════════════════════════════════════════════
+   REVAMPED CARD DESIGN — overrides old card styles
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Tighter min-width so cards fit better on narrow screens */
+.cards-grid {
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+}
+
+/* Card header zone — sits between ribbon and body */
+.card-hdr {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  flex-wrap: wrap;
+  row-gap: 5px;
+}
+
+/* Tighter body padding */
+.card-body { padding: 14px 16px 18px; }
+
+/* ── Bet identity ───────────────────────────────────────────── */
+.card-bet-name { margin-bottom: 8px; }
+
+.bet-name-team {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--d-text);
+  line-height: 1.25;
+  display: block;
+  word-break: break-word;
+}
+.bet-name-player {
+  font-size: 1.18rem;
+  font-weight: 800;
+  color: var(--d-text);
+  display: block;
+  line-height: 1.2;
+}
+.bet-name-market {
+  font-size: 0.7rem;
+  color: var(--d-sub);
+  font-weight: 600;
+  display: inline-block;
+  margin-right: 4px;
+}
+.bet-name-dir {
+  font-size: 0.88rem;
+  font-weight: 700;
+  display: inline-block;
+}
+.dir-over  { color: var(--d-green); }
+.dir-under { color: var(--d-orange); }
+
+/* ── Context row: game + time ───────────────────────────────── */
+.card-context {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 0.68rem;
+  color: var(--d-sub);
+  margin-bottom: 14px;
+  min-height: 18px;
+}
+.ctx-game { font-weight: 500; }
+.ctx-sep  { color: var(--d-muted); }
+.ctx-time { font-variant-numeric: tabular-nums; }
+
+/* ── 4-cell metrics strip ───────────────────────────────────── */
+.card-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  background: rgba(0,0,0,0.18);
+  border: 1px solid var(--d-border);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.metric-cell {
+  padding: 10px 6px 9px;
+  text-align: center;
+  border-right: 1px solid var(--d-border);
+}
+.metric-cell:last-child { border-right: none; }
+.mc-val {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--d-text);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.2px;
+}
+.mc-green { color: var(--d-green) !important; }
+.mc-lbl {
+  font-size: 0.53rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--d-muted);
+  margin-top: 4px;
+  font-weight: 600;
+}
+
+/* ── Book strip: best odds + Bet Now button ─────────────────── */
+.card-book-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: rgba(0,214,143,0.04);
+  border: 1px solid rgba(0,214,143,0.15);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+.book-strip-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.bs-bookname {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--d-text);
+  white-space: nowrap;
+}
+.bs-odds {
+  font-size: 1.2rem;
+  font-weight: 900;
+  color: var(--d-text);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.3px;
+}
+.bs-odds-pos { color: var(--d-green); }
+.btn-bet-now {
+  background: var(--d-green);
+  color: #021a0d;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 16px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+  transition: opacity 0.12s, transform 0.1s;
+  flex-shrink: 0;
+}
+.btn-bet-now:hover { opacity: 0.85; transform: translateY(-1px); }
+.btn-bet-now:active { transform: translateY(0); }
+
+/* ── Actions row: Analyze + Track ───────────────────────────── */
+.card-actions-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.btn-analyze {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  background: rgba(79,158,255,0.07);
+  border: 1px solid rgba(79,158,255,0.2);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--d-blue);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.12s;
+}
+.btn-analyze:hover { background: rgba(79,158,255,0.14); }
+.btn-analyze.open  { background: rgba(79,158,255,0.12); border-color: rgba(79,158,255,0.35); }
+.btn-analyze:disabled { opacity: 0.45; cursor: default; }
+
+/* ── Combined analysis wrapper ──────────────────────────────── */
+.analysis-wrap {
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+.analysis-wrap.open { display: flex; }
+
+/* Inside analysis-wrap, the AI panel is always expanded */
+.analysis-wrap .ai-panel {
+  display: grid !important;
+  grid-template-rows: 1fr !important;
+  opacity: 1 !important;
+  margin-top: 0 !important;
+  transition: none !important;
+}
+.analysis-wrap .ai-panel-inner {
+  padding: 12px !important;
+}
+/* proj-panel inside analysis-wrap is block by default */
+.analysis-wrap .proj-panel {
+  display: block;
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+/* ── Compact mode: hide new sections ────────────────────────── */
+.cards-grid.compact-mode .card-metrics,
+.cards-grid.compact-mode .card-book-strip,
+.cards-grid.compact-mode .card-actions-row,
+.cards-grid.compact-mode .analysis-wrap,
+.cards-grid.compact-mode .track-panel,
+.cards-grid.compact-mode .card-context { display: none !important; }
+
+/* ── Mobile overrides for revamped card ─────────────────────── */
+@media (max-width: 768px) {
+  .card-hdr { padding: 8px 12px 7px; gap: 4px; row-gap: 4px; }
+  .card-body { padding: 12px 12px 14px; }
+  .bet-name-team,
+  .bet-name-player { font-size: 1.05rem; }
+  .mc-val { font-size: 0.88rem; }
+  .card-metrics { margin-bottom: 10px; }
+  .metric-cell { padding: 8px 4px 7px; }
+  .card-book-strip { padding: 9px 10px; margin-bottom: 10px; }
+  .bs-odds { font-size: 1.05rem; }
+  .btn-bet-now { padding: 8px 12px; font-size: 0.74rem; }
+  .card-actions-row { gap: 6px; }
+  .btn-analyze { font-size: 0.72rem; padding: 9px 10px; }
+  .btn-track   { font-size: 0.7rem;  padding: 8px 8px; }
+  .card-context { margin-bottom: 10px; font-size: 0.64rem; }
+  .card-trend { margin-bottom: 5px; }
+  .ev-badge { font-size: 0.76rem; padding: 3px 7px; }
+  .clv-pill { font-size: 0.59rem; padding: 2px 5px; }
+}
 </style>
 {% endblock %}
 
@@ -2023,7 +2261,7 @@ main { max-width: none !important; padding: 0 !important; }
 
       {% if bets %}
         {% for bet in bets %}
-          {# Derived values #}
+          {# ── Derived display values ────────────────────────────────── #}
           {% if bet.ev_percent >= 5 %}{% set tier = "ev-high" %}{% else %}{% set tier = "ev-med" %}{% endif %}
           {% set league_map = {"icehockey_nhl":"NHL","basketball_nba":"NBA","baseball_mlb":"MLB","soccer_epl":"EPL","soccer_spain_la_liga":"La Liga","soccer_germany_bundesliga":"Bundesliga","soccer_usa_mls":"MLS","soccer_uefa_champs_league":"UCL","americanfootball_nfl":"NFL"} %}
           {% set league_display = league_map.get(bet.league, bet.league | upper) %}
@@ -2035,6 +2273,14 @@ main { max-width: none !important; padding: 0 !important; }
           {% elif bet.is_prop and bet.point is not none %}{% set point_fmt = (bet.point | int) if (bet.point == (bet.point | int)) else bet.point %}{% set team_display = bet.team ~ " " ~ point_fmt %}
           {% else %}{% set team_display = bet.team %}{% endif %}
           {% if bet.market in ["h2h","spreads","totals","nrfi"] %}{% set market_key = bet.market %}{% else %}{% set market_key = "props" %}{% endif %}
+          {% set _bk = bet.book | lower %}
+          {% set _exchange_books = ['novig','prophetx','betopenly'] %}
+          {% set _pred_mkt_books = ['kalshi','polymarket'] %}
+          {% set _book_names = {'draftkings':'DraftKings','fanduel':'FanDuel','betmgm':'BetMGM','caesars':'Caesars','williamhill_us':'Caesars WH','pointsbet':'Fanatics','betfair_ex_uk':'Betfair Exchange','betfair_ex_us':'Betfair US','kalshi':'Kalshi','novig':'NoVig','polymarket':'Polymarket','prophetx':'ProphetX','betopenly':'BetOpenly'} %}
+          {% set _bk_display = _book_names.get(_bk, bet.book | title) %}
+          {% if _bk in _exchange_books %}{% set _cta_icon = '⚡' %}{% elif _bk in _pred_mkt_books %}{% set _cta_icon = '📈' %}{% else %}{% set _cta_icon = '🎰' %}{% endif %}
+          {% set _true_pct = (bet.true_prob * 100) | round(1) %}
+          {% set _implied_pct = ((100 / (bet.odds + 100) * 100) if bet.odds > 0 else ((-bet.odds) / (-bet.odds + 100) * 100)) | round(1) %}
 
           <div class="bet-card {{ tier }}{{ ' prop-card' if bet.is_prop else '' }}"
                data-league="{{ bet.league }}"
@@ -2062,135 +2308,121 @@ main { max-width: none !important; padding: 0 !important; }
                {% if bet.commence_time %}data-commence="{{ bet.commence_time.isoformat() }}"{% endif %}
                {% if bet.all_book_odds %}data-all-book-odds="{{ bet.all_book_odds | e }}"{% endif %}>
 
-            {# Ribbon #}
+            {# ── Top Pick ribbon ──────────────────────────────────────── #}
             {% if loop.index0 == 0 %}
             <div class="card-ribbon ribbon-top1">🏆 Top Pick — Highest Model Edge</div>
             {% elif loop.index0 == 1 %}
             <div class="card-ribbon ribbon-top2">✅ Strong Pick — High Model Edge</div>
             {% endif %}
 
-            {# Inline proj band #}
-            {% if not bet.is_prop and bet.proj_home_score is not none and bet.proj_away_score is not none %}
-              {% set _an = (bet.proj_away_display or (bet.game or '').split(' @ ')[0]).split() | last %}
-              {% set _hn = (bet.proj_home_display or (bet.game or '').split(' @ ')[-1]).split() | last %}
-              {% set _as_f = bet.proj_away_score | float %}
-              {% set _hs_f = bet.proj_home_score | float %}
-            <div class="proj-band">
-              <span style="font-size:0.8rem;">🤖</span>
-              <span class="pb-score {% if _as_f > _hs_f %}pb-win{% endif %}">{{ "%.1f"|format(_as_f) }}</span>
-              <span style="font-size:0.65rem;color:var(--d-muted);">{{ _an }}</span>
-              <span class="pb-sep">–</span>
-              <span class="pb-score {% if _hs_f >= _as_f %}pb-win{% endif %}">{{ "%.1f"|format(_hs_f) }}</span>
-              <span style="font-size:0.65rem;color:var(--d-muted);">{{ _hn }}</span>
-              {% if bet.proj_total is not none %}<span class="pb-dot">·</span><span class="pb-detail">O/U {{ "%.1f"|format(bet.proj_total) }}</span>{% endif %}
+            {# ── Card Header: badges · CLV pill · VS score · EV · ☑ ───── #}
+            <div class="card-hdr">
+              <span class="badge badge-league">{{ league_display }}</span>
+              <span class="badge badge-market">{{ market_display }}</span>
+              {% if (bet.source_type or 'sportsbook') == 'exchange' %}
+              <span class="badge badge-pm" style="background:rgba(250,199,117,0.12);color:#F9C74F;">⚡ Exchange</span>
+              {% elif (bet.source_type or 'sportsbook') == 'prediction_market' %}
+              <span class="badge badge-pm">🔮 PM</span>
+              {% endif %}
+              {% if bet.opening_odds and bet.opening_odds != bet.odds %}
+                {% set op = ('+' if bet.opening_odds > 0 else '') ~ bet.opening_odds %}
+                {% set cur = ('+' if bet.odds > 0 else '') ~ bet.odds %}
+                {% set _clv_pos = bet.opening_odds > bet.odds %}
+                <span class="clv-pill {{ 'clv-pill-pos' if _clv_pos else 'clv-pill-neg' }}"
+                      onclick="showClvPopover(event,{{ 'true' if _clv_pos else 'false' }})"
+                      title="{{ 'Line steamed — sharp money confirmed this edge' if _clv_pos else 'Line drifted — monitor this bet' }}">
+                  {{ '▲' if _clv_pos else '▽' }} {{ op }}→{{ cur }}
+                </span>
+              {% endif %}
+              {# VS chip + EV badge + checkbox pushed to right #}
+              <span class="vs-chip" style="margin-left:auto;"></span>
+              <span class="ev-badge {{ tier }}">+{{ "%.1f"|format(bet.ev_percent) }}% EV</span>
+              <label class="card-select-label" title="Add to bet slip">
+                <input type="checkbox" class="card-select-cb" onchange="updateSlip()">
+              </label>
             </div>
-            {% endif %}
 
+            {# ── Card Body ────────────────────────────────────────────── #}
             <div class="card-body">
-              {# Top row: badges + EV + VS #}
-              <div class="card-top">
-                <span class="badge badge-league">{{ league_display }}</span>
-                <span class="badge badge-market">{{ market_display }}</span>
-                <span class="badge badge-book">{{ bet.book | title }}</span>
-                {% if (bet.source_type or 'sportsbook') == 'exchange' %}<span class="badge badge-pm" style="background:rgba(250,199,117,0.12);color:#F9C74F;border-color:rgba(250,199,117,0.3);">⚡ Exchange</span>
-                {% elif (bet.source_type or 'sportsbook') == 'prediction_market' %}<span class="badge badge-pm">🔮 PM</span>{% endif %}
-                <div style="margin-left:auto;display:flex;align-items:center;gap:5px;flex-shrink:0;">
-                  <span class="ev-badge {{ tier }}">+{{ "%.1f"|format(bet.ev_percent) }}% EV</span>
-                  <label class="card-select-label" title="Add to bet slip">
-                    <input type="checkbox" class="card-select-cb" onchange="updateSlip()">
-                  </label>
-                </div>
-              </div>
 
-              {# Main: team + odds #}
-              <div class="card-main">
-                <div class="card-main-left">
-                  {% if bet.is_prop %}
-                    {# Prop: big player name, stat badge, over/under, line value #}
-                    {% set _dir = (bet.team or '') | lower %}
-                    <div class="prop-player-name">{{ bet.player_name or bet.team }}</div>
-                    <div class="prop-stat-row">
-                      <span class="prop-stat-badge">{{ market_display }}</span>
-                      <span class="prop-direction {{ 'prop-direction-over' if _dir == 'over' else 'prop-direction-under' }}">{{ bet.team | title }}</span>
-                      {% if bet.point is not none %}<span class="prop-line-val">{{ (bet.point | int) if (bet.point == (bet.point | int)) else bet.point }}</span>{% endif %}
-                    </div>
-                    {% if bet.game %}<div class="card-game">{{ bet.game }}</div>{% endif %}
-                    {% if bet.commence_time %}<div class="card-time">⏰ <span data-commence-fmt="{{ bet.commence_time.isoformat() }}">—</span><span class="cdwn-badge" data-cdwn="{{ bet.commence_time.isoformat() }}"></span></div>{% endif %}
-                  {% else %}
-                    {# Game bet: standard layout #}
-                    <div class="card-team">{{ team_display }}</div>
-                    {% if not bet.is_prop and (bet.home_trend or bet.away_trend) %}
-                    {% if ' @ ' in (bet.game or '') %}
-                    {% set _gparts = (bet.game or '').split(' @ ') %}
-                    {% set _homename = _gparts[1].strip() if _gparts|length > 1 else '' %}
-                    {% set _is_home_side = _homename and (_homename.lower() in (bet.team or '').lower() or (bet.team or '').lower() in _homename.lower()) %}
-                    {% set _trend_str = bet.home_trend if _is_home_side else bet.away_trend %}
-                    {% if _trend_str %}
+              {# — Bet Identity: what exactly you're betting — #}
+              {% if bet.is_prop %}
+                {% set _dir = (bet.team or '') | lower %}
+                <div class="card-bet-name">
+                  <span class="bet-name-player">{{ bet.player_name or bet.team }}</span>
+                  <span class="bet-name-market">{{ market_display }}</span>
+                  <span class="bet-name-dir {{ 'dir-over' if _dir == 'over' else 'dir-under' }}">
+                    {{ bet.team | title }}{% if bet.point is not none %}&nbsp;{{ (bet.point | int) if (bet.point == (bet.point | int)) else bet.point }}{% endif %}
+                  </span>
+                </div>
+              {% else %}
+                <div class="card-bet-name">
+                  <span class="bet-name-team">{{ team_display }}</span>
+                </div>
+                {# Hot/cold streak badge #}
+                {% if (bet.home_trend or bet.away_trend) and ' @ ' in (bet.game or '') %}
+                  {% set _gparts = (bet.game or '').split(' @ ') %}
+                  {% set _homename = _gparts[1].strip() if _gparts|length > 1 else '' %}
+                  {% set _is_home = _homename and (_homename.lower() in (bet.team or '').lower() or (bet.team or '').lower() in _homename.lower()) %}
+                  {% set _trend_str = bet.home_trend if _is_home else bet.away_trend %}
+                  {% if _trend_str %}
                     {% set _tw = _trend_str.split('-')[0] | int if '-' in _trend_str else 5 %}
-                    <div class="card-trend {% if _tw >= 7 %}trend-hot{% elif _tw <= 3 %}trend-cold{% else %}trend-neutral{% endif %}">
+                    <div class="card-trend {% if _tw >= 7 %}trend-hot{% elif _tw <= 3 %}trend-cold{% else %}trend-neutral{% endif %}" style="margin-bottom:6px;">
                       {% if _tw >= 7 %}🔥{% elif _tw <= 3 %}❄️{% else %}📊{% endif %} {{ _trend_str }} L10
                     </div>
-                    {% endif %}
-                    {% endif %}
-                    {% endif %}
-                    {% if bet.game %}<div class="card-game">{{ bet.game }}</div>{% endif %}
-                    {% if bet.commence_time %}<div class="card-time">⏰ <span data-commence-fmt="{{ bet.commence_time.isoformat() }}">—</span><span class="cdwn-badge" data-cdwn="{{ bet.commence_time.isoformat() }}"></span></div>{% endif %}
-                  {% endif %}
-                </div>
-                <div class="card-odds-col">
-                  <div class="odds-val {% if bet.odds > 0 %}odds-pos{% else %}odds-neg{% endif %}">{{ odds_str }}</div>
-                  <div class="odds-lbl">Odds</div>
-                </div>
-              </div>
-
-              {# Why-this-bet box #}
-              {% set _true_pct = (bet.true_prob * 100) | round(1) %}
-              {% set _implied_pct = ((100 / (bet.odds + 100) * 100) if bet.odds > 0 else ((-bet.odds) / (-bet.odds + 100) * 100)) | round(1) %}
-              <div class="card-why">
-                <div class="card-why-top">
-                  <span class="card-why-edge">+{{ "%.1f"|format(bet.ev_percent) }}% edge</span>
-                  <span class="card-why-prob">Model: <strong>{{ "%.0f"|format(_true_pct) }}%</strong> · Book: <strong>{{ "%.0f"|format(_implied_pct) }}%</strong></span>
-                </div>
-                <div class="card-why-size">
-                  <span class="kelly-size-label">¼ Kelly</span> bet: <span class="kelly-val" data-prob="{{ bet.true_prob }}" data-odds="{{ bet.odds }}">—</span> of bankroll
-                  <span class="kelly-dollar" style="display:none;"></span>
-                </div>
-              </div>
-
-              {# Signal row #}
-              <div class="signal-row" id="signal-row-{{ bet.id }}">
-                {% if bet.opening_odds and bet.opening_odds != bet.odds %}
-                  {% set op = ('+' if bet.opening_odds > 0 else '') ~ bet.opening_odds %}
-                  {% set cur = ('+' if bet.odds > 0 else '') ~ bet.odds %}
-                  {% set _clv_pos = bet.opening_odds > bet.odds %}
-                  <span class="clv-pill {{ 'clv-pill-pos' if _clv_pos else 'clv-pill-neg' }}"
-                        onclick="showClvPopover(event,{{ 'true' if _clv_pos else 'false' }})"
-                        title="{{ 'Line steamed (shortened) — sharp money pushed this line' if _clv_pos else 'Line drifted (lengthened) — market moved away' }}">
-                    {{ '▲' if _clv_pos else '▽' }} {{ op }}→{{ cur }}
-                  </span>
-                  <span class="sig-dot">·</span>
-                {% endif %}
-                {% if bet.sharp_score is not none %}
-                  {% set bp = (bet.bet_pct | round | int) if bet.bet_pct is not none else 50 %}
-                  {% set mp = (bet.money_pct | round | int) if bet.money_pct is not none else 50 %}
-                  {% if bet.sharp_score >= 80 %}<span class="sig sig-sharp">⚡ Sharp money on this side</span>
-                  {% elif bet.sharp_score >= 65 %}<span class="sig sig-sharp">🔥 Professional money here</span>
-                  {% elif bet.sharp_score <= 35 %}<span class="sig sig-public">📢 Public favourite</span>
-                  {% else %}<span class="sig sig-public">{{ bp }}% public · {{ mp }}% of money</span>
                   {% endif %}
                 {% endif %}
+              {% endif %}
+
+              {# — Game + Time context — #}
+              <div class="card-context">
+                {% if bet.game %}<span class="ctx-game">{{ bet.game }}</span>{% endif %}
+                {% if bet.commence_time %}
+                <span class="ctx-sep">·</span>
+                <span class="ctx-time" data-commence-fmt="{{ bet.commence_time.isoformat() }}">—</span>
+                <span class="cdwn-badge" data-cdwn="{{ bet.commence_time.isoformat() }}"></span>
+                {% endif %}
               </div>
 
-              {# Actions #}
-              <div class="card-actions">
-                <button class="btn-insight" data-bet-id="{{ bet.id }}" onclick="toggleAiPanel(this)">🤖 +EV Insight</button>
-                {% if not bet.is_prop and bet.game and ' @ ' in (bet.game or '') %}
-                <button class="btn-proj" id="proj-btn-{{ bet.id }}" onclick="toggleProjPanel({{ bet.id }}, this)">📊 Projection</button>
-                {% endif %}
+              {# — 4-Cell Metrics Strip — #}
+              <div class="card-metrics">
+                <div class="metric-cell">
+                  <div class="mc-val mc-green">{{ "%.0f"|format(_true_pct) }}%</div>
+                  <div class="mc-lbl">Model</div>
+                </div>
+                <div class="metric-cell">
+                  <div class="mc-val">{{ "%.0f"|format(_implied_pct) }}%</div>
+                  <div class="mc-lbl">Book</div>
+                </div>
+                <div class="metric-cell">
+                  <div class="mc-val {{ 'mc-green' if bet.odds > 0 else '' }}">{{ odds_str }}</div>
+                  <div class="mc-lbl">Odds</div>
+                </div>
+                <div class="metric-cell">
+                  <div class="mc-val mc-green kelly-val" data-prob="{{ bet.true_prob }}" data-odds="{{ bet.odds }}">—</div>
+                  <div class="kelly-dollar" style="display:none;font-size:0.56rem;color:var(--d-green);font-weight:700;margin:1px 0;"></div>
+                  <div class="mc-lbl kelly-size-label">¼ Kelly</div>
+                </div>
+              </div>
+
+              {# — Best Book + Bet CTA — #}
+              <div class="card-book-strip">
+                <div class="book-strip-label">
+                  <span class="bs-bookname">{{ _bk_display }}</span>
+                  <span class="bs-odds {{ 'bs-odds-pos' if bet.odds > 0 else '' }}">{{ odds_str }}</span>
+                </div>
+                <button class="btn-bet-now" onclick="openBetLink('{{ _bk }}','{{ bet.league }}',this)">
+                  {{ _cta_icon }} Bet Now →
+                </button>
+              </div>
+
+              {# — Actions: Analyze + Track — #}
+              <div class="card-actions-row">
+                <button class="btn-analyze" id="analyze-btn-{{ bet.id }}" onclick="toggleAnalysisPanel({{ bet.id }}, this)">📊 Analyze</button>
                 <button class="btn-track" id="track-btn-{{ bet.id }}" onclick="toggleTrackPanel({{ bet.id }}, this)">📌 Track</button>
               </div>
 
-              {# Track Panel #}
+              {# — Track Panel — #}
               <div class="track-panel" id="track-panel-{{ bet.id }}">
                 <div class="track-adj-row">
                   <div class="track-field" style="flex:0 0 80px;">
@@ -2217,44 +2449,30 @@ main { max-width: none !important; padding: 0 !important; }
                 <div class="track-kelly-hint" id="track-kelly-{{ bet.id }}"></div>
               </div>
 
-              {# Bet CTA #}
-              {% set _bk = bet.book | lower %}
-              {% set _exchange_books = ['novig','prophetx','betopenly'] %}
-              {% set _pred_mkt_books = ['kalshi','polymarket'] %}
-              {% set _book_names = {'draftkings':'DraftKings','fanduel':'FanDuel','betmgm':'BetMGM','caesars':'Caesars','pointsbet':'Fanatics','betfair_ex_uk':'Betfair Exchange','kalshi':'Kalshi','novig':'NoVig','polymarket':'Polymarket','prophetx':'ProphetX','betopenly':'BetOpenly'} %}
-              {% set _bk_display = _book_names.get(_bk, bet.book | title) %}
-              {% if _bk in _exchange_books %}{% set _cta_label = 'Bet on ' %}{% set _cta_icon = '⚡' %}
-              {% elif _bk in _pred_mkt_books %}{% set _cta_label = 'Trade on ' %}{% set _cta_icon = '📈' %}
-              {% else %}{% set _cta_label = 'Bet at ' %}{% set _cta_icon = '🎰' %}{% endif %}
-              <div class="card-bet-cta">
-                <button class="btn-bet" onclick="openBetLink('{{ _bk }}','{{ bet.league }}',this)">
-                  <span class="btn-bet-icon">{{ _cta_icon }}</span>
-                  {{ _cta_label }}{{ _bk_display }} →
-                </button>
-              </div>
-
-              {# Projection panel #}
-              {% if not bet.is_prop and bet.game and ' @ ' in (bet.game or '') %}
-              <div class="proj-panel" id="proj-panel-{{ bet.id }}"></div>
-              {% endif %}
-
-              {# AI panel #}
-              <div class="ai-panel" id="ai-panel-{{ bet.id }}">
-                <div class="ai-panel-inner">
-                  <div class="ai-panel-loading" id="ai-loading-{{ bet.id }}" style="display:none;">
-                    <div class="skel-meta-row"><span class="skel-pill"></span><span class="skel-pill" style="width:60px;"></span></div>
-                    <div class="skel-bar skel-w90"></div>
-                    <div class="skel-bar skel-w75"></div>
-                    <div class="skel-bar skel-w60"></div>
-                    <div class="skel-bar skel-w90"></div>
-                    <div class="skel-bar skel-w45"></div>
+              {# — Combined Analysis Panel (Projection + AI Insight) — #}
+              <div class="analysis-wrap" id="analysis-wrap-{{ bet.id }}">
+                {# Projection — game bets only #}
+                {% if not bet.is_prop and bet.game and ' @ ' in (bet.game or '') %}
+                <div class="proj-panel" id="proj-panel-{{ bet.id }}"></div>
+                {% endif %}
+                {# AI Analysis #}
+                <div class="ai-panel" id="ai-panel-{{ bet.id }}">
+                  <div class="ai-panel-inner">
+                    <div class="ai-panel-loading" id="ai-loading-{{ bet.id }}" style="display:none;">
+                      <div class="skel-meta-row"><span class="skel-pill"></span><span class="skel-pill" style="width:60px;"></span></div>
+                      <div class="skel-bar skel-w90"></div>
+                      <div class="skel-bar skel-w75"></div>
+                      <div class="skel-bar skel-w60"></div>
+                      <div class="skel-bar skel-w90"></div>
+                      <div class="skel-bar skel-w45"></div>
+                    </div>
+                    <div id="ai-content-{{ bet.id }}" style="display:none;">
+                      <div class="ai-panel-meta" id="ai-meta-{{ bet.id }}"></div>
+                      <div id="ai-body-{{ bet.id }}"></div>
+                      <div class="ai-panel-footer" id="ai-footer-{{ bet.id }}"></div>
+                    </div>
+                    <div class="ai-panel-error" id="ai-error-{{ bet.id }}" style="display:none;color:var(--d-red);font-size:0.78rem;">Analysis unavailable — tap to retry.</div>
                   </div>
-                  <div id="ai-content-{{ bet.id }}" style="display:none;">
-                    <div class="ai-panel-meta" id="ai-meta-{{ bet.id }}"></div>
-                    <div id="ai-body-{{ bet.id }}"></div>
-                    <div class="ai-panel-footer" id="ai-footer-{{ bet.id }}"></div>
-                  </div>
-                  <div class="ai-panel-error" id="ai-error-{{ bet.id }}" style="display:none;color:var(--d-red);font-size:0.78rem;">Analysis unavailable — try again.</div>
                 </div>
               </div>
 
@@ -3628,7 +3846,7 @@ function _loadProjection(betId, btn, panel, attempt) {
       </div>`;
       const retryBtn = document.getElementById('proj-retry-' + betId);
       if (retryBtn) retryBtn.addEventListener('click', () => {
-        _loadProjection(betId, document.getElementById('proj-btn-' + betId), panel, 1);
+        _loadProjection(betId, document.getElementById('analyze-btn-' + betId) || {textContent:'',disabled:false}, panel, 1);
       });
     });
 }
@@ -3747,6 +3965,118 @@ function toggleAiPanel(btn) {
         errorEl.style.display = 'block';
         errorEl.style.cursor  = 'pointer';
         errorEl.onclick = () => { delete _aiCache[betId]; _loadAnalysis(betId); };
+      }
+    });
+}
+
+// ── Combined Analysis Panel (Projection + AI) ────────────────────────────
+function toggleAnalysisPanel(betId, btn) {
+  const wrap = document.getElementById('analysis-wrap-' + betId);
+  if (!wrap) return;
+  const isOpen = wrap.classList.contains('open');
+
+  if (isOpen) {
+    wrap.classList.remove('open');
+    btn.classList.remove('open');
+    btn.textContent = '📊 Analyze';
+    return;
+  }
+
+  // Open the panel
+  wrap.classList.add('open');
+  btn.classList.add('open');
+  btn.textContent = '✕ Close';
+
+  // Load projection data if not already loaded
+  const projPanel = document.getElementById('proj-panel-' + betId);
+  if (projPanel && projPanel.innerHTML.trim() === '') {
+    if (_projCache[betId]) {
+      projPanel.innerHTML = _buildProjHtml(_projCache[betId]);
+    } else {
+      // Use a silent dummy btn — _loadProjection sets .textContent/.disabled on it harmlessly
+      const _db = { textContent: '', disabled: false };
+      _loadProjection(betId, _db, projPanel);
+    }
+  }
+
+  // Load AI analysis if not cached
+  const loadEl    = document.getElementById('ai-loading-' + betId);
+  const contentEl = document.getElementById('ai-content-' + betId);
+  const errorEl   = document.getElementById('ai-error-'   + betId);
+
+  if (_aiCache[betId]) {
+    // Already cached — ensure visible
+    if (loadEl)    loadEl.style.display    = 'none';
+    if (contentEl) contentEl.style.display = 'block';
+    return;
+  }
+
+  // Show skeleton loader
+  if (loadEl)    loadEl.style.display    = 'block';
+  if (contentEl) contentEl.style.display = 'none';
+  if (errorEl)   errorEl.style.display   = 'none';
+
+  fetch('/api/analysis/' + betId)
+    .then(r => {
+      if (!r.ok) {
+        return r.json().catch(() => ({})).then(b => {
+          throw new Error(r.status + ':' + (b.detail || ''));
+        });
+      }
+      return r.json();
+    })
+    .then(data => {
+      _aiCache[betId] = data;
+      if (loadEl)    loadEl.style.display    = 'none';
+      if (contentEl) contentEl.style.display = 'block';
+      const metaEl = document.getElementById('ai-meta-'   + betId);
+      const bodyEl = document.getElementById('ai-body-'   + betId);
+      const footEl = document.getElementById('ai-footer-' + betId);
+      if (metaEl) {
+        const conf = data.confidence_score;
+        const cc = conf >= 75 ? 'ai-conf-high' : conf >= 50 ? 'ai-conf-med' : 'ai-conf-low';
+        const cl = conf >= 75 ? '🟢 High Conf' : conf >= 50 ? '🟡 Medium' : '🔴 Low';
+        metaEl.innerHTML = `<span class="ai-conf ${cc}">${cl} (${conf}%)</span>`;
+        if (data.kelly_pct) metaEl.innerHTML += ` <span class="ai-kelly-chip">¼ Kelly: ${parseFloat(data.kelly_pct).toFixed(1)}%</span>`;
+      }
+      if (bodyEl) {
+        bodyEl.innerHTML = `<div class="ai-panel-body">${(data.analysis || '').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>')}</div>`;
+      }
+      if (footEl && data.generated_at) {
+        footEl.innerHTML = `Generated at ${new Date(data.generated_at).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})} — Claude Opus 4.6`;
+      }
+    })
+    .catch(err => {
+      if (loadEl)  loadEl.style.display  = 'none';
+      if (errorEl) {
+        const msg = String(err.message || '');
+        errorEl.textContent = msg.startsWith('504') ? 'Analysis timed out — tap to retry.'
+                            : msg.startsWith('5')   ? 'Analysis service error — tap to retry.'
+                            : 'Analysis unavailable — tap to retry.';
+        errorEl.style.display = 'block';
+        errorEl.style.cursor  = 'pointer';
+        errorEl.onclick = () => {
+          delete _aiCache[betId];
+          // Reset to loading state in-place (no panel toggle flicker)
+          errorEl.style.display   = 'none';
+          if (loadEl)    loadEl.style.display    = 'block';
+          if (contentEl) contentEl.style.display = 'none';
+          // Re-trigger only the AI fetch portion
+          fetch('/api/analysis/' + betId)
+            .then(r => r.ok ? r.json() : r.json().catch(()=>({})).then(b=>{throw new Error(r.status+':'+(b.detail||''));}))
+            .then(data => {
+              _aiCache[betId] = data;
+              if (loadEl)    loadEl.style.display    = 'none';
+              if (contentEl) contentEl.style.display = 'block';
+              const metaEl = document.getElementById('ai-meta-'   + betId);
+              const bodyEl = document.getElementById('ai-body-'   + betId);
+              const footEl = document.getElementById('ai-footer-' + betId);
+              if (metaEl) { const c=data.confidence_score; const cc=c>=75?'ai-conf-high':c>=50?'ai-conf-med':'ai-conf-low'; const cl=c>=75?'🟢 High Conf':c>=50?'🟡 Medium':'🔴 Low'; metaEl.innerHTML=`<span class="ai-conf ${cc}">${cl} (${c}%)</span>${data.kelly_pct?` <span class="ai-kelly-chip">¼ Kelly: ${parseFloat(data.kelly_pct).toFixed(1)}%</span>`:''}`; }
+              if (bodyEl) bodyEl.innerHTML=`<div class="ai-panel-body">${(data.analysis||'').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')}</div>`;
+              if (footEl && data.generated_at) footEl.innerHTML=`Generated at ${new Date(data.generated_at).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})} — Claude Opus 4.6`;
+            })
+            .catch(() => { if (loadEl) loadEl.style.display='none'; if (errorEl) errorEl.style.display='block'; });
+        };
       }
     });
 }
