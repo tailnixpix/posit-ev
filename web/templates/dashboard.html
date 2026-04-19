@@ -2079,6 +2079,243 @@ main { max-width: none !important; padding: 0 !important; }
 .cards-grid.compact-mode .track-panel,
 .cards-grid.compact-mode .card-context { display: none !important; }
 
+/* ═══════════════════════════════════════════════════════════════
+   PARLAY BUILDER
+   ═══════════════════════════════════════════════════════════════ */
+
+.btn-parlay-mode {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(167,139,250,0.07);
+  border: 1px solid rgba(167,139,250,0.2);
+  border-radius: 8px;
+  padding: 7px 11px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--d-purple);
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.btn-parlay-mode:hover { background: rgba(167,139,250,0.12); }
+.btn-parlay-mode.active {
+  background: rgba(167,139,250,0.15);
+  border-color: rgba(167,139,250,0.45);
+  box-shadow: 0 0 0 1px rgba(167,139,250,0.12);
+}
+
+/* Cards gain a subtle glow + purple checkbox in parlay mode */
+.cards-grid.parlay-mode .bet-card { cursor: pointer; }
+.cards-grid.parlay-mode .bet-card.parlay-selected {
+  border-color: rgba(167,139,250,0.7) !important;
+  box-shadow: 0 0 0 2px rgba(167,139,250,0.15), 0 4px 24px rgba(0,0,0,0.4);
+}
+.cards-grid.parlay-mode .card-select-cb { accent-color: var(--d-purple); }
+
+/* Floating parlay panel */
+.parlay-panel {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: none;
+  flex-direction: column;
+  width: min(540px, calc(100vw - 32px));
+  background: var(--d-card);
+  border: 1px solid rgba(167,139,250,0.4);
+  border-radius: 16px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.65), 0 0 0 1px rgba(167,139,250,0.1);
+  z-index: 510;
+  overflow: hidden;
+  animation: slideUp 0.2s ease-out;
+}
+.parlay-panel.open { display: flex; }
+
+.parlay-panel-hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 16px 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.ph-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--d-purple);
+}
+.ph-leg-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--d-muted);
+  background: rgba(255,255,255,0.05);
+  border-radius: 10px;
+  padding: 2px 8px;
+}
+.ph-close {
+  background: none;
+  border: none;
+  color: var(--d-muted);
+  cursor: pointer;
+  font-size: 1.05rem;
+  padding: 2px 4px;
+  line-height: 1;
+  font-family: inherit;
+}
+.ph-close:hover { color: var(--d-text); }
+
+/* Leg list */
+.parlay-legs-wrap { position: relative; }
+.parlay-empty {
+  padding: 14px 16px;
+  text-align: center;
+  font-size: 0.73rem;
+  color: var(--d-muted);
+}
+.parlay-legs {
+  padding: 10px 14px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: 158px;
+  overflow-y: auto;
+}
+.parlay-legs::-webkit-scrollbar { width: 3px; }
+.parlay-legs::-webkit-scrollbar-thumb { background: var(--d-border); border-radius: 2px; }
+
+.pl-leg {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 8px;
+  padding: 7px 10px;
+}
+.pl-leg-num {
+  font-size: 0.6rem;
+  font-weight: 800;
+  background: rgba(167,139,250,0.12);
+  color: var(--d-purple);
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.pl-leg-info { flex: 1; min-width: 0; }
+.pl-leg-name {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--d-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pl-leg-sub {
+  font-size: 0.61rem;
+  color: var(--d-sub);
+  margin-top: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pl-leg-odds {
+  font-size: 0.8rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+.pl-leg-odds.pos { color: var(--d-green); }
+.pl-leg-odds.neg { color: var(--d-orange); }
+.pl-leg-del {
+  background: none;
+  border: none;
+  color: var(--d-muted);
+  cursor: pointer;
+  font-size: 0.75rem;
+  padding: 2px 3px;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: color 0.1s;
+}
+.pl-leg-del:hover { color: #f87171; }
+
+/* 4-cell stats row */
+.parlay-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.ps-cell {
+  padding: 11px 6px 10px;
+  text-align: center;
+  border-right: 1px solid rgba(255,255,255,0.05);
+}
+.ps-cell:last-child { border-right: none; }
+.ps-val {
+  font-size: 0.93rem;
+  font-weight: 800;
+  color: var(--d-muted);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.ps-val.ps-green  { color: var(--d-green); }
+.ps-val.ps-orange { color: var(--d-orange); }
+.ps-val.ps-red    { color: #f87171; }
+.ps-lbl {
+  font-size: 0.52rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--d-muted);
+  margin-top: 5px;
+  font-weight: 600;
+}
+
+/* Footer */
+.parlay-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 14px 11px;
+  border-top: 1px solid rgba(255,255,255,0.04);
+}
+.parlay-warn {
+  font-size: 0.65rem;
+  color: var(--d-orange);
+  flex: 1;
+  min-width: 0;
+  line-height: 1.4;
+}
+.parlay-warn.hidden { display: none; }
+.btn-parlay-clear {
+  background: transparent;
+  border: 1px solid var(--d-border);
+  border-radius: 7px;
+  padding: 5px 10px;
+  font-size: 0.68rem;
+  color: var(--d-muted);
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: color 0.12s, border-color 0.12s;
+}
+.btn-parlay-clear:hover { color: var(--d-text); border-color: var(--d-sub); }
+
+@media (max-width: 768px) {
+  .parlay-panel { bottom: 72px; }
+  .ps-val { font-size: 0.82rem; }
+  .btn-parlay-mode { padding: 6px 8px; font-size: 0.7rem; }
+}
+
 /* ── Mobile overrides for revamped card ─────────────────────── */
 @media (max-width: 768px) {
   .card-hdr { padding: 8px 12px 7px; gap: 6px; }
@@ -2270,6 +2507,7 @@ main { max-width: none !important; padding: 0 !important; }
         <button class="view-toggle-btn" id="compactToggle" onclick="toggleCompact()" style="border:1px solid var(--d-border);border-radius:8px;padding:7px 11px;" title="Compact view">▤</button>
         <button class="props-group-toggle" id="propsGroupToggle" onclick="togglePropsGrouping()" title="Group props by player">👤 Group by Player</button>
         <button class="view-toggle-btn" id="trackerToggle" onclick="openTrackerDrawer()" style="border:1px solid var(--d-border);border-radius:8px;padding:7px 11px;position:relative;" title="Bet Tracker">📊 Tracker<span class="tracker-badge" id="trackerBadge" style="display:none;"></span></button>
+        <button class="btn-parlay-mode" id="parlayModeBtn" onclick="toggleParlayMode()" title="Build a 2–5 leg parlay and check combined EV + Kelly sizing">🎰 Parlay</button>
       </div>
     </div>
 
@@ -2733,6 +2971,43 @@ main { max-width: none !important; padding: 0 !important; }
   <button class="slip-clear-btn" onclick="clearSlip()">✕ Clear</button>
 </div>
 
+{# ── Parlay Builder Panel ── #}
+<div class="parlay-panel" id="parlayPanel">
+  <div class="parlay-panel-hdr">
+    <div class="ph-title">
+      🎰 Parlay Builder
+      <span class="ph-leg-badge" id="parlayLegBadge">0 legs</span>
+    </div>
+    <button class="ph-close" onclick="exitParlayMode()" title="Exit parlay builder">✕</button>
+  </div>
+  <div class="parlay-legs-wrap">
+    <div class="parlay-empty" id="parlayEmpty">Check 2–5 bets above to build a parlay</div>
+    <div class="parlay-legs" id="parlayLegs" style="display:none;"></div>
+  </div>
+  <div class="parlay-stats">
+    <div class="ps-cell">
+      <div class="ps-val" id="pl-odds">—</div>
+      <div class="ps-lbl">Parlay Odds</div>
+    </div>
+    <div class="ps-cell">
+      <div class="ps-val" id="pl-prob">—</div>
+      <div class="ps-lbl">Win Prob</div>
+    </div>
+    <div class="ps-cell">
+      <div class="ps-val" id="pl-ev">—</div>
+      <div class="ps-lbl">Parlay EV</div>
+    </div>
+    <div class="ps-cell">
+      <div class="ps-val" id="pl-kelly">—</div>
+      <div class="ps-lbl">¼ Kelly</div>
+    </div>
+  </div>
+  <div class="parlay-footer">
+    <span class="parlay-warn hidden" id="parlayWarn"></span>
+    <button class="btn-parlay-clear" onclick="clearParlayLegs()">Clear All</button>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
@@ -2820,6 +3095,11 @@ _updateCountdowns();
 
 // ── Bet slip ────────────────────────────────────────────────────────────────
 function updateSlip() {
+  // In parlay mode the checkboxes feed the parlay builder instead
+  if (_parlayMode) {
+    _syncParlayFromCheckboxes();
+    return;
+  }
   const checked = document.querySelectorAll('.card-select-cb:checked');
   const bar = document.getElementById('betSlipBar');
   const countEl = document.getElementById('slipCount');
@@ -2857,6 +3137,230 @@ function trackAllSelected() {
   });
   if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
   clearSlip();
+}
+
+// ── Parlay Builder ──────────────────────────────────────────────────────────
+let _parlayMode = false;
+const _parlayLegs = [];  // {id, name, sub, odds, trueProb, book, game}
+
+function toggleParlayMode() {
+  _parlayMode ? exitParlayMode() : enterParlayMode();
+}
+
+function enterParlayMode() {
+  _parlayMode = true;
+  const btn = document.getElementById('parlayModeBtn');
+  btn.classList.add('active');
+  btn.innerHTML = '🎰 Parlay <span style="font-size:0.6rem;opacity:0.7;margin-left:2px;">ON</span>';
+  document.getElementById('cardsGrid').classList.add('parlay-mode');
+  document.getElementById('parlayPanel').classList.add('open');
+  // Clear normal slip selections to avoid confusion
+  document.querySelectorAll('.card-select-cb:checked').forEach(cb => { cb.checked = false; });
+  document.getElementById('betSlipBar').style.display = 'none';
+  _renderParlayPanel();
+}
+
+function exitParlayMode() {
+  _parlayMode = false;
+  const btn = document.getElementById('parlayModeBtn');
+  btn.classList.remove('active');
+  btn.textContent = '🎰 Parlay';
+  document.getElementById('cardsGrid').classList.remove('parlay-mode');
+  document.getElementById('parlayPanel').classList.remove('open');
+  // Uncheck all + remove highlights
+  document.querySelectorAll('.card-select-cb:checked').forEach(cb => { cb.checked = false; });
+  document.querySelectorAll('.bet-card.parlay-selected').forEach(c => c.classList.remove('parlay-selected'));
+  _parlayLegs.length = 0;
+}
+
+/* ── Parlay math helpers ─────────────────────────────────────── */
+function _toDecimal(american) {
+  return american >= 0 ? american / 100 + 1 : 100 / Math.abs(american) + 1;
+}
+function _toAmerican(decimal) {
+  if (decimal >= 2) return Math.round((decimal - 1) * 100);
+  return Math.round(-100 / (decimal - 1));
+}
+function _computeParlayStats() {
+  const n = _parlayLegs.length;
+  if (n < 2) return null;
+  let dec = 1, prob = 1;
+  _parlayLegs.forEach(l => { dec *= _toDecimal(l.odds); prob *= l.trueProb; });
+  const evPct = (prob * dec - 1) * 100;
+  const american = _toAmerican(dec);
+  // Fractional Kelly: f* = (p*b - q) / b  where b = dec - 1 net odds, then × 0.25
+  const b = dec - 1;
+  const rawKelly = b > 0 ? (prob * dec - 1) / b : 0;
+  const fracKelly = Math.max(0, rawKelly * 0.25);
+  return { n, dec, prob, evPct, american, fracKelly };
+}
+
+/* ── Sync legs from current checkbox state ───────────────────── */
+function _getLegId(card) {
+  const btn = card.querySelector('[id^="analyze-btn-"]');
+  return btn ? btn.id.replace('analyze-btn-', '') : null;
+}
+
+function _syncParlayFromCheckboxes() {
+  // Find which cards are currently checked
+  const checkedCards = new Set(
+    Array.from(document.querySelectorAll('.card-select-cb:checked'))
+         .map(cb => cb.closest('.bet-card')).filter(Boolean)
+  );
+
+  // Remove legs whose card is now unchecked
+  const toRemove = _parlayLegs.filter(leg => {
+    const card = document.getElementById('analyze-btn-' + leg.id)?.closest('.bet-card');
+    return !card || !checkedCards.has(card);
+  });
+  toRemove.forEach(leg => {
+    _parlayLegs.splice(_parlayLegs.indexOf(leg), 1);
+    const card = document.getElementById('analyze-btn-' + leg.id)?.closest('.bet-card');
+    if (card) card.classList.remove('parlay-selected');
+  });
+
+  // Add newly checked cards
+  checkedCards.forEach(card => {
+    const id = _getLegId(card);
+    if (!id || _parlayLegs.find(l => l.id === id)) return;
+    if (_parlayLegs.length >= 5) {
+      // Reject: uncheck and warn
+      card.querySelector('.card-select-cb').checked = false;
+      const w = document.getElementById('parlayWarn');
+      w.textContent = '⚠️ Max 5 legs — remove a leg first.';
+      w.classList.remove('hidden');
+      setTimeout(() => w.classList.add('hidden'), 2800);
+      return;
+    }
+    const isProp   = card.dataset.isProp === 'true';
+    const player   = card.dataset.playerName || '';
+    const team     = card.dataset.team || '';
+    const game     = card.dataset.game || '';
+    const mkt      = card.dataset.marketDisplay || '';
+    const odds     = parseInt(card.dataset.odds, 10);
+    const trueProb = parseFloat(card.dataset.trueProb);
+    const book     = card.dataset.book || '';
+    const name     = isProp && player ? `${player} — ${team}` : team;
+    const sub      = [mkt, game || '', book ? book.charAt(0).toUpperCase() + book.slice(1) : ''].filter(Boolean).join(' · ');
+    _parlayLegs.push({ id, name, sub, odds, trueProb, book, game });
+    card.classList.add('parlay-selected');
+  });
+
+  _renderParlayPanel();
+}
+
+/* ── Remove a single leg (called from ✕ in panel) ───────────── */
+function removeParlayLeg(id) {
+  const idx = _parlayLegs.findIndex(l => l.id === id);
+  if (idx === -1) return;
+  _parlayLegs.splice(idx, 1);
+  const card = document.getElementById('analyze-btn-' + id)?.closest('.bet-card');
+  if (card) {
+    card.classList.remove('parlay-selected');
+    const cb = card.querySelector('.card-select-cb');
+    if (cb) cb.checked = false;
+  }
+  _renderParlayPanel();
+}
+
+function clearParlayLegs() {
+  _parlayLegs.length = 0;
+  document.querySelectorAll('.bet-card.parlay-selected').forEach(c => {
+    c.classList.remove('parlay-selected');
+    const cb = c.querySelector('.card-select-cb');
+    if (cb) cb.checked = false;
+  });
+  _renderParlayPanel();
+}
+
+/* ── Render the panel UI ─────────────────────────────────────── */
+function _renderParlayPanel() {
+  const n        = _parlayLegs.length;
+  const badgeEl  = document.getElementById('parlayLegBadge');
+  const emptyEl  = document.getElementById('parlayEmpty');
+  const legsEl   = document.getElementById('parlayLegs');
+  const oddsEl   = document.getElementById('pl-odds');
+  const probEl   = document.getElementById('pl-prob');
+  const evEl     = document.getElementById('pl-ev');
+  const kellyEl  = document.getElementById('pl-kelly');
+  const warnEl   = document.getElementById('parlayWarn');
+
+  badgeEl.textContent = n === 1 ? '1 leg' : `${n} legs`;
+
+  // Legs list
+  if (n === 0) {
+    emptyEl.style.display = '';
+    legsEl.style.display  = 'none';
+  } else {
+    emptyEl.style.display = 'none';
+    legsEl.style.display  = '';
+    legsEl.innerHTML = _parlayLegs.map((leg, i) => {
+      const oddsStr = leg.odds >= 0 ? `+${leg.odds}` : String(leg.odds);
+      const odsCls  = leg.odds >= 0 ? 'pos' : 'neg';
+      const safeName = leg.name.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      const safeSub  = leg.sub.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      return `<div class="pl-leg" id="pl-leg-${leg.id}">
+        <div class="pl-leg-num">${i + 1}</div>
+        <div class="pl-leg-info">
+          <div class="pl-leg-name">${safeName}</div>
+          <div class="pl-leg-sub">${safeSub}</div>
+        </div>
+        <div class="pl-leg-odds ${odsCls}">${oddsStr}</div>
+        <button class="pl-leg-del" onclick="removeParlayLeg('${leg.id}')" title="Remove leg">✕</button>
+      </div>`;
+    }).join('');
+  }
+
+  // Stats cells
+  const stats = _computeParlayStats();
+  if (!stats) {
+    [oddsEl, probEl, evEl, kellyEl].forEach(el => {
+      el.textContent = '—';
+      el.className   = 'ps-val';
+    });
+  } else {
+    const oddsStr = stats.american >= 0 ? `+${stats.american}` : String(stats.american);
+    oddsEl.textContent = oddsStr;
+    oddsEl.className   = 'ps-val ' + (stats.american >= 0 ? 'ps-green' : '');
+
+    probEl.textContent = `${(stats.prob * 100).toFixed(1)}%`;
+    probEl.className   = 'ps-val';
+
+    const evSign = stats.evPct >= 0 ? '+' : '';
+    evEl.textContent = `${evSign}${stats.evPct.toFixed(1)}%`;
+    evEl.className   = 'ps-val ' + (stats.evPct >= 2 ? 'ps-green' : stats.evPct >= 0 ? 'ps-orange' : 'ps-red');
+
+    const bankroll = parseFloat(document.getElementById('bankrollInput')?.value) || 0;
+    if (bankroll > 0 && stats.fracKelly > 0) {
+      const dollar = Math.round(stats.fracKelly * bankroll);
+      kellyEl.textContent = `$${dollar}`;
+      kellyEl.title = `${(stats.fracKelly * 100).toFixed(1)}% of bankroll`;
+    } else {
+      kellyEl.textContent = stats.fracKelly > 0 ? `${(stats.fracKelly * 100).toFixed(1)}%` : '0%';
+      kellyEl.title = '';
+    }
+    kellyEl.className = 'ps-val ' + (stats.fracKelly > 0 ? 'ps-green' : 'ps-orange');
+  }
+
+  // Warnings
+  warnEl.classList.add('hidden');
+  const warnings = [];
+  if (n === 1) {
+    warnings.push('Add at least 1 more leg (minimum 2).');
+  } else if (stats) {
+    // Same-game parlay detection
+    const games = _parlayLegs.map(l => l.game).filter(Boolean);
+    const gameFreq = {};
+    games.forEach(g => { gameFreq[g] = (gameFreq[g] || 0) + 1; });
+    const hasSGP = Object.values(gameFreq).some(v => v > 1);
+    if (hasSGP) warnings.push('⚠️ Same-game legs detected — correlated outcomes lower actual EV.');
+    if (stats.evPct < 0) warnings.push('⚠️ This parlay is −EV. Try removing the lowest-EV leg.');
+    else if (stats.fracKelly === 0 && stats.evPct >= 0) warnings.push('⚠️ Kelly says pass — marginal edge after combining.');
+  }
+  if (warnings.length) {
+    warnEl.textContent = warnings[0];
+    warnEl.classList.remove('hidden');
+  }
 }
 
 // ── Filter state ───────────────────────────────────────────────────────────
