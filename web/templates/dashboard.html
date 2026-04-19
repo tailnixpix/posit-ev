@@ -1853,19 +1853,35 @@ main { max-width: none !important; padding: 0 !important; }
 
 /* Tighter min-width so cards fit better on narrow screens */
 .cards-grid {
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr));
 }
 
 /* Card header zone — sits between ribbon and body */
 .card-hdr {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   padding: 10px 14px 8px;
-  border-bottom: 1px solid rgba(255,255,255,0.04);
-  flex-wrap: wrap;
-  row-gap: 5px;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
 }
+/* Left: league/market/CLV badges — wrap freely */
+.card-hdr-left {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  row-gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+/* Right: VS score + EV badge + checkbox — always stay together */
+.card-hdr-right {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+.card-hdr-right .ev-badge { margin-left: 0; }
 
 /* Tighter body padding */
 .card-body { padding: 14px 16px 18px; }
@@ -1912,7 +1928,6 @@ main { max-width: none !important; padding: 0 !important; }
   font-size: 0.68rem;
   color: var(--d-sub);
   margin-bottom: 14px;
-  min-height: 18px;
 }
 .ctx-game { font-weight: 500; }
 .ctx-sep  { color: var(--d-muted); }
@@ -2066,7 +2081,9 @@ main { max-width: none !important; padding: 0 !important; }
 
 /* ── Mobile overrides for revamped card ─────────────────────── */
 @media (max-width: 768px) {
-  .card-hdr { padding: 8px 12px 7px; gap: 4px; row-gap: 4px; }
+  .card-hdr { padding: 8px 12px 7px; gap: 6px; }
+  .card-hdr-left { gap: 4px; row-gap: 3px; }
+  .card-hdr-right { gap: 4px; }
   .card-body { padding: 12px 12px 14px; }
   .bet-name-team,
   .bet-name-player { font-size: 1.05rem; }
@@ -2317,29 +2334,32 @@ main { max-width: none !important; padding: 0 !important; }
 
             {# ── Card Header: badges · CLV pill · VS score · EV · ☑ ───── #}
             <div class="card-hdr">
-              <span class="badge badge-league">{{ league_display }}</span>
-              <span class="badge badge-market">{{ market_display }}</span>
-              {% if (bet.source_type or 'sportsbook') == 'exchange' %}
-              <span class="badge badge-pm" style="background:rgba(250,199,117,0.12);color:#F9C74F;">⚡ Exchange</span>
-              {% elif (bet.source_type or 'sportsbook') == 'prediction_market' %}
-              <span class="badge badge-pm">🔮 PM</span>
-              {% endif %}
-              {% if bet.opening_odds and bet.opening_odds != bet.odds %}
-                {% set op = ('+' if bet.opening_odds > 0 else '') ~ bet.opening_odds %}
-                {% set cur = ('+' if bet.odds > 0 else '') ~ bet.odds %}
-                {% set _clv_pos = bet.opening_odds > bet.odds %}
-                <span class="clv-pill {{ 'clv-pill-pos' if _clv_pos else 'clv-pill-neg' }}"
-                      onclick="showClvPopover(event,{{ 'true' if _clv_pos else 'false' }})"
-                      title="{{ 'Line steamed — sharp money confirmed this edge' if _clv_pos else 'Line drifted — monitor this bet' }}">
-                  {{ '▲' if _clv_pos else '▽' }} {{ op }}→{{ cur }}
-                </span>
-              {% endif %}
-              {# VS chip + EV badge + checkbox pushed to right #}
-              <span class="vs-chip" style="margin-left:auto;"></span>
-              <span class="ev-badge {{ tier }}">+{{ "%.1f"|format(bet.ev_percent) }}% EV</span>
-              <label class="card-select-label" title="Add to bet slip">
-                <input type="checkbox" class="card-select-cb" onchange="updateSlip()">
-              </label>
+              <div class="card-hdr-left">
+                <span class="badge badge-league">{{ league_display }}</span>
+                <span class="badge badge-market">{{ market_display }}</span>
+                {% if (bet.source_type or 'sportsbook') == 'exchange' %}
+                <span class="badge badge-pm" style="background:rgba(250,199,117,0.12);color:#F9C74F;">⚡ Exchange</span>
+                {% elif (bet.source_type or 'sportsbook') == 'prediction_market' %}
+                <span class="badge badge-pm">🔮 PM</span>
+                {% endif %}
+                {% if bet.opening_odds and bet.opening_odds != bet.odds %}
+                  {% set op = ('+' if bet.opening_odds > 0 else '') ~ bet.opening_odds %}
+                  {% set cur = ('+' if bet.odds > 0 else '') ~ bet.odds %}
+                  {% set _clv_pos = bet.opening_odds > bet.odds %}
+                  <span class="clv-pill {{ 'clv-pill-pos' if _clv_pos else 'clv-pill-neg' }}"
+                        onclick="showClvPopover(event,{{ 'true' if _clv_pos else 'false' }})"
+                        title="{{ 'Line steamed — sharp money confirmed this edge' if _clv_pos else 'Line drifted — monitor this bet' }}">
+                    {{ '▲' if _clv_pos else '▽' }} {{ op }}→{{ cur }}
+                  </span>
+                {% endif %}
+              </div>
+              <div class="card-hdr-right">
+                <span class="vs-chip"></span>
+                <span class="ev-badge {{ tier }}">+{{ "%.1f"|format(bet.ev_percent) }}% EV</span>
+                <label class="card-select-label" title="Add to bet slip">
+                  <input type="checkbox" class="card-select-cb" onchange="updateSlip()">
+                </label>
+              </div>
             </div>
 
             {# ── Card Body ────────────────────────────────────────────── #}
