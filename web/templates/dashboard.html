@@ -1755,6 +1755,58 @@ main { max-width: none !important; padding: 0 !important; }
 .trend-cold { background: rgba(96,165,250,0.12); color: #93C5FD; border: 1px solid rgba(96,165,250,0.25); }
 .trend-neutral { background: rgba(107,114,128,0.1); color: #9CA3AF; border: 1px solid rgba(107,114,128,0.2); }
 
+/* ── Bet search helper toast ── */
+.bsh-toast {
+  position: fixed;
+  bottom: 90px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--d-card);
+  border: 1px solid var(--d-green);
+  border-radius: 14px;
+  padding: 13px 20px;
+  z-index: 800;
+  max-width: 320px;
+  width: calc(100vw - 32px);
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,214,143,0.15);
+  animation: slideUp 0.22s ease-out;
+  pointer-events: none;
+}
+.bsh-toast.bsh-exit {
+  animation: bshFade 0.35s ease-out forwards;
+}
+@keyframes bshFade { to { opacity: 0; transform: translateX(-50%) translateY(6px); } }
+.bsh-label {
+  font-size: 0.56rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--d-green);
+  margin-bottom: 5px;
+}
+.bsh-search {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: var(--d-text);
+  line-height: 1.3;
+  word-break: break-word;
+}
+.bsh-sub {
+  font-size: 0.68rem;
+  color: var(--d-sub);
+  margin-top: 4px;
+}
+.bsh-copied {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.6rem;
+  color: var(--d-green);
+  font-weight: 600;
+  margin-top: 6px;
+}
+
 /* ── Enhanced props mode ── */
 /* Player header separator injected between prop groups */
 .prop-player-hdr {
@@ -2175,7 +2227,7 @@ main { max-width: none !important; padding: 0 !important; }
               {% elif _bk in _pred_mkt_books %}{% set _cta_label = 'Trade on ' %}{% set _cta_icon = '📈' %}
               {% else %}{% set _cta_label = 'Bet at ' %}{% set _cta_icon = '🎰' %}{% endif %}
               <div class="card-bet-cta">
-                <button class="btn-bet" onclick="openBetLink('{{ _bk }}','{{ bet.league }}')">
+                <button class="btn-bet" onclick="openBetLink('{{ _bk }}','{{ bet.league }}',this)">
                   <span class="btn-bet-icon">{{ _cta_icon }}</span>
                   {{ _cta_label }}{{ _bk_display }} →
                 </button>
@@ -3405,7 +3457,75 @@ const _MOBILE_APP_STORES = {
   },
 };
 
-function openBetLink(book, league) {
+// ── Bet search helper toast ────────────────────────────────────────────────
+// Sportsbook deep links to specific game events require each book's internal
+// event ID, which The Odds API does not expose. Until we have affiliate API
+// access (DraftKings/FanDuel affiliate programs provide event ID feeds), the
+// best UX is: open the correct sport section AND copy the exact bet to
+// clipboard with a clear "search for this" prompt.
+
+function _buildSearchString(card) {
+  if (!card) return { search: '', detail: '' };
+  const game      = card.dataset.game     || '';
+  const team      = card.dataset.team     || '';
+  const player    = card.dataset.playerName || '';
+  const mkt       = card.dataset.marketDisplay || card.dataset.market || '';
+  const odds      = parseInt(card.dataset.odds, 10);
+  const isProp    = card.dataset.isProp === 'true';
+  const oddsStr   = odds > 0 ? `+${odds}` : String(odds);
+
+  // For game bets: "Boston Celtics vs Los Angeles Lakers"
+  // For props:     "LeBron James — Points Over 26.5"
+  let search = '', detail = '';
+  if (isProp && player) {
+    const parts = team.toLowerCase().includes('over') ? ['Over', team.replace(/over/i,'').trim()]
+                : team.toLowerCase().includes('under') ? ['Under', team.replace(/under/i,'').trim()]
+                : [team, ''];
+    search = player;
+    detail = `${mkt} ${parts[0]} ${parts[1]} · ${oddsStr}`.trim();
+  } else if (game.includes(' @ ')) {
+    const [away, home] = game.split(' @ ');
+    search = `${away.trim()} vs ${home.trim()}`;
+    detail = `${team} · ${mkt} · ${oddsStr}`;
+  } else {
+    search = game || team;
+    detail = `${mkt} · ${oddsStr}`;
+  }
+  return { search, detail };
+}
+
+function _showBetToast(search, detail, copied) {
+  // Remove any existing toast
+  document.querySelectorAll('.bsh-toast').forEach(e => {
+    e.classList.add('bsh-exit');
+    setTimeout(() => e.remove(), 350);
+  });
+  const t = document.createElement('div');
+  t.className = 'bsh-toast';
+  t.innerHTML = `
+    <div class="bsh-label">Find this bet on the app</div>
+    <div class="bsh-search">${search}</div>
+    <div class="bsh-sub">${detail}</div>
+    ${copied ? '<div class="bsh-copied">✓ Copied to clipboard</div>' : ''}
+  `;
+  document.body.appendChild(t);
+  setTimeout(() => {
+    t.classList.add('bsh-exit');
+    setTimeout(() => t.remove(), 350);
+  }, 4000);
+}
+
+function openBetLink(book, league, btn) {
+  const card = btn ? btn.closest('.bet-card') : null;
+  const { search, detail } = _buildSearchString(card);
+
+  // Copy search string to clipboard (best-effort)
+  let copied = false;
+  if (search && navigator.clipboard) {
+    navigator.clipboard.writeText(search).then(() => {}).catch(() => {});
+    copied = true;
+  }
+
   const mobileApp = _MOBILE_APP_STORES[book];
   if (mobileApp) {
     const ua = navigator.userAgent;
@@ -3414,27 +3534,31 @@ function openBetLink(book, league) {
     const isMobile  = isIOS || isAndroid;
     const storeUrl  = isIOS ? mobileApp.ios : isAndroid ? mobileApp.android : mobileApp.desktop;
 
+    // Show search helper for mobile apps
+    if (search) _showBetToast(search, detail, copied);
+
     if (isMobile && mobileApp.scheme) {
-      // Try to open the native app via its registered URI scheme.
-      // If the app is installed the OS intercepts the navigation and launches it.
-      // If not installed nothing happens, so after 1.5 s we redirect to the store.
       const fallback = setTimeout(() => { window.location.href = storeUrl; }, 1500);
-      // Cancel the store redirect if the app opened (page loses focus / goes hidden)
       const cancel = () => clearTimeout(fallback);
       window.addEventListener('blur', cancel, { once: true });
       document.addEventListener('visibilitychange', () => { if (document.hidden) cancel(); }, { once: true });
       window.location.href = mobileApp.scheme;
     } else {
-      // No known URI scheme or desktop — go straight to store / website
       window.open(storeUrl, '_blank', 'noopener,noreferrer');
     }
     return;
   }
-  // Web sportsbooks & prediction markets — open sport-specific page
+
+  // Web sportsbooks & prediction markets
   const map = _BOOK_URLS[book];
   if (!map) return;
   const url = map[league] || map._default;
-  if (url) window.open(url, '_blank', 'noopener,noreferrer');
+  if (!url) return;
+
+  // Show search helper before opening the book
+  if (search) _showBetToast(search, detail, copied);
+
+  window.open(url, '_blank', 'noopener,noreferrer');
 }
 
 // ── Projection panel ───────────────────────────────────────────────────────
