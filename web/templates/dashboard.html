@@ -3766,23 +3766,26 @@ function openBetLink(book, league, btn) {
 
   const mobileApp = _MOBILE_APP_STORES[book];
   if (mobileApp) {
-    const ua = navigator.userAgent;
-    const isIOS     = /iPhone|iPad|iPod/.test(ua);
-    const isAndroid = /Android/.test(ua);
-    const isMobile  = isIOS || isAndroid;
-    const storeUrl  = isIOS ? mobileApp.ios : isAndroid ? mobileApp.android : mobileApp.desktop;
+    // Always target the website — never the App Store.
+    // If a native URI scheme is registered (e.g. NoVig), try to open the app
+    // first on mobile; if the app isn't installed the scheme silently fails and
+    // we open the website after 1.5 s.  Without a scheme we go straight to web.
+    const webUrl = mobileApp.desktop;
+    const ua     = navigator.userAgent;
+    const isMobile = /iPhone|iPad|iPod|Android/.test(ua);
 
-    // Show search helper for mobile apps
     if (search) _showBetToast(search, detail, copied);
 
     if (isMobile && mobileApp.scheme) {
-      const fallback = setTimeout(() => { window.location.href = storeUrl; }, 1500);
+      // Try to hand off to the native app
+      const fallback = setTimeout(() => window.open(webUrl, '_blank', 'noopener,noreferrer'), 1500);
       const cancel = () => clearTimeout(fallback);
       window.addEventListener('blur', cancel, { once: true });
       document.addEventListener('visibilitychange', () => { if (document.hidden) cancel(); }, { once: true });
       window.location.href = mobileApp.scheme;
     } else {
-      window.open(storeUrl, '_blank', 'noopener,noreferrer');
+      // No URI scheme (ProphetX, BetOpenly) or desktop — open website directly
+      window.open(webUrl, '_blank', 'noopener,noreferrer');
     }
     return;
   }
