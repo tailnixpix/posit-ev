@@ -2033,7 +2033,8 @@ main { max-width: none !important; padding: 0 !important; }
 }
 
 /* Group-by toggle */
-.props-group-toggle {
+.props-group-toggle,
+.games-group-toggle {
   background: transparent;
   border: 1px solid var(--d-border);
   border-radius: 6px;
@@ -2046,8 +2047,48 @@ main { max-width: none !important; padding: 0 !important; }
   transition: all 0.12s;
   display: none;
 }
-.props-group-toggle.visible { display: inline-flex; align-items: center; gap: 5px; }
-.props-group-toggle.active { background: rgba(167,139,250,0.12); border-color: rgba(167,139,250,0.35); color: var(--d-purple); }
+.props-group-toggle.visible,
+.games-group-toggle.visible { display: inline-flex; align-items: center; gap: 5px; }
+.props-group-toggle.active  { background: rgba(167,139,250,0.12); border-color: rgba(167,139,250,0.35); color: var(--d-purple); }
+.games-group-toggle.active  { background: rgba(100,149,237,0.12); border-color: rgba(100,149,237,0.35); color: var(--d-blue); }
+
+/* Game-group header (injected by _applyGameGrouping) */
+.game-group-hdr {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 4px 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--d-blue);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.game-group-hdr::after { display: none; }
+.ggh-line {
+  flex: 1;
+  height: 1px;
+  background: rgba(100,149,237,0.2);
+}
+.game-group-track-btn {
+  flex-shrink: 0;
+  background: rgba(100,149,237,0.1);
+  border: 1px solid rgba(100,149,237,0.28);
+  border-radius: 6px;
+  padding: 2px 9px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--d-blue);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.12s;
+  white-space: nowrap;
+}
+.game-group-track-btn:hover {
+  background: rgba(100,149,237,0.2);
+  border-color: rgba(100,149,237,0.5);
+}
 /* Prop line prominence in props mode */
 .cards-grid.props-mode .prop-line-val { font-size: 1.05rem; }
 .cards-grid.props-mode .prop-player-name { font-size: 1.1rem; }
@@ -2716,6 +2757,7 @@ main { max-width: none !important; padding: 0 !important; }
           <button class="view-toggle-btn" id="viewTable" onclick="setView('table')">≡ Table</button>
         </div>
         <button class="view-toggle-btn" id="compactToggle" onclick="toggleCompact()" style="border:1px solid var(--d-border);border-radius:8px;padding:7px 11px;" title="Compact view">▤</button>
+        <button class="games-group-toggle" id="gamesGroupToggle" onclick="toggleGamesGrouping()" title="Group game bets by matchup">🏟 Group by Game</button>
         <button class="props-group-toggle" id="propsGroupToggle" onclick="togglePropsGrouping()" title="Group props by player">👤 Group by Player</button>
         <button class="view-toggle-btn" id="trackerToggle" onclick="openTrackerDrawer()" style="border:1px solid var(--d-border);border-radius:8px;padding:7px 11px;position:relative;" title="Bet Tracker">📊 Tracker<span class="tracker-badge" id="trackerBadge" style="display:none;"></span></button>
         <button class="btn-parlay-mode" id="parlayModeBtn" onclick="toggleParlayMode()" title="Build a 2–5 leg parlay and check combined EV + Kelly sizing">🎰 Parlay</button>
@@ -4137,6 +4179,10 @@ function applyFilters() {
   // Reapply prop grouping if active
   if (_propsGrouped && activeIsProp === 'true') _applyPropGrouping();
   else if (!_propsGrouped || activeIsProp !== 'true') _clearPropGroupHeaders();
+
+  // Reapply game grouping if active (games mode or all mode)
+  if (_gamesGrouped && activeIsProp !== 'true') _applyGameGrouping();
+  else _clearGameGroupHeaders();
 }
 
 // ── Sport pills ────────────────────────────────────────────────────────────
@@ -4272,14 +4318,21 @@ function _setIsProp(val) {
       b.classList.toggle('active', b.dataset.value === 'all')
     );
   }
-  // Show/hide group-by-player toggle (only in props mode)
-  const groupBtn = document.getElementById('propsGroupToggle');
-  if (groupBtn) groupBtn.classList.toggle('visible', showProps);
+  // Show/hide group toggles based on mode
+  const propsGroupBtn = document.getElementById('propsGroupToggle');
+  const gamesGroupBtn = document.getElementById('gamesGroupToggle');
+  const showGames = (val === 'false' || val === 'all');
+  if (propsGroupBtn) propsGroupBtn.classList.toggle('visible', showProps);
+  if (gamesGroupBtn) gamesGroupBtn.classList.toggle('visible', showGames);
   // Apply or remove grid props-mode class
   const grid = document.getElementById('cardsGrid');
   if (grid) grid.classList.toggle('props-mode', showProps);
-  // Remove player headers if leaving props mode
-  if (!showProps) _clearPropGroupHeaders();
+  // Remove headers if leaving a mode
+  if (!showProps) { _clearPropGroupHeaders(); _propsGrouped = false; if (propsGroupBtn) propsGroupBtn.classList.remove('active'); }
+  if (!showGames) { _clearGameGroupHeaders(); _gamesGrouped = false; if (gamesGroupBtn) gamesGroupBtn.classList.remove('active'); }
+  // Re-apply grouping if still in the right mode
+  if (showProps && _propsGrouped) _applyPropGrouping();
+  if (showGames && _gamesGrouped) _applyGameGrouping();
 }
 
 // ── Props grouping by player ───────────────────────────────────────────────
@@ -4353,6 +4406,77 @@ function togglePropsGrouping() {
   const btn = document.getElementById('propsGroupToggle');
   if (btn) btn.classList.toggle('active', _propsGrouped);
   _applyPropGrouping();
+}
+
+// ── Game grouping by matchup ──────────────────────────────────────────────
+let _gamesGrouped = false;
+
+function _clearGameGroupHeaders() {
+  document.querySelectorAll('.game-group-hdr').forEach(el => el.remove());
+}
+
+function _applyGameGrouping() {
+  const grid = document.getElementById('cardsGrid');
+  if (!grid) return;
+  _clearGameGroupHeaders();
+  if (!_gamesGrouped) return;
+
+  // Collect visible non-prop cards
+  const gameCards = Array.from(grid.querySelectorAll('.bet-card'))
+    .filter(c => c.dataset.isProp !== 'true' && c.style.display !== 'none');
+  if (!gameCards.length) return;
+
+  // Sort by game name, then EV desc
+  gameCards.sort((a, b) => {
+    const gA = (a.dataset.game || '').toLowerCase();
+    const gB = (b.dataset.game || '').toLowerCase();
+    if (gA !== gB) return gA.localeCompare(gB);
+    return parseFloat(b.dataset.ev) - parseFloat(a.dataset.ev);
+  });
+
+  // Group by game
+  const groups = [];
+  gameCards.forEach(card => {
+    const game = card.dataset.game || '—';
+    const last = groups[groups.length - 1];
+    if (last && last.game === game) {
+      last.cards.push(card);
+    } else {
+      groups.push({ game, cards: [card] });
+    }
+  });
+
+  // Re-append with game headers
+  groups.forEach(({ game, cards: groupCards }) => {
+    const hdr = document.createElement('div');
+    hdr.className = 'game-group-hdr';
+
+    // Game name text
+    hdr.appendChild(document.createTextNode(game));
+
+    // Horizontal rule
+    const line = document.createElement('span');
+    line.className = 'ggh-line';
+    hdr.appendChild(line);
+
+    // Track (N) button for groups with any number of cards
+    const trackGroupBtn = document.createElement('button');
+    trackGroupBtn.className = 'game-group-track-btn';
+    trackGroupBtn.textContent = `📌 Track (${groupCards.length})`;
+    trackGroupBtn.title = `Track all ${groupCards.length} bet${groupCards.length !== 1 ? 's' : ''} on this game`;
+    trackGroupBtn.addEventListener('click', () => openGroupTrackModal(groupCards));
+    hdr.appendChild(trackGroupBtn);
+
+    grid.appendChild(hdr);
+    groupCards.forEach(card => grid.appendChild(card));
+  });
+}
+
+function toggleGamesGrouping() {
+  _gamesGrouped = !_gamesGrouped;
+  const btn = document.getElementById('gamesGroupToggle');
+  if (btn) btn.classList.toggle('active', _gamesGrouped);
+  _applyGameGrouping();
 }
 
 // ── Sidebar + mobile sheet qfilter btns ───────────────────────────────────
@@ -5382,6 +5506,14 @@ sortCards();
 applyFilters();
 updateFilterBadge();
 _buildPropTypeChips();
+
+// Initial visibility for group toggles (default: 'all' mode → show game group toggle)
+(function() {
+  const gg = document.getElementById('gamesGroupToggle');
+  const pg = document.getElementById('propsGroupToggle');
+  if (gg) gg.classList.toggle('visible', activeIsProp !== 'true');
+  if (pg) pg.classList.toggle('visible', activeIsProp === 'true');
+})();
 
 // Tracker init: badge + re-mark any bets already tracked this session
 (function() {
