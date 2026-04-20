@@ -1117,20 +1117,44 @@ async def get_analysis(bet_id: int, request: Request, db: Session = Depends(get_
             "cached":            True,
         })
 
-    # Build bet dict for analyzer
+    # Build bet dict for analyzer — include ALL rich pipeline fields so Claude
+    # has full context even when the Optimal/ESPN live fetches return sparse data.
     bet_dict = {
-        "id":            bet_row.id,
-        "game":          bet_row.game or "",
-        "league":        bet_row.league or "",
-        "market":        bet_row.market or "",
-        "team":          bet_row.team or "",
-        "odds":          bet_row.odds or 0,
-        "true_prob":     bet_row.true_prob or 0.5,
-        "ev_percent":    bet_row.ev_percent or 0.0,
-        "point":         bet_row.point,
-        "player_name":   bet_row.player_name,
-        "is_prop":       bool(bet_row.is_prop),
-        "commence_time": bet_row.commence_time,  # needed so analyzer targets the right game date
+        # Core identifiers
+        "id":               bet_row.id,
+        "game":             bet_row.game or "",
+        "league":           bet_row.league or "",
+        "market":           bet_row.market or "",
+        "team":             bet_row.team or "",
+        "odds":             bet_row.odds or 0,
+        "true_prob":        bet_row.true_prob or 0.5,
+        "ev_percent":       bet_row.ev_percent or 0.0,
+        "point":            bet_row.point,
+        "player_name":      bet_row.player_name,
+        "is_prop":          bool(bet_row.is_prop),
+        "commence_time":    bet_row.commence_time,
+        # Probability breakdown
+        "implied_prob":     bet_row.implied_prob,
+        "adjusted_prob":    bet_row.adjusted_prob,
+        "adj_flags":        bet_row.adj_flags or "",
+        # Line movement (CLV signal)
+        "opening_odds":     bet_row.opening_odds,
+        # Sharp money / public betting splits (Action Network)
+        "bet_pct":          bet_row.bet_pct,
+        "money_pct":        bet_row.money_pct,
+        "sharp_score":      bet_row.sharp_score,
+        # Model projections computed at pipeline time
+        "proj_home_score":  bet_row.proj_home_score,
+        "proj_away_score":  bet_row.proj_away_score,
+        "proj_total":       bet_row.proj_total,
+        "proj_home_win_prob": bet_row.proj_home_win_prob,
+        # Recent form strings (e.g. "7-3 W4")
+        "home_trend":       bet_row.home_trend or "",
+        "away_trend":       bet_row.away_trend or "",
+        # Full market odds across all books
+        "all_book_odds":    bet_row.all_book_odds or "",
+        # Source type (sportsbook vs exchange/prediction market)
+        "source_type":      bet_row.source_type or "sportsbook",
     }
 
     # Run analysis in a thread (it's sync/blocking)

@@ -626,6 +626,101 @@ def _assess_context_quality(ctx: dict) -> tuple[str, int, list]:
 
 
 # ---------------------------------------------------------------------------
+# Pipeline data formatter
+# ---------------------------------------------------------------------------
+
+def _build_pipeline_section(bet: dict) -> str:
+    """
+    Format the pre-computed pipeline fields stored in EVBetCache into a
+    readable block for Claude.  These values are always available (computed
+    during the hourly pipeline run) — they are the primary source of
+    pick-specific signal and should be cited directly in the analysis.
+    """
+    game = bet.get("game", "")
+    lines: list[str] = []
+
+    # ── Model projections ─────────────────────────────────────────────────
+    ph = bet.get("proj_home_score")
+    pa = bet.get("proj_away_score")
+    pt = bet.get("proj_total")
+    pw = bet.get("proj_home_win_prob")
+    if ph is not None and pa is not None and " @ " in game:
+        away_t, home_t = [s.strip() for s in game.split(" @ ", 1)]
+        proj_line = f"Projected score: {away_t} {pa:.1f} — {home_t} {ph:.1f}"
+        if pt is not None:
+            proj_line += f" (total {pt:.1f})"
+        if pw is not None:
+            proj_line += f" | Home win probability: {pw*100:.0f}%"
+        lines.append(f"• {proj_line}")
+
+    # ── Sharp / public money splits ───────────────────────────────────────
+    bp = bet.get("bet_pct")
+    mp = bet.get("money_pct")
+    ss = bet.get("sharp_score")
+    if bp is not None or mp is not None or ss is not None:
+        parts = []
+        if bp is not None:
+            parts.append(f"{bp:.0f}% of bets")
+        if mp is not None:
+            parts.append(f"{mp:.0f}% of money")
+        if ss is not None:
+            sharpness = "high sharp interest" if ss >= 65 else ("moderate sharp interest" if ss >= 40 else "low sharp interest")
+            parts.append(f"sharp score {ss:.0f}/100 ({sharpness})")
+        lines.append(f"• Public/sharp splits: {' | '.join(parts)}")
+
+    # ── Line movement (CLV signal) ────────────────────────────────────────
+    opening = bet.get("opening_odds")
+    current = bet.get("odds", 0)
+    if opening and opening != current:
+        open_str = f"+{opening}" if opening > 0 else str(opening)
+        cur_str  = f"+{current}"  if current  > 0 else str(current)
+        if opening > current:  # odds shortened toward us → sharp steam
+            lines.append(f"• Line movement: {open_str} → {cur_str} — steamed in our direction (CLV+, confirms sharp action)")
+        else:
+            lines.append(f"• Line movement: {open_str} → {cur_str} — drifted away from us (monitor for steam reversal)")
+
+    # ── Recent form (pipeline trend strings) ─────────────────────────────
+    ht = bet.get("home_trend", "")
+    at = bet.get("away_trend", "")
+    if (ht or at) and " @ " in game:
+        away_t, home_t = [s.strip() for s in game.split(" @ ", 1)]
+        form_parts = []
+        if at:
+            form_parts.append(f"{away_t} (away): {at} last 10")
+        if ht:
+            form_parts.append(f"{home_t} (home): {ht} last 10")
+        if form_parts:
+            lines.append(f"• Recent form: {' | '.join(form_parts)}")
+
+    # ── Model adjustment flags ────────────────────────────────────────────
+    flags = bet.get("adj_flags", "")
+    adj_prob = bet.get("adjusted_prob")
+    base_prob = bet.get("true_prob", 0.0)
+    if flags:
+        flag_list = [f.strip() for f in flags.split("|") if f.strip()]
+        adj_str = f" (adjusted true prob: {adj_prob*100:.1f}%)" if adj_prob and abs(adj_prob - base_prob) > 0.003 else ""
+        lines.append(f"• Model context adjustments applied: {', '.join(flag_list)}{adj_str}")
+
+    # ── Market-wide book odds ─────────────────────────────────────────────
+    all_odds_raw = bet.get("all_book_odds", "")
+    if all_odds_raw:
+        try:
+            all_odds = json.loads(all_odds_raw)
+            if all_odds and isinstance(all_odds, dict):
+                odds_parts = []
+                for bk, v in list(all_odds.items())[:10]:
+                    s = f"+{v}" if v > 0 else str(v)
+                    odds_parts.append(f"{bk}: {s}")
+                lines.append(f"• Odds across books: {' | '.join(odds_parts)}")
+        except Exception:
+            pass
+
+    if not lines:
+        return "(Pipeline data not available for this bet — rely on context data below.)"
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
 # Prompt builder
 # ---------------------------------------------------------------------------
 
@@ -672,7 +767,10 @@ def _build_prompt(bet: dict, ctx: dict) -> tuple[str, str]:
     else:
         log.info("analyze_bet: context quality=%s (score=%d) for bet id=%s. Fields: %s", ctx_quality, ctx_points, bet.get("id"), ctx_fields_str)
 
-    ctx_json = json.dumps(ctx, indent=2, default=str)[:9000]
+    ctx_json = json.dumps(ctx, indent=2, default=str)[:14000]
+
+    # Pipeline data — always available, primary signal source
+    pipeline_section = _build_pipeline_section(bet)
 
     # Sport-specific analysis block
     sport_block = _SPORT_CONTEXT.get(league, """
@@ -695,12 +793,18 @@ def _build_prompt(bet: dict, ctx: dict) -> tuple[str, str]:
 **Edge (model prob − implied prob):** +{edge_pct}%
 **Model EV%:** {ev_pct}%
 
-## Context Data Quality
+## Pipeline Signals (computed at time of bet capture — cite these directly)
+
+{pipeline_section}
+
+These values were computed by the +EV pipeline at the time of the hourly scan. Use them as the primary factual basis for contextual_validation — they are always present and reliable. Model projections, sharp money splits, line movement direction, and recent form trends are the most important signals for explaining WHY this edge exists.
+
+## Live Context Data Quality
 
 **Status:** {ctx_quality}
-**Data available:** {ctx_fields_str}
+**Additional data fetched:** {ctx_fields_str}
 
-If context quality is SPARSE or NONE, you MUST lower your confidence_score accordingly. In contextual_validation, briefly note that live data was limited and explain what you'd want to see to gain confidence — but write this as a natural analyst comment, NOT as a technical error message. Never mention internal field names, array names, API responses, or data structures (e.g. never say "events_sample", "team_history", "context JSON", "MCP", or "array was empty"). Write as if speaking directly to a bettor.
+Use live context data below as supplementary support for the pipeline signals above. If live context is SPARSE or NONE, base your analysis on the pipeline signals — they are sufficient to write a specific, data-backed contextual_validation. Do NOT say "insufficient live data" if pipeline signals are present. Never mention internal field names, API structures, or system internals.
 
 ## Live Context Data
 
@@ -715,15 +819,15 @@ If context quality is SPARSE or NONE, you MUST lower your confidence_score accor
 Produce a structured JSON analysis. Requirements:
 
 **SPECIFICITY RULES (strictly enforced):**
-- `contextual_validation` MUST lead with the highest-signal situational fact from the context: playoff position with specific points/rank numbers, pitcher-vs-opponent ERA with start count, player hit rate over the prop line with a fraction (e.g. "6 of last 9"), series standing (sweep scenario), or team streak. Generic observations ("the team has been playing well") are not acceptable — every claim needs a specific number or name from the context data.
+- `contextual_validation` MUST draw primarily from the Pipeline Signals section above. Lead with the single most compelling signal: sharp steam (line movement + high sharp score), model projection vs. book line discrepancy, lopsided public money vs. smart money divergence, or recent form trend. Then weave in any corroborating facts from the live context data. Generic observations ("the team has been playing well") are not acceptable — every claim must cite a specific number from the pipeline signals or live context. If pipeline signals show sharp steam, a projection discrepancy, or a meaningful bet/money split, that IS the contextual validation — cite those numbers directly.
 - `mathematical_justification` MUST include the specific no-vig calculation showing how {true_prob_pct}% was derived vs. the book's {implied_prob}% implied probability, and what the {edge_pct}% edge means in dollar terms on a flat $100 bet.
 - `risk_factors` MUST name a specific player, matchup attribute, or situation — not a generic disclaimer.
-- `summary` must be punchy and specific — include the team/player name and the core reason for the edge.
+- `summary` must be punchy and specific — include the team/player name and the core reason for the edge (sharp steam, projection gap, public fade, etc.).
 
 ```json
 {{
   "true_prob_refined": <float 0.0-1.0, your probability blending model + context. Adjust from {round(true_prob, 3)} based on what context supports>,
-  "confidence_score": <int 1-100. Must be <60 if context is SPARSE/NONE. 80-100=high conviction, 60-79=moderate, 40-59=low, <40=pass>,
+  "confidence_score": <int 1-100. Score based on TOTAL signal: pipeline data (projections, sharp score, line movement, form) + live context. If pipeline signals are rich (projections present, sharp score ≥50, clear line steam) score can reach 70-85 even with SPARSE live context. Score <60 only if BOTH pipeline signals AND live context are absent or contradictory. 80-100=high conviction, 60-79=moderate, 40-59=low, <40=pass>,
   "kelly_full_pct": <float, full Kelly % capped at 8.0>,
   "kelly_fractional_pct": <float, 25% fractional Kelly %>,
   "ev_pct_refined": <float, EV% using your refined true_prob>,
