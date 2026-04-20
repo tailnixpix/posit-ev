@@ -749,10 +749,17 @@ def _build_prompt(bet: dict, ctx: dict) -> tuple[str, str]:
     fair_odds_str = f"{fair_sign}{fair_odds_american}"
 
     if is_prop and player_name:
-        bet_desc = f"{player_name} — {market.replace('_', ' ').title()} {point} ({'Over' if 'Over' in team else 'Under'})"
+        direction = "Over" if str(team).lower().startswith("over") else "Under"
+        bet_desc = f"{player_name} — {market.replace('_', ' ').title()} {direction} {point}"
+    elif market == "spreads" and point is not None:
+        # Always show explicit sign so Claude knows which side (e.g. +1.5 vs -1.5)
+        point_str = f"+{point}" if point > 0 else str(point)
+        bet_desc = f"{team} {point_str} (spread)"
+    elif market == "totals" and point is not None:
+        direction = "Over" if str(team).lower().startswith("over") else "Under"
+        bet_desc = f"{direction} {point} (total)"
     elif point is not None:
-        side = "Over" if "Over" in team else ("Under" if "Under" in team else team)
-        bet_desc = f"{side} {point} ({market})"
+        bet_desc = f"{team} {point} ({market})"
     else:
         bet_desc = f"{team} ({market})"
 
