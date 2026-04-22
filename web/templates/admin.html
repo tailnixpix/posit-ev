@@ -519,12 +519,19 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
         {% if model_win_rate is not none %}
         <span class="badge {% if model_win_rate >= 55 %}badge-green{% else %}badge-blue{% endif %}" style="font-size:0.7rem;">{{ model_win_rate }}% win rate</span>
         {% endif %}
+        {% if pick_record.has_data %}
+          {% if pick_record.units >= 0 %}
+          <span class="badge badge-green" style="font-size:0.7rem;">+{{ pick_record.units }}u</span>
+          {% else %}
+          <span class="badge" style="font-size:0.7rem;background:#FEE2E2;color:#C53030;">{{ pick_record.units }}u</span>
+          {% endif %}
+        {% endif %}
       </span>
       <span class="coll-arrow">▼</span>
     </div>
     <div class="coll-body" id="model-card">
-      {# KPI strip #}
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:0;border-bottom:1px solid var(--brand-border);">
+      {# KPI strip — row 1: record + win rate + EV + units + P&L + ROI #}
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:0;border-bottom:1px solid var(--brand-border);">
         <div style="padding:14px 20px;border-right:1px solid var(--brand-border);">
           <div style="font-size:1.3rem;font-weight:800;color:var(--brand-dark);">{{ total_won_count }}–{{ total_lost_count }}{% if total_push_count %}–{{ total_push_count }}{% endif %}</div>
           <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">W–L{% if total_push_count %}–P{% endif %} Record</div>
@@ -534,6 +541,39 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
             {% if model_win_rate is not none %}{{ model_win_rate }}%{% else %}—{% endif %}
           </div>
           <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">Win Rate</div>
+        </div>
+        {# Units up/down #}
+        <div style="padding:14px 20px;border-right:1px solid var(--brand-border);">
+          {% if pick_record.has_data %}
+          <div style="font-size:1.3rem;font-weight:800;color:{% if pick_record.units >= 0 %}#0F6E56{% else %}#C53030{% endif %};">
+            {% if pick_record.units >= 0 %}+{% endif %}{{ pick_record.units }}u
+          </div>
+          {% else %}
+          <div style="font-size:1.3rem;font-weight:800;color:var(--text-muted);">—</div>
+          {% endif %}
+          <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">Units ($20/unit)</div>
+        </div>
+        {# Total P&L #}
+        <div style="padding:14px 20px;border-right:1px solid var(--brand-border);">
+          {% if pick_record.has_data %}
+          <div style="font-size:1.3rem;font-weight:800;color:{% if pick_record.total_profit >= 0 %}#0F6E56{% else %}#C53030{% endif %};">
+            {% if pick_record.total_profit >= 0 %}+{% endif %}${{ "%.0f"|format(pick_record.total_profit) }}
+          </div>
+          {% else %}
+          <div style="font-size:1.3rem;font-weight:800;color:var(--text-muted);">—</div>
+          {% endif %}
+          <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">Total P&amp;L</div>
+        </div>
+        {# ROI on $1k bankroll #}
+        <div style="padding:14px 20px;border-right:1px solid var(--brand-border);">
+          {% if pick_record.has_data %}
+          <div style="font-size:1.3rem;font-weight:800;color:{% if pick_record.roi >= 0 %}#0F6E56{% else %}#C53030{% endif %};">
+            {% if pick_record.roi >= 0 %}+{% endif %}{{ pick_record.roi }}%
+          </div>
+          {% else %}
+          <div style="font-size:1.3rem;font-weight:800;color:var(--text-muted);">—</div>
+          {% endif %}
+          <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">ROI on $1k Bankroll</div>
         </div>
         <div style="padding:14px 20px;border-right:1px solid var(--brand-border);">
           <div style="font-size:1.3rem;font-weight:800;color:var(--brand-primary);">{% if picks_avg_ev %}+{{ picks_avg_ev }}%{% else %}—{% endif %}</div>
@@ -561,6 +601,8 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
             <th>Sport</th>
             <th>W</th><th>L</th><th>P</th>
             <th>Win %</th>
+            <th>Units</th>
+            <th>P&amp;L</th>
             <th>Pending</th>
           </tr>
         </thead>
@@ -578,9 +620,34 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
                 <span style="color:{% if sp_wr >= 55 %}#0F6E56{% elif sp_wr >= 45 %}#9A6B00{% else %}#C53030{% endif %};">{{ sp_wr }}%</span>
               {% else %}—{% endif %}
             </td>
+            <td style="font-weight:700;color:{% if sp.units >= 0 %}#0F6E56{% else %}#C53030{% endif %};">
+              {% if sp.units >= 0 %}+{% endif %}{{ sp.units }}u
+            </td>
+            <td style="font-weight:700;color:{% if sp.profit >= 0 %}#0F6E56{% else %}#C53030{% endif %};">
+              {% if sp.profit >= 0 %}+{% endif %}${{ "%.0f"|format(sp.profit) }}
+            </td>
             <td style="color:var(--text-muted);">{{ sp.pending }}</td>
           </tr>
           {% endfor %}
+          {# Totals row #}
+          {% if pick_record.has_data %}
+          <tr style="border-top:2px solid var(--brand-border);font-weight:700;background:rgba(0,0,0,0.02);">
+            <td>Total</td>
+            <td style="color:#0F6E56;">{{ pick_record.wins }}</td>
+            <td style="color:#C53030;">{{ pick_record.losses }}</td>
+            <td style="color:var(--text-muted);">{{ pick_record.pushes }}</td>
+            <td style="color:{% if model_win_rate is not none and model_win_rate >= 55 %}#0F6E56{% elif model_win_rate is not none and model_win_rate < 45 %}#C53030{% else %}#9A6B00{% endif %};">
+              {% if model_win_rate is not none %}{{ model_win_rate }}%{% else %}—{% endif %}
+            </td>
+            <td style="color:{% if pick_record.units >= 0 %}#0F6E56{% else %}#C53030{% endif %};">
+              {% if pick_record.units >= 0 %}+{% endif %}{{ pick_record.units }}u
+            </td>
+            <td style="color:{% if pick_record.total_profit >= 0 %}#0F6E56{% else %}#C53030{% endif %};">
+              {% if pick_record.total_profit >= 0 %}+{% endif %}${{ "%.0f"|format(pick_record.total_profit) }}
+            </td>
+            <td>—</td>
+          </tr>
+          {% endif %}
         </tbody>
       </table>
       </div>

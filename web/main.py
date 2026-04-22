@@ -1525,16 +1525,31 @@ async def admin_dashboard(
     model_win_rate = round(total_won_count / total_settled_count * 100, 1) if total_settled_count > 0 else None
     _ev_picks    = [p.ev_percent for p in daily_picks_all if p.ev_percent is not None]
     picks_avg_ev = round(sum(_ev_picks) / len(_ev_picks), 2) if _ev_picks else None
+    _UNIT = 20.0
     picks_by_sport: dict = {}
     for _pick in daily_picks_all:
         _k = _pick.league or "other"
         if _k not in picks_by_sport:
-            picks_by_sport[_k] = {"label": _sport_label_map.get(_k, _k.upper()), "won": 0, "lost": 0, "push": 0, "pending": 0}
-        if   _pick.result == "won":  picks_by_sport[_k]["won"]     += 1
-        elif _pick.result == "lost": picks_by_sport[_k]["lost"]    += 1
-        elif _pick.result == "push": picks_by_sport[_k]["push"]    += 1
-        else:                        picks_by_sport[_k]["pending"] += 1
+            picks_by_sport[_k] = {"label": _sport_label_map.get(_k, _k.upper()), "won": 0, "lost": 0, "push": 0, "pending": 0, "profit": 0.0}
+        if   _pick.result == "won":
+            picks_by_sport[_k]["won"]  += 1
+            _o = _pick.odds or 0
+            picks_by_sport[_k]["profit"] += _UNIT * (_o / 100) if _o > 0 else _UNIT * (100 / abs(_o)) if _o < 0 else 0
+        elif _pick.result == "lost":
+            picks_by_sport[_k]["lost"]   += 1
+            picks_by_sport[_k]["profit"] -= _UNIT
+        elif _pick.result == "push":
+            picks_by_sport[_k]["push"]   += 1
+        else:
+            picks_by_sport[_k]["pending"] += 1
+    # Round per-sport profit and compute units
+    for _sp in picks_by_sport.values():
+        _sp["profit"] = round(_sp["profit"], 2)
+        _sp["units"]  = round(_sp["profit"] / _UNIT, 2)
     picks_by_sport = dict(sorted(picks_by_sport.items(), key=lambda x: x[1]["won"] + x[1]["lost"], reverse=True))
+
+    # Aggregate P&L / units record
+    pick_record = _compute_pick_record(settled)
 
     return templates.TemplateResponse(
         request,
@@ -1592,6 +1607,7 @@ async def admin_dashboard(
             "model_win_rate":       model_win_rate,
             "picks_avg_ev":         picks_avg_ev,
             "picks_by_sport":       picks_by_sport,
+            "pick_record":          pick_record,
         },
     )
 
