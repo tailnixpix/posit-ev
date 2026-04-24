@@ -681,72 +681,6 @@ main { max-width: none !important; padding: 0 !important; }
   white-space: nowrap;
 }
 
-/* Card selection checkbox (bet slip) */
-.card-select-label {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  margin-left: 4px;
-  flex-shrink: 0;
-}
-.card-select-cb {
-  width: 15px;
-  height: 15px;
-  accent-color: var(--d-green);
-  cursor: pointer;
-  border-radius: 3px;
-}
-
-/* Floating bet slip bar */
-.bet-slip-bar {
-  position: fixed;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: none;
-  align-items: center;
-  gap: 10px;
-  background: var(--d-card);
-  border: 1px solid var(--d-green);
-  border-radius: 14px;
-  padding: 10px 18px;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,214,143,0.2);
-  z-index: 500;
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--d-text);
-  white-space: nowrap;
-  animation: slideUp 0.2s ease-out;
-}
-@keyframes slideUp { from{transform:translateX(-50%) translateY(16px);opacity:0} to{transform:translateX(-50%) translateY(0);opacity:1} }
-.slip-count { color: var(--d-green); font-weight: 800; margin-right: 2px; }
-.slip-track-btn {
-  background: var(--d-green);
-  color: #000;
-  border: none;
-  border-radius: 8px;
-  padding: 7px 14px;
-  font-size: 0.78rem;
-  font-weight: 700;
-  cursor: pointer;
-  font-family: inherit;
-  transition: opacity 0.12s;
-}
-.slip-track-btn:hover { opacity: 0.85; }
-.slip-clear-btn {
-  background: transparent;
-  border: 1px solid var(--d-border);
-  border-radius: 8px;
-  padding: 6px 10px;
-  font-size: 0.72rem;
-  color: var(--d-muted);
-  cursor: pointer;
-  font-family: inherit;
-  transition: color 0.12s, border-color 0.12s;
-}
-.slip-clear-btn:hover { color: var(--d-text); border-color: var(--d-sub); }
-
-
 /* Odds + Kelly (right) */
 .card-odds-col { flex-shrink: 0; text-align: right; }
 .odds-val { font-size: 1.4rem; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -0.5px; }
@@ -1653,18 +1587,6 @@ main { max-width: none !important; padding: 0 !important; }
   /* Countdown badge: slightly smaller */
   .cdwn-badge { font-size: 0.56rem; }
 
-  /* Bet slip bar: full width on mobile */
-  .bet-slip-bar {
-    left: 10px;
-    right: 10px;
-    bottom: 70px;   /* above bottom nav */
-    width: auto;
-    transform: none;
-    border-radius: 12px;
-    font-size: 0.76rem;
-    padding: 9px 14px;
-  }
-
   /* ── Mobile subheader: 3 clean rows ── */
   .dash-subheader {
     display: flex;
@@ -2391,8 +2313,6 @@ main { max-width: none !important; padding: 0 !important; }
   border-color: rgba(167,139,250,0.7) !important;
   box-shadow: 0 0 0 2px rgba(167,139,250,0.15), 0 4px 24px rgba(0,0,0,0.4);
 }
-.cards-grid.parlay-mode .card-select-cb { accent-color: var(--d-purple); }
-
 /* Floating parlay panel */
 .parlay-panel {
   position: fixed;
@@ -2841,7 +2761,8 @@ main { max-width: none !important; padding: 0 !important; }
                {% if bet.sharp_score is not none %}data-sharp-score="{{ '%.0f'|format(bet.sharp_score) }}"{% endif %}
                {% if bet.opening_odds and bet.opening_odds != bet.odds %}data-opening-odds="{{ bet.opening_odds }}"{% endif %}
                {% if bet.commence_time %}data-commence="{{ bet.commence_time.isoformat() }}"{% endif %}
-               {% if bet.all_book_odds %}data-all-book-odds="{{ bet.all_book_odds | e }}"{% endif %}>
+               {% if bet.all_book_odds %}data-all-book-odds="{{ bet.all_book_odds | e }}"{% endif %}
+               onclick="_onBetCardClick(event, this)">
 
             {# ── Top Pick ribbon ──────────────────────────────────────── #}
             {% if loop.index0 == 0 %}
@@ -2875,9 +2796,6 @@ main { max-width: none !important; padding: 0 !important; }
                   </span>
                 {% endif %}
                 <span class="ev-badge {{ tier }}">+{{ "%.1f"|format(bet.ev_percent) }}% EV</span>
-                <label class="card-select-label" title="Add to bet slip">
-                  <input type="checkbox" class="card-select-cb" onchange="updateSlip()">
-                </label>
               </div>
             </div>
 
@@ -3245,13 +3163,6 @@ main { max-width: none !important; padding: 0 !important; }
   </div>
 </div>
 
-{# ── Floating Bet Slip Bar ── #}
-<div class="bet-slip-bar" id="betSlipBar">
-  <span>📌 <span class="slip-count" id="slipCount">0</span> bet<span id="slipPlural">s</span> selected</span>
-  <button class="slip-track-btn" id="slipTrackBtn" onclick="trackAllSelected()">Track All</button>
-  <button class="slip-clear-btn" onclick="clearSlip()">✕ Clear</button>
-</div>
-
 {# ── Parlay Builder Panel ── #}
 <div class="parlay-panel" id="parlayPanel">
   <div class="parlay-panel-hdr">
@@ -3398,55 +3309,6 @@ function _updateCountdowns() {
 }
 setInterval(_updateCountdowns, 30000);
 _updateCountdowns();
-
-// ── Bet slip ────────────────────────────────────────────────────────────────
-function updateSlip() {
-  // In parlay mode the checkboxes feed the parlay builder instead
-  if (_parlayMode) {
-    _syncParlayFromCheckboxes();
-    return;
-  }
-  const checked = document.querySelectorAll('.card-select-cb:checked');
-  const bar = document.getElementById('betSlipBar');
-  const countEl = document.getElementById('slipCount');
-  const pluralEl = document.getElementById('slipPlural');
-  const n = checked.length;
-  const trackBtn = document.getElementById('slipTrackBtn');
-  if (n > 0) {
-    bar.style.display = 'flex';
-    countEl.textContent = n;
-    if (pluralEl) pluralEl.textContent = n === 1 ? '' : 's';
-    if (trackBtn) trackBtn.textContent = n === 1 ? 'Track' : `Track ${n} →`;
-  } else {
-    bar.style.display = 'none';
-  }
-}
-
-function clearSlip() {
-  document.querySelectorAll('.card-select-cb').forEach(cb => cb.checked = false);
-  document.getElementById('betSlipBar').style.display = 'none';
-}
-
-function trackAllSelected() {
-  const checked = Array.from(document.querySelectorAll('.card-select-cb:checked'));
-  if (!checked.length) return;
-  const cards = checked.map(cb => cb.closest('.bet-card')).filter(Boolean);
-  if (cards.length === 1) {
-    // Single bet → open per-card track panel as before
-    const card = cards[0];
-    const trackBtn   = card.querySelector('[id^="track-btn-"]');
-    const trackPanel = card.querySelector('[id^="track-panel-"]');
-    if (trackPanel && !trackPanel.classList.contains('open')) {
-      const betId = trackPanel.id.replace('track-panel-', '');
-      toggleTrackPanel(betId, trackBtn);
-    }
-    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  } else {
-    // Multiple bets → open group track modal
-    openGroupTrackModal(cards);
-  }
-  clearSlip();
-}
 
 // ── Group Track Modal ───────────────────────────────────────────────────────
 let _gtmCards = [];
@@ -3629,9 +3491,6 @@ function enterParlayMode() {
   btn.innerHTML = '🎰 Parlay <span style="font-size:0.6rem;opacity:0.7;margin-left:2px;">ON</span>';
   document.getElementById('cardsGrid').classList.add('parlay-mode');
   document.getElementById('parlayPanel').classList.add('open');
-  // Clear normal slip selections to avoid confusion
-  document.querySelectorAll('.card-select-cb:checked').forEach(cb => { cb.checked = false; });
-  document.getElementById('betSlipBar').style.display = 'none';
   _renderParlayPanel();
 }
 
@@ -3642,8 +3501,6 @@ function exitParlayMode() {
   btn.textContent = '🎰 Parlay';
   document.getElementById('cardsGrid').classList.remove('parlay-mode');
   document.getElementById('parlayPanel').classList.remove('open');
-  // Uncheck all + remove highlights
-  document.querySelectorAll('.card-select-cb:checked').forEach(cb => { cb.checked = false; });
   document.querySelectorAll('.bet-card.parlay-selected').forEach(c => c.classList.remove('parlay-selected'));
   _parlayLegs.length = 0;
 }
@@ -3670,37 +3527,30 @@ function _computeParlayStats() {
   return { n, dec, prob, evPct, american, fracKelly };
 }
 
-/* ── Sync legs from current checkbox state ───────────────────── */
+/* ── Card click → toggle parlay leg ─────────────────────────── */
 function _getLegId(card) {
   const btn = card.querySelector('[id^="analyze-btn-"]');
   return btn ? btn.id.replace('analyze-btn-', '') : null;
 }
 
-function _syncParlayFromCheckboxes() {
-  // Find which cards are currently checked
-  const checkedCards = new Set(
-    Array.from(document.querySelectorAll('.card-select-cb:checked'))
-         .map(cb => cb.closest('.bet-card')).filter(Boolean)
-  );
+function _onBetCardClick(e, card) {
+  if (!_parlayMode) return;
+  // Don't intercept clicks on interactive inner elements
+  if (e.target.closest('button, a, input, label, select, textarea, .clv-popover')) return;
+  _toggleParlayCard(card);
+}
 
-  // Remove legs whose card is now unchecked
-  const toRemove = _parlayLegs.filter(leg => {
-    const card = document.getElementById('analyze-btn-' + leg.id)?.closest('.bet-card');
-    return !card || !checkedCards.has(card);
-  });
-  toRemove.forEach(leg => {
-    _parlayLegs.splice(_parlayLegs.indexOf(leg), 1);
-    const card = document.getElementById('analyze-btn-' + leg.id)?.closest('.bet-card');
-    if (card) card.classList.remove('parlay-selected');
-  });
-
-  // Add newly checked cards
-  checkedCards.forEach(card => {
-    const id = _getLegId(card);
-    if (!id || _parlayLegs.find(l => l.id === id)) return;
+function _toggleParlayCard(card) {
+  const id  = _getLegId(card);
+  if (!id) return;
+  const idx = _parlayLegs.findIndex(l => l.id === id);
+  if (idx !== -1) {
+    // Already in parlay — remove it
+    _parlayLegs.splice(idx, 1);
+    card.classList.remove('parlay-selected');
+  } else {
+    // Add it
     if (_parlayLegs.length >= 5) {
-      // Reject: uncheck and warn
-      card.querySelector('.card-select-cb').checked = false;
       const w = document.getElementById('parlayWarn');
       w.textContent = '⚠️ Max 5 legs — remove a leg first.';
       w.classList.remove('hidden');
@@ -3719,8 +3569,7 @@ function _syncParlayFromCheckboxes() {
     const sub      = [mkt, game || '', book ? book.charAt(0).toUpperCase() + book.slice(1) : ''].filter(Boolean).join(' · ');
     _parlayLegs.push({ id, name, sub, odds, trueProb, book, game });
     card.classList.add('parlay-selected');
-  });
-
+  }
   _renderParlayPanel();
 }
 
@@ -3730,21 +3579,13 @@ function removeParlayLeg(id) {
   if (idx === -1) return;
   _parlayLegs.splice(idx, 1);
   const card = document.getElementById('analyze-btn-' + id)?.closest('.bet-card');
-  if (card) {
-    card.classList.remove('parlay-selected');
-    const cb = card.querySelector('.card-select-cb');
-    if (cb) cb.checked = false;
-  }
+  if (card) card.classList.remove('parlay-selected');
   _renderParlayPanel();
 }
 
 function clearParlayLegs() {
   _parlayLegs.length = 0;
-  document.querySelectorAll('.bet-card.parlay-selected').forEach(c => {
-    c.classList.remove('parlay-selected');
-    const cb = c.querySelector('.card-select-cb');
-    if (cb) cb.checked = false;
-  });
+  document.querySelectorAll('.bet-card.parlay-selected').forEach(c => c.classList.remove('parlay-selected'));
   _renderParlayPanel();
 }
 
