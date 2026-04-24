@@ -2129,31 +2129,24 @@ main { max-width: none !important; padding: 0 !important; }
   grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr));
 }
 
-/* Card header zone — single row */
+/* Card header — one clean flex row, never wraps */
 .card-hdr {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 9px 14px 8px;
+  padding: 10px 14px;
   border-bottom: 1px solid rgba(255,255,255,0.07);
 }
-/* Left: wrappable badges */
-.card-hdr-left {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 5px;
-  row-gap: 3px;
-  flex: 1;
-  min-width: 0;
-}
-/* Right: CLV + EV badge + checkbox — all same height, never wrap */
+/* Right group: margin-left:auto pushes it to the far right */
 .card-hdr-right {
   display: flex;
   align-items: center;
   gap: 6px;
+  margin-left: auto;
   flex-shrink: 0;
 }
+/* Neutralise the old margin-left:auto on ev-badge (from .card-top era) */
+.card-hdr-right .ev-badge { margin-left: 0; }
 
 /* Tighter body padding */
 .card-body { padding: 14px 16px 18px; }
@@ -2596,9 +2589,8 @@ main { max-width: none !important; padding: 0 !important; }
 
 /* ── Mobile overrides for revamped card ─────────────────────── */
 @media (max-width: 768px) {
-  .card-hdr { padding: 8px 12px 7px; gap: 6px; }
-  .card-hdr-left { gap: 4px; row-gap: 3px; }
-  .card-hdr-right { gap: 4px; }
+  .card-hdr { padding: 8px 12px; gap: 7px; }
+  .card-hdr-right { gap: 5px; }
   .card-body { padding: 12px 12px 14px; }
   .bet-name-team,
   .bet-name-player { font-size: 1.05rem; }
@@ -2851,17 +2843,14 @@ main { max-width: none !important; padding: 0 !important; }
 
             {# ── Card Header ──────────────────────────────────────────── #}
             <div class="card-hdr">
-              {# Left: sport / market badges #}
-              <div class="card-hdr-left">
-                <span class="badge badge-league">{{ league_display }}</span>
-                <span class="badge badge-market">{{ market_display }}</span>
-                {% if (bet.source_type or 'sportsbook') == 'exchange' %}
-                <span class="badge badge-pm" style="background:rgba(250,199,117,0.12);color:#F9C74F;">⚡ Exchange</span>
-                {% elif (bet.source_type or 'sportsbook') == 'prediction_market' %}
-                <span class="badge badge-pm">🔮 PM</span>
-                {% endif %}
-              </div>
-              {# Right: CLV (if any) · EV badge · checkbox — all same vertical midpoint #}
+              {# Left: league badge + optional source badge — sit directly in the row #}
+              <span class="badge badge-league">{{ league_display }}</span>
+              {% if (bet.source_type or 'sportsbook') == 'exchange' %}
+              <span class="badge badge-pm" style="background:rgba(250,199,117,0.12);color:#F9C74F;">⚡ Exchange</span>
+              {% elif (bet.source_type or 'sportsbook') == 'prediction_market' %}
+              <span class="badge badge-pm">🔮 PM</span>
+              {% endif %}
+              {# Right group auto-pushed to far right: CLV · EV · checkbox #}
               <div class="card-hdr-right">
                 {% if bet.opening_odds and bet.opening_odds != bet.odds %}
                   {% set op = ('+' if bet.opening_odds > 0 else '') ~ bet.opening_odds %}
