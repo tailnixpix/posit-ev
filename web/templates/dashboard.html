@@ -4241,65 +4241,94 @@ function _syncBookChipVisuals() {
 
 // ── Prop type chip builder ─────────────────────────────────────────────────
 // Friendly display names for known Odds API prop market keys
+// Nested label map: league key → { propMarket key → label }
+// Keys that appear in multiple sports are kept separate per sport, with no duplicate JS keys.
 const _PROP_LABEL_MAP = {
-  // ── NBA / Basketball ──────────────────────────────────────────────────────
-  player_points:                    '🏀 Points',
-  player_rebounds:                  '🏀 Rebounds',
-  player_assists:                   '🏀 Assists',
-  player_threes:                    '🏀 3-Pointers',
-  player_blocks:                    '🏀 Blocks',
-  player_steals:                    '🏀 Steals',
-  player_turnovers:                 '🏀 Turnovers',
-  player_points_rebounds_assists:   '🏀 PRA',
-  player_points_rebounds:           '🏀 Pts+Reb',
-  player_points_assists:            '🏀 Pts+Ast',
-  player_rebounds_assists:          '🏀 Reb+Ast',
-  player_double_double:             '🏀 Double-Double',
-  player_triple_double:             '🏀 Triple-Double',
-  player_first_basket:              '🏀 First Basket',
-  // ── MLB / Baseball ────────────────────────────────────────────────────────
-  batter_hits:                      '⚾ Hits',
-  batter_home_runs:                 '⚾ Home Runs',
-  batter_rbis:                      '⚾ RBIs',
-  batter_runs_scored:               '⚾ Runs Scored',
-  batter_total_bases:               '⚾ Total Bases',
-  batter_singles:                   '⚾ Singles',
-  batter_doubles:                   '⚾ Doubles',
-  batter_triples:                   '⚾ Triples',
-  batter_stolen_bases:              '⚾ Stolen Bases',
-  batter_strikeouts:                '⚾ Batter K\'s',
-  batter_walks:                     '⚾ Walks (Batter)',
-  batter_hits_runs_rbis:            '⚾ H+R+RBI',
-  pitcher_strikeouts:               '⚾ Pitcher K\'s',
-  pitcher_outs:                     '⚾ Outs Recorded',
-  pitcher_hits_allowed:             '⚾ Hits Allowed',
-  pitcher_walks:                    '⚾ Pitcher Walks',
-  pitcher_earned_runs:              '⚾ Earned Runs',
-  pitcher_strikeouts_over_under:    '⚾ Pitcher K\'s O/U',
-  // ── NHL / Hockey ──────────────────────────────────────────────────────────
-  player_shots_on_goal:             '🏒 Shots on Goal',
-  player_goals:                     '🏒 Goals',
-  player_assists:                   '🏒 Assists',
-  player_points:                    '🏒 Points',
-  player_saves:                     '🥅 Saves',
-  player_time_on_ice:               '🏒 Time on Ice',
-  player_blocked_shots:             '🏒 Blocked Shots',
-  // ── Soccer ───────────────────────────────────────────────────────────────
-  player_shots:                     '⚽ Shots',
-  player_shots_on_target:           '⚽ Shots on Target',
-  player_goals:                     '⚽ Goals',
-  player_assists:                   '⚽ Assists',
-  player_anytime_score:             '⚽ Anytime Scorer',
-  player_first_goal_scorer:         '⚽ First Scorer',
-  player_last_goal_scorer:          '⚽ Last Scorer',
-  player_cards:                     '⚽ Cards',
-  player_tackles:                   '⚽ Tackles',
-  player_passes:                    '⚽ Passes',
+  basketball_nba: {
+    player_points:                  '🏀 Points',
+    player_rebounds:                '🏀 Rebounds',
+    player_assists:                 '🏀 Assists',
+    player_threes:                  '🏀 3-Pointers',
+    player_blocks:                  '🏀 Blocks',
+    player_steals:                  '🏀 Steals',
+    player_turnovers:               '🏀 Turnovers',
+    player_points_rebounds_assists: '🏀 PRA',
+    player_points_rebounds:         '🏀 Pts+Reb',
+    player_points_assists:          '🏀 Pts+Ast',
+    player_rebounds_assists:        '🏀 Reb+Ast',
+    player_double_double:           '🏀 Double-Double',
+    player_triple_double:           '🏀 Triple-Double',
+    player_first_basket:            '🏀 First Basket',
+  },
+  baseball_mlb: {
+    batter_hits:                    '⚾ Hits',
+    batter_home_runs:               '⚾ Home Runs',
+    batter_rbis:                    '⚾ RBIs',
+    batter_runs_scored:             '⚾ Runs Scored',
+    batter_total_bases:             '⚾ Total Bases',
+    batter_singles:                 '⚾ Singles',
+    batter_doubles:                 '⚾ Doubles',
+    batter_triples:                 '⚾ Triples',
+    batter_stolen_bases:            '⚾ Stolen Bases',
+    batter_strikeouts:              "⚾ Batter K's",
+    batter_walks:                   '⚾ Walks',
+    batter_hits_runs_rbis:          '⚾ H+R+RBI',
+    pitcher_strikeouts:             "⚾ Pitcher K's",
+    pitcher_outs:                   '⚾ Outs Recorded',
+    pitcher_hits_allowed:           '⚾ Hits Allowed',
+    pitcher_walks:                  '⚾ Pitcher Walks',
+    pitcher_earned_runs:            '⚾ Earned Runs',
+    pitcher_strikeouts_over_under:  "⚾ Pitcher K's O/U",
+    player_hits:                    '⚾ Hits',         // alternate key
+    player_home_runs:               '⚾ Home Runs',
+    player_strikeouts:              "⚾ Pitcher K's",
+    player_total_bases:             '⚾ Total Bases',
+  },
+  icehockey_nhl: {
+    player_shots_on_goal:           '🏒 Shots on Goal',
+    player_goals:                   '🏒 Goals',
+    player_assists:                 '🏒 Assists',
+    player_points:                  '🏒 Points',
+    player_saves:                   '🥅 Saves',
+    player_time_on_ice:             '🏒 Time on Ice',
+    player_blocked_shots:           '🏒 Blocked Shots',
+  },
+  // Soccer: covers any league key starting with 'soccer_'
+  soccer: {
+    player_shots:                   '⚽ Shots',
+    player_shots_on_target:         '⚽ Shots on Target',
+    player_goals:                   '⚽ Goals',
+    player_assists:                 '⚽ Assists',
+    player_anytime_score:           '⚽ Anytime Scorer',
+    player_first_goal_scorer:       '⚽ First Scorer',
+    player_last_goal_scorer:        '⚽ Last Scorer',
+    player_cards:                   '⚽ Cards',
+    player_tackles:                 '⚽ Tackles',
+    player_passes:                  '⚽ Passes',
+  },
 };
 
+/** Look up the display label for a market key given a specific league. */
+function _propLabel(league, marketKey) {
+  const exact = _PROP_LABEL_MAP[league]?.[marketKey];
+  if (exact) return exact;
+  if (league.startsWith('soccer_')) {
+    const soc = _PROP_LABEL_MAP.soccer?.[marketKey];
+    if (soc) return soc;
+  }
+  // Fallback: title-case the raw key (strip player_ / batter_ / pitcher_ prefix)
+  return marketKey
+    .replace(/^(player_|batter_|pitcher_)/, '')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, ch => ch.toUpperCase());
+}
+
 function _buildPropTypeChips() {
-  // Collect prop market keys visible under the current league filter
-  const markets = new Map(); // key → label
+  // Collect prop market keys scoped to the active league.
+  // Map key: propMarket value. Map value: { label, count }.
+  // When activeLeague === 'all', shared keys (e.g. player_points across NBA+NHL)
+  // get grouped under a single chip — label comes from the first league seen.
+  const markets = new Map(); // propMarket key → label string
   document.querySelectorAll('.bet-card[data-is-prop="true"]').forEach(c => {
     const lg = c.dataset.league || '';
     const lgOk = activeLeague === 'all'
@@ -4308,10 +4337,7 @@ function _buildPropTypeChips() {
     if (!lgOk) return;
     const m = c.dataset.propMarket;
     if (!m || markets.has(m)) return;
-    const label = _PROP_LABEL_MAP[m]
-      || (c.dataset.marketDisplay && c.dataset.marketDisplay !== m ? c.dataset.marketDisplay : null)
-      || m.replace(/_/g, ' ').replace(/\b\w/g, ch => ch.toUpperCase());
-    markets.set(m, label);
+    markets.set(m, _propLabel(lg, m));
   });
 
   // Sort: put "All Props" first, then alphabetically by label
@@ -4376,6 +4402,7 @@ function _setIsProp(val) {
   );
   // show/hide prop type sub-sections (only when Props selected)
   const showProps = activeIsProp === 'true';
+  if (showProps) _buildPropTypeChips(); // rebuild for current active league before revealing
   ['propTypeWrap','mfPropTypeWrap'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = showProps ? '' : 'none';
