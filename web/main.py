@@ -32,6 +32,7 @@ import sys
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
+import stripe as _stripe
 import sentry_sdk
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, Form, HTTPException, Request, status
@@ -1221,6 +1222,180 @@ async def pricing(request: Request, db: Session = Depends(get_db)):
         if payload:
             user = db.query(User).filter(User.id == int(payload["sub"])).first()
     return templates.TemplateResponse(request, "pricing.html", {"user": user})
+
+
+# ── Account Settings ──────────────────────────────────────────────────────
+
+def _get_authed_user(request: Request, db: Session):
+    """Auth helper for account routes — returns User or None."""
+    token = get_token_from_request(request)
+    if not token:
+        return None
+    payload = decode_access_token(token)
+    if not payload:
+        return None
+    return db.query(User).filter(User.id == int(payload["sub"])).first()
+
+
+@app.get("/account", response_class=HTMLResponse)
+async def account_page(request: Request, db: Session = Depends(get_db)):
+    """Account settings: subscription status, change password, billing portal."""
+    user = _get_authed_user(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+
+    from zoneinfo import ZoneInfo
+    _CT = ZoneInfo("America/Chicago")
+    _stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
+
+    # Stripe subscription details
+    sub_status            = None
+    cancel_at_period_end  = False
+    period_end_str        = None
+    is_trial              = False
+    trial_ends_str        = None
+
+    # Trial detection from DB
+    trial_ends_at = getattr(user, "trial_ends_at", None)
+    now_utc = datetime.now(timezone.utc)
+    if trial_ends_at and trial_ends_at > now_utc:
+        is_trial = True
+        try:
+            trial_ends_str = trial_ends_at.astimezone(_CT).strftime("%B %-d, %Y")
+        except Exception:
+            trial_ends_str = str(trial_ends_at.date())
+
+    # Fetch live Stripe data for period_end and cancel status
+    if user.stripe_subscription_id and _stripe.api_key:
+        try:
+            sub = _stripe.Subscription.retrieve(user.stripe_subscription_id)
+            sub_status           = sub.status
+            cancel_at_period_end = bool(sub.cancel_at_period_end)
+            if sub.current_period_end:
+                period_end_dt  = datetime.fromtimestamp(int(sub.current_period_end), tz=_CT)
+                period_end_str = period_end_dt.strftime("%B %-d, %Y")
+        except Exception as exc:
+            log.warning("account_page: Stripe fetch failed for user %s: %s", user.email, exc)
+
+    member_since_str = "—"
+    if user.created_at:
+        try:
+            member_since_str = user.created_at.astimezone(_CT).strftime("%B %-d, %Y")
+        except Exception:
+            member_since_str = str(user.created_at.date())
+
+    qs = request.query_params
+    return templates.TemplateResponse(request, "account.html", {
+        "user":                 user,
+        "sub_status":           sub_status,
+        "cancel_at_period_end": cancel_at_period_end,
+        "period_end_str":       period_end_str,
+        "is_trial":             is_trial,
+        "trial_ends_str":       trial_ends_str,
+        "member_since_str":     member_since_str,
+        "pw_success":           qs.get("pw_success"),
+        "pw_error":             qs.get("pw_error"),
+        "cancel_done":          qs.get("cancel_done"),
+        "cancel_error":         qs.get("cancel_error"),
+        "reactivated":          qs.get("reactivated"),
+        "portal_error":         qs.get("portal_error"),
+    })
+
+
+@app.post("/account/password")
+async def change_password(
+    request: Request,
+    current_password: str = Form(...),
+    new_password: str     = Form(...),
+    confirm_password: str = Form(...),
+    db: Session           = Depends(get_db),
+):
+    """Change password — validates current, hashes new, saves."""
+    user = _get_authed_user(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+
+    from web.auth import verify_password, hash_password
+
+    if not verify_password(current_password, user.hashed_password):
+        return RedirectResponse(url="/account?pw_error=wrong_password", status_code=303)
+    if new_password != confirm_password:
+        return RedirectResponse(url="/account?pw_error=mismatch", status_code=303)
+    if len(new_password) < 8:
+        return RedirectResponse(url="/account?pw_error=too_short", status_code=303)
+
+    user.hashed_password = hash_password(new_password)
+    db.commit()
+    log.info("Password changed for user %s", user.email)
+    return RedirectResponse(url="/account?pw_success=1", status_code=303)
+
+
+@app.post("/account/cancel-subscription")
+async def cancel_subscription(request: Request, db: Session = Depends(get_db)):
+    """Set cancel_at_period_end=True on Stripe — access retained until period end."""
+    user = _get_authed_user(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+    if not user.stripe_subscription_id:
+        return RedirectResponse(url="/account?cancel_error=no_sub", status_code=303)
+
+    _stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
+    try:
+        _stripe.Subscription.modify(
+            user.stripe_subscription_id,
+            cancel_at_period_end=True,
+        )
+        log.info("Subscription cancel_at_period_end=True for user %s", user.email)
+    except _stripe.error.StripeError as exc:
+        log.error("Cancel subscription failed for user %s: %s", user.email, exc)
+        return RedirectResponse(url="/account?cancel_error=stripe", status_code=303)
+
+    return RedirectResponse(url="/account?cancel_done=1", status_code=303)
+
+
+@app.post("/account/reactivate-subscription")
+async def reactivate_subscription(request: Request, db: Session = Depends(get_db)):
+    """Undo a pending cancellation — set cancel_at_period_end=False."""
+    user = _get_authed_user(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+    if not user.stripe_subscription_id:
+        return RedirectResponse(url="/account", status_code=303)
+
+    _stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
+    try:
+        _stripe.Subscription.modify(
+            user.stripe_subscription_id,
+            cancel_at_period_end=False,
+        )
+        log.info("Subscription reactivated for user %s", user.email)
+    except _stripe.error.StripeError as exc:
+        log.error("Reactivate subscription failed for user %s: %s", user.email, exc)
+        return RedirectResponse(url="/account?cancel_error=stripe", status_code=303)
+
+    return RedirectResponse(url="/account?reactivated=1", status_code=303)
+
+
+@app.get("/account/billing-portal")
+async def billing_portal(request: Request, db: Session = Depends(get_db)):
+    """Redirect to Stripe Customer Portal for payment method / invoice management."""
+    user = _get_authed_user(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+    if not user.stripe_customer_id:
+        return RedirectResponse(url="/account", status_code=303)
+
+    _stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
+    base_url = os.getenv("BASE_URL", "http://localhost:8000")
+    try:
+        portal = _stripe.billing_portal.Session.create(
+            customer=user.stripe_customer_id,
+            return_url=f"{base_url}/account",
+        )
+        return RedirectResponse(url=portal.url, status_code=303)
+    except _stripe.error.StripeError as exc:
+        log.error("Billing portal failed for user %s: %s", user.email, exc)
+        return RedirectResponse(url="/account?portal_error=1", status_code=303)
 
 
 @app.get("/privacy", response_class=HTMLResponse)

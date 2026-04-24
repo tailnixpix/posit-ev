@@ -1,0 +1,426 @@
+{% extends "base.html" %}
+{% block title %}Account Settings — Posit+EV{% endblock %}
+
+{% block head %}
+<style>
+/* ── Dark theme ───────────────────────────────────────────────── */
+:root {
+  color-scheme: dark;
+  --d-bg:        #080C14;
+  --d-surface:   #0D1321;
+  --d-card:      #111827;
+  --d-border:    #1E2A3A;
+  --d-bright:    #263244;
+  --d-green:     #00D68F;
+  --d-green-dim: rgba(0,214,143,0.10);
+  --d-orange:    #FF7A45;
+  --d-purple:    #9B79FA;
+  --d-blue:      #4F9EFF;
+  --d-text:      #E4EAF4;
+  --d-sub:       #8896AB;
+  --d-muted:     #3D4F66;
+  --d-red:       #FF5B5B;
+}
+body, html {
+  background: var(--d-bg) !important;
+  color: var(--d-text) !important;
+}
+nav {
+  background: rgba(8,12,20,0.96) !important;
+  border-bottom: 1px solid var(--d-border) !important;
+  backdrop-filter: blur(12px) !important;
+}
+nav a, nav button { color: var(--d-sub) !important; }
+nav a:hover, nav button:hover { color: var(--d-text) !important; }
+footer { background: #0D1321 !important; border-top-color: var(--d-border) !important; }
+footer, footer a, footer span { color: var(--d-muted) !important; }
+
+/* ── Page layout ─────────────────────────────────────────────── */
+.acct-page {
+  max-width: 540px;
+  margin: 0 auto;
+  padding: 40px 20px 72px;
+}
+.acct-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--d-sub);
+  text-decoration: none;
+  margin-bottom: 24px;
+  transition: color 0.12s;
+}
+.acct-back:hover { color: var(--d-text); }
+.acct-page-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--d-text);
+  margin: 0 0 4px;
+  line-height: 1.2;
+}
+.acct-page-email {
+  font-size: 0.85rem;
+  color: var(--d-sub);
+  margin: 0 0 32px;
+}
+
+/* ── Section card ────────────────────────────────────────────── */
+.acct-section {
+  background: var(--d-card);
+  border: 1px solid var(--d-border);
+  border-radius: 14px;
+  padding: 22px 24px;
+  margin-bottom: 14px;
+}
+.acct-section-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--d-muted);
+  margin: 0 0 18px;
+}
+
+/* ── Data rows ───────────────────────────────────────────────── */
+.acct-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--d-border);
+}
+.acct-row:last-of-type { border-bottom: none; }
+.acct-row-label {
+  font-size: 0.82rem;
+  color: var(--d-sub);
+  flex-shrink: 0;
+}
+.acct-row-value {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--d-text);
+  text-align: right;
+}
+
+/* ── Status chips ────────────────────────────────────────────── */
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.status-active   { background: var(--d-green-dim); color: var(--d-green); border: 1px solid rgba(0,214,143,0.25); }
+.status-trial    { background: rgba(79,158,255,0.1); color: var(--d-blue); border: 1px solid rgba(79,158,255,0.25); }
+.status-cancel   { background: rgba(255,122,69,0.1); color: var(--d-orange); border: 1px solid rgba(255,122,69,0.25); }
+.status-inactive { background: rgba(255,91,91,0.1); color: var(--d-red); border: 1px solid rgba(255,91,91,0.25); }
+
+/* ── Buttons ─────────────────────────────────────────────────── */
+.acct-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 18px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.12s;
+  border: none;
+  white-space: nowrap;
+}
+.acct-btn-primary {
+  background: #534AB7;
+  color: #fff;
+}
+.acct-btn-primary:hover { opacity: 0.88; }
+.acct-btn-ghost {
+  background: transparent;
+  color: var(--d-sub);
+  border: 1px solid var(--d-border);
+}
+.acct-btn-ghost:hover { border-color: var(--d-blue); color: var(--d-blue); }
+.acct-btn-danger {
+  background: transparent;
+  color: var(--d-red);
+  border: 1px solid rgba(255,91,91,0.3);
+}
+.acct-btn-danger:hover { background: rgba(255,91,91,0.08); border-color: var(--d-red); }
+.acct-btn-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--d-border);
+}
+
+/* ── Alert banners ───────────────────────────────────────────── */
+.acct-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 0.83rem;
+  font-weight: 500;
+  line-height: 1.5;
+  margin-bottom: 14px;
+}
+.acct-alert-success { background: var(--d-green-dim); color: var(--d-green); border: 1px solid rgba(0,214,143,0.2); }
+.acct-alert-error   { background: rgba(255,91,91,0.08); color: var(--d-red); border: 1px solid rgba(255,91,91,0.2); }
+.acct-alert-info    { background: rgba(79,158,255,0.08); color: var(--d-blue); border: 1px solid rgba(79,158,255,0.2); }
+.acct-alert-warn    { background: rgba(255,122,69,0.08); color: var(--d-orange); border: 1px solid rgba(255,122,69,0.2); }
+
+/* ── Cancel confirmation panel ───────────────────────────────── */
+.cancel-confirm {
+  display: none;
+  background: rgba(255,91,91,0.05);
+  border: 1px solid rgba(255,91,91,0.2);
+  border-radius: 10px;
+  padding: 16px 18px;
+  margin-top: 14px;
+}
+.cancel-confirm.open { display: block; }
+.cancel-confirm-copy {
+  font-size: 0.84rem;
+  color: var(--d-sub);
+  line-height: 1.65;
+  margin: 0 0 14px;
+}
+.cancel-confirm-copy strong { color: var(--d-red); }
+.cancel-confirm-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ── Form fields ─────────────────────────────────────────────── */
+.acct-form-group { margin-bottom: 14px; }
+.acct-form-group label {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--d-sub);
+  margin-bottom: 5px;
+}
+.acct-form-group input {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--d-surface);
+  border: 1.5px solid var(--d-border);
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-family: inherit;
+  color: var(--d-text);
+  outline: none;
+  transition: border-color 0.15s;
+  box-sizing: border-box;
+}
+.acct-form-group input:focus { border-color: #534AB7; }
+.acct-submit-btn {
+  width: 100%;
+  padding: 11px;
+  background: #534AB7;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  margin-top: 4px;
+}
+.acct-submit-btn:hover { opacity: 0.88; }
+
+/* ── Note text ───────────────────────────────────────────────── */
+.acct-note {
+  font-size: 0.76rem;
+  color: var(--d-muted);
+  margin: 14px 0 0;
+  line-height: 1.6;
+}
+.acct-note a { color: var(--d-blue); text-decoration: none; }
+.acct-note a:hover { text-decoration: underline; }
+
+@media (max-width: 560px) {
+  .acct-page { padding: 28px 16px 56px; }
+  .acct-section { padding: 18px 16px; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="acct-page">
+
+  <a href="/dashboard" class="acct-back">← Dashboard</a>
+
+  <h1 class="acct-page-title">Account Settings</h1>
+  <p class="acct-page-email">{{ user.email }}</p>
+
+  {# ── Alert banners ─────────────────────────────────────────── #}
+  {% if pw_success %}
+  <div class="acct-alert acct-alert-success">✅ Password updated successfully.</div>
+  {% endif %}
+  {% if pw_error == 'wrong_password' %}
+  <div class="acct-alert acct-alert-error">❌ Your current password is incorrect. Please try again.</div>
+  {% elif pw_error == 'mismatch' %}
+  <div class="acct-alert acct-alert-error">❌ New passwords don't match — please re-enter them.</div>
+  {% elif pw_error == 'too_short' %}
+  <div class="acct-alert acct-alert-error">❌ Password must be at least 8 characters.</div>
+  {% endif %}
+  {% if cancel_done %}
+  <div class="acct-alert acct-alert-info">ℹ️ Your subscription has been cancelled. You'll keep full access until the end of your current billing period.</div>
+  {% endif %}
+  {% if reactivated %}
+  <div class="acct-alert acct-alert-success">✅ Subscription reactivated — your plan will continue as normal.</div>
+  {% endif %}
+  {% if cancel_error == 'stripe' %}
+  <div class="acct-alert acct-alert-error">❌ Something went wrong — please try again or <a href="#" onclick="openSupportModal();return false;" style="color:inherit;text-decoration:underline;">contact support</a>.</div>
+  {% endif %}
+  {% if portal_error %}
+  <div class="acct-alert acct-alert-error">❌ Couldn't open the billing portal right now. Please try again shortly.</div>
+  {% endif %}
+
+  {# ── Plan & Billing ────────────────────────────────────────── #}
+  <div class="acct-section">
+    <div class="acct-section-title">Plan &amp; Billing</div>
+
+    <div class="acct-row">
+      <span class="acct-row-label">Plan</span>
+      <span class="acct-row-value">Posit+EV Pro</span>
+    </div>
+
+    <div class="acct-row">
+      <span class="acct-row-label">Status</span>
+      <span class="acct-row-value">
+        {% if is_trial %}
+          <span class="status-chip status-trial">🔵 Free Trial</span>
+        {% elif cancel_at_period_end %}
+          <span class="status-chip status-cancel">⚠️ Cancelling</span>
+        {% elif user.is_subscribed %}
+          <span class="status-chip status-active">✅ Active</span>
+        {% else %}
+          <span class="status-chip status-inactive">❌ Inactive</span>
+        {% endif %}
+      </span>
+    </div>
+
+    {% if is_trial and trial_ends_str %}
+    <div class="acct-row">
+      <span class="acct-row-label">Trial ends</span>
+      <span class="acct-row-value">{{ trial_ends_str }}</span>
+    </div>
+    {% endif %}
+
+    {% if period_end_str %}
+    <div class="acct-row">
+      <span class="acct-row-label">
+        {% if cancel_at_period_end %}Access through{% else %}Next renewal{% endif %}
+      </span>
+      <span class="acct-row-value">{{ period_end_str }}</span>
+    </div>
+    {% endif %}
+
+    <div class="acct-row">
+      <span class="acct-row-label">Member since</span>
+      <span class="acct-row-value">{{ member_since_str }}</span>
+    </div>
+
+    {# Action buttons #}
+    <div class="acct-btn-row">
+      {% if user.stripe_customer_id %}
+      <a href="/account/billing-portal" class="acct-btn acct-btn-ghost">💳 Manage Billing</a>
+      {% endif %}
+
+      {% if user.is_subscribed and user.stripe_subscription_id and not cancel_at_period_end %}
+      <button class="acct-btn acct-btn-danger" onclick="toggleCancelConfirm()">Cancel Subscription</button>
+      {% elif user.is_subscribed and cancel_at_period_end %}
+      <form action="/account/reactivate-subscription" method="post" style="margin:0;">
+        <button type="submit" class="acct-btn acct-btn-primary">↩ Keep Subscription</button>
+      </form>
+      {% endif %}
+    </div>
+
+    {# Cancel confirmation — revealed by JS #}
+    {% if user.is_subscribed and user.stripe_subscription_id and not cancel_at_period_end %}
+    <div class="cancel-confirm" id="cancelConfirm">
+      <p class="cancel-confirm-copy">
+        <strong>Are you sure you want to cancel?</strong><br>
+        You'll keep full access to the dashboard and all picks
+        {% if period_end_str %}until <strong>{{ period_end_str }}</strong>{% else %}until the end of your billing period{% endif %}.
+        After that your account will be downgraded and you'll lose access.
+      </p>
+      <div class="cancel-confirm-btns">
+        <form action="/account/cancel-subscription" method="post" style="margin:0;">
+          <button type="submit" class="acct-btn acct-btn-danger" style="font-size:0.8rem;padding:8px 16px;">
+            Yes, Cancel My Subscription
+          </button>
+        </form>
+        <button class="acct-btn acct-btn-ghost" style="font-size:0.8rem;padding:8px 16px;" onclick="toggleCancelConfirm()">
+          Keep My Plan
+        </button>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  {# ── Change Password ───────────────────────────────────────── #}
+  <div class="acct-section">
+    <div class="acct-section-title">Password</div>
+
+    <form action="/account/password" method="post">
+      <div class="acct-form-group">
+        <label for="current_password">Current Password</label>
+        <input type="password" id="current_password" name="current_password"
+               required autocomplete="current-password" placeholder="Enter your current password">
+      </div>
+      <div class="acct-form-group">
+        <label for="new_password">New Password</label>
+        <input type="password" id="new_password" name="new_password"
+               required autocomplete="new-password" placeholder="At least 8 characters">
+      </div>
+      <div class="acct-form-group">
+        <label for="confirm_password">Confirm New Password</label>
+        <input type="password" id="confirm_password" name="confirm_password"
+               required autocomplete="new-password" placeholder="Repeat your new password">
+      </div>
+      <button type="submit" class="acct-submit-btn">Update Password</button>
+    </form>
+  </div>
+
+  {# ── Account Info ─────────────────────────────────────────── #}
+  <div class="acct-section">
+    <div class="acct-section-title">Account Info</div>
+
+    <div class="acct-row">
+      <span class="acct-row-label">Email</span>
+      <span class="acct-row-value">{{ user.email }}</span>
+    </div>
+
+    <div class="acct-row">
+      <span class="acct-row-label">Account ID</span>
+      <span class="acct-row-value" style="color:var(--d-muted);font-size:0.78rem;font-weight:500;">#{{ user.id }}</span>
+    </div>
+
+    <p class="acct-note">
+      Need to update your email or have a billing question?
+      <a href="#" onclick="openSupportModal();return false;">Contact support</a> and we'll take care of it.
+    </p>
+  </div>
+
+</div>
+
+<script>
+function toggleCancelConfirm() {
+  const panel = document.getElementById('cancelConfirm');
+  if (panel) panel.classList.toggle('open');
+}
+</script>
+{% endblock %}
