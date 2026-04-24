@@ -415,7 +415,7 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
                      border-radius:8px;cursor:pointer;font-family:inherit;white-space:nowrap;">
         &#8635; Refresh EV Cache
       </button>
-      <span id="syncResult" style="font-size:0.78rem;color:var(--text-muted);"></span>
+      <span id="refreshResult" style="font-size:0.78rem;color:var(--text-muted);"></span>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:0;border-bottom:1px solid var(--brand-border);">
       <div style="padding:14px 20px;border-right:1px solid var(--brand-border);">
@@ -511,7 +511,7 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
     </div>
   </div>
 
-  {# ── Model Performance ── #}
+  {# ── Daily Pick Record (combined) ── #}
   <div class="section-card" style="margin-bottom:16px;">
     <div class="coll-header" onclick="toggleColl('model-card')" id="model-card-hdr">
       <span class="coll-title">
@@ -654,7 +654,178 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
       {% else %}
       <p class="empty">No picks recorded yet.</p>
       {% endif %}
-    </div>
+
+      {# ── Individual Picks sub-collapsible ── #}
+      <div style="border-top:1px solid var(--brand-border);">
+        <div class="coll-header" onclick="toggleColl('picks-detail')" id="picks-detail-hdr"
+             style="padding-left:20px; background:var(--brand-surface);">
+          <span class="coll-title" style="font-size:0.82rem;">
+            🗓 Individual Pick History
+            <span class="badge badge-blue" style="font-size:0.65rem;">{{ picks_badge }}</span>
+          </span>
+          <span class="coll-arrow" style="font-size:0.8rem;">▼</span>
+        </div>
+        <div class="coll-body" id="picks-detail">
+
+          {# CLV Summary Bar #}
+          {% if clv_summary.total > 0 %}
+          <div style="display:flex; flex-wrap:wrap; gap:12px; padding:10px 20px; align-items:center;
+                      border-bottom:1px solid var(--brand-border); background:#FAFBFF;">
+            <span style="font-size:0.75rem; font-weight:700; color:var(--brand-dark);">📊 CLV</span>
+            <span style="font-size:0.8rem; color:var(--text-secondary);">
+              {{ clv_summary.beat_count }}/{{ clv_summary.total }} beat closing line
+              <strong style="margin-left:2px; color:{% if clv_summary.beat_rate >= 55 %}var(--brand-success){% else %}#9A6B00{% endif %};">({{ clv_summary.beat_rate }}%)</strong>
+            </span>
+            {% if clv_summary.avg_clv is not none %}
+            <span style="font-size:0.8rem; color:var(--text-secondary);">
+              Avg CLV: <strong style="color:{% if clv_summary.avg_clv > 0 %}var(--brand-success){% else %}#C53030{% endif %};">{% if clv_summary.avg_clv > 0 %}+{% endif %}{{ "%.2f"|format(clv_summary.avg_clv) }}%</strong>
+            </span>
+            {% endif %}
+          </div>
+          {% endif %}
+
+          {# Picks table #}
+          {% if daily_picks_all %}
+          <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Game</th>
+                <th>Team / Bet</th>
+                <th>Odds</th>
+                <th>EV%</th>
+                <th>CLV%</th>
+                <th>Result</th>
+                <th>Update</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for pick in daily_picks_all %}
+              {% set row_class = {"won":"pick-row-won","lost":"pick-row-lost","push":"pick-row-push"}.get(pick.result or "", "") %}
+              {% set pick_clv = picks_clv.get(pick.id) %}
+              <tr class="{{ row_class }}">
+                <td style="white-space:nowrap; font-size:0.82rem;">
+                  {{ pick.pick_date.strftime('%b %-d') if pick.pick_date else '—' }}
+                </td>
+                <td style="font-size:0.82rem; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                  {{ pick.game or '—' }}
+                </td>
+                <td style="font-size:0.82rem; font-weight:600; white-space:nowrap;">
+                  {{ pick.team or '—' }}{% if pick.market == "spreads" and pick.point is not none %} {{ ("+" ~ pick.point) if pick.point > 0 else pick.point }}{% elif pick.market == "totals" and pick.point is not none %} {{ pick.point }}{% endif %}
+                </td>
+                <td style="font-weight:700; font-size:0.85rem; white-space:nowrap;">
+                  {% if pick.odds %}{{ ("+" ~ pick.odds) if pick.odds > 0 else pick.odds }}{% else %}—{% endif %}
+                </td>
+                <td style="font-size:0.82rem; color:var(--brand-primary); white-space:nowrap;">
+                  {% if pick.ev_percent %}+{{ "%.1f"|format(pick.ev_percent) }}%{% else %}—{% endif %}
+                </td>
+                <td style="font-size:0.82rem; font-weight:700; white-space:nowrap;">
+                  {% if pick_clv is not none %}
+                    <span style="color:{% if pick_clv > 0 %}var(--brand-success){% else %}#C53030{% endif %};">
+                      {% if pick_clv > 0 %}+{% endif %}{{ "%.2f"|format(pick_clv) }}%
+                    </span>
+                  {% else %}
+                    <span style="color:var(--text-muted);">—</span>
+                  {% endif %}
+                </td>
+                <td style="white-space:nowrap;">
+                  {% if pick.result == "won" %}
+                    <span class="tag tag-active">Won</span>
+                  {% elif pick.result == "lost" %}
+                    <span class="tag" style="background:#FEF2F2;color:#C53030;">Lost</span>
+                  {% elif pick.result == "push" %}
+                    <span class="tag tag-inactive">Push</span>
+                  {% else %}
+                    <span class="tag tag-inactive">Pending</span>
+                  {% endif %}
+                </td>
+                <td style="white-space:nowrap;">
+                  <form method="post" action="/admin/pick-result" style="margin:0;display:flex;align-items:center;gap:4px;">
+                    <input type="hidden" name="pick_id" value="{{ pick.id }}" />
+                    <select name="result" class="result-select">
+                      <option value="pending" {% if not pick.result or pick.result == 'pending' %}selected{% endif %}>Pending</option>
+                      <option value="won"     {% if pick.result == 'won'  %}selected{% endif %}>Won</option>
+                      <option value="lost"    {% if pick.result == 'lost' %}selected{% endif %}>Lost</option>
+                      <option value="push"    {% if pick.result == 'push' %}selected{% endif %}>Push</option>
+                    </select>
+                    <button type="submit" class="result-update-btn">Save</button>
+                  </form>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          </div>
+          {% else %}
+          <p class="empty">No daily picks recorded yet — they appear after the 8 AM newsletter sends.</p>
+          {% endif %}
+
+          {# ── Add / Backfill form ── #}
+          <div class="pick-add-form">
+            <p class="pick-add-form-title">＋ Add / Backfill Pick</p>
+            <form method="post" action="/admin/add-pick">
+              <div class="pick-add-grid">
+                <div class="pick-add-field" style="min-width:130px;">
+                  <label>Date</label>
+                  <input type="date" name="pick_date" required />
+                </div>
+                <div class="pick-add-field" style="min-width:180px;">
+                  <label>Game</label>
+                  <input type="text" name="game" placeholder="Twins @ Orioles" />
+                </div>
+                <div class="pick-add-field">
+                  <label>Team / Outcome</label>
+                  <input type="text" name="team" placeholder="Over" required />
+                </div>
+                <div class="pick-add-field">
+                  <label>Market</label>
+                  <select name="market">
+                    <option value="h2h">Moneyline</option>
+                    <option value="totals">Total</option>
+                    <option value="spreads">Spread</option>
+                  </select>
+                </div>
+                <div class="pick-add-field">
+                  <label>Line (opt)</label>
+                  <input type="text" name="point" placeholder="9.5" />
+                </div>
+                <div class="pick-add-field">
+                  <label>Book</label>
+                  <input type="text" name="book" placeholder="draftkings" />
+                </div>
+                <div class="pick-add-field">
+                  <label>Odds</label>
+                  <input type="number" name="odds" placeholder="+133" required />
+                </div>
+                <div class="pick-add-field">
+                  <label>EV %</label>
+                  <input type="number" step="0.01" name="ev_percent" placeholder="23.77" />
+                </div>
+                <div class="pick-add-field">
+                  <label>Result</label>
+                  <select name="result">
+                    <option value="pending">Pending</option>
+                    <option value="won">Won</option>
+                    <option value="lost">Lost</option>
+                    <option value="push">Push</option>
+                  </select>
+                </div>
+                <div class="pick-add-field">
+                  <label>&nbsp;</label>
+                  <button type="submit" class="pick-add-save">Save Pick</button>
+                </div>
+              </div>
+              <p style="font-size:0.7rem; color:var(--text-muted); margin:10px 0 0;">
+                Existing pick for that date will be overwritten.
+              </p>
+            </form>
+          </div>
+
+        </div>{# /coll-body picks-detail #}
+      </div>
+
+    </div>{# /coll-body model-card #}
   </div>
 
   {# ── Beehiiv sync ── #}
@@ -682,179 +853,6 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
         <span id="syncResult" style="font-size:0.82rem; color:var(--text-muted);"></span>
       </div>
     </div>
-  </div>
-
-  {# ── Daily Picks Record ── #}
-  <div class="section-card">
-    <div class="coll-header" onclick="toggleColl('picks-card')" id="picks-card-hdr">
-      <span class="coll-title">
-        Daily Picks Record
-        <span class="badge badge-blue" style="font-size:0.7rem;">{{ picks_badge }}</span>
-      </span>
-      <span class="coll-arrow">▼</span>
-    </div>
-    <div class="coll-body" id="picks-card">
-
-    {# CLV Summary Bar #}
-    {% if clv_summary.total > 0 %}
-    <div style="display:flex; flex-wrap:wrap; gap:12px; padding:12px 20px; align-items:center;
-                border-bottom:1px solid var(--brand-border); background:var(--brand-surface);">
-      <span style="font-size:0.78rem; font-weight:700; color:var(--brand-dark);">📊 CLV Performance</span>
-      <span style="font-size:0.82rem; color:var(--text-secondary);">
-        {{ clv_summary.beat_count }} of {{ clv_summary.total }} picks beat closing line
-        <strong style="margin-left:4px; color:{% if clv_summary.beat_rate >= 55 %}var(--brand-success){% else %}#9A6B00{% endif %};">
-          ({{ clv_summary.beat_rate }}%)
-        </strong>
-      </span>
-      {% if clv_summary.avg_clv is not none %}
-      <span style="font-size:0.82rem; color:var(--text-secondary);">
-        Avg CLV:
-        <strong style="color:{% if clv_summary.avg_clv > 0 %}var(--brand-success){% else %}#C53030{% endif %};">
-          {% if clv_summary.avg_clv > 0 %}+{% endif %}{{ "%.2f"|format(clv_summary.avg_clv) }}%
-        </strong>
-      </span>
-      {% endif %}
-    </div>
-    {% endif %}
-
-    {# Picks table #}
-    {% if daily_picks_all %}
-    <div class="table-scroll">
-    <table>
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Game</th>
-          <th>Team / Bet</th>
-          <th>Odds</th>
-          <th>EV%</th>
-          <th>CLV%</th>
-          <th>Result</th>
-          <th>Update</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for pick in daily_picks_all %}
-        {% set row_class = {"won":"pick-row-won","lost":"pick-row-lost","push":"pick-row-push"}.get(pick.result or "", "") %}
-        {% set pick_clv = picks_clv.get(pick.id) %}
-        <tr class="{{ row_class }}">
-          <td style="white-space:nowrap; font-size:0.82rem;">
-            {{ pick.pick_date.strftime('%b %-d') if pick.pick_date else '—' }}
-          </td>
-          <td style="font-size:0.82rem; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-            {{ pick.game or '—' }}
-          </td>
-          <td style="font-size:0.82rem; font-weight:600; white-space:nowrap;">
-            {{ pick.team or '—' }}{% if pick.market == "spreads" and pick.point is not none %} {{ ("+" ~ pick.point) if pick.point > 0 else pick.point }}{% elif pick.market == "totals" and pick.point is not none %} {{ pick.point }}{% endif %}
-          </td>
-          <td style="font-weight:700; font-size:0.85rem; white-space:nowrap;">
-            {% if pick.odds %}{{ ("+" ~ pick.odds) if pick.odds > 0 else pick.odds }}{% else %}—{% endif %}
-          </td>
-          <td style="font-size:0.82rem; color:var(--brand-primary); white-space:nowrap;">
-            {% if pick.ev_percent %}+{{ "%.1f"|format(pick.ev_percent) }}%{% else %}—{% endif %}
-          </td>
-          <td style="font-size:0.82rem; font-weight:700; white-space:nowrap;">
-            {% if pick_clv is not none %}
-              <span style="color:{% if pick_clv > 0 %}var(--brand-success){% else %}#C53030{% endif %};">
-                {% if pick_clv > 0 %}+{% endif %}{{ "%.2f"|format(pick_clv) }}%
-              </span>
-            {% else %}
-              <span style="color:var(--text-muted);">—</span>
-            {% endif %}
-          </td>
-          <td style="white-space:nowrap;">
-            {% if pick.result == "won" %}
-              <span class="tag tag-active">Won</span>
-            {% elif pick.result == "lost" %}
-              <span class="tag" style="background:#FEF2F2;color:#C53030;">Lost</span>
-            {% elif pick.result == "push" %}
-              <span class="tag tag-inactive">Push</span>
-            {% else %}
-              <span class="tag tag-inactive">Pending</span>
-            {% endif %}
-          </td>
-          <td style="white-space:nowrap;">
-            <form method="post" action="/admin/pick-result" style="margin:0;display:flex;align-items:center;gap:4px;">
-              <input type="hidden" name="pick_id" value="{{ pick.id }}" />
-              <select name="result" class="result-select">
-                <option value="pending" {% if not pick.result or pick.result == 'pending' %}selected{% endif %}>Pending</option>
-                <option value="won"     {% if pick.result == 'won'  %}selected{% endif %}>Won</option>
-                <option value="lost"    {% if pick.result == 'lost' %}selected{% endif %}>Lost</option>
-                <option value="push"    {% if pick.result == 'push' %}selected{% endif %}>Push</option>
-              </select>
-              <button type="submit" class="result-update-btn">Save</button>
-            </form>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    </div>
-    {% else %}
-    <p class="empty">No daily picks recorded yet — they appear after the 8 AM newsletter sends.</p>
-    {% endif %}
-
-    {# ── Add / Backfill form ── #}
-    <div class="pick-add-form">
-      <p class="pick-add-form-title">＋ Add / Backfill Pick</p>
-      <form method="post" action="/admin/add-pick">
-        <div class="pick-add-grid">
-          <div class="pick-add-field" style="min-width:130px;">
-            <label>Date</label>
-            <input type="date" name="pick_date" required />
-          </div>
-          <div class="pick-add-field" style="min-width:180px;">
-            <label>Game</label>
-            <input type="text" name="game" placeholder="Twins @ Orioles" />
-          </div>
-          <div class="pick-add-field">
-            <label>Team / Outcome</label>
-            <input type="text" name="team" placeholder="Over" required />
-          </div>
-          <div class="pick-add-field">
-            <label>Market</label>
-            <select name="market">
-              <option value="h2h">Moneyline</option>
-              <option value="totals">Total</option>
-              <option value="spreads">Spread</option>
-            </select>
-          </div>
-          <div class="pick-add-field">
-            <label>Line (opt)</label>
-            <input type="text" name="point" placeholder="9.5" />
-          </div>
-          <div class="pick-add-field">
-            <label>Book</label>
-            <input type="text" name="book" placeholder="draftkings" />
-          </div>
-          <div class="pick-add-field">
-            <label>Odds</label>
-            <input type="number" name="odds" placeholder="+133" required />
-          </div>
-          <div class="pick-add-field">
-            <label>EV %</label>
-            <input type="number" step="0.01" name="ev_percent" placeholder="23.77" />
-          </div>
-          <div class="pick-add-field">
-            <label>Result</label>
-            <select name="result">
-              <option value="pending">Pending</option>
-              <option value="won">Won</option>
-              <option value="lost">Lost</option>
-              <option value="push">Push</option>
-            </select>
-          </div>
-          <div class="pick-add-field">
-            <label>&nbsp;</label>
-            <button type="submit" class="pick-add-save">Save Pick</button>
-          </div>
-        </div>
-        <p style="font-size:0.7rem; color:var(--text-muted); margin:10px 0 0;">
-          Existing pick for that date will be overwritten.
-        </p>
-      </form>
-    </div>
-    </div>{# /coll-body picks-card #}
   </div>
 
   {# ── Newsletter Subscribers ── #}

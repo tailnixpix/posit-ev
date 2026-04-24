@@ -1504,7 +1504,12 @@ async def admin_dashboard(
     _ev_leagues    = db.query(EVBetCache.league).distinct().all()
     sports_active  = [r[0] for r in _ev_leagues]
     _last_cache    = db.query(EVBetCache.created_at).order_by(EVBetCache.created_at.desc()).first()
-    last_cache_at  = _last_cache[0].strftime("%b %-d at %-I:%M %p UTC") if _last_cache and _last_cache[0] else "—"
+    if _last_cache and _last_cache[0]:
+        from zoneinfo import ZoneInfo as _ZI
+        _ct_dt     = _last_cache[0].astimezone(_ZI("America/Chicago"))
+        last_cache_at = _ct_dt.strftime("%b %-d at %-I:%M %p CT")
+    else:
+        last_cache_at = "—"
     _ev_rows       = db.query(EVBetCache.ev_percent, EVBetCache.odds).all()
     _ev_vals       = [r[0] for r in _ev_rows if r[0] is not None]
     _odds_vals     = [r[1] for r in _ev_rows if r[1] is not None]
