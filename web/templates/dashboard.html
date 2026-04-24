@@ -4196,6 +4196,8 @@ document.querySelectorAll('.sport-pill').forEach(btn => {
       document.querySelectorAll('.sport-pill[data-filter="league"]').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       activeLeague = val;
+      // Rebuild prop type chips scoped to the newly selected league
+      _buildPropTypeChips();
     }
     applyFilters();
   });
@@ -4238,18 +4240,96 @@ function _syncBookChipVisuals() {
 }
 
 // ── Prop type chip builder ─────────────────────────────────────────────────
+// Friendly display names for known Odds API prop market keys
+const _PROP_LABEL_MAP = {
+  // ── NBA / Basketball ──────────────────────────────────────────────────────
+  player_points:                    '🏀 Points',
+  player_rebounds:                  '🏀 Rebounds',
+  player_assists:                   '🏀 Assists',
+  player_threes:                    '🏀 3-Pointers',
+  player_blocks:                    '🏀 Blocks',
+  player_steals:                    '🏀 Steals',
+  player_turnovers:                 '🏀 Turnovers',
+  player_points_rebounds_assists:   '🏀 PRA',
+  player_points_rebounds:           '🏀 Pts+Reb',
+  player_points_assists:            '🏀 Pts+Ast',
+  player_rebounds_assists:          '🏀 Reb+Ast',
+  player_double_double:             '🏀 Double-Double',
+  player_triple_double:             '🏀 Triple-Double',
+  player_first_basket:              '🏀 First Basket',
+  // ── MLB / Baseball ────────────────────────────────────────────────────────
+  batter_hits:                      '⚾ Hits',
+  batter_home_runs:                 '⚾ Home Runs',
+  batter_rbis:                      '⚾ RBIs',
+  batter_runs_scored:               '⚾ Runs Scored',
+  batter_total_bases:               '⚾ Total Bases',
+  batter_singles:                   '⚾ Singles',
+  batter_doubles:                   '⚾ Doubles',
+  batter_triples:                   '⚾ Triples',
+  batter_stolen_bases:              '⚾ Stolen Bases',
+  batter_strikeouts:                '⚾ Batter K\'s',
+  batter_walks:                     '⚾ Walks (Batter)',
+  batter_hits_runs_rbis:            '⚾ H+R+RBI',
+  pitcher_strikeouts:               '⚾ Pitcher K\'s',
+  pitcher_outs:                     '⚾ Outs Recorded',
+  pitcher_hits_allowed:             '⚾ Hits Allowed',
+  pitcher_walks:                    '⚾ Pitcher Walks',
+  pitcher_earned_runs:              '⚾ Earned Runs',
+  pitcher_strikeouts_over_under:    '⚾ Pitcher K\'s O/U',
+  // ── NHL / Hockey ──────────────────────────────────────────────────────────
+  player_shots_on_goal:             '🏒 Shots on Goal',
+  player_goals:                     '🏒 Goals',
+  player_assists:                   '🏒 Assists',
+  player_points:                    '🏒 Points',
+  player_saves:                     '🥅 Saves',
+  player_time_on_ice:               '🏒 Time on Ice',
+  player_blocked_shots:             '🏒 Blocked Shots',
+  // ── Soccer ───────────────────────────────────────────────────────────────
+  player_shots:                     '⚽ Shots',
+  player_shots_on_target:           '⚽ Shots on Target',
+  player_goals:                     '⚽ Goals',
+  player_assists:                   '⚽ Assists',
+  player_anytime_score:             '⚽ Anytime Scorer',
+  player_first_goal_scorer:         '⚽ First Scorer',
+  player_last_goal_scorer:          '⚽ Last Scorer',
+  player_cards:                     '⚽ Cards',
+  player_tackles:                   '⚽ Tackles',
+  player_passes:                    '⚽ Passes',
+};
+
 function _buildPropTypeChips() {
-  const markets = new Map(); // propMarket key → display label
+  // Collect prop market keys visible under the current league filter
+  const markets = new Map(); // key → label
   document.querySelectorAll('.bet-card[data-is-prop="true"]').forEach(c => {
+    const lg = c.dataset.league || '';
+    const lgOk = activeLeague === 'all'
+      || (activeLeague === 'soccer' && lg.startsWith('soccer_'))
+      || lg === activeLeague;
+    if (!lgOk) return;
     const m = c.dataset.propMarket;
-    if (m && !markets.has(m)) markets.set(m, c.dataset.marketDisplay || m.replace(/_/g,' '));
+    if (!m || markets.has(m)) return;
+    const label = _PROP_LABEL_MAP[m]
+      || (c.dataset.marketDisplay && c.dataset.marketDisplay !== m ? c.dataset.marketDisplay : null)
+      || m.replace(/_/g, ' ').replace(/\b\w/g, ch => ch.toUpperCase());
+    markets.set(m, label);
   });
+
+  // Sort: put "All Props" first, then alphabetically by label
+  const sorted = [...markets.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+
+  // If current activePropMarket no longer exists in new market set, reset to 'all'
+  if (activePropMarket !== 'all' && !markets.has(activePropMarket)) {
+    activePropMarket = 'all';
+  }
+
   ['propTypeSection','mfPropTypeSection'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     el.innerHTML = '';
+
+    // "All Props" button
     const allBtn = document.createElement('button');
-    allBtn.className = 'qfilter-btn active';
+    allBtn.className = 'qfilter-btn' + (activePropMarket === 'all' ? ' active' : '');
     allBtn.dataset.filter = 'prop-market';
     allBtn.dataset.value  = 'all';
     allBtn.textContent    = 'All Props';
@@ -4257,9 +4337,10 @@ function _buildPropTypeChips() {
     allCc.className = 'chip-count';
     allBtn.appendChild(allCc);
     el.appendChild(allBtn);
-    markets.forEach((label, key) => {
+
+    sorted.forEach(([key, label]) => {
       const btn     = document.createElement('button');
-      btn.className = 'qfilter-btn';
+      btn.className = 'qfilter-btn' + (activePropMarket === key ? ' active' : '');
       btn.dataset.filter = 'prop-market';
       btn.dataset.value  = key;
       btn.textContent    = label;
@@ -4268,6 +4349,7 @@ function _buildPropTypeChips() {
       btn.appendChild(cc);
       el.appendChild(btn);
     });
+
     el.querySelectorAll('.qfilter-btn[data-filter="prop-market"]').forEach(btn => {
       btn.addEventListener('click', () => {
         activePropMarket = btn.dataset.value;
@@ -4554,6 +4636,7 @@ function clearFilters() {
   document.querySelectorAll('.qfilter-btn[data-filter]').forEach(b => b.classList.toggle('active', b.dataset.value === 'all'));
   _syncBookChipVisuals();
   _setSideDay('all');
+  _buildPropTypeChips(); // rebuild with all leagues visible again
   applyFilters();
   updateFilterBadge();
 }
