@@ -553,13 +553,6 @@ main { max-width: none !important; padding: 0 !important; }
 .proj-band .pb-dot   { color: var(--d-muted); }
 .proj-band .pb-detail { color: var(--d-sub); font-weight: 600; }
 
-/* Top row */
-.card-top {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 14px;
-}
 .badge {
   font-size: 0.6rem;
   font-weight: 700;
@@ -576,7 +569,6 @@ main { max-width: none !important; padding: 0 !important; }
 
 /* EV badge */
 .ev-badge {
-  margin-left: auto;
   flex-shrink: 0;
   font-size: 0.88rem;
   font-weight: 900;
@@ -588,29 +580,12 @@ main { max-width: none !important; padding: 0 !important; }
 .ev-badge.ev-high { background: var(--d-green-dim); color: var(--d-green); border: 1px solid rgba(0,214,143,0.25); box-shadow: var(--d-green-glow); }
 .ev-badge.ev-med  { background: rgba(255,122,69,0.10); color: var(--d-orange); border: 1px solid rgba(255,122,69,0.25); }
 
-/* VS Score chip */
-.vs-chip {
-  font-size: 0.68rem;
-  font-weight: 700;
-  padding: 3px 8px;
-  border-radius: 10px;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
+/* Value score colour variants — used by table view */
 .vs-elite  { background: rgba(155,121,250,0.12); color: var(--d-purple); border: 1px solid rgba(155,121,250,0.25); }
 .vs-strong { background: var(--d-green-dim);     color: var(--d-green);  border: 1px solid rgba(0,214,143,0.25); }
 .vs-fair   { background: rgba(255,122,69,0.10);  color: var(--d-orange); border: 1px solid rgba(255,122,69,0.25); }
 .vs-weak   { background: var(--d-bright);        color: var(--d-sub);    border: 1px solid var(--d-border); }
 
-/* Main bet info */
-.card-main {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 16px;
-}
-.card-main-left { flex: 1; min-width: 0; }
 /* Prop card visual treatment */
 .bet-card.prop-card { border-left: 3px solid var(--d-purple); background: linear-gradient(100deg, rgba(167,139,250,0.04) 0%, transparent 45%); }
 .prop-player-name { font-size: 1rem; font-weight: 800; color: var(--d-text); line-height: 1.2; margin-bottom: 4px; }
@@ -623,10 +598,6 @@ main { max-width: none !important; padding: 0 !important; }
 /* Props pill count badge */
 .pill-count { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 16px; padding: 0 4px; background: rgba(167,139,250,0.2); color: var(--d-purple); border-radius: 8px; font-size: 0.6rem; font-weight: 700; margin-left: 3px; vertical-align: middle; }
 .sport-pill.active .pill-count { background: rgba(167,139,250,0.4); }
-.card-team { font-size: 1.05rem; font-weight: 800; color: var(--d-text); line-height: 1.2; word-break: break-word; }
-.card-game { font-size: 0.7rem; color: var(--d-sub); margin-top: 3px; line-height: 1.3; }
-.card-time { font-size: 0.66rem; color: var(--d-muted); margin-top: 2px; font-variant-numeric: tabular-nums; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-
 /* Countdown badge */
 .cdwn-badge {
   display: none;
@@ -681,204 +652,8 @@ main { max-width: none !important; padding: 0 !important; }
   white-space: nowrap;
 }
 
-/* Odds + Kelly (right) */
-.card-odds-col { flex-shrink: 0; text-align: right; }
-.odds-val { font-size: 1.4rem; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -0.5px; }
-.odds-pos { color: var(--d-green); }
-.odds-neg { color: var(--d-text); }
-.odds-lbl { font-size: 0.56rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--d-muted); font-weight: 600; margin-top: 2px; }
-.kelly-amt { font-size: 0.75rem; font-weight: 700; color: var(--d-green); margin-top: 3px; }
-.kelly-pct { font-size: 0.62rem; color: var(--d-muted); }
-
-/* Probability bar */
-.prob-bar-wrap { margin: 0 0 16px; }
-.prob-bar-legend {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.6rem;
-  color: var(--d-muted);
-  margin-bottom: 5px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-}
-.prob-bar-legend .pbl-model { color: var(--d-green); }
-.prob-bar-legend .pbl-book  { color: var(--d-orange); }
-.prob-bar-track {
-  height: 6px;
-  background: var(--d-border);
-  border-radius: 3px;
-  position: relative;
-  overflow: hidden;
-}
-.prob-bar-fill {
-  height: 100%;
-  background: linear-gradient(90deg, rgba(0,214,143,0.6) 0%, var(--d-green) 100%);
-  border-radius: 3px;
-  transition: width 0.5s ease;
-  position: relative;
-}
-.prob-bar-implied-mark {
-  position: absolute;
-  top: 0;
-  height: 100%;
-  width: 2px;
-  background: var(--d-orange);
-  opacity: 0.85;
-  border-radius: 1px;
-}
-
-/* Signal row */
-.signal-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-  min-height: 20px;
-  margin-bottom: 16px;
-  padding: 2px 0;
-}
-.sig {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  font-size: 0.65rem;
-  font-weight: 600;
-  white-space: nowrap;
-}
-.sig-model   { color: var(--d-green); }
-.sig-clv-pos { color: var(--d-green); }
-.sig-clv-neg { color: var(--d-orange); }
-.sig-clv-click { cursor: pointer; border-bottom: 1px dotted currentColor; }
-.sig-clv-click:hover { opacity: 0.8; }
-.sig-why { font-size: 0.6rem; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.03em; margin-left: 2px; }
-.sig-sharp   { color: var(--d-blue); }
-.sig-public  { color: var(--d-muted); }
-.sig-dot     { color: var(--d-muted); font-size: 0.55rem; }
-.sig-loading { color: var(--d-muted); font-size: 0.65rem; }
-
-/* Why-this-bet summary */
-.card-why {
-  background: linear-gradient(135deg, rgba(0,214,143,0.07) 0%, rgba(0,214,143,0.03) 100%);
-  border: 1px solid rgba(0,214,143,0.2);
-  border-radius: 10px;
-  padding: 11px 14px;
-  margin-bottom: 14px;
-}
-.card-why-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-bottom: 5px;
-}
-.card-why-edge {
-  font-size: 1.0rem;
-  font-weight: 900;
-  color: var(--d-green);
-  letter-spacing: -0.3px;
-}
-.card-why-prob {
-  font-size: 0.72rem;
-  color: var(--d-sub);
-}
-.card-why-prob strong {
-  color: var(--d-text);
-  font-weight: 700;
-}
-.card-why-size {
-  font-size: 0.67rem;
-  color: var(--d-muted);
-}
-.card-why-size .kelly-val {
-  font-weight: 700;
-  color: var(--d-green);
-  font-size: 0.7rem;
-}
-
-/* Stats strip */
-.stats-strip {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  background: rgba(0,0,0,0.18);
-  border: 1px solid var(--d-border);
-  border-radius: 10px;
-  overflow: hidden;
-  margin-bottom: 16px;
-}
-.stat-cell {
-  padding: 10px 8px;
-  text-align: center;
-  border-right: 1px solid var(--d-border);
-}
-.stat-cell:last-child { border-right: none; }
-.stat-cell .sv { font-size: 0.9rem; font-weight: 800; color: var(--d-text); line-height: 1; }
-.stat-cell .sl { font-size: 0.56rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--d-muted); margin-top: 4px; font-weight: 600; }
-.sv-green { color: var(--d-green) !important; }
-.kelly-dollar { font-size: 0.68rem; color: var(--d-green); font-weight: 700; display: block; margin-top: 2px; }
-
-/* Action row */
-.card-actions {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-.btn-insight {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  background: rgba(155,121,250,0.12);
-  border: 1px solid rgba(155,121,250,0.25);
-  border-radius: 8px;
-  padding: 10px 12px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--d-purple);
-  cursor: pointer;
-  font-family: inherit;
-  transition: all 0.12s;
-}
-.btn-insight:hover { background: rgba(155,121,250,0.2); }
-.btn-insight:disabled { opacity: 0.45; cursor: default; }
-
-.btn-proj {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: transparent;
-  border: 1px solid var(--d-border);
-  border-radius: 8px;
-  padding: 9px 12px;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--d-sub);
-  cursor: pointer;
-  font-family: inherit;
-  transition: all 0.12s;
-}
-.btn-proj:hover { border-color: var(--d-green); color: var(--d-green); }
-.btn-proj:disabled { opacity: 0.45; cursor: default; }
-
-.btn-why {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: transparent;
-  border: none;
-  padding: 7px 6px;
-  font-size: 0.7rem;
-  color: var(--d-muted);
-  cursor: pointer;
-  font-family: inherit;
-  text-decoration: underline;
-  text-decoration-color: transparent;
-  transition: color 0.12s, text-decoration-color 0.12s;
-}
-.btn-why:hover { color: var(--d-sub); text-decoration-color: var(--d-sub); }
+/* kelly-dollar: shown inside 4-cell metrics Kelly cell when bankroll is set */
+.kelly-dollar { font-size: 0.56rem; color: var(--d-green); font-weight: 700; display: block; margin-top: 1px; }
 
 /* Projection panel */
 .proj-panel {
@@ -1139,42 +914,8 @@ main { max-width: none !important; padding: 0 !important; }
 .clv-pop-body strong { color: var(--d-text); }
 .clv-highlight { color: var(--d-green); font-weight: 700; }
 
-/* Bet CTA row */
-.card-bet-cta { margin-top: 10px; }
-.btn-bet {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  background: rgba(0,214,143,0.09);
-  border: 1px solid rgba(0,214,143,0.32);
-  border-radius: 8px;
-  padding: 10px 14px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--d-green);
-  cursor: pointer;
-  font-family: inherit;
-  letter-spacing: 0.02em;
-  transition: background 0.14s, border-color 0.14s, transform 0.1s;
-  text-decoration: none;
-}
-.btn-bet:hover {
-  background: rgba(0,214,143,0.18);
-  border-color: rgba(0,214,143,0.55);
-  transform: translateY(-1px);
-}
-.btn-bet:active { transform: translateY(0); }
-.btn-bet-icon { font-size: 0.85rem; }
-
 /* ── Compact mode ── */
-.cards-grid.compact-mode .stats-strip,
-.cards-grid.compact-mode .card-why,
-.cards-grid.compact-mode .prob-bar-wrap,
 .cards-grid.compact-mode .proj-band,
-.cards-grid.compact-mode .card-actions,
-.cards-grid.compact-mode .card-bet-cta,
 .cards-grid.compact-mode .ai-panel,
 .cards-grid.compact-mode .proj-panel,
 .cards-grid.compact-mode .track-panel { display: none !important; }
@@ -1537,53 +1278,16 @@ main { max-width: none !important; padding: 0 !important; }
 
   /* ── Card layout fixes for narrow screens ── */
   .card-body { padding: 12px 14px 16px; }
-
-  /* Top badge row: allow wrap so badges never overflow the card */
-  .card-top {
-    flex-wrap: wrap;
-    row-gap: 6px;
-    gap: 5px;
-    margin-bottom: 10px;
-  }
-  /* Make the EV + checkbox group stay together and not push off-screen */
-  .card-top > div:last-child { margin-left: auto; }
   .ev-badge { font-size: 0.78rem; padding: 3px 8px; }
-
-  /* Main bet info: constrain odds column, let team/game wrap */
-  .card-main { gap: 8px; margin-bottom: 12px; }
-  .odds-val   { font-size: 1.2rem; }
-
-  /* Why box: stack edge + probs vertically on very small screens */
-  .card-why { padding: 9px 12px; margin-bottom: 10px; }
-  .card-why-top { flex-wrap: wrap; row-gap: 3px; }
-  .card-why-prob { font-size: 0.66rem; }
-
-  /* Signal row: ensure it never forces card width wider */
-  .signal-row { margin-bottom: 12px; }
   .clv-pill   { padding: 3px 7px; }
   .clv-pill-val { font-size: 0.68rem; }
   .clv-pill-lbl { font-size: 0.5rem; }
-  .sig        { font-size: 0.6rem; }
-
-  /* Action buttons: first button full-width, secondary buttons share row */
-  .card-actions { flex-wrap: wrap; gap: 6px; }
-  .btn-insight  { flex: 1 1 100%; justify-content: center; padding: 9px 10px; font-size: 0.72rem; }
-  .btn-proj, .btn-track { flex: 1; font-size: 0.68rem; padding: 8px 8px; }
-
-  /* Bet CTA button: full width, smaller text */
-  .btn-bet { font-size: 0.8rem; padding: 11px 14px; }
-
+  .btn-track { flex: 1; font-size: 0.68rem; padding: 8px 8px; }
   /* Projection panel scoreline: reduce font on tiny screens */
   .proj-score { font-size: 1.2rem; }
-
-  /* Stats strip: tighter */
-  .stats-strip { margin-bottom: 12px; }
-  .stat-cell .sv { font-size: 0.78rem; }
-
   /* Track panel inputs */
   .track-stake-input { font-size: 0.78rem; }
   .btn-track-confirm { font-size: 0.72rem; padding: 8px 10px; }
-
   /* Countdown badge: slightly smaller */
   .cdwn-badge { font-size: 0.56rem; }
 
@@ -2075,8 +1779,6 @@ main { max-width: none !important; padding: 0 !important; }
   gap: 6px;
   flex-shrink: 0;
 }
-/* Neutralise the old margin-left:auto on ev-badge (from .card-top era) */
-.card-hdr-right .ev-badge { margin-left: 0; }
 
 /* Tighter body padding */
 .card-body { padding: 14px 16px 18px; }
@@ -2160,6 +1862,13 @@ main { max-width: none !important; padding: 0 !important; }
   color: var(--d-muted);
   margin-top: 4px;
   font-weight: 600;
+}
+/* On very small screens collapse to 2×2 so cells don't squeeze */
+@media (max-width: 380px) {
+  .card-metrics { grid-template-columns: repeat(2, 1fr); }
+  .metric-cell:nth-child(2) { border-right: none; }
+  .metric-cell:nth-child(1),
+  .metric-cell:nth-child(2) { border-bottom: 1px solid var(--d-border); }
 }
 
 /* ── Book strip: best odds + Bet Now button ─────────────────── */
@@ -2782,19 +2491,8 @@ main { max-width: none !important; padding: 0 !important; }
                 <span class="badge badge-pm">🔮 PM</span>
                 {% endif %}
               </div>
-              {# Right group: never shrinks, stays away from card edge #}
+              {# Right: EV badge only — never wraps, never crowds #}
               <div class="card-hdr-right">
-                {% if bet.opening_odds and bet.opening_odds != bet.odds %}
-                  {% set op = ('+' if bet.opening_odds > 0 else '') ~ bet.opening_odds %}
-                  {% set cur = ('+' if bet.odds > 0 else '') ~ bet.odds %}
-                  {% set _clv_pos = bet.opening_odds > bet.odds %}
-                  <span class="clv-pill {{ 'clv-pill-pos' if _clv_pos else 'clv-pill-neg' }}"
-                        onclick="showClvPopover(event,{{ 'true' if _clv_pos else 'false' }})"
-                        title="{{ 'Line steamed — sharp money confirmed this edge' if _clv_pos else 'Line drifted — monitor this bet' }}">
-                    <span class="clv-pill-lbl">CLV {{ '▲' if _clv_pos else '▽' }}</span>
-                    <span class="clv-pill-val">{{ op }}→{{ cur }}</span>
-                  </span>
-                {% endif %}
                 <span class="ev-badge {{ tier }}">+{{ "%.1f"|format(bet.ev_percent) }}% EV</span>
               </div>
             </div>
@@ -2838,6 +2536,17 @@ main { max-width: none !important; padding: 0 !important; }
                 <span class="ctx-sep">·</span>
                 <span class="ctx-time" data-commence-fmt="{{ bet.commence_time.isoformat() }}">—</span>
                 <span class="cdwn-badge" data-cdwn="{{ bet.commence_time.isoformat() }}"></span>
+                {% endif %}
+                {% if bet.opening_odds and bet.opening_odds != bet.odds %}
+                  {% set op = ('+' if bet.opening_odds > 0 else '') ~ bet.opening_odds %}
+                  {% set cur = ('+' if bet.odds > 0 else '') ~ bet.odds %}
+                  {% set _clv_pos = bet.opening_odds > bet.odds %}
+                  <span class="clv-pill {{ 'clv-pill-pos' if _clv_pos else 'clv-pill-neg' }}"
+                        onclick="showClvPopover(event,{{ 'true' if _clv_pos else 'false' }})"
+                        title="{{ 'Line steamed — sharp money confirmed this edge' if _clv_pos else 'Line drifted — monitor this bet' }}">
+                    <span class="clv-pill-lbl">CLV {{ '▲' if _clv_pos else '▽' }}</span>
+                    <span class="clv-pill-val">{{ op }}→{{ cur }}</span>
+                  </span>
                 {% endif %}
               </div>
 
@@ -3268,20 +2977,6 @@ function computeValueScore(card) {
   const clvPts   = clv === 'pos' ? 10 : clv === 'neg' ? 0 : 5;
   return Math.min(100, Math.round(evPts + sharpPts + modPts + clvPts));
 }
-function renderValueScores() {
-  document.querySelectorAll('.bet-card').forEach(card => {
-    const chip  = card.querySelector('.vs-chip');
-    if (!chip) return;
-    const score = computeValueScore(card);
-    let cls = 'vs-weak', label = 'Low';
-    if (score >= 80)      { cls = 'vs-elite';  label = '★ Elite'; }
-    else if (score >= 60) { cls = 'vs-strong'; label = 'Strong'; }
-    else if (score >= 40) { cls = 'vs-fair';   label = 'Fair'; }
-    chip.className = 'vs-chip ' + cls;
-    chip.textContent = 'VS ' + score + ' · ' + label;
-  });
-}
-renderValueScores();
 
 // ── Countdown badges ────────────────────────────────────────────────────────
 function _updateCountdowns() {
