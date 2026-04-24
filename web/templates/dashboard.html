@@ -642,19 +642,19 @@ main { max-width: none !important; padding: 0 !important; }
 .cdwn-day   { background: rgba(79,158,255,0.10); color: var(--d-blue); border: 1px solid rgba(79,158,255,0.2); }
 @keyframes pulse-soon { 0%,100%{opacity:1} 50%{opacity:0.55} }
 
-/* CLV movement pill */
+/* CLV movement pill — single-line horizontal */
 .clv-pill {
   display: inline-flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  justify-content: center;
-  gap: 1px;
-  padding: 4px 9px;
-  border-radius: 8px;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 20px;
   cursor: pointer;
   transition: opacity 0.12s;
   flex-shrink: 0;
-  line-height: 1.1;
+  white-space: nowrap;
+  line-height: 1;
 }
 .clv-pill:hover { opacity: 0.8; }
 .clv-pill-pos {
@@ -668,14 +668,14 @@ main { max-width: none !important; padding: 0 !important; }
   border: 1px solid rgba(255,122,69,0.3);
 }
 .clv-pill-lbl {
-  font-size: 0.55rem;
+  font-size: 0.6rem;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  opacity: 0.75;
+  opacity: 0.8;
 }
 .clv-pill-val {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 800;
   letter-spacing: 0.01em;
   white-space: nowrap;
@@ -2126,20 +2126,15 @@ main { max-width: none !important; padding: 0 !important; }
   grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr));
 }
 
-/* Card header zone — two rows */
+/* Card header zone — single row */
 .card-hdr {
   display: flex;
-  flex-direction: column;
-  gap: 5px;
+  align-items: center;
+  gap: 8px;
   padding: 9px 14px 8px;
   border-bottom: 1px solid rgba(255,255,255,0.07);
 }
-/* Row 1: badges (left) + EV badge + checkbox (right) */
-.card-hdr-top {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
+/* Left: wrappable badges */
 .card-hdr-left {
   display: flex;
   align-items: center;
@@ -2148,23 +2143,15 @@ main { max-width: none !important; padding: 0 !important; }
   row-gap: 3px;
   flex: 1;
   min-width: 0;
+  overflow: hidden;
 }
+/* Right: CLV + EV badge + checkbox — all same height, never wrap */
 .card-hdr-right {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   flex-shrink: 0;
 }
-.card-hdr-right .ev-badge { margin-left: 0; }
-/* Row 2: VS score chip (left) + CLV (right) — hidden when empty */
-.card-hdr-btm {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  min-height: 0;
-}
-.card-hdr-btm:empty { display: none; }
 
 /* Tighter body padding */
 .card-body { padding: 14px 16px 18px; }
@@ -2607,10 +2594,9 @@ main { max-width: none !important; padding: 0 !important; }
 
 /* ── Mobile overrides for revamped card ─────────────────────── */
 @media (max-width: 768px) {
-  .card-hdr { padding: 8px 12px 7px; gap: 4px; }
+  .card-hdr { padding: 8px 12px 7px; gap: 6px; }
   .card-hdr-left { gap: 4px; row-gap: 3px; }
   .card-hdr-right { gap: 4px; }
-  .card-hdr-btm { gap: 4px; }
   .card-body { padding: 12px 12px 14px; }
   .bet-name-team,
   .bet-name-player { font-size: 1.05rem; }
@@ -2626,7 +2612,9 @@ main { max-width: none !important; padding: 0 !important; }
   .card-context { margin-bottom: 10px; font-size: 0.64rem; }
   .card-trend { margin-bottom: 5px; }
   .ev-badge { font-size: 0.76rem; padding: 3px 7px; }
-  .clv-pill { font-size: 0.59rem; padding: 2px 5px; }
+  .clv-pill { padding: 2px 7px; }
+  .clv-pill-lbl { font-size: 0.55rem; }
+  .clv-pill-val { font-size: 0.65rem; }
 }
 </style>
 {% endblock %}
@@ -2861,44 +2849,34 @@ main { max-width: none !important; padding: 0 !important; }
 
             {# ── Card Header ──────────────────────────────────────────── #}
             <div class="card-hdr">
-              {# Row 1: sport/market badges (left) · EV + checkbox (right) #}
-              <div class="card-hdr-top">
-                <div class="card-hdr-left">
-                  <span class="badge badge-league">{{ league_display }}</span>
-                  <span class="badge badge-market">{{ market_display }}</span>
-                  {% if (bet.source_type or 'sportsbook') == 'exchange' %}
-                  <span class="badge badge-pm" style="background:rgba(250,199,117,0.12);color:#F9C74F;">⚡ Exchange</span>
-                  {% elif (bet.source_type or 'sportsbook') == 'prediction_market' %}
-                  <span class="badge badge-pm">🔮 PM</span>
-                  {% endif %}
-                </div>
-                <div class="card-hdr-right">
-                  <span class="ev-badge {{ tier }}">+{{ "%.1f"|format(bet.ev_percent) }}% EV</span>
-                  <label class="card-select-label" title="Add to bet slip">
-                    <input type="checkbox" class="card-select-cb" onchange="updateSlip()">
-                  </label>
-                </div>
+              {# Left: sport / market badges #}
+              <div class="card-hdr-left">
+                <span class="badge badge-league">{{ league_display }}</span>
+                <span class="badge badge-market">{{ market_display }}</span>
+                {% if (bet.source_type or 'sportsbook') == 'exchange' %}
+                <span class="badge badge-pm" style="background:rgba(250,199,117,0.12);color:#F9C74F;">⚡ Exchange</span>
+                {% elif (bet.source_type or 'sportsbook') == 'prediction_market' %}
+                <span class="badge badge-pm">🔮 PM</span>
+                {% endif %}
               </div>
-              {# Row 2: live score (left) · CLV (right) — only when CLV data exists #}
-              {% if bet.opening_odds and bet.opening_odds != bet.odds %}
-                {% set op = ('+' if bet.opening_odds > 0 else '') ~ bet.opening_odds %}
-                {% set cur = ('+' if bet.odds > 0 else '') ~ bet.odds %}
-                {% set _clv_pos = bet.opening_odds > bet.odds %}
-                <div class="card-hdr-btm">
-                  <span class="vs-chip"></span>
+              {# Right: CLV (if any) · EV badge · checkbox — all same vertical midpoint #}
+              <div class="card-hdr-right">
+                {% if bet.opening_odds and bet.opening_odds != bet.odds %}
+                  {% set op = ('+' if bet.opening_odds > 0 else '') ~ bet.opening_odds %}
+                  {% set cur = ('+' if bet.odds > 0 else '') ~ bet.odds %}
+                  {% set _clv_pos = bet.opening_odds > bet.odds %}
                   <span class="clv-pill {{ 'clv-pill-pos' if _clv_pos else 'clv-pill-neg' }}"
                         onclick="showClvPopover(event,{{ 'true' if _clv_pos else 'false' }})"
                         title="{{ 'Line steamed — sharp money confirmed this edge' if _clv_pos else 'Line drifted — monitor this bet' }}">
                     <span class="clv-pill-lbl">CLV {{ '▲' if _clv_pos else '▽' }}</span>
-                    <span class="clv-pill-val">{{ op }} → {{ cur }}</span>
+                    <span class="clv-pill-val">{{ op }}→{{ cur }}</span>
                   </span>
-                </div>
-              {% else %}
-                {# No CLV — still render vs-chip for live score updates #}
-                <div class="card-hdr-btm">
-                  <span class="vs-chip"></span>
-                </div>
-              {% endif %}
+                {% endif %}
+                <span class="ev-badge {{ tier }}">+{{ "%.1f"|format(bet.ev_percent) }}% EV</span>
+                <label class="card-select-label" title="Add to bet slip">
+                  <input type="checkbox" class="card-select-cb" onchange="updateSlip()">
+                </label>
+              </div>
             </div>
 
             {# ── Card Body ────────────────────────────────────────────── #}
