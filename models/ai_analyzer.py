@@ -390,112 +390,61 @@ def _build_context(bet: dict, client: OptimalClient) -> dict:
 
 _SPORT_CONTEXT = {
     "basketball_nba": """
-**NBA Analysis — address in this exact priority order. Skip any item if the data is not in context.**
-
-1. PLAYOFF STAKES: Check game_situation for playoff_seed. If both teams are in a seeding battle (within 2 games of each other, or one game separating home-court advantage), lead with the specific scenario: "Team X holds the N seed, Team Y is M games back — tonight determines home-court in a potential Round 1 matchup." State both seeds. If no playoff implications, skip this point entirely.
-
-2. REST & B2B: If either team is on a back-to-back, name the team and state it explicitly. Do not mention rest unless a B2B is confirmed in context.
-
-3. RECENT FORM: State each team's last-10 record and current streak from game_situation (e.g., "Boston is 8-2 over their last 10, on a W4 streak"). Numbers only — no hedging.
-
-4. GAME PROJECTIONS: If game_projections is present, state the projected scores (home_score_mean, away_score_mean) and whether the model's home_win_probability aligns with or contradicts the true_prob. One sentence only.
-
-5. PLAYER PROPS: If this is a prop, cite the player's actual hit rate over the line from gamelogs (e.g., "Judge has gone Over 1.5 hits in 6 of his last 9 starts, 67% hit rate vs. the 58% implied by this line"). If gamelogs are absent, say so in one sentence.
+Lead with the single strongest fact for this bet (use only what's in context):
+- PLAYOFF SEEDING: If either team is within 2 games of a seed boundary or home-court advantage, open with that scenario and both seeds — this is the lead.
+- BACK-TO-BACK: Name the team explicitly if confirmed. A fatigued team on a B2B typically covers at a materially lower rate.
+- SHARP STEAM + FORM: If sharp score ≥50 and line moved toward this side, lead with that. Cite the last-10 record and streak.
+- PROPS: State the player's actual hit rate vs. this line from gamelogs (e.g. "Over in 7 of last 10 = 70% vs. 54% implied"). This is what makes or breaks the prop case.
+Skip anything not supported by the data provided.
 """,
 
     "icehockey_nhl": """
-**NHL Analysis — address in this exact priority order. Skip any item if the data is not in context.**
-
-1. PLAYOFF STAKES (HIGHEST PRIORITY): Check game_situation for conf_rank, pts, and playoff_note. If either team has a playoff_note OR their conf_rank is ≤12 and within 5 points of a playoff cutoff or division lead, LEAD with this. State both teams' current standing: conference rank, points total, points behind/ahead of the next relevant cutoff (wild card, division lead, or elimination). Example: "Florida is 1st in the Atlantic with 112 pts; Boston is 4 pts back of the 2nd wild-card spot with 3 games remaining — tonight is effectively must-win." If both teams are fully eliminated or fully clinched with no consequence, state that briefly and skip remaining playoff discussion.
-
-2. GOALTENDER MATCHUP: Name both confirmed starters. State their season GAA and save%. If either goalie is unconfirmed, say it explicitly. Do not invent goalie stats not present in context.
-
-3. RECENT FORM: State the last-10 record and current streak from game_situation for each team. Format: "Team X is 7-3 over their last 10, W3 streak."
-
-4. GAME PROJECTIONS: If present, state projected goals for each team and note whether the total aligns with the consensus. One sentence only.
-
-DO NOT mention home ice advantage, travel fatigue, power play%, or penalty kill% unless those specific numbers appear in the context data.
+Lead with the single strongest fact for this bet (use only what's in context):
+- PLAYOFF STAKES: Conference rank, points, gap to wild card or elimination — if meaningful, this is the lead. State exactly what tonight determines.
+- GOALTENDER MATCHUP: Name both confirmed starters and state GAA / save%. If unconfirmed, say so.
+- FORM: Last-10 record and current streak for each team.
+Skip anything not in the data.
 """,
 
     "baseball_mlb": """
-**MLB Analysis — address in this exact priority order. Skip any item if the data is not in context.**
-
-1. STARTING PITCHER MATCHUP (MANDATORY — highest signal): Name both starters. State season ERA and WHIP. If pitcher_vs_team is in context, LEAD with the starter's record vs. this specific opponent (e.g., "Cease is 0-3 with a 6.75 ERA in 4 starts against Atlanta this season — historically struggles with this lineup"). This is more predictive than season ERA. If only season stats are available, state the last start result (IP, ER, outcome) from last_starts if present.
-
-2. SERIES CONTEXT: Check game_situation game_notes for series standing. If present ("Team X leads the series 1-0"), state whether a team faces a series sweep or has a chance to sweep. This is high-signal motivational context. Skip if no series data.
-
-3. TEAM FORM: State each team's current streak and record from game_situation (e.g., "Cubs have lost 4 straight, 3-7 over last 10"). State it factually in one sentence per team.
-
-4. GAME PROJECTIONS: If present, state projected runs per team and whether the model total aligns with the line. One sentence.
-
-DO NOT mention weather, park factors, bullpen usage, or platoon splits unless those specific numbers are in the context data.
+Lead with the single strongest fact for this bet (use only what's in context):
+- PITCHER VS. THIS TEAM (highest priority if pitcher_vs_team is present): State the starter's record, ERA, and number of starts against this specific opponent. This is more predictive than season ERA.
+- PITCHER SEASON STATS: ERA, WHIP. Mention the last start result if available.
+- SERIES CONTEXT: Sweep scenario or series lead — strong motivational signal.
+- TEAM FORM: Current streak and last-10 record.
+Skip anything not in the data.
 """,
 
     "soccer_epl": """
-**EPL Analysis — address in this exact priority order. Skip any item if the data is not in context.**
-
-1. FORM TABLE: State each team's W/D/L record over their last 5 matches from team_history. If game_situation has a streak, state it. Numbers anchor every claim.
-
-2. TABLE POSITION / STAKES: If either team is in a relegation battle, title race, or top-4 fight, state the specific points gap and what tonight means. Skip if no meaningful stakes.
-
-3. KEY ABSENCES: Name any confirmed injured or suspended players from context. Do not speculate.
-
-4. GAME PROJECTIONS: If present, state projected goals and whether the model total aligns with the consensus.
+Lead with the single strongest fact: table stakes (relegation, title race, top-4 — with specific points gap) or form. State last 5 W/D/L. Named injuries if present in context.
 """,
 
     "soccer_spain_la_liga": """
-**La Liga Analysis — address in this exact priority order. Skip any item if the data is not in context.**
-
-1. FORM TABLE: State each team's W/D/L record over their last 5 matches from team_history and current streak from game_situation.
-
-2. TABLE STAKES: If title race, top-4 UCL fight, or relegation battle is involved, state the specific gap and scenario.
-
-3. KEY ABSENCES: Name confirmed injured or suspended players from context only.
-
-4. GAME PROJECTIONS: One sentence on projected total vs. consensus if present.
+Lead with La Liga table stakes (title, UCL fight, relegation) with specific points gap if applicable. State last 5 form. Named absences from context only.
 """,
 
     "soccer_germany_bundesliga": """
-**Bundesliga Analysis — address in this exact priority order. Skip any item if the data is not in context.**
-
-1. FORM TABLE: State W/D/L over last 5 and current streak from game_situation.
-
-2. TABLE STAKES: Title race, UCL qualification, or relegation context with specific points gap if applicable.
-
-3. KEY ABSENCES: Named injured or suspended players from context only.
+Lead with Bundesliga table stakes if applicable. State last 5 form and current streak.
 """,
 
     "soccer_usa_mls": """
-**MLS Analysis — address in this exact priority order. Skip any item if the data is not in context.**
-
-1. FORM: State last 5 record and current streak from game_situation. MLS home advantage is significant — note home/away record split if in context.
-
-2. STANDINGS STAKES: Playoff positioning if meaningful (within 3 points of a playoff spot).
-
-3. KEY ABSENCES: Named players from context only.
+State last 5 form and current streak. Mention playoff positioning if within 3 points. MLS home advantage is meaningful — note home/away record split if in the data.
 """,
 
     "soccer_uefa_champs_league": """
-**UCL Analysis — address in this exact priority order. Skip any item if the data is not in context.**
-
-1. TIE CONTEXT (CRITICAL): If this is a knockout second leg, state the aggregate score and exactly what each team needs (win by X, any win advances, must avoid Y goals, etc.). This is the single most important fact for UCL bets.
-
-2. SUSPENSION RISK: Name any player one yellow card away from a ban if mentioned in context. This affects roster choices.
-
-3. RECENT FORM: State last 5 results and current streak from game_situation.
-
-4. KEY ABSENCES: Named injured or suspended players from context only.
+If knockout second leg: state the aggregate score and exactly what each team needs to advance — this is the lead, and the most important fact. Suspension risk (one yellow from a ban). Last 5 form.
 """,
 }
 
-_SYSTEM_PROMPT = """You are a quantitative sports betting analyst producing institutional-grade research notes. Your output is read by serious bettors who want precise, data-backed analysis — not commentary or opinion.
+_SYSTEM_PROMPT = """You are a sharp, experienced sports bettor giving a friend a quick rundown on why a specific pick has real edge. Write like a knowledgeable handicapper — confident, specific, and direct. Not a research report.
 
-Tone and style rules (strictly enforced):
-- Write in a direct, factual register. Declarative sentences only. No rhetorical questions, no hedging phrases like "it seems" or "one could argue."
-- No conversational language. No "let's look at," "it's worth noting," "interestingly," or similar filler.
-- Sentence structure: lead with the fact, follow with the implication. Example: "New York has covered in 8 of its last 11 road games (72.7%), suggesting the spread is underpriced." Not: "The team has been doing well on the road recently."
-- Numbers anchor every claim. If you state form, include the record. If you state a line movement, include the opening and current line. If you state a stat, include the value.
-- If context data is sparse or missing, state it in one sentence only ("Insufficient live data to validate contextually.") and stop. Do not elaborate, do not list what data you would want, do not suggest what an analyst would need to see. Never use phrases like "to gain confidence," "an analyst would need," "it would be helpful to have," or any similar hypothetical about missing information.
+Tone rules (strictly enforced):
+- No section headers, no labels like "Mathematical Edge" or "Market & Situational Context." Just clear, flowing sentences.
+- Lead with the single strongest real-world fact you have. Don't bury the lede. If sharp money has steamed this line, say it first. If a pitcher is 0-3 with a 6.75 ERA against this lineup, say that first.
+- Weave the market angle in naturally — where the probability gap sits, why the book is wrong — without reciting formulas or using terms like "no-vig" or "implied probability."
+- Numbers anchor every claim. "Boston is 8-2 over their last 10" beats "Boston has been playing well." "Line moved from +130 to +115 overnight" beats "the line steamed."
+- If only pipeline signals are available (no live context), make those compelling — sharp money %, line movement direction, model edge. Do NOT say "insufficient live data" or list what data you wish you had.
+- 1 sentence maximum on risk. Name something specific that could sink this bet.
 - Never reference internal systems, field names, arrays, or API terminology.
 - Respond with ONLY the JSON object. No preamble, no markdown fences."""
 
@@ -794,24 +743,21 @@ def _build_prompt(bet: dict, ctx: dict) -> tuple[str, str]:
 **League:** {league}
 **Bet:** {bet_desc}
 **Book odds:** {odds_str}
-**Book implied probability:** {implied_prob}%
-**Model no-vig true probability:** {true_prob_pct}%
-**Model fair odds:** {fair_odds_str}
-**Edge (model prob − implied prob):** +{edge_pct}%
-**Model EV%:** {ev_pct}%
+**Model edge:** {true_prob_pct}% true probability vs. {implied_prob}% book-implied (+{edge_pct}% gap, {ev_pct}% EV)
+**Fair value odds:** {fair_odds_str}
 
-## Pipeline Signals (computed at time of bet capture — cite these directly)
+## Key Signals (use these as the factual basis — always reliable)
 
 {pipeline_section}
 
-These values were computed by the +EV pipeline at the time of the hourly scan. Use them as the primary factual basis for contextual_validation — they are always present and reliable. Model projections, sharp money splits, line movement direction, and recent form trends are the most important signals for explaining WHY this edge exists.
+Sharp money splits, line movement, and model projections are the strongest signals. Weave them into the narrative naturally.
 
 ## Live Context Data Quality
 
 **Status:** {ctx_quality}
-**Additional data fetched:** {ctx_fields_str}
+**Additional data:** {ctx_fields_str}
 
-Use live context data below as supplementary support for the pipeline signals above. If live context is SPARSE or NONE, base your analysis on the pipeline signals — they are sufficient to write a specific, data-backed contextual_validation. Do NOT say "insufficient live data" if pipeline signals are present. Never mention internal field names, API structures, or system internals.
+Use as supplementary support. If sparse, lean on the key signals above. Never mention internal field names or API structures.
 
 ## Live Context Data
 
@@ -823,28 +769,30 @@ Use live context data below as supplementary support for the pipeline signals ab
 
 ## Your Task
 
-Produce a structured JSON analysis. Requirements:
+Write like a sharp bettor tipping off a friend. Someone clicks Analyze and needs to understand in 4–5 sentences exactly WHY this pick has edge and why it's worth placing.
 
-**SPECIFICITY RULES (strictly enforced):**
-- `contextual_validation` MUST draw primarily from the Pipeline Signals section above. Lead with the single most compelling signal: sharp steam (line movement + high sharp score), model projection vs. book line discrepancy, lopsided public money vs. smart money divergence, or recent form trend. Then weave in any corroborating facts from the live context data. Generic observations ("the team has been playing well") are not acceptable — every claim must cite a specific number from the pipeline signals or live context. If pipeline signals show sharp steam, a projection discrepancy, or a meaningful bet/money split, that IS the contextual validation — cite those numbers directly.
-- `mathematical_justification` MUST include the specific no-vig calculation showing how {true_prob_pct}% was derived vs. the book's {implied_prob}% implied probability, and what the {edge_pct}% edge means in dollar terms on a flat $100 bet.
-- `risk_factors` MUST name a specific player, matchup attribute, or situation — not a generic disclaimer.
-- `summary` must be punchy and specific — include the team/player name and the core reason for the edge (sharp steam, projection gap, public fade, etc.).
+**why_bet** (3–4 sentences, no section headers, no formula recitation):
+Lead with the single sharpest real-world fact you have — a pitcher's terrible history against this lineup, sharp money steaming the line, a specific playoff seeding battle, a player hitting this prop at 70% vs. 54% implied. Then weave in the market angle plainly: what the model sees vs. what the book is pricing, and why that gap exists. Add one supporting fact that makes the case stronger. Keep it concise and direct.
+
+**risk** (1 sentence): Name the specific player, scenario, or matchup factor that could make this bet lose. No generic disclaimers.
+
+**edge_tag** (4–6 words): The sharpest description of why this bet has edge. Examples: "Sharp steam confirms the model" / "Pitcher struggles vs. this lineup" / "Books overpricing the favorite" / "Public fading the wrong side" / "Model projects comfortable cover."
+
+**recommended_action**: "Strong Bet", "Moderate Bet", "Lean", or "Pass."
 
 ```json
 {{
-  "true_prob_refined": <float 0.0-1.0, your probability blending model + context. Adjust from {round(true_prob, 3)} based on what context supports>,
-  "confidence_score": <int 1-100. Score based on TOTAL signal: pipeline data (projections, sharp score, line movement, form) + live context. If pipeline signals are rich (projections present, sharp score ≥50, clear line steam) score can reach 70-85 even with SPARSE live context. Score <60 only if BOTH pipeline signals AND live context are absent or contradictory. 80-100=high conviction, 60-79=moderate, 40-59=low, <40=pass>,
+  "true_prob_refined": <float 0.0-1.0, blend model + context. Start from {round(true_prob, 3)}>,
+  "confidence_score": <int 1-100. Rich pipeline signals (projections, sharp score ≥50, clear line steam) = 70-85. Both signals and context absent/contradictory = below 60. 80-100=high conviction, 60-79=moderate, 40-59=low, below 40=pass>,
   "kelly_full_pct": <float, full Kelly % capped at 8.0>,
   "kelly_fractional_pct": <float, 25% fractional Kelly %>,
   "ev_pct_refined": <float, EV% using your refined true_prob>,
   "context_quality": "{ctx_quality}",
   "analysis": {{
-    "summary": "<1-2 sentences. Must name the specific team/player and state the core edge source.>",
-    "mathematical_justification": "<4-6 sentences. Must include: (1) how the no-vig model derives {true_prob_pct}% true probability, (2) what {implied_prob}% book implied prob means the book thinks, (3) the {edge_pct}% gap in concrete terms, (4) expected profit on a $100 flat bet.>",
-    "contextual_validation": "<3-5 declarative sentences. LEAD with the single highest-signal contextual fact (playoff stakes, pitcher-vs-opponent history, series context, player hit rate, sweep scenario — whichever is most relevant and present in the data). Follow with 1-2 supporting facts. Format every claim as: [Specific fact with number] — [Direct implication for this bet]. If live data was unavailable, write exactly one sentence: 'Insufficient live data to validate contextually.' Do not list missing data, do not speculate, no hypotheticals.>",
-    "risk_factors": "<2-3 sentences. Must name a specific player, injury, matchup factor, or situational risk — no generic disclaimers.>",
-    "recommended_action": "<'Strong Bet', 'Moderate Bet', 'Lean', or 'Pass' — Pass is valid if context contradicts the model strongly>"
+    "recommended_action": "<Strong Bet|Moderate Bet|Lean|Pass>",
+    "edge_tag": "<4-6 words capturing the core edge>",
+    "why_bet": "<3-4 sentences. No headers. Lead with the best real-world fact. Weave in market angle. Add one supporting fact.>",
+    "risk": "<1 sentence naming a specific player, scenario, or matchup factor.>"
   }}
 }}
 ```
@@ -998,23 +946,21 @@ def analyze_bet(bet: dict, optimal_client: Optional[OptimalClient] = None) -> Op
     ctx_quality = raw.get("context_quality", "")
 
     # Format the human-readable analysis block
-    summary   = analysis_obj.get("summary", "")
-    math_just = analysis_obj.get("mathematical_justification", "")
-    ctx_valid = _sanitize_context_text(analysis_obj.get("contextual_validation", ""))
-    risk      = analysis_obj.get("risk_factors", "")
-    rec       = analysis_obj.get("recommended_action", "Moderate Bet")
+    why_bet  = _sanitize_context_text(analysis_obj.get("why_bet", ""))
+    risk     = analysis_obj.get("risk", "")
+    rec      = analysis_obj.get("recommended_action", "Moderate Bet")
+    edge_tag = analysis_obj.get("edge_tag", "")
 
     # Prepend a data-quality notice if context was thin
     ctx_notice = ""
     if ctx_quality and ("SPARSE" in ctx_quality or "NONE" in ctx_quality):
-        ctx_notice = "⚠️ *Live data was limited for this pick — confidence is lower than usual.*\n\n"
+        ctx_notice = "⚠️ *Live data was limited for this pick — treat confidence accordingly.*\n\n"
 
     formatted = (
         f"{ctx_notice}"
-        f"**{rec}** — {summary}\n\n"
-        f"**Mathematical Edge**\n{math_just}\n\n"
-        f"**Market & Situational Context**\n{ctx_valid}\n\n"
-        f"**Key Risks**\n{risk}"
+        f"**{rec}**\n\n"
+        f"{why_bet}\n\n"
+        f"⚠️ {risk}"
     )
 
     return {
@@ -1024,6 +970,7 @@ def analyze_bet(bet: dict, optimal_client: Optional[OptimalClient] = None) -> Op
         "true_prob_refined": true_prob_refined,
         "ev_pct_refined":    ev_refined,
         "context_quality":   ctx_quality,
+        "edge_tag":          edge_tag,
         "raw":               raw,
     }
 

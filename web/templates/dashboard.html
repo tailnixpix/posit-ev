@@ -1062,9 +1062,12 @@ main { max-width: none !important; padding: 0 !important; }
 .ai-conf-high   { background: var(--d-green-dim); color: var(--d-green); }
 .ai-conf-med    { background: rgba(255,200,0,0.1); color: #F5C542; }
 .ai-conf-low    { background: rgba(255,91,91,0.1); color: var(--d-red); }
-.ai-panel-meta  { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.ai-panel-meta  { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
 .ai-kelly-chip  { font-size: 0.68rem; font-weight: 600; color: var(--d-purple); background: rgba(155,121,250,0.12); padding: 2px 8px; border-radius: 10px; }
-.ai-panel-footer { margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(155,121,250,0.12); font-size: 0.62rem; color: var(--d-muted); font-style: italic; }
+.ai-edge-tag    { font-size: 0.68rem; font-weight: 600; color: var(--d-blue); background: rgba(79,158,255,0.1); border: 1px solid rgba(79,158,255,0.2); padding: 2px 8px; border-radius: 10px; }
+.ai-panel-body  { font-size: 0.84rem; line-height: 1.7; color: var(--d-sub); }
+.ai-panel-body strong { color: var(--d-text); font-size: 0.9rem; }
+.ai-panel-footer { margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(155,121,250,0.12); font-size: 0.62rem; color: var(--d-muted); font-style: italic; }
 
 /* ── TABLE VIEW ── */
 .table-view { display: none; overflow-x: auto; }
@@ -5159,6 +5162,7 @@ function toggleAiPanel(btn) {
         const confLabel = conf >= 75 ? '🟢 High Conf' : conf >= 50 ? '🟡 Medium' : '🔴 Low';
         metaEl.innerHTML = `<span class="ai-conf ${confClass}">${confLabel} (${conf}%)</span>`;
         if (data.kelly_pct) metaEl.innerHTML += ` <span class="ai-kelly-chip">¼ Kelly: ${parseFloat(data.kelly_pct).toFixed(1)}%</span>`;
+        if (data.edge_tag)  metaEl.innerHTML += ` <span class="ai-edge-tag">⚡ ${data.edge_tag}</span>`;
       }
       if (bodyEl) {
         bodyEl.innerHTML = `<div class="ai-panel-body">${(data.analysis || '').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>')}</div>`;
@@ -5254,6 +5258,7 @@ function toggleAnalysisPanel(betId, btn) {
         const cl = conf >= 75 ? '🟢 High Conf' : conf >= 50 ? '🟡 Medium' : '🔴 Low';
         metaEl.innerHTML = `<span class="ai-conf ${cc}">${cl} (${conf}%)</span>`;
         if (data.kelly_pct) metaEl.innerHTML += ` <span class="ai-kelly-chip">¼ Kelly: ${parseFloat(data.kelly_pct).toFixed(1)}%</span>`;
+        if (data.edge_tag)  metaEl.innerHTML += ` <span class="ai-edge-tag">⚡ ${data.edge_tag}</span>`;
       }
       if (bodyEl) {
         bodyEl.innerHTML = `<div class="ai-panel-body">${(data.analysis || '').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>')}</div>`;

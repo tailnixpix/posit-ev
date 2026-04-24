@@ -1115,6 +1115,7 @@ async def get_analysis(bet_id: int, request: Request, db: Session = Depends(get_
             "confidence_score":  bet_row.confidence_score,
             "kelly_pct":         bet_row.kelly_pct,
             "cached":            True,
+            "edge_tag":          "",
         })
 
     # Build bet dict for analyzer — include ALL rich pipeline fields so Claude
@@ -1192,6 +1193,7 @@ async def get_analysis(bet_id: int, request: Request, db: Session = Depends(get_
         "analysis":          result["analysis"],
         "confidence_score":  result["confidence_score"],
         "kelly_pct":         result["kelly_pct"],
+        "edge_tag":          result.get("edge_tag", ""),
         "cached":            False,
     })
 
