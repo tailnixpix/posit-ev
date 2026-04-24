@@ -645,19 +645,41 @@ main { max-width: none !important; padding: 0 !important; }
 /* CLV movement pill */
 .clv-pill {
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
-  gap: 3px;
-  padding: 2px 8px;
-  border-radius: 20px;
-  font-size: 0.65rem;
-  font-weight: 700;
+  justify-content: center;
+  gap: 1px;
+  padding: 4px 9px;
+  border-radius: 8px;
   cursor: pointer;
-  letter-spacing: 0.01em;
   transition: opacity 0.12s;
+  flex-shrink: 0;
+  line-height: 1.1;
 }
 .clv-pill:hover { opacity: 0.8; }
-.clv-pill-pos { background: rgba(0,214,143,0.10); color: var(--d-green); border: 1px solid rgba(0,214,143,0.25); }
-.clv-pill-neg { background: rgba(255,122,69,0.10); color: var(--d-orange); border: 1px solid rgba(255,122,69,0.25); }
+.clv-pill-pos {
+  background: rgba(0,214,143,0.10);
+  color: var(--d-green);
+  border: 1px solid rgba(0,214,143,0.3);
+}
+.clv-pill-neg {
+  background: rgba(255,122,69,0.10);
+  color: var(--d-orange);
+  border: 1px solid rgba(255,122,69,0.3);
+}
+.clv-pill-lbl {
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+.clv-pill-val {
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
 
 /* Card selection checkbox (bet slip) */
 .card-select-label {
@@ -1601,7 +1623,9 @@ main { max-width: none !important; padding: 0 !important; }
 
   /* Signal row: ensure it never forces card width wider */
   .signal-row { margin-bottom: 12px; }
-  .clv-pill   { font-size: 0.6rem; padding: 2px 6px; }
+  .clv-pill   { padding: 3px 7px; }
+  .clv-pill-val { font-size: 0.68rem; }
+  .clv-pill-lbl { font-size: 0.5rem; }
   .sig        { font-size: 0.6rem; }
 
   /* Action buttons: first button full-width, secondary buttons share row */
@@ -2821,7 +2845,7 @@ main { max-width: none !important; padding: 0 !important; }
             <div class="card-ribbon ribbon-top2">✅ Strong Pick — High Model Edge</div>
             {% endif %}
 
-            {# ── Card Header: badges · CLV pill · VS score · EV · ☑ ───── #}
+            {# ── Card Header: badges · VS score · CLV · EV · ☑ ──────── #}
             <div class="card-hdr">
               <div class="card-hdr-left">
                 <span class="badge badge-league">{{ league_display }}</span>
@@ -2831,6 +2855,9 @@ main { max-width: none !important; padding: 0 !important; }
                 {% elif (bet.source_type or 'sportsbook') == 'prediction_market' %}
                 <span class="badge badge-pm">🔮 PM</span>
                 {% endif %}
+              </div>
+              <div class="card-hdr-right">
+                <span class="vs-chip"></span>
                 {% if bet.opening_odds and bet.opening_odds != bet.odds %}
                   {% set op = ('+' if bet.opening_odds > 0 else '') ~ bet.opening_odds %}
                   {% set cur = ('+' if bet.odds > 0 else '') ~ bet.odds %}
@@ -2838,12 +2865,10 @@ main { max-width: none !important; padding: 0 !important; }
                   <span class="clv-pill {{ 'clv-pill-pos' if _clv_pos else 'clv-pill-neg' }}"
                         onclick="showClvPopover(event,{{ 'true' if _clv_pos else 'false' }})"
                         title="{{ 'Line steamed — sharp money confirmed this edge' if _clv_pos else 'Line drifted — monitor this bet' }}">
-                    {{ '▲' if _clv_pos else '▽' }} {{ op }}→{{ cur }}
+                    <span class="clv-pill-lbl">CLV {{ '▲' if _clv_pos else '▽' }}</span>
+                    <span class="clv-pill-val">{{ op }} → {{ cur }}</span>
                   </span>
                 {% endif %}
-              </div>
-              <div class="card-hdr-right">
-                <span class="vs-chip"></span>
                 <span class="ev-badge {{ tier }}">+{{ "%.1f"|format(bet.ev_percent) }}% EV</span>
                 <label class="card-select-label" title="Add to bet slip">
                   <input type="checkbox" class="card-select-cb" onchange="updateSlip()">
