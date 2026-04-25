@@ -1054,9 +1054,17 @@ async def get_projection(bet_id: int, request: Request, db: Session = Depends(ge
             model_agrees = spread_mean > -point if is_home_bet else spread_mean < point
 
     elif market == "h2h":
-        home_win_prob = merged.get("home_win_probability")
-        if home_win_prob is not None:
-            model_agrees = home_win_prob > 0.5 if is_home_bet else home_win_prob < 0.5
+        # Prefer projected scores — they're what the card displays and are unambiguous.
+        # Fall back to home_win_probability only when scores aren't available.
+        hs_h2h = merged.get("home_score_mean")
+        as_h2h = merged.get("away_score_mean")
+        if hs_h2h is not None and as_h2h is not None:
+            # Model agrees with the bet if the betted team is projected to score more
+            model_agrees = hs_h2h > as_h2h if is_home_bet else as_h2h > hs_h2h
+        else:
+            home_win_prob = merged.get("home_win_probability")
+            if home_win_prob is not None:
+                model_agrees = home_win_prob > 0.5 if is_home_bet else home_win_prob < 0.5
 
     if model_agrees is not None:
         merged["model_agrees_with_bet"] = model_agrees
