@@ -1931,6 +1931,7 @@ async def admin_add_pick(
     pick_date:  str   = Form(...),   # YYYY-MM-DD
     game:       str   = Form(""),
     team:       str   = Form(""),
+    league:     str   = Form(""),    # sport key e.g. "baseball_mlb"
     market:     str   = Form("h2h"),
     point:      str   = Form(""),    # optional float as string
     book:       str   = Form(""),
@@ -1949,12 +1950,14 @@ async def admin_add_pick(
         raise HTTPException(status_code=400, detail="Invalid date format, use YYYY-MM-DD")
     if result not in {"won", "lost", "push", "pending"}:
         result = "pending"
+    league_val = league.strip() or None
     point_val = float(point) if point.strip() else None
     existing = db.query(DailyPick).filter(DailyPick.pick_date == pd).first()
     if existing:
         # Update existing row rather than error
         existing.game       = game or existing.game
         existing.team       = team or existing.team
+        existing.league     = league_val or existing.league  # update league if provided
         existing.market     = market or existing.market
         existing.point      = point_val if point_val is not None else existing.point
         existing.book       = book or existing.book
@@ -1962,12 +1965,13 @@ async def admin_add_pick(
         existing.ev_percent = ev_percent
         existing.result     = result
         db.commit()
-        log.info("Admin updated pick for %s", pd)
+        log.info("Admin updated pick for %s (league=%s)", pd, existing.league)
     else:
         db.add(DailyPick(
             pick_date  = pd,
             game       = game,
             team       = team,
+            league     = league_val,
             market     = market,
             point      = point_val,
             book       = book,
@@ -1977,7 +1981,7 @@ async def admin_add_pick(
             sent_at    = datetime.now(timezone.utc),
         ))
         db.commit()
-        log.info("Admin added pick for %s", pd)
+        log.info("Admin added pick for %s (league=%s)", pd, league_val)
     return RedirectResponse(url="/admin", status_code=303)
 
 
@@ -1985,20 +1989,24 @@ async def admin_add_pick(
 async def admin_update_pick_result(
     request: Request,
     pick_id: int = Form(...),
-    result: str = Form(...),
+    result:  str = Form(...),
+    league:  str = Form(""),   # optional — lets admin fix wrong sport assignment
     db: Session = Depends(get_db),
 ):
     if not _is_admin(request):
         return RedirectResponse(url="/admin/login", status_code=303)
-    """Update the result of a daily pick (won / lost / push / pending)."""
+    """Update the result (and optionally the sport/league) of a daily pick."""
     if result not in {"won", "lost", "push", "pending"}:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid result '{result}'")
     pick = db.query(DailyPick).filter(DailyPick.id == pick_id).first()
     if not pick:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pick not found")
     pick.result = result
+    if league.strip():                 # only update league when admin explicitly chose one
+        pick.league = league.strip()
     db.commit()
-    log.info("Admin updated pick %d (%s — %s) result → %s", pick_id, pick.pick_date, pick.team, result)
+    log.info("Admin updated pick %d (%s — %s) result → %s, league → %s",
+             pick_id, pick.pick_date, pick.team, result, pick.league)
     return RedirectResponse(url="/admin", status_code=303)
 
 

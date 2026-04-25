@@ -691,6 +691,7 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
             <thead>
               <tr>
                 <th>Date</th>
+                <th>Sport</th>
                 <th>Game</th>
                 <th>Team / Bet</th>
                 <th>Odds</th>
@@ -701,12 +702,16 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
               </tr>
             </thead>
             <tbody>
+              {% set _pick_label_map = {"basketball_nba":"NBA","icehockey_nhl":"NHL","baseball_mlb":"MLB","soccer_epl":"EPL","soccer_spain_la_liga":"La Liga","soccer_germany_bundesliga":"Bundesliga","soccer_usa_mls":"MLS","americanfootball_nfl":"NFL","soccer_uefa_champs_league":"UCL"} %}
               {% for pick in daily_picks_all %}
               {% set row_class = {"won":"pick-row-won","lost":"pick-row-lost","push":"pick-row-push"}.get(pick.result or "", "") %}
               {% set pick_clv = picks_clv.get(pick.id) %}
               <tr class="{{ row_class }}">
                 <td style="white-space:nowrap; font-size:0.82rem;">
                   {{ pick.pick_date.strftime('%b %-d') if pick.pick_date else '—' }}
+                </td>
+                <td style="font-size:0.78rem; font-weight:600; white-space:nowrap; color:{% if pick.league %}var(--brand-primary){% else %}#C53030{% endif %};">
+                  {{ _pick_label_map.get(pick.league, pick.league or '⚠️ None') }}
                 </td>
                 <td style="font-size:0.82rem; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
                   {{ pick.game or '—' }}
@@ -741,8 +746,20 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
                   {% endif %}
                 </td>
                 <td style="white-space:nowrap;">
-                  <form method="post" action="/admin/pick-result" style="margin:0;display:flex;align-items:center;gap:4px;">
+                  <form method="post" action="/admin/pick-result" style="margin:0;display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
                     <input type="hidden" name="pick_id" value="{{ pick.id }}" />
+                    <select name="league" class="result-select" title="Sport / League">
+                      <option value="" {% if not pick.league %}selected{% endif %}>— Sport —</option>
+                      <option value="baseball_mlb"              {% if pick.league == 'baseball_mlb' %}selected{% endif %}>MLB</option>
+                      <option value="basketball_nba"            {% if pick.league == 'basketball_nba' %}selected{% endif %}>NBA</option>
+                      <option value="icehockey_nhl"             {% if pick.league == 'icehockey_nhl' %}selected{% endif %}>NHL</option>
+                      <option value="americanfootball_nfl"      {% if pick.league == 'americanfootball_nfl' %}selected{% endif %}>NFL</option>
+                      <option value="soccer_usa_mls"            {% if pick.league == 'soccer_usa_mls' %}selected{% endif %}>MLS</option>
+                      <option value="soccer_epl"                {% if pick.league == 'soccer_epl' %}selected{% endif %}>EPL</option>
+                      <option value="soccer_spain_la_liga"      {% if pick.league == 'soccer_spain_la_liga' %}selected{% endif %}>La Liga</option>
+                      <option value="soccer_germany_bundesliga" {% if pick.league == 'soccer_germany_bundesliga' %}selected{% endif %}>Bundesliga</option>
+                      <option value="soccer_uefa_champs_league" {% if pick.league == 'soccer_uefa_champs_league' %}selected{% endif %}>UCL</option>
+                    </select>
                     <select name="result" class="result-select">
                       <option value="pending" {% if not pick.result or pick.result == 'pending' %}selected{% endif %}>Pending</option>
                       <option value="won"     {% if pick.result == 'won'  %}selected{% endif %}>Won</option>
@@ -777,6 +794,21 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
                 <div class="pick-add-field">
                   <label>Team / Outcome</label>
                   <input type="text" name="team" placeholder="Over" required />
+                </div>
+                <div class="pick-add-field">
+                  <label>Sport <span style="color:#C53030;">*</span></label>
+                  <select name="league" required>
+                    <option value="">— Select —</option>
+                    <option value="baseball_mlb">MLB</option>
+                    <option value="basketball_nba">NBA</option>
+                    <option value="icehockey_nhl">NHL</option>
+                    <option value="americanfootball_nfl">NFL</option>
+                    <option value="soccer_usa_mls">MLS</option>
+                    <option value="soccer_epl">EPL</option>
+                    <option value="soccer_spain_la_liga">La Liga</option>
+                    <option value="soccer_germany_bundesliga">Bundesliga</option>
+                    <option value="soccer_uefa_champs_league">UCL</option>
+                  </select>
                 </div>
                 <div class="pick-add-field">
                   <label>Market</label>
