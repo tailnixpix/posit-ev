@@ -998,11 +998,31 @@ def fetch_game_projections(game: str, league: str) -> dict:
             log.debug("fetch_game_projections: matched rows but no projection data for %s", game)
             # Fall through to MLB fallback below
         else:
+            # Derive individual team scores from spread + total when Optimal doesn't
+            # provide homeScore/awayScore directly (common for NHL, soccer).
+            # home_score = (total + spread) / 2,  away_score = (total - spread) / 2
+            # where spread_mean is the home team's projected margin (positive = home wins by that much)
+            if (
+                result.get("home_score_mean") is None
+                and result.get("total_mean") is not None
+                and result.get("spread_mean") is not None
+            ):
+                _t = float(result["total_mean"])
+                _s = float(result["spread_mean"])
+                result["home_score_mean"] = round((_t + _s) / 2, 2)
+                result["away_score_mean"] = round((_t - _s) / 2, 2)
+                log.debug(
+                    "fetch_game_projections: derived scores for %s → home=%.2f away=%.2f",
+                    game, result["home_score_mean"], result["away_score_mean"],
+                )
+
             log.info(
-                "fetch_game_projections: %s spread=%.2f total=%.2f home_win=%.1f%%",
+                "fetch_game_projections: %s spread=%.2f total=%.2f home=%.2f away=%.2f home_win=%.1f%%",
                 game,
                 result.get("spread_mean", 0),
                 result.get("total_mean", 0),
+                result.get("home_score_mean") or 0,
+                result.get("away_score_mean") or 0,
                 (result.get("home_win_probability") or 0) * 100,
             )
             return result
