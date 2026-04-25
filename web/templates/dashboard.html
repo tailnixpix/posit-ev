@@ -1114,6 +1114,14 @@ main { max-width: none !important; padding: 0 !important; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.tracker-item-ctx {
+  font-size: 0.72rem;
+  color: var(--d-sub);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 3px;
+}
 .tracker-item-meta {
   display: flex;
   justify-content: space-between;
@@ -5140,10 +5148,13 @@ function renderTrackerDrawer() {
     if (e.result === 'won')  { plStr = '+$' + e.profit.toFixed(2);          plClass = 'positive'; resultClass = 'result-won'; }
     if (e.result === 'lost') { plStr = '−$' + Math.abs(e.profit).toFixed(2); plClass = 'negative'; resultClass = 'result-lost'; }
     if (e.result === 'push') { plStr = 'Push';                               plClass = 'neutral';  resultClass = 'result-push'; }
+    const contextParts = [e.market || '', e.game || ''].filter(Boolean);
+    const contextLine  = contextParts.join(' · ');
     return `<div class="tracker-item ${resultClass}">
       <div class="tracker-item-top">
         <div class="tracker-item-info">
           <div class="tracker-item-team">${e.team || '—'}</div>
+          ${contextLine ? `<div class="tracker-item-ctx">${contextLine}</div>` : ''}
           <div class="tracker-item-meta">
             <span>${oddsStr}${bookDisp ? ' · ' + bookDisp : ''}</span>
             <span class="tracker-item-meta-right">$${e.stake} stake · ${dateStr}</span>
