@@ -1209,24 +1209,38 @@ async def get_analysis(bet_id: int, request: Request, db: Session = Depends(get_
 
 @app.get("/", response_class=HTMLResponse)
 async def landing(request: Request, db: Session = Depends(get_db)):
-    from datetime import date, timedelta
-    thirty_days_ago = date.today() - timedelta(days=30)
-    recent_picks = (
+    all_picks = (
         db.query(DailyPick)
-        .filter(DailyPick.pick_date >= thirty_days_ago)
         .order_by(DailyPick.pick_date.desc())
         .all()
     )
-    settled  = [p for p in recent_picks if p.result in ("won", "lost", "push")]
+    settled  = [p for p in all_picks if p.result in ("won", "lost", "push")]
     won      = sum(1 for p in settled if p.result == "won")
     lost     = sum(1 for p in settled if p.result == "lost")
     win_rate = round(won / (won + lost) * 100) if (won + lost) > 0 else None
+
+    # P&L based on $20 flat unit size
+    UNIT = 20.0
+    total_pl = 0.0
+    for p in settled:
+        if not p.odds:
+            continue
+        if p.result == "won":
+            total_pl += UNIT * p.odds / 100 if p.odds > 0 else UNIT * 100 / abs(p.odds)
+        elif p.result == "lost":
+            total_pl -= UNIT
+        # push = 0
+    total_pl    = round(total_pl, 2)
+    total_units = round(total_pl / UNIT, 2)
+
     return templates.TemplateResponse(request, "index.html", {
-        "track_picks":    recent_picks[:15],
+        "track_picks":    all_picks,
         "track_won":      won,
         "track_lost":     lost,
         "track_total":    len(settled),
         "track_win_rate": win_rate,
+        "track_pl":       total_pl,
+        "track_units":    total_units,
     })
 
 
