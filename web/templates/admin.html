@@ -1108,6 +1108,7 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
             {{ u.stripe_customer_id or '—' }}
           </td>
           <td>
+            <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-start;">
             {% if not u.is_subscribed %}
             <form method="post" action="/admin/grant-access" style="margin:0;">
               <input type="hidden" name="user_id" value="{{ u.id }}" />
@@ -1135,6 +1136,21 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
               </button>
             </form>
             {% endif %}
+            <form method="post" action="/admin/grant-trial" style="margin:0;">
+              <input type="hidden" name="user_id" value="{{ u.id }}" />
+              <input type="hidden" name="days" value="7" />
+              <input type="hidden" name="redirect_tier" value="{{ current_tier }}" />
+              <input type="hidden" name="redirect_q" value="{{ current_q }}" />
+              <input type="hidden" name="redirect_page" value="{{ current_page }}" />
+              <button type="submit" style="font-size:0.72rem;padding:3px 10px;
+                background:rgba(251,191,36,0.12);color:#D97706;
+                border:1px solid rgba(251,191,36,0.35);
+                border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600;
+                white-space:nowrap;">
+                ⏱ Trial 7d
+              </button>
+            </form>
+            </div>
           </td>
         </tr>
         {% endfor %}

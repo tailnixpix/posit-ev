@@ -1756,22 +1756,25 @@ async def admin_dashboard(
 
     # Global stats — always unfiltered counts (efficient, no full table load)
     _now_admin = datetime.now(timezone.utc)
-    user_total       = db.query(User).count()
-    # Trial: subscribed + stripe sub + trial still active
+    user_total = db.query(User).count()
+    # Trial: subscribed + active trial_ends_at (regardless of stripe sub ID —
+    # manual comp trials set is_subscribed+trial_ends_at without a Stripe sub).
     user_trial = db.query(User).filter(
         User.is_subscribed.is_(True),
-        User.stripe_subscription_id.isnot(None),
         User.trial_ends_at.isnot(None),
         User.trial_ends_at > _now_admin,
     ).count()
-    # Paid: subscribed + stripe sub + NOT in active trial (or no trial set)
+    # Paid via Stripe: subscribed + stripe sub + NOT in active trial
     user_paid_stripe = db.query(User).filter(
         User.is_subscribed.is_(True),
         User.stripe_subscription_id.isnot(None),
-    ).count() - user_trial
+        ~(User.trial_ends_at.isnot(None) & (User.trial_ends_at > _now_admin)),
+    ).count()
+    # Comped: subscribed + no stripe sub + no active trial
     user_comped = db.query(User).filter(
         User.is_subscribed.is_(True),
         User.stripe_subscription_id.is_(None),
+        ~(User.trial_ends_at.isnot(None) & (User.trial_ends_at > _now_admin)),
     ).count()
     user_paid  = user_paid_stripe + user_comped   # backward-compat total (excl. trial)
     user_free  = user_total - user_paid - user_trial
@@ -2095,6 +2098,31 @@ async def admin_revoke_access(
         user.is_subscribed = False
         db.commit()
         log.info("Admin revoked access from %s", user.email)
+    params = f"?tier={redirect_tier}&q={redirect_q}&page={redirect_page}"
+    return RedirectResponse(url=f"/admin{params}", status_code=303)
+
+
+@app.post("/admin/grant-trial")
+async def admin_grant_trial(
+    request: Request,
+    user_id: int = Form(...),
+    days: int = Form(7),
+    redirect_tier: str = Form("all"),
+    redirect_q: str = Form(""),
+    redirect_page: int = Form(1),
+    db: Session = Depends(get_db),
+):
+    """Grant (or extend) a free trial for a user — sets trial_ends_at = now + days."""
+    if not _is_admin(request):
+        return RedirectResponse(url="/admin/login", status_code=303)
+    user = db.query(User).filter(User.id == user_id).first()
+    if user:
+        from datetime import datetime, timezone, timedelta as _td
+        new_end = datetime.now(timezone.utc) + _td(days=days)
+        user.trial_ends_at = new_end
+        user.is_subscribed = True          # ensure access is active
+        db.commit()
+        log.info("Admin granted %d-day trial to %s (ends %s)", days, user.email, new_end.date())
     params = f"?tier={redirect_tier}&q={redirect_q}&page={redirect_page}"
     return RedirectResponse(url=f"/admin{params}", status_code=303)
 
