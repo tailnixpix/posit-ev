@@ -420,6 +420,10 @@ async def register(
             db.add(NewsletterSubscriber(email=email, is_active=True))
             db.commit()
             log.info("Auto-subscribed %s to newsletter on registration.", email)
+        # Sync to Beehiiv so the subscriber appears in Beehiiv's list and
+        # future daily posts (sent via Beehiiv's API) reach them.
+        from web.beehiiv import add_subscriber as _bh_add  # lazy import avoids circular
+        _bh_add(email)
         # Send newsletter welcome email (non-blocking)
         from web.newsletter import send_newsletter_welcome  # lazy import avoids circular
         send_newsletter_welcome(email)
