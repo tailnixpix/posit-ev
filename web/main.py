@@ -1208,8 +1208,26 @@ async def get_analysis(bet_id: int, request: Request, db: Session = Depends(get_
 
 
 @app.get("/", response_class=HTMLResponse)
-async def landing(request: Request):
-    return templates.TemplateResponse(request, "index.html", {})
+async def landing(request: Request, db: Session = Depends(get_db)):
+    from datetime import date, timedelta
+    thirty_days_ago = date.today() - timedelta(days=30)
+    recent_picks = (
+        db.query(DailyPick)
+        .filter(DailyPick.pick_date >= thirty_days_ago)
+        .order_by(DailyPick.pick_date.desc())
+        .all()
+    )
+    settled  = [p for p in recent_picks if p.result in ("won", "lost", "push")]
+    won      = sum(1 for p in settled if p.result == "won")
+    lost     = sum(1 for p in settled if p.result == "lost")
+    win_rate = round(won / (won + lost) * 100) if (won + lost) > 0 else None
+    return templates.TemplateResponse(request, "index.html", {
+        "track_picks":    recent_picks[:15],
+        "track_won":      won,
+        "track_lost":     lost,
+        "track_total":    len(settled),
+        "track_win_rate": win_rate,
+    })
 
 
 @app.get("/register", response_class=HTMLResponse)

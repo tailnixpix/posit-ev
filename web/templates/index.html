@@ -8,6 +8,29 @@ main { max-width: none; padding: 0; }
 .container { max-width: 1080px; margin: 0 auto; padding: 0 var(--space-5); }
 
 
+/* ── Track record table ────────────────────────────────────────────── */
+.tr-stats { display:flex; justify-content:center; gap:40px; margin-bottom:var(--space-6); flex-wrap:wrap; }
+.tr-stat { text-align:center; }
+.tr-stat-val { font-size:2rem; font-weight:800; color:var(--text-primary); line-height:1; }
+.tr-stat-lbl { font-size:0.75rem; color:var(--text-muted); margin-top:4px; font-weight:500; }
+.tr-table-wrap { overflow-x:auto; border-radius:12px; border:1px solid var(--brand-border); }
+.tr-table { width:100%; border-collapse:collapse; font-size:0.85rem; }
+.tr-table thead { background:#F9FAFB; }
+.tr-table th { padding:10px 14px; text-align:left; font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:var(--text-muted); border-bottom:1px solid var(--brand-border); white-space:nowrap; }
+.tr-table td { padding:11px 14px; border-bottom:1px solid rgba(0,0,0,0.05); vertical-align:middle; }
+.tr-table tbody tr:last-child td { border-bottom:none; }
+.tr-table tbody tr:hover { background:#F9FAFB; }
+.tr-date { white-space:nowrap; color:var(--text-muted); font-size:0.8rem; }
+.tr-team { font-weight:600; color:var(--text-primary); }
+.tr-odds { font-variant-numeric:tabular-nums; font-weight:600; }
+.tr-ev   { color:#16A34A; font-weight:700; }
+.tr-badge { display:inline-block; padding:2px 8px; border-radius:20px; font-size:0.7rem; font-weight:700; background:rgba(83,74,183,0.1); color:var(--brand-primary); }
+.tr-result { display:inline-block; padding:3px 10px; border-radius:20px; font-size:0.75rem; font-weight:700; }
+.tr-won     { background:rgba(22,163,74,0.12);  color:#15803D; }
+.tr-lost    { background:rgba(220,38,38,0.10);  color:#B91C1C; }
+.tr-push    { background:rgba(161,161,170,0.15); color:#71717A; }
+.tr-pending { background:rgba(234,179,8,0.12);  color:#92400E; }
+
 /* ── Announcement pill (hero, above eyebrow) ──────────────────────── */
 .announce-pill {
   display: inline-flex;
@@ -2066,6 +2089,84 @@ html { scroll-behavior: smooth; }
   </div>
 </section>
 
+{# ── Track Record ───────────────────────────────────────────────────────── #}
+<section class="section section-white">
+  <div class="container">
+    <p class="section-label" style="text-align:center;">Verified Results</p>
+    <h2 class="section-title" style="text-align:center; margin:0 auto var(--space-4);">
+      Morning pick track record — last 30 days
+    </h2>
+    <p style="text-align:center; color:var(--text-muted); font-size:0.88rem; margin-bottom:var(--space-6); max-width:520px; margin-left:auto; margin-right:auto;">
+      Every pick is published at 8 AM CT before the game starts. Results are logged win, loss, or push — no retroactive edits.
+    </p>
+
+    {% if track_total > 0 %}
+    <div class="tr-stats">
+      <div class="tr-stat">
+        <div class="tr-stat-val">{{ track_total }}</div>
+        <div class="tr-stat-lbl">Settled picks</div>
+      </div>
+      {% if track_win_rate %}
+      <div class="tr-stat">
+        <div class="tr-stat-val" style="color:#16A34A;">{{ track_win_rate }}%</div>
+        <div class="tr-stat-lbl">Win rate</div>
+      </div>
+      {% endif %}
+      <div class="tr-stat">
+        <div class="tr-stat-val" style="color:#16A34A;">{{ track_won }}W</div>
+        <div class="tr-stat-lbl">Won</div>
+      </div>
+      <div class="tr-stat">
+        <div class="tr-stat-val" style="color:#DC2626;">{{ track_lost }}L</div>
+        <div class="tr-stat-lbl">Lost</div>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="tr-table-wrap">
+      {% if track_picks %}
+      <table class="tr-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>League</th>
+            <th>Pick</th>
+            <th>Odds</th>
+            <th>EV%</th>
+            <th>Result</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% set _lm = {"icehockey_nhl":"NHL","basketball_nba":"NBA","baseball_mlb":"MLB","soccer_epl":"EPL","soccer_spain_la_liga":"La Liga","soccer_germany_bundesliga":"Bundesliga","soccer_usa_mls":"MLS","soccer_uefa_champs_league":"UCL"} %}
+          {% for pick in track_picks %}
+          <tr>
+            <td class="tr-date">{{ pick.pick_date.strftime('%b %-d') }}</td>
+            <td><span class="tr-badge">{{ _lm.get(pick.league, pick.league or '—') }}</span></td>
+            <td class="tr-team">{{ pick.team or '—' }}{% if pick.point %} {% if pick.point > 0 %}+{{ pick.point }}{% else %}{{ pick.point }}{% endif %}{% endif %}</td>
+            <td class="tr-odds">{% if pick.odds %}{% if pick.odds > 0 %}+{{ pick.odds }}{% else %}{{ pick.odds }}{% endif %}{% else %}—{% endif %}</td>
+            <td class="tr-ev">{% if pick.ev_percent %}+{{ '%.1f'|format(pick.ev_percent) }}%{% else %}—{% endif %}</td>
+            <td>
+              {% if pick.result == 'won' %}<span class="tr-result tr-won">✓ Won</span>
+              {% elif pick.result == 'lost' %}<span class="tr-result tr-lost">✗ Lost</span>
+              {% elif pick.result == 'push' %}<span class="tr-result tr-push">Push</span>
+              {% else %}<span class="tr-result tr-pending">Pending</span>{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p style="text-align:center; color:var(--text-muted); padding:32px 0;">Track record populates as morning picks are published each day.</p>
+      {% endif %}
+    </div>
+
+    <p style="text-align:center; margin-top:var(--space-4); font-size:0.78rem; color:var(--text-muted);">
+      Showing last 30 days &nbsp;·&nbsp;
+      <a href="/register" style="color:var(--brand-primary); text-decoration:none; font-weight:600;">Sign up free to get tomorrow's pick →</a>
+    </p>
+  </div>
+</section>
+
 {# ── FAQ ────────────────────────────────────────────────────────────────── #}
 <section class="faq-section">
   <div class="container">
@@ -2154,6 +2255,35 @@ html { scroll-behavior: smooth; }
           of why the edge exists. No dashboard access needed — just the single best pick of the day,
           free, every day. Upgrade to Pro to unlock the full live dashboard with 50+ picks per day
           across all 8 leagues and market types.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q-btn" onclick="toggleFaq(this)">
+          <span class="faq-q-txt">How do I know the model is actually accurate — not just cherry-picked?</span>
+          <span class="faq-caret">▾</span>
+        </button>
+        <div class="faq-ans">
+          Every pick shows the full math: the model's true probability, the book's implied probability,
+          and the exact edge. Nothing is hidden. The track record above is updated daily from every
+          morning pick — wins and losses alike — with no retroactive edits. You can verify any pick
+          against the published odds on the day it was sent. We're not selling "insider info" or gut
+          feelings; the model is transparent because transparency is the whole point.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q-btn" onclick="toggleFaq(this)">
+          <span class="faq-q-txt">What ROI should I realistically expect?</span>
+          <span class="faq-caret">▾</span>
+        </button>
+        <div class="faq-ans">
+          Honest answer: individual results vary, and variance is real. A 5% edge doesn't mean
+          you win 5% more every single week — over a short sample, you can win or lose regardless of edge.
+          What +EV betting does is give you a positive expected return over a large enough volume of bets.
+          Professional +EV bettors typically target 3–8% ROI on flat stakes over hundreds of bets.
+          Using ¼ Kelly sizing (as we recommend) keeps drawdowns manageable while letting the edge
+          compound over time. The subscription pays for itself after one average-EV winning bet.
         </div>
       </div>
 

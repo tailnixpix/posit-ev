@@ -1229,6 +1229,35 @@ main { max-width: none !important; padding: 0 !important; }
 .trial-text a  { color: #FAC775; font-weight: 700; }
 .banner-close { background: rgba(255,255,255,0.1); border: none; color: #fff; cursor: pointer; width: 26px; height: 26px; border-radius: 50%; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; margin-left: auto; }
 
+/* ── Free-user upgrade nudge ── */
+.upgrade-nudge {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 14px; flex-wrap: wrap;
+  background: linear-gradient(135deg, #0d2d1a 0%, #14532d 100%);
+  border: 1px solid rgba(22,163,74,0.35);
+  border-left: 4px solid #16A34A;
+  border-radius: 10px; padding: 14px 18px;
+  margin-bottom: 16px;
+}
+.upgrade-nudge-left { display: flex; align-items: center; gap: 14px; flex: 1; min-width: 0; }
+.upgrade-nudge-icon { font-size: 1.5rem; flex-shrink: 0; }
+.upgrade-nudge-title { font-size: 0.95rem; font-weight: 700; color: #fff; }
+.upgrade-nudge-sub   { font-size: 0.78rem; color: rgba(255,255,255,0.65); margin-top: 2px; }
+.upgrade-nudge-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.upgrade-nudge-btn {
+  display: inline-block; padding: 8px 18px;
+  background: #16A34A; color: #fff; text-decoration: none;
+  border-radius: 8px; font-size: 0.82rem; font-weight: 700;
+  white-space: nowrap; transition: background 0.15s;
+}
+.upgrade-nudge-btn:hover { background: #15803D; }
+.upgrade-nudge-close {
+  background: rgba(255,255,255,0.1); border: none; color: #fff;
+  cursor: pointer; width: 26px; height: 26px; border-radius: 50%;
+  font-size: 0.82rem; display: flex; align-items: center; justify-content: center;
+}
+.upgrade-nudge-close:hover { background: rgba(255,255,255,0.2); }
+
 /* ── Mobile filter sheet ── */
 .mf-overlay {
   position: fixed; inset: 0;
@@ -2383,6 +2412,22 @@ main { max-width: none !important; padding: 0 !important; }
   <div class="dash-main">
 
     {# Banners #}
+
+    {% if not user.is_subscribed and trial_days_remaining is none %}
+    <div class="upgrade-nudge" id="upgradeNudge">
+      <div class="upgrade-nudge-left">
+        <span class="upgrade-nudge-icon">📊</span>
+        <div>
+          <div class="upgrade-nudge-title">{{ bet_count }} live +EV picks right now</div>
+          <div class="upgrade-nudge-sub">Pro members see every pick, every market, updated hourly. You're on the free plan.</div>
+        </div>
+      </div>
+      <div class="upgrade-nudge-actions">
+        <a href="/subscribe" class="upgrade-nudge-btn">Start 7-day free trial →</a>
+        <button class="upgrade-nudge-close" onclick="this.closest('.upgrade-nudge').remove()" aria-label="Dismiss">✕</button>
+      </div>
+    </div>
+    {% endif %}
 
     {% if trial_days_remaining is not none %}
     <div class="trial-banner" id="trialBanner">
