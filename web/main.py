@@ -1757,49 +1757,49 @@ async def admin_dashboard(
     # Global stats — always unfiltered counts (efficient, no full table load)
     _now_admin = datetime.now(timezone.utc)
     user_total = db.query(User).count()
-    # Trial: subscribed + active trial_ends_at (regardless of stripe sub ID —
-    # manual comp trials set is_subscribed+trial_ends_at without a Stripe sub).
-    user_trial = db.query(User).filter(
-        User.is_subscribed.is_(True),
-        User.trial_ends_at.isnot(None),
-        User.trial_ends_at > _now_admin,
-    ).count()
-    # Paid via Stripe: subscribed + stripe sub + NOT in active trial
+    # "In trial" = active trial_ends_at, regardless of is_subscribed (the
+    # SubscriptionMiddleware heals is_subscribed on next login, so a freshly-
+    # activated trial may briefly have is_subscribed=False in the DB).
+    _active_trial_cond = (
+        User.trial_ends_at.isnot(None) & (User.trial_ends_at > _now_admin)
+    )
+    user_trial = db.query(User).filter(_active_trial_cond).count()
+    # Paid via Stripe: subscribed + stripe sub + no active trial
     user_paid_stripe = db.query(User).filter(
         User.is_subscribed.is_(True),
         User.stripe_subscription_id.isnot(None),
-        ~(User.trial_ends_at.isnot(None) & (User.trial_ends_at > _now_admin)),
+        ~_active_trial_cond,
     ).count()
     # Comped: subscribed + no stripe sub + no active trial
     user_comped = db.query(User).filter(
         User.is_subscribed.is_(True),
         User.stripe_subscription_id.is_(None),
-        ~(User.trial_ends_at.isnot(None) & (User.trial_ends_at > _now_admin)),
+        ~_active_trial_cond,
     ).count()
     user_paid  = user_paid_stripe + user_comped   # backward-compat total (excl. trial)
     user_free  = user_total - user_paid - user_trial
 
-    # Build filtered query
+    # Build filtered query — tier filter matches the counter logic exactly
     query = db.query(User)
     if tier == "trial":
-        query = query.filter(
-            User.is_subscribed.is_(True),
-            User.stripe_subscription_id.isnot(None),
-            User.trial_ends_at.isnot(None),
-            User.trial_ends_at > _now_admin,
-        )
+        query = query.filter(_active_trial_cond)
     elif tier == "paid":
         query = query.filter(
             User.is_subscribed.is_(True),
             User.stripe_subscription_id.isnot(None),
+            ~_active_trial_cond,
         )
     elif tier == "comped":
         query = query.filter(
             User.is_subscribed.is_(True),
             User.stripe_subscription_id.is_(None),
+            ~_active_trial_cond,
         )
     elif tier == "free":
-        query = query.filter(User.is_subscribed.is_(False))
+        query = query.filter(
+            User.is_subscribed.is_(False),
+            ~_active_trial_cond,
+        )
     if q and q.strip():
         query = query.filter(User.email.ilike(f"%{q.strip()}%"))
     query = query.order_by(User.id.desc())
