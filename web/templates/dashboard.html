@@ -1445,6 +1445,22 @@ main { max-width: none !important; padding: 0 !important; }
 .trend-cold { background: rgba(96,165,250,0.12); color: #93C5FD; border: 1px solid rgba(96,165,250,0.25); }
 .trend-neutral { background: rgba(107,114,128,0.1); color: #9CA3AF; border: 1px solid rgba(107,114,128,0.2); }
 
+/* ── Sharp HR steam badge ── */
+.card-hr-steam {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 10px;
+  margin-top: 5px;
+  letter-spacing: 0.2px;
+  background: rgba(251, 146, 60, 0.12);
+  color: #FB923C;
+  border: 1px solid rgba(251, 146, 60, 0.28);
+}
+
 /* ── Bet search helper toast ── */
 .bsh-toast {
   position: fixed;
@@ -2615,6 +2631,17 @@ main { max-width: none !important; padding: 0 !important; }
                     {{ bet.team | title }}{% if bet.point is not none %}&nbsp;{{ (bet.point | int) if (bet.point == (bet.point | int)) else bet.point }}{% endif %}
                   </span>
                 </div>
+                {# Sharp HR steam badge — shown when line steams 3pp+ toward Over #}
+                {% if bet.market == 'batter_home_runs' and bet.opening_odds and bet.opening_odds != bet.odds and bet.opening_odds > bet.odds %}
+                  {% set _op = bet.opening_odds | float %}
+                  {% set _cu = bet.odds | float %}
+                  {% set _op_prob = (100.0 / (_op + 100.0)) if _op > 0 else ((_op | abs) / ((_op | abs) + 100.0)) %}
+                  {% set _cu_prob = (100.0 / (_cu + 100.0)) if _cu > 0 else ((_cu | abs) / ((_cu | abs) + 100.0)) %}
+                  {% set _shift_pp = (_cu_prob - _op_prob) * 100.0 %}
+                  {% if _shift_pp >= 3.0 %}
+                    <div class="card-hr-steam">🔥 Sharp move &nbsp;{{ '+' if bet.opening_odds > 0 else '' }}{{ bet.opening_odds }} → {{ '+' if bet.odds > 0 else '' }}{{ bet.odds }} <span style="opacity:.7;font-weight:600;">(+{{ "%.1f"|format(_shift_pp) }}pp)</span></div>
+                  {% endif %}
+                {% endif %}
               {% else %}
                 <div class="card-bet-name">
                   <span class="bet-name-team">{{ team_display }}</span>
