@@ -37,6 +37,10 @@ DEFAULT_STAKE = 100.0     # notional stake used for EV dollar calculation
 # Professional sharps rarely see sustained EV > 8%; 25% is a hard credibility ceiling.
 MAX_CREDIBLE_EV_PCT = 25.0
 
+# Odds cap: suppress heavily-juiced favourites where the risk/reward is poor.
+# -250 means you're risking $250 to win $100 — anything worse than this is excluded.
+MAX_JUICE_AMERICAN = -250
+
 # ---------------------------------------------------------------------------
 # Core EV math
 # ---------------------------------------------------------------------------
@@ -288,7 +292,10 @@ def find_positive_ev(
         return pd.DataFrame()
 
     df = pd.DataFrame(all_rows)
-    positive = df[df["ev_pct"] > ev_threshold].copy()
+    positive = df[
+        (df["ev_pct"] > ev_threshold) &
+        (df["american_odds"] >= MAX_JUICE_AMERICAN)
+    ].copy()
     return positive.sort_values("ev_pct", ascending=False).reset_index(drop=True)
 
 
@@ -439,7 +446,10 @@ def find_positive_ev_props(
     df = pd.DataFrame(all_rows)
     df["effective_ev_pct"] = df["ev_pct"]
     df["adjusted_prob"] = df["true_prob"]
-    positive = df[df["ev_pct"] > ev_threshold].copy()
+    positive = df[
+        (df["ev_pct"] > ev_threshold) &
+        (df["american_odds"] >= MAX_JUICE_AMERICAN)
+    ].copy()
     return positive.sort_values("ev_pct", ascending=False).reset_index(drop=True)
 
 
