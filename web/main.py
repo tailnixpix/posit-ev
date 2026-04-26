@@ -194,6 +194,89 @@ async def contact_support(
         return JSONResponse({"status": "error"}, status_code=500)
 
 # ---------------------------------------------------------------------------
+# Stripe subscription auto-heal
+# ---------------------------------------------------------------------------
+
+def sync_stripe_subscriptions() -> None:
+    """
+    Hourly job: find users who have a Stripe customer ID but no recorded
+    subscription (is_subscribed=False, stripe_subscription_id=None).  Query
+    Stripe for each and heal the DB when an active/trialing subscription is
+    found.
+
+    This is a safety net for the race where the /success redirect or the
+    Stripe webhook fails to update the DB after a successful checkout.
+    Scoped to users created within the last 30 days so we don't hammer
+    the Stripe API on large user bases.
+    """
+    import stripe as _stripe_sync
+    _stripe_sync.api_key = os.getenv("STRIPE_SECRET_KEY", "")
+    if not _stripe_sync.api_key:
+        return
+
+    from datetime import timedelta as _td
+    cutoff = datetime.now(timezone.utc) - _td(days=30)
+
+    db = SessionLocal()
+    try:
+        candidates = (
+            db.query(User)
+            .filter(
+                User.stripe_customer_id.isnot(None),
+                User.is_subscribed.is_(False),
+                User.stripe_subscription_id.is_(None),
+                User.created_at > cutoff,
+            )
+            .all()
+        )
+        if not candidates:
+            return
+
+        log.info("stripe_sync: checking %d unsynced user(s).", len(candidates))
+        healed = 0
+        for user in candidates:
+            try:
+                subs = _stripe_sync.Subscription.list(
+                    customer=user.stripe_customer_id,
+                    status="all",
+                    limit=5,
+                )
+                active = next(
+                    (s for s in subs.auto_paging_iter()
+                     if s.status in ("active", "trialing", "past_due")),
+                    None,
+                )
+                if not active:
+                    continue
+
+                trial_end_ts = getattr(active, "trial_end", None)
+                trial_ends_at = (
+                    datetime.fromtimestamp(int(trial_end_ts), tz=timezone.utc)
+                    if trial_end_ts else None
+                )
+                user.is_subscribed          = True
+                user.stripe_subscription_id = active.id
+                if trial_ends_at:
+                    user.trial_ends_at = trial_ends_at
+                db.commit()
+                log.info(
+                    "stripe_sync: healed %s → sub=%s status=%s trial_ends=%s",
+                    user.email, active.id, active.status, trial_ends_at,
+                )
+                healed += 1
+            except Exception as exc:
+                db.rollback()
+                log.warning("stripe_sync: error checking %s: %s", user.email, exc)
+
+        if healed:
+            log.info("stripe_sync: healed %d user(s).", healed)
+    except Exception as exc:
+        log.error("stripe_sync: unexpected error: %s", exc)
+    finally:
+        db.close()
+
+
+# ---------------------------------------------------------------------------
 # Scheduler
 # ---------------------------------------------------------------------------
 
@@ -648,6 +731,18 @@ async def on_startup() -> None:
             _db.commit()
         except Exception:
             _db.rollback()
+
+    # Stripe subscription sync — runs hourly to heal users whose DB record
+    # was never updated after a successful Stripe checkout (webhook/success miss).
+    scheduler.add_job(
+        sync_stripe_subscriptions,
+        trigger=IntervalTrigger(hours=1),
+        id="stripe_sync",
+        name="Sync Stripe subscriptions (hourly)",
+        next_run_time=datetime.now(timezone.utc),   # run once at startup too
+        misfire_grace_time=300,
+        replace_existing=True,
+    )
 
     # Every-30-min refresh — runs at startup then every 30 minutes
     scheduler.add_job(
