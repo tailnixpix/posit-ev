@@ -853,26 +853,74 @@ def send_correction_newsletter() -> dict:
 # Newsletter welcome (separate from registered-user welcome)
 # ---------------------------------------------------------------------------
 
-def send_newsletter_welcome(to_email: str) -> bool:
+def _get_todays_pick_status():
     """
-    Send a welcome email to a new newsletter subscriber (free tier).
-
-    Distinct from send_welcome_email() which targets registered accounts.
-    Subject: "Welcome to Posit+EV Daily Picks"
+    Return (pick, status) for today's DailyPick where status is one of:
+      "upcoming" — pick exists and event hasn't started yet
+      "past"     — pick exists but event has already begun/passed
+      "no_pick"  — no DailyPick row for today
     """
-    unsub_token = _make_unsub_token(to_email)
-    unsub_url   = f"{_base_url}/newsletter/unsubscribe?token={unsub_token}"
+    now_utc       = datetime.now(timezone.utc)
+    today_date_ct = datetime.now(LOCAL_TZ).date()
+    db = SessionLocal()
+    try:
+        pick = db.query(DailyPick).filter(DailyPick.pick_date == today_date_ct).first()
+        if pick is None:
+            return None, "no_pick"
+        # If commence_time is stored and the event has already started, treat as past
+        if pick.commence_time:
+            ct = pick.commence_time
+            if ct.tzinfo is None:
+                ct = ct.replace(tzinfo=timezone.utc)
+            if ct <= now_utc:
+                return pick, "past"
+        return pick, "upcoming"
+    finally:
+        db.close()
 
-    body = f"""
-    <h2>You&rsquo;re in &mdash; free picks start tomorrow!</h2>
-    <p>
-      Every morning at 8&nbsp;AM&nbsp;CT you&rsquo;ll get our single
-      highest +EV bet of the day, with an AI-written breakdown of exactly
-      why the edge exists.
-    </p>
-    <p class="tag-success">&#10003; Free subscription confirmed.</p>
 
-    <!-- What they're missing -->
+def _pick_card_email_html(pick) -> str:
+    """Render a DailyPick as a branded HTML card block for welcome emails."""
+    odds      = pick.odds or 0
+    odds_str  = f"+{odds}" if odds > 0 else str(odds)
+    ev_pct    = pick.ev_percent or 0
+    ev_color  = "#534AB7" if ev_pct > 8 else ("#0F6E56" if ev_pct > 5 else "#FAC775")
+    market    = (pick.market or "").upper()
+    league    = (pick.league or "").upper()
+    team_disp = pick.team or "—"
+    if pick.is_prop and pick.player_name:
+        team_disp = f"{pick.player_name} &mdash; {team_disp}"
+    game_html = f'<br><span style="color:#7F77DD;">{pick.game}</span>' if pick.game else ""
+    point_html = f"&nbsp;{pick.point:+g}" if pick.point is not None and market in ("SPREADS", "TOTALS") else ""
+    synopsis_html = ""
+    if pick.synopsis:
+        synopsis_html = f"""
+    <div style="background:#F7F6FE; border-left:3px solid #534AB7; border-radius:6px;
+                padding:14px 18px; margin:16px 0; font-size:13px; color:#3D3A5C;
+                line-height:1.7;">
+      <strong style="display:block; margin-bottom:6px; color:#1A1450;">Why this pick?</strong>
+      {pick.synopsis}
+    </div>"""
+
+    return f"""
+    <div class="bet-card">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+        <div>
+          <div class="bet-ev" style="color:{ev_color};">{ev_pct:.1f}% EV</div>
+          <div class="bet-label">{market}{point_html} &bull; {pick.book or ""} &bull; {league}</div>
+        </div>
+        <span class="bet-odds">{odds_str}</span>
+      </div>
+      <div class="bet-meta">
+        <strong>{team_disp}</strong>
+        {game_html}
+        <br>True prob: {(pick.true_prob or 0):.1%}
+      </div>
+    </div>
+    {synopsis_html}"""
+
+
+_PRO_UPSELL_BOX = """
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
            style="background:#F7F6FE; border:1px solid #D6D2F8; border-radius:10px;
                   margin:4px 0 20px;">
@@ -894,8 +942,76 @@ def send_newsletter_welcome(to_email: str) -> bool:
           </p>
         </td>
       </tr>
-    </table>
+    </table>"""
 
+
+def send_newsletter_welcome(to_email: str) -> bool:
+    """
+    Send a welcome email to a new newsletter subscriber or newly registered user.
+
+    If today's DailyPick exists and the event hasn't started yet, the pick
+    is included in the email. If the event has already begun (or there is no
+    pick today), the email explains that the first pick arrives tomorrow at 8 AM CT.
+
+    Subject: "Welcome to Posit+EV — Here's Today's Pick" (pick present)
+          or "Welcome to Posit+EV — Your First Pick Arrives Tomorrow" (no pick)
+    """
+    unsub_token = _make_unsub_token(to_email)
+    unsub_url   = f"{_base_url}/newsletter/unsubscribe?token={unsub_token}"
+
+    pick, status = _get_todays_pick_status()
+
+    if status == "upcoming" and pick:
+        # ── Pick is live and the event hasn't started ──────────────────────
+        subject = "Welcome to Posit+EV \u2014 Here\u2019s Today\u2019s Pick"
+        body = f"""
+    <h2>You&rsquo;re in &mdash; here&rsquo;s today&rsquo;s free pick.</h2>
+    <p>
+      Every morning at 8&nbsp;AM&nbsp;CT you&rsquo;ll get our single
+      highest +EV bet of the day, with an AI-written breakdown of exactly
+      why the edge exists.
+    </p>
+    <p class="tag-success">&#10003; Free subscription confirmed.</p>
+    <hr class="divider" />
+    <h2 style="font-size:16px; color:#1A1450; margin-bottom:4px;">Today&rsquo;s Pick</h2>
+    {_pick_card_email_html(pick)}
+    <hr class="divider" />
+    {_PRO_UPSELL_BOX}
+    <a class="cta-btn" href="{_base_url}/pricing">
+      Unlock All Today&rsquo;s Picks &mdash; $10/month &rarr;
+    </a>
+    <p style="font-size:12px; color:#AFA9EC; margin-top:6px;">
+      Cancel any time. No contracts.
+    </p>
+    <hr class="divider" />
+    <p style="font-size:13px; color:#8E8BAA;">
+      Didn&rsquo;t subscribe?
+      <a href="{unsub_url}" style="color:#AFA9EC;">Unsubscribe here</a>.
+    </p>"""
+
+    else:
+        # ── No pick today, or the event is already underway ────────────────
+        if status == "past":
+            reason = (
+                "Today&rsquo;s pick has already been sent and the event is underway."
+            )
+        else:
+            reason = "No pick has been published yet for today."
+
+        subject = "Welcome to Posit+EV \u2014 Your First Pick Arrives Tomorrow"
+        body = f"""
+    <h2>You&rsquo;re in!</h2>
+    <p>
+      {reason} Your first free pick will land in your inbox
+      <strong>tomorrow morning at 8&nbsp;AM&nbsp;CT</strong>.
+    </p>
+    <p>
+      Every morning you&rsquo;ll get our single highest +EV bet of the day, with
+      an AI-written breakdown of exactly why the edge exists.
+    </p>
+    <p class="tag-success">&#10003; Free subscription confirmed.</p>
+    <hr class="divider" />
+    {_PRO_UPSELL_BOX}
     <a class="cta-btn" href="{_base_url}/pricing">
       Unlock All Today&rsquo;s Picks &mdash; $10/month &rarr;
     </a>
@@ -909,7 +1025,7 @@ def send_newsletter_welcome(to_email: str) -> bool:
     </p>"""
 
     html = _wrap_email(body, unsubscribe_url=unsub_url)
-    return _send(to_email, "Welcome to Posit+EV Daily Picks", html)
+    return _send(to_email, subject, html)
 
 
 # ---------------------------------------------------------------------------
@@ -1091,23 +1207,60 @@ def _unsub_page(success: bool, message: str) -> str:
 
 def send_welcome_email(to_email: str) -> bool:
     """
-    Send the welcome email to a newly registered (paid-account) user.
+    Send the welcome email to a newly registered user.
 
-    Subject: "Welcome to Posit+EV"
+    If today's DailyPick exists and the event hasn't started yet, the pick
+    is included in the email body. Otherwise the email defers to tomorrow.
+
+    Subject: "Welcome to Posit+EV — Here's Today's Pick"  (pick included)
+          or "Welcome to Posit+EV"                         (no pick yet)
     """
-    body = f"""
-    <h2>Welcome to Posit+EV!</h2>
+    pick, status = _get_todays_pick_status()
+
+    if status == "upcoming" and pick:
+        subject = "Welcome to Posit+EV \u2014 Here\u2019s Today\u2019s Pick"
+        body = f"""
+    <h2>Welcome to Posit+EV &mdash; here&rsquo;s today&rsquo;s free pick.</h2>
     <p>
-      You&rsquo;re in. We scan odds from DraftKings, FanDuel, BetMGM, and more
-      to find bets where the books have it wrong &mdash; so you can bet with
-      the edge, not against it.
+      We scan odds from DraftKings, FanDuel, BetMGM, and more to find bets
+      where the books have it wrong &mdash; so you can bet with the edge,
+      not against it.
     </p>
     <p class="tag-success">&#10003; Your account is ready.</p>
+    <hr class="divider" />
+    <h2 style="font-size:16px; color:#1A1450; margin-bottom:4px;">Today&rsquo;s Pick</h2>
+    {_pick_card_email_html(pick)}
+    <hr class="divider" />
     <p>
-      Subscribe to unlock the full dashboard: real-time +EV picks,
-      sport-specific adjustments, and a Telegram bot that alerts you the moment
-      a high-value opportunity appears.
+      Tomorrow and every morning at 8&nbsp;AM&nbsp;CT you&rsquo;ll get the next pick.
+      Subscribe for the full daily scan &mdash; usually 10&ndash;30 picks per day.
     </p>
+    <a class="cta-btn" href="{_base_url}/pricing">View Pricing &rarr;</a>
+    <hr class="divider" />
+    <p style="font-size:13px; color:#8E8BAA;">
+      If you didn&rsquo;t create this account, you can safely ignore this email.
+    </p>"""
+    else:
+        if status == "past":
+            timing_note = (
+                "Today&rsquo;s pick has already been sent and the event is underway. "
+                "Your first pick will arrive <strong>tomorrow morning at 8&nbsp;AM&nbsp;CT</strong>."
+            )
+        else:
+            timing_note = (
+                "Your first free pick will arrive <strong>tomorrow morning at 8&nbsp;AM&nbsp;CT</strong>. "
+                "Every morning you&rsquo;ll get our highest +EV bet of the day."
+            )
+        subject = "Welcome to Posit+EV"
+        body = f"""
+    <h2>Welcome to Posit+EV!</h2>
+    <p>
+      We scan odds from DraftKings, FanDuel, BetMGM, and more to find bets
+      where the books have it wrong &mdash; so you can bet with the edge,
+      not against it.
+    </p>
+    <p class="tag-success">&#10003; Your account is ready.</p>
+    <p>{timing_note}</p>
     <a class="cta-btn" href="{_base_url}/pricing">View Pricing &rarr;</a>
     <hr class="divider" />
     <p style="font-size:13px; color:#8E8BAA;">
@@ -1115,7 +1268,7 @@ def send_welcome_email(to_email: str) -> bool:
     </p>"""
 
     html = _wrap_email(body)
-    return _send(to_email, "Welcome to Posit+EV", html)
+    return _send(to_email, subject, html)
 
 
 def send_daily_picks_email(
