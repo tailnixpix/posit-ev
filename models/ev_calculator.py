@@ -373,6 +373,9 @@ def find_positive_ev_props(
         sportsbook_odds: dict = {}  # sportsbooks only — used for EV evaluation / output
 
         for book, bk_df in group.groupby("bookmaker"):
+            # Some books return duplicate outcome rows for the same line —
+            # keep the first occurrence to avoid set_index duplicate-label crash.
+            bk_df = bk_df.drop_duplicates(subset=["outcome_name"])
             bk_df_sorted = bk_df.set_index("outcome_name").reindex(outcome_order)
             if bk_df_sorted["price"].isna().any():
                 continue
