@@ -83,16 +83,41 @@ EXCHANGE_BOOKMAKERS = [
 BOOKMAKERS = SPORTSBOOK_BOOKMAKERS  # backward-compat alias (sportsbooks only)
 ALL_BOOKMAKERS = SPORTSBOOK_BOOKMAKERS + PREDICTION_MARKET_BOOKMAKERS + EXCHANGE_BOOKMAKERS
 
-# Props fetch includes sportsbooks + Novig (P2P exchange with efficient prop pricing).
+# Additional sportsbooks used only for player-prop fetches.
+# DraftKings, FanDuel, BetMGM, and Caesars do NOT offer batter/pitcher props
+# through the Odds API — these books do.  They surface as actionable bets
+# in prop cards (source_type = "sportsbook").
+PROP_EXTRA_SPORTSBOOKS = [
+    "betrivers",       # Major US sportsbook — broad prop coverage
+    "williamhill_us",  # William Hill US — HR/pitcher props
+    "espnbet",         # ESPN Bet — wide US market
+    "hardrockbet",     # Hard Rock Bet — US sportsbook
+    "betonlineag",     # Offshore with strong prop lines
+]
+
+# Sharp reference books included in the props pool but NOT surfaced as bets
+# (source_type = "exchange" so EV calculator uses them for true-prob only).
+PROP_SHARP_REFERENCE_BOOKS = [
+    "pinnacle",        # Sharpest book globally — excellent true-prob anchor for props
+]
+
+# Props fetch: all sportsbooks that carry prop lines + sharp references.
 # Novig IS used here so its sharp lines serve as the true-probability anchor and
 # prevent sportsbook-vs-sportsbook EV signals that Novig's efficient market would
 # not support.  Novig props are NOT surfaced as bets in the output — only its
 # probability reference matters.  (See find_positive_ev_props in ev_calculator.py.)
-PROPS_BOOKMAKERS = [b for b in SPORTSBOOK_BOOKMAKERS if b != "betfair_ex_uk"] + ["novig"]
+PROPS_BOOKMAKERS = (
+    [b for b in SPORTSBOOK_BOOKMAKERS if b != "betfair_ex_uk"]
+    + PROP_EXTRA_SPORTSBOOKS
+    + PROP_SHARP_REFERENCE_BOOKS
+    + ["novig"]
+)
 
 # Maps each bookmaker key to its source type
 BOOKMAKER_SOURCE_TYPE: dict = {
     **{b: "sportsbook"         for b in SPORTSBOOK_BOOKMAKERS},
+    **{b: "sportsbook"         for b in PROP_EXTRA_SPORTSBOOKS},
+    **{b: "exchange"           for b in PROP_SHARP_REFERENCE_BOOKS},  # reference only, not surfaced
     **{b: "prediction_market"  for b in PREDICTION_MARKET_BOOKMAKERS},
     **{b: "exchange"           for b in EXCHANGE_BOOKMAKERS},
 }

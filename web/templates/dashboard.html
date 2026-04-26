@@ -2454,7 +2454,7 @@ main { max-width: none !important; padding: 0 !important; }
     </div>
 
     {% if bets %}
-    {% set _bn = {'draftkings':'DraftKings','fanduel':'FanDuel','betmgm':'BetMGM','caesars':'Caesars','williamhill_us':'Caesars WH','pointsbet':'Fanatics','betfair_ex_uk':'Betfair','betfair_ex_us':'Betfair US','pinnacle':'Pinnacle','mybookie':'MyBookie','bovada':'Bovada','kalshi':'Kalshi','novig':'NoVig','polymarket':'Polymarket','prophetx':'ProphetX','betopenly':'BetOpenly'} %}
+    {% set _bn = {'draftkings':'DraftKings','fanduel':'FanDuel','betmgm':'BetMGM','caesars':'Caesars','williamhill_us':'Caesars WH','pointsbet':'Fanatics','betfair_ex_uk':'Betfair','betfair_ex_us':'Betfair US','pinnacle':'Pinnacle','mybookie':'MyBookie','bovada':'Bovada','kalshi':'Kalshi','novig':'NoVig','polymarket':'Polymarket','prophetx':'ProphetX','betopenly':'BetOpenly','betrivers':'BetRivers','espnbet':'ESPN Bet','hardrockbet':'Hard Rock Bet','betonlineag':'BetOnline'} %}
     {% set _sb = namespace(v=[]) %}
     {% for bet in bets %}{% set _bk = bet.book | lower %}{% if _bk not in _sb.v %}{% set _sb.v = _sb.v + [_bk] %}{% endif %}{% endfor %}
     {% set _exchange_list = ['novig','prophetx','betopenly'] %}
@@ -2560,7 +2560,7 @@ main { max-width: none !important; padding: 0 !important; }
           {% set _bk = bet.book | lower %}
           {% set _exchange_books = ['novig','prophetx','betopenly'] %}
           {% set _pred_mkt_books = ['kalshi','polymarket'] %}
-          {% set _book_names = {'draftkings':'DraftKings','fanduel':'FanDuel','betmgm':'BetMGM','caesars':'Caesars','williamhill_us':'Caesars WH','pointsbet':'Fanatics','betfair_ex_uk':'Betfair Exchange','betfair_ex_us':'Betfair US','kalshi':'Kalshi','novig':'NoVig','polymarket':'Polymarket','prophetx':'ProphetX','betopenly':'BetOpenly'} %}
+          {% set _book_names = {'draftkings':'DraftKings','fanduel':'FanDuel','betmgm':'BetMGM','caesars':'Caesars','williamhill_us':'Caesars WH','pointsbet':'Fanatics','betfair_ex_uk':'Betfair Exchange','betfair_ex_us':'Betfair US','kalshi':'Kalshi','novig':'NoVig','polymarket':'Polymarket','prophetx':'ProphetX','betopenly':'BetOpenly','betrivers':'BetRivers','espnbet':'ESPN Bet','hardrockbet':'Hard Rock Bet','betonlineag':'BetOnline','pinnacle':'Pinnacle'} %}
           {% set _bk_display = _book_names.get(_bk, bet.book | title) %}
           {% if _bk in _exchange_books %}{% set _cta_icon = '⚡' %}{% elif _bk in _pred_mkt_books %}{% set _cta_icon = '📈' %}{% else %}{% set _cta_icon = '🎰' %}{% endif %}
           {% set _true_pct = (bet.true_prob * 100) | round(1) %}
@@ -2946,7 +2946,7 @@ main { max-width: none !important; padding: 0 !important; }
 
     {# Books — group + individual, built from live bets #}
     {% if bets %}
-    {% set _mfbn = {'draftkings':'DraftKings','fanduel':'FanDuel','betmgm':'BetMGM','caesars':'Caesars','williamhill_us':'Caesars WH','pointsbet':'Fanatics','betfair_ex_uk':'Betfair','kalshi':'Kalshi','novig':'NoVig','polymarket':'Polymarket','prophetx':'ProphetX','betopenly':'BetOpenly'} %}
+    {% set _mfbn = {'draftkings':'DraftKings','fanduel':'FanDuel','betmgm':'BetMGM','caesars':'Caesars','williamhill_us':'Caesars WH','pointsbet':'Fanatics','betfair_ex_uk':'Betfair','kalshi':'Kalshi','novig':'NoVig','polymarket':'Polymarket','prophetx':'ProphetX','betopenly':'BetOpenly','betrivers':'BetRivers','espnbet':'ESPN Bet','hardrockbet':'Hard Rock Bet','betonlineag':'BetOnline','pinnacle':'Pinnacle'} %}
     {% set _mfbooks = namespace(v=[]) %}
     {% for bet in bets %}{% set _bk = bet.book | lower %}{% if _bk not in _mfbooks.v %}{% set _mfbooks.v = _mfbooks.v + [_bk] %}{% endif %}{% endfor %}
     {% set _mf_ex = ['novig','prophetx','betopenly'] %}
@@ -4524,6 +4524,30 @@ const _BOOK_URLS = {
     baseball_mlb:                "https://www.betfair.com/exchange/plus/baseball",
     soccer_epl:                  "https://www.betfair.com/exchange/plus/football",
     _default:                    "https://www.betfair.com/exchange/plus/",
+  },
+  betrivers: {
+    baseball_mlb:                "https://www.betrivers.com/sports/baseball",
+    basketball_nba:              "https://www.betrivers.com/sports/basketball",
+    icehockey_nhl:               "https://www.betrivers.com/sports/ice-hockey",
+    _default:                    "https://www.betrivers.com/sports",
+  },
+  espnbet: {
+    baseball_mlb:                "https://www.espnbet.com/sport/baseball",
+    basketball_nba:              "https://www.espnbet.com/sport/basketball",
+    icehockey_nhl:               "https://www.espnbet.com/sport/ice-hockey",
+    _default:                    "https://www.espnbet.com",
+  },
+  hardrockbet: {
+    baseball_mlb:                "https://hardrockbet.com/sports/baseball",
+    basketball_nba:              "https://hardrockbet.com/sports/basketball",
+    icehockey_nhl:               "https://hardrockbet.com/sports/ice-hockey",
+    _default:                    "https://hardrockbet.com/sports",
+  },
+  betonlineag: {
+    baseball_mlb:                "https://www.betonline.ag/sportsbook/baseball",
+    basketball_nba:              "https://www.betonline.ag/sportsbook/basketball",
+    icehockey_nhl:               "https://www.betonline.ag/sportsbook/hockey",
+    _default:                    "https://www.betonline.ag/sportsbook",
   },
   // ── Prediction markets ──
   // Kalshi: /markets/sports is invalid; /category/all is the browse interface
