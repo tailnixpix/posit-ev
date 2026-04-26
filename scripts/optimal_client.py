@@ -41,7 +41,7 @@ import requests
 log = logging.getLogger(__name__)
 
 _BASE_URL = "https://mcp.tangiers.ai/"
-_TIMEOUT = 12   # seconds per request — fail fast; caller retries or falls back
+_TIMEOUT = 7    # seconds per request — fail fast; caller retries or falls back
 _RPC_ID = 1     # stateless — reuse the same ID each call
 
 _SESSION = requests.Session()

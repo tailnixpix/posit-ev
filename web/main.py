@@ -990,34 +990,74 @@ async def get_projection(bet_id: int, request: Request, db: Session = Depends(ge
 
     loop = asyncio.get_event_loop()
 
-    # Fetch projection + context in parallel to halve latency
-    proj_future = loop.run_in_executor(
-        None, fetch_game_projections, bet_row.game, bet_row.league
+    # ── Fast path: use projection data already stored on this row ────────────
+    # The pipeline writes proj_home_score / proj_away_score / proj_total /
+    # proj_home_win_prob at run time. Serving those directly avoids a live
+    # round-trip to mcp.tangiers.ai (which can take 10-25 s on a slow day).
+    # We still fetch ESPN context (records, trends, injuries) live — it's fast
+    # and provides the freshest situational data.
+    _has_pipeline_proj = (
+        bet_row.proj_home_score is not None
+        or bet_row.proj_away_score is not None
+        or bet_row.proj_total    is not None
     )
-    ctx_future = loop.run_in_executor(
-        None, _fgc, bet_row.game, bet_row.league, bet_row.commence_time
-    )
 
-    results = await asyncio.gather(proj_future, ctx_future, return_exceptions=True)
-    proj = results[0] if not isinstance(results[0], Exception) else None
-    ctx  = results[1] if not isinstance(results[1], Exception) else {}
+    if _has_pipeline_proj:
+        log.info("Projection fast-path (pipeline data) for bet_id=%d", bet_id)
+        # Build proj dict from stored fields — no live Optimal call needed
+        game_parts  = (bet_row.game or "").split(" @ ", 1)
+        away_str    = game_parts[0].strip() if len(game_parts) > 1 else ""
+        home_str    = game_parts[1].strip() if len(game_parts) > 1 else ""
+        proj: dict = {
+            "away_team":            away_str,
+            "home_team":            home_str,
+            "away_display":         bet_row.proj_away_display or away_str,
+            "home_display":         bet_row.proj_home_display or home_str,
+            "home_score_mean":      bet_row.proj_home_score,
+            "away_score_mean":      bet_row.proj_away_score,
+            "total_mean":           bet_row.proj_total,
+            "home_win_probability": bet_row.proj_home_win_prob,
+        }
+        # Derive spread from scores when available
+        if bet_row.proj_home_score is not None and bet_row.proj_away_score is not None:
+            proj["spread_mean"] = round(bet_row.proj_home_score - bet_row.proj_away_score, 2)
 
-    if isinstance(results[0], Exception):
-        log.error("Projection fetch error for bet_id=%d: %s", bet_id, results[0])
-    if isinstance(results[1], Exception):
-        log.warning("Context fetch error for bet_id=%d: %s", bet_id, results[1])
+        # Fetch ESPN context live (fast, ~2 s) for records/trends/injuries
+        try:
+            ctx = await asyncio.wait_for(
+                loop.run_in_executor(None, _fgc, bet_row.game, bet_row.league, bet_row.commence_time),
+                timeout=8.0,
+            )
+        except Exception as _ctx_err:
+            log.warning("Context fetch skipped for bet_id=%d: %s", bet_id, _ctx_err)
+            ctx = {}
 
-    log.info("Projection result for bet_id=%d: proj=%s ctx_keys=%s",
-             bet_id, bool(proj), list((ctx or {}).keys())[:6])
-
-    if not proj and not ctx:
-        raise HTTPException(
-            status_code=503,
-            detail="Projection service is temporarily unavailable — please try again in a moment"
+    else:
+        # ── Slow path: no pipeline data — hit Optimal + ESPN live ────────────
+        log.info("Projection live-fetch (no pipeline data) for bet_id=%d", bet_id)
+        proj_future = loop.run_in_executor(
+            None, fetch_game_projections, bet_row.game, bet_row.league
         )
+        ctx_future = loop.run_in_executor(
+            None, _fgc, bet_row.game, bet_row.league, bet_row.commence_time
+        )
+        results = await asyncio.gather(proj_future, ctx_future, return_exceptions=True)
+        proj = results[0] if not isinstance(results[0], Exception) else None
+        ctx  = results[1] if not isinstance(results[1], Exception) else {}
 
-    # Merge context into proj (context fills in fields Optimal doesn't provide)
-    merged = dict(ctx)
+        if isinstance(results[0], Exception):
+            log.error("Projection fetch error for bet_id=%d: %s", bet_id, results[0])
+        if isinstance(results[1], Exception):
+            log.warning("Context fetch error for bet_id=%d: %s", bet_id, results[1])
+
+        if not proj and not ctx:
+            raise HTTPException(
+                status_code=503,
+                detail="Projection service is temporarily unavailable — please try again in a moment"
+            )
+
+    # Merge: context base + projection overrides (projection wins on conflicts)
+    merged = dict(ctx or {})
     merged.update({k: v for k, v in (proj or {}).items() if v is not None})
 
     # Derive individual score means from spread+total when Optimal doesn't
