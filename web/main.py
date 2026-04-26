@@ -1137,6 +1137,89 @@ async def get_projection(bet_id: int, request: Request, db: Session = Depends(ge
     return JSONResponse(merged)
 
 
+@app.get("/api/prop-context/{bet_id}")
+async def get_prop_context(bet_id: int, request: Request, db: Session = Depends(get_db)):
+    """
+    Return sport-specific prop context for a player prop bet card.
+
+    Routes by sport_key + market:
+        baseball_mlb  + pitcher_*  → pitcher platoon splits vs LHB / vs RHB
+        baseball_mlb  + batter_*   → batter platoon splits  vs LHP / vs RHP
+        icehockey_nhl + player_shots_on_goal → player SOG averages + recent log
+        icehockey_nhl + (other)    → opposing goalie stats + recent form
+
+    Subscription required.
+    """
+    token = get_token_from_request(request)
+    if not token:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    payload = decode_access_token(token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    user = db.query(User).filter(User.id == int(payload["sub"])).first()
+    if not user or not user.is_subscribed:
+        raise HTTPException(status_code=403, detail="Subscription required")
+
+    bet_row = db.query(EVBetCache).filter(EVBetCache.id == bet_id).first()
+    if not bet_row:
+        raise HTTPException(status_code=404, detail="Bet not found")
+
+    if not bet_row.is_prop:
+        raise HTTPException(status_code=422, detail="Not a prop bet")
+
+    player_name  = bet_row.player_name or bet_row.team or ""
+    prop_market  = bet_row.market or ""
+    sport_key    = bet_row.league or ""
+
+    # For pitcher props, try to resolve the pitcher ID from probable pitchers
+    # (avoids an extra MLB API search call when we already have the data)
+    pitcher_id: int | None = None
+    if sport_key == "baseball_mlb" and prop_market.startswith("pitcher_"):
+        try:
+            from scripts.context_fetcher import fetch_mlb_probable_pitchers, _fetch_mlb_player_id
+            pitchers = fetch_mlb_probable_pitchers()
+            for _gk, entry in pitchers.items():
+                for side in ("home", "away"):
+                    pp = entry.get(side) or {}
+                    if pp.get("name") and player_name and (
+                        player_name.lower() in pp["name"].lower()
+                        or pp["name"].lower() in player_name.lower()
+                    ):
+                        pitcher_id = pp.get("id")
+                        break
+                if pitcher_id:
+                    break
+        except Exception as _pe:
+            log.warning("prop-context: pitcher ID pre-fetch failed: %s", _pe)
+
+    import asyncio
+    from scripts.context_fetcher import fetch_prop_context
+
+    loop = asyncio.get_event_loop()
+    try:
+        ctx = await asyncio.wait_for(
+            loop.run_in_executor(
+                None, fetch_prop_context,
+                player_name, prop_market, sport_key, pitcher_id,
+            ),
+            timeout=12.0,
+        )
+    except asyncio.TimeoutError:
+        log.error("prop-context timed out for bet_id=%d", bet_id)
+        raise HTTPException(status_code=504, detail="Stat service timed out — try again")
+    except Exception as exc:
+        log.error("prop-context error for bet_id=%d: %s", bet_id, exc)
+        raise HTTPException(status_code=500, detail="Stat fetch failed")
+
+    if not ctx or ctx.get("prop_context_type") in ("none", "no_data"):
+        raise HTTPException(
+            status_code=422,
+            detail=f"No prop context available for {prop_market} ({sport_key})",
+        )
+
+    return JSONResponse(ctx)
+
+
 @app.get("/api/analysis/{bet_id}")
 @app.get("/api/analyze/{bet_id}")   # alias — keep both working
 async def get_analysis(bet_id: int, request: Request, db: Session = Depends(get_db)):

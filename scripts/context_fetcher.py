@@ -542,6 +542,360 @@ def _match_mlb_game(pitchers: dict, away_team: str, home_team: str) -> Optional[
 
 
 # ---------------------------------------------------------------------------
+# Prop-context helpers — platoon splits (MLB) + goalie / SOG stats (NHL)
+# ---------------------------------------------------------------------------
+
+_MLB_PEOPLE_SEARCH = "https://statsapi.mlb.com/api/v1/people/search"
+_NHL_PLAYER_SEARCH = "https://search.d3.nhle.com/api/v1/search"
+_NHL_PLAYER_LAND   = "https://api-web.nhle.com/v1/player"   # /{id}/landing
+
+
+def _fetch_mlb_player_id(player_name: str) -> Optional[int]:
+    """
+    Look up a current MLB player's ID by name via the MLB Stats API.
+    Returns None if not found or on error.
+    """
+    if not player_name:
+        return None
+    data = _get(_MLB_PEOPLE_SEARCH, params={
+        "names":   player_name,
+        "sportId": 1,       # MLB
+        "active":  "true",
+    })
+    people = data.get("people", [])
+    if people:
+        return people[0].get("id")
+    return None
+
+
+def fetch_mlb_pitcher_platoon_splits(pitcher_id: int) -> dict:
+    """
+    Return this season's pitching splits vs LHB and vs RHB for a pitcher.
+
+    Keys in each sub-dict: ba (avg), era, whip, k_pct, bb_pct, hr, pa, ab.
+
+    Uses MLB Stats API statSplits endpoint with sitCodes vl (vs left) and
+    vr (vs right).  Returns {} on any failure.
+    """
+    if not pitcher_id:
+        return {}
+    year = datetime.now().year
+    data = _get(
+        f"{_MLB_PEOPLE}/{pitcher_id}/stats",
+        params={
+            "stats":    "statSplits",
+            "group":    "pitching",
+            "season":   year,
+            "sitCodes": "vl,vr",
+        },
+    )
+    result: dict = {}
+    try:
+        for stat_group in data.get("stats", []):
+            for split in stat_group.get("splits", []):
+                code = split.get("split", {}).get("code", "")
+                s    = split.get("stat", {})
+                pa   = int(s.get("plateAppearances", 0) or 0)
+                k    = int(s.get("strikeOuts", 0) or 0)
+                bb   = int(s.get("baseOnBalls", 0) or 0)
+                entry = {
+                    "pa":    pa,
+                    "ab":    int(s.get("atBats", 0) or 0),
+                    "ba":    s.get("avg", "---"),
+                    "era":   s.get("era", "---"),
+                    "whip":  s.get("whip", "---"),
+                    "k_pct": f"{k/pa*100:.1f}%" if pa > 0 else "---",
+                    "bb_pct":f"{bb/pa*100:.1f}%" if pa > 0 else "---",
+                    "hr":    int(s.get("homeRuns", 0) or 0),
+                    "obp":   s.get("obp", "---"),
+                    "slg":   s.get("slg", "---"),
+                }
+                if code == "vl":
+                    result["vs_lhb"] = entry
+                elif code == "vr":
+                    result["vs_rhb"] = entry
+    except Exception as exc:
+        log.debug("fetch_mlb_pitcher_platoon_splits failed for id=%s: %s", pitcher_id, exc)
+    return result
+
+
+def fetch_mlb_batter_platoon_splits(player_name: str) -> dict:
+    """
+    Return this season's hitting splits vs LHP and vs RHP for a batter.
+    Looks up the player ID by name first.
+
+    Keys in each sub-dict: ba, obp, slg, ops, hr, k_pct, bb_pct, pa, ab.
+
+    Returns {} on any failure.
+    """
+    player_id = _fetch_mlb_player_id(player_name)
+    if not player_id:
+        log.debug("fetch_mlb_batter_platoon_splits: player not found: %s", player_name)
+        return {}
+    year = datetime.now().year
+    data = _get(
+        f"{_MLB_PEOPLE}/{player_id}/stats",
+        params={
+            "stats":    "statSplits",
+            "group":    "hitting",
+            "season":   year,
+            "sitCodes": "vl,vr",
+        },
+    )
+    result: dict = {}
+    try:
+        for stat_group in data.get("stats", []):
+            for split in stat_group.get("splits", []):
+                code = split.get("split", {}).get("code", "")
+                s    = split.get("stat", {})
+                pa   = int(s.get("plateAppearances", 0) or 0)
+                k    = int(s.get("strikeOuts", 0) or 0)
+                bb   = int(s.get("baseOnBalls", 0) or 0)
+                entry = {
+                    "pa":    pa,
+                    "ab":    int(s.get("atBats", 0) or 0),
+                    "ba":    s.get("avg", "---"),
+                    "obp":   s.get("obp", "---"),
+                    "slg":   s.get("slg", "---"),
+                    "ops":   s.get("ops", "---"),
+                    "hr":    int(s.get("homeRuns", 0) or 0),
+                    "k_pct": f"{k/pa*100:.1f}%" if pa > 0 else "---",
+                    "bb_pct":f"{bb/pa*100:.1f}%" if pa > 0 else "---",
+                }
+                if code == "vl":
+                    result["vs_lhp"] = entry    # batter vs left-handed pitcher
+                elif code == "vr":
+                    result["vs_rhp"] = entry    # batter vs right-handed pitcher
+        if result:
+            result["player_id"] = player_id
+    except Exception as exc:
+        log.debug("fetch_mlb_batter_platoon_splits failed for %s: %s", player_name, exc)
+    return result
+
+
+def _fetch_nhl_player_id(player_name: str) -> Optional[int]:
+    """
+    Look up an NHL player ID via the NHL search endpoint.
+    Returns None if not found.
+    """
+    if not player_name:
+        return None
+    data = _get(_NHL_PLAYER_SEARCH, params={
+        "q":     player_name,
+        "type":  "player",
+        "limit": 3,
+    })
+    # Response is a list of hits
+    hits = data if isinstance(data, list) else []
+    for hit in hits:
+        pid = hit.get("playerId") or hit.get("id")
+        if pid:
+            return int(pid)
+    return None
+
+
+def fetch_nhl_goalie_stats(player_name: str) -> dict:
+    """
+    Return season and recent stats for an NHL goaltender by name.
+
+    Keys:
+        save_pct, gaa, wins, losses, ot_losses, games_played,
+        shots_against_per_gm, recent (list of last-5 game dicts with
+        date, opponent, decision, save_pct, shots_against)
+
+    Returns {} on any failure.
+    """
+    pid = _fetch_nhl_player_id(player_name)
+    if not pid:
+        log.debug("fetch_nhl_goalie_stats: player not found: %s", player_name)
+        return {}
+
+    landing = _get(f"{_NHL_PLAYER_LAND}/{pid}/landing")
+    if not landing:
+        return {}
+
+    result: dict = {}
+    try:
+        fs   = landing.get("featuredStats", {})
+        reg  = fs.get("regularSeason", {}).get("subSeason", {})
+        gp   = int(reg.get("gamesPlayed", 0) or 0)
+        sa   = int(reg.get("shotsAgainst", 0) or 0)
+        result = {
+            "player_name":        landing.get("fullName") or player_name,
+            "position":           landing.get("position", "G"),
+            "games_played":       gp,
+            "wins":               int(reg.get("wins", 0) or 0),
+            "losses":             int(reg.get("losses", 0) or 0),
+            "ot_losses":          int(reg.get("otLosses", 0) or 0),
+            "save_pct":           round(float(reg.get("savePctg", 0) or 0), 3),
+            "gaa":                round(float(reg.get("goalsAgainstAvg", 0) or 0), 2),
+            "shots_against_per_gm": round(sa / gp, 1) if gp > 0 else None,
+            "shutouts":           int(reg.get("shutouts", 0) or 0),
+        }
+    except Exception as exc:
+        log.debug("fetch_nhl_goalie_stats: landing parse failed for %s: %s", player_name, exc)
+        return {}
+
+    # Fetch last-5 game log for recent form
+    try:
+        gl = _get(f"{_NHL_PLAYER_LAND}/{pid}/game-log/now")
+        games = (gl.get("gameLog") or [])[:5]
+        recent = []
+        for g in games:
+            svpct_raw = g.get("savePctg") or g.get("savePercentage")
+            sa_g = int(g.get("shotsAgainst", 0) or 0)
+            ga_g = int(g.get("goalsAgainst", 0) or 0)
+            recent.append({
+                "date":          g.get("gameDate", ""),
+                "opponent":      g.get("opponentAbbrev", ""),
+                "home_or_away":  "H" if g.get("homeRoadFlag", "").upper() == "H" else "A",
+                "decision":      g.get("decision", ""),
+                "shots_against": sa_g,
+                "goals_against": ga_g,
+                "save_pct":      round(float(svpct_raw), 3) if svpct_raw else (
+                    round((sa_g - ga_g) / sa_g, 3) if sa_g > 0 else None
+                ),
+            })
+        result["recent"] = recent
+    except Exception as exc:
+        log.debug("fetch_nhl_goalie_stats: gamelog failed for %s: %s", player_name, exc)
+        result["recent"] = []
+
+    return result
+
+
+def fetch_nhl_player_sog_avg(player_name: str) -> dict:
+    """
+    Return recent shots-on-goal averages for an NHL skater.
+
+    Keys:
+        player_name, season_sog_per_gm, last5_sog_per_gm, last10_sog_per_gm,
+        recent (list of last-10 game dicts with date, opponent, sog, goals)
+
+    Returns {} on any failure.
+    """
+    pid = _fetch_nhl_player_id(player_name)
+    if not pid:
+        log.debug("fetch_nhl_player_sog_avg: player not found: %s", player_name)
+        return {}
+
+    landing = _get(f"{_NHL_PLAYER_LAND}/{pid}/landing")
+    gl_data = _get(f"{_NHL_PLAYER_LAND}/{pid}/game-log/now")
+
+    result: dict = {"player_name": player_name}
+
+    # Season SOG per game from landing
+    try:
+        fs  = landing.get("featuredStats", {})
+        reg = fs.get("regularSeason", {}).get("subSeason", {})
+        gp  = int(reg.get("gamesPlayed", 0) or 0)
+        sog = int(reg.get("shots", 0) or 0)
+        result["season_sog_per_gm"] = round(sog / gp, 1) if gp > 0 else None
+        result["season_games"]      = gp
+    except Exception:
+        result["season_sog_per_gm"] = None
+
+    # Recent game log
+    try:
+        games = gl_data.get("gameLog") or []
+        recent = []
+        for g in games[:10]:
+            recent.append({
+                "date":         g.get("gameDate", ""),
+                "opponent":     g.get("opponentAbbrev", ""),
+                "home_or_away": "H" if g.get("homeRoadFlag", "").upper() == "H" else "A",
+                "sog":          int(g.get("shots", g.get("shotsOnGoal", 0)) or 0),
+                "goals":        int(g.get("goals", 0) or 0),
+                "toi":          g.get("toi", ""),
+            })
+
+        def _avg_sog(n: int) -> Optional[float]:
+            subset = [r["sog"] for r in recent[:n] if r["sog"] is not None]
+            return round(sum(subset) / len(subset), 1) if subset else None
+
+        result["last5_sog_per_gm"]  = _avg_sog(5)
+        result["last10_sog_per_gm"] = _avg_sog(10)
+        result["recent"] = recent
+    except Exception as exc:
+        log.debug("fetch_nhl_player_sog_avg: gamelog failed for %s: %s", player_name, exc)
+        result["recent"] = []
+
+    return result
+
+
+def fetch_prop_context(
+    player_name: str,
+    prop_market: str,
+    sport_key: str,
+    pitcher_id: Optional[int] = None,
+) -> dict:
+    """
+    Main dispatcher: return prop-specific context for a given player and market.
+
+    Routes:
+        baseball_mlb + pitcher_*  → pitcher platoon splits (vs LHB / vs RHB)
+        baseball_mlb + batter_*   → batter platoon splits (vs LHP / vs RHP)
+        icehockey_nhl + player_shots_on_goal  → SOG averages
+        icehockey_nhl + player_goals/assists/points/blocked_shots → goalie stats
+
+    Returns a dict with a "prop_context_type" key describing what's in it.
+    """
+    ctx: dict = {
+        "prop_context_type": "none",
+        "player_name":       player_name,
+        "prop_market":       prop_market,
+        "sport_key":         sport_key,
+    }
+
+    if sport_key == "baseball_mlb":
+        _PITCHER_MARKETS = {
+            "pitcher_strikeouts", "pitcher_hits_allowed", "pitcher_earned_runs",
+        }
+        _BATTER_MARKETS = {
+            "batter_home_runs", "batter_hits", "batter_rbis",
+            "batter_total_bases", "batter_strikeouts",
+        }
+
+        if prop_market in _PITCHER_MARKETS:
+            # Resolve pitcher ID: prefer pre-fetched ID, fall back to search
+            pid = pitcher_id or _fetch_mlb_player_id(player_name)
+            if pid:
+                splits = fetch_mlb_pitcher_platoon_splits(pid)
+                ctx.update(splits)
+                ctx["pitcher_id"]        = pid
+                ctx["prop_context_type"] = "mlb_pitcher_splits"
+            else:
+                ctx["prop_context_type"] = "no_data"
+
+        elif prop_market in _BATTER_MARKETS:
+            splits = fetch_mlb_batter_platoon_splits(player_name)
+            if splits:
+                ctx.update(splits)
+                ctx["prop_context_type"] = "mlb_batter_splits"
+            else:
+                ctx["prop_context_type"] = "no_data"
+
+    elif sport_key == "icehockey_nhl":
+        if prop_market == "player_shots_on_goal":
+            data = fetch_nhl_player_sog_avg(player_name)
+            if data:
+                ctx.update(data)
+                ctx["prop_context_type"] = "nhl_player_sog"
+            else:
+                ctx["prop_context_type"] = "no_data"
+        else:
+            # Goals, assists, points, blocked shots — show goalie context
+            data = fetch_nhl_goalie_stats(player_name)
+            if data:
+                ctx.update(data)
+                ctx["prop_context_type"] = "nhl_goalie"
+            else:
+                ctx["prop_context_type"] = "no_data"
+
+    return ctx
+
+
+# ---------------------------------------------------------------------------
 # Assembler — single entry point used by report_generator
 # ---------------------------------------------------------------------------
 

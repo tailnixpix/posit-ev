@@ -2018,6 +2018,58 @@ main { max-width: none !important; padding: 0 !important; }
   margin-bottom: 0;
 }
 
+/* ── Prop Context Panel ───────────────────────────────────────── */
+.prop-ctx-panel {
+  background: rgba(0,214,143,0.04);
+  border: 1px solid rgba(0,214,143,0.15);
+  border-radius: 8px;
+  overflow: hidden;
+  font-size: 0.78rem;
+}
+.prop-ctx-hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 12px;
+  background: rgba(0,214,143,0.06);
+  border-bottom: 1px solid rgba(0,214,143,0.1);
+  font-size: 0.58rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.6px; color: var(--d-green);
+}
+.splits-table { width: 100%; border-collapse: collapse; font-size: 0.72rem; }
+.splits-table th {
+  padding: 5px 8px; text-align: center;
+  font-size: 0.55rem; text-transform: uppercase; letter-spacing: 0.4px;
+  color: var(--d-muted); border-bottom: 1px solid rgba(0,214,143,0.1); font-weight: 600;
+}
+.splits-table th:first-child { text-align: left; padding-left: 12px; }
+.splits-table td {
+  padding: 5px 8px; text-align: center;
+  color: var(--d-sub); border-bottom: 1px solid rgba(0,214,143,0.05);
+}
+.splits-table td:first-child { text-align: left; font-weight: 600; color: var(--d-text); padding-left: 12px; }
+.splits-table tr:last-child td { border-bottom: none; }
+.splits-table .st-highlight { color: var(--d-green); font-weight: 700; }
+.prop-ctx-stat-row {
+  display: flex; gap: 0;
+  border-bottom: 1px solid rgba(0,214,143,0.08);
+}
+.prop-ctx-stat {
+  flex: 1; padding: 8px 6px; text-align: center;
+  border-right: 1px solid rgba(0,214,143,0.08);
+}
+.prop-ctx-stat:last-child { border-right: none; }
+.prop-ctx-stat .pcs-val { font-size: 0.9rem; font-weight: 700; color: var(--d-text); }
+.prop-ctx-stat .pcs-lbl { font-size: 0.52rem; text-transform: uppercase; letter-spacing: 0.4px; color: var(--d-muted); margin-top: 2px; }
+.prop-ctx-gamelog-row {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 10px; font-size: 0.65rem;
+  border-top: 1px solid rgba(0,214,143,0.05); color: var(--d-sub);
+}
+.prop-ctx-gamelog-row:first-child { border-top: none; }
+.prop-ctx-gamelog-row .pgl-date { color: var(--d-muted); width: 36px; flex-shrink: 0; }
+.prop-ctx-gamelog-row .pgl-opp  { font-weight: 600; color: var(--d-text); width: 42px; flex-shrink: 0; }
+.prop-ctx-gamelog-row .pgl-dec  { width: 18px; text-align: center; flex-shrink: 0; }
+.prop-ctx-gamelog-row .pgl-val  { margin-left: auto; font-weight: 700; color: var(--d-green); }
+
 /* ── Compact mode: hide new sections ────────────────────────── */
 .cards-grid.compact-mode .card-metrics,
 .cards-grid.compact-mode .card-book-strip,
@@ -2673,6 +2725,8 @@ main { max-width: none !important; padding: 0 !important; }
                 {# Projection — game bets only #}
                 {% if not bet.is_prop and bet.game and ' @ ' in (bet.game or '') %}
                 <div class="proj-panel" id="proj-panel-{{ bet.id }}"></div>
+                {% elif bet.is_prop %}
+                <div class="prop-ctx-panel" id="prop-ctx-panel-{{ bet.id }}" style="display:none;"></div>
                 {% endif %}
                 {# AI Analysis #}
                 <div class="ai-panel" id="ai-panel-{{ bet.id }}">
@@ -4778,6 +4832,147 @@ function toggleAiPanel(btn) {
     });
 }
 
+// ── Prop Context Panel ─────────────────────────────────────────────────────
+const _propCtxCache = {};
+
+function _loadPropContext(betId, panel) {
+  panel.style.display = 'block';
+  panel.innerHTML = '<div style="padding:10px 12px;"><div class="skel-bar skel-w90"></div><div class="skel-bar skel-w75"></div><div class="skel-bar skel-w60"></div></div>';
+
+  fetch('/api/prop-context/' + betId)
+    .then(r => {
+      if (r.status === 422 || r.status === 403) return null;   // no data or not subscribed
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(data => {
+      if (!data) {
+        panel.style.display = 'none';
+        return;
+      }
+      _propCtxCache[betId] = data;
+      panel.innerHTML = _buildPropContextHtml(data);
+    })
+    .catch(() => {
+      panel.innerHTML = '<div style="padding:8px 12px;font-size:0.72rem;color:var(--d-muted);">⚠️ Context data unavailable.</div>';
+    });
+}
+
+function _buildPropContextHtml(d) {
+  const t = d.prop_context_type;
+  const _sv = v => (v == null || v === '---') ? '<span style="color:var(--d-muted);">—</span>' : v;
+  const yr  = new Date().getFullYear();
+
+  // ── MLB Pitcher Platoon Splits ──────────────────────────────────────────
+  if (t === 'mlb_pitcher_splits') {
+    const lhb  = d.vs_lhb || {};
+    const rhb  = d.vs_rhb || {};
+    const name = d.player_name || 'Pitcher';
+    let h = `<div class="prop-ctx-hdr"><span>⚾ ${name} — Platoon Splits</span><span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--d-muted);">${yr} Season</span></div>`;
+    h += `<table class="splits-table"><thead><tr>
+      <th>vs</th><th>PA</th><th>BA</th><th>ERA</th><th>WHIP</th><th>K%</th><th>BB%</th><th>HR</th>
+    </tr></thead><tbody>`;
+    if (lhb.pa != null) {
+      const kHi = parseFloat(lhb.k_pct) >= 25 ? ' class="st-highlight"' : '';
+      h += `<tr><td>LHB</td><td>${_sv(lhb.pa)}</td><td>${_sv(lhb.ba)}</td><td>${_sv(lhb.era)}</td><td>${_sv(lhb.whip)}</td><td${kHi}>${_sv(lhb.k_pct)}</td><td>${_sv(lhb.bb_pct)}</td><td>${_sv(lhb.hr)}</td></tr>`;
+    }
+    if (rhb.pa != null) {
+      const kHi = parseFloat(rhb.k_pct) >= 25 ? ' class="st-highlight"' : '';
+      h += `<tr><td>RHB</td><td>${_sv(rhb.pa)}</td><td>${_sv(rhb.ba)}</td><td>${_sv(rhb.era)}</td><td>${_sv(rhb.whip)}</td><td${kHi}>${_sv(rhb.k_pct)}</td><td>${_sv(rhb.bb_pct)}</td><td>${_sv(rhb.hr)}</td></tr>`;
+    }
+    h += '</tbody></table>';
+    if (!lhb.pa && !rhb.pa) h += '<div style="padding:8px 12px;font-size:0.72rem;color:var(--d-muted);">No split data yet this season.</div>';
+    return h;
+  }
+
+  // ── MLB Batter Platoon Splits ──────────────────────────────────────────
+  if (t === 'mlb_batter_splits') {
+    const lhp  = d.vs_lhp || {};
+    const rhp  = d.vs_rhp || {};
+    const name = d.player_name || 'Batter';
+    let h = `<div class="prop-ctx-hdr"><span>⚾ ${name} — Platoon Splits</span><span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--d-muted);">${yr} Season</span></div>`;
+    h += `<table class="splits-table"><thead><tr>
+      <th>vs</th><th>PA</th><th>BA</th><th>OBP</th><th>SLG</th><th>OPS</th><th>K%</th><th>HR</th>
+    </tr></thead><tbody>`;
+    if (lhp.pa != null) {
+      const opsHi = parseFloat(lhp.ops) >= 0.9 ? ' class="st-highlight"' : '';
+      h += `<tr><td>vs LHP</td><td>${_sv(lhp.pa)}</td><td>${_sv(lhp.ba)}</td><td>${_sv(lhp.obp)}</td><td>${_sv(lhp.slg)}</td><td${opsHi}>${_sv(lhp.ops)}</td><td>${_sv(lhp.k_pct)}</td><td>${_sv(lhp.hr)}</td></tr>`;
+    }
+    if (rhp.pa != null) {
+      const opsHi = parseFloat(rhp.ops) >= 0.9 ? ' class="st-highlight"' : '';
+      h += `<tr><td>vs RHP</td><td>${_sv(rhp.pa)}</td><td>${_sv(rhp.ba)}</td><td>${_sv(rhp.obp)}</td><td>${_sv(rhp.slg)}</td><td${opsHi}>${_sv(rhp.ops)}</td><td>${_sv(rhp.k_pct)}</td><td>${_sv(rhp.hr)}</td></tr>`;
+    }
+    h += '</tbody></table>';
+    if (!lhp.pa && !rhp.pa) h += '<div style="padding:8px 12px;font-size:0.72rem;color:var(--d-muted);">No split data yet this season.</div>';
+    return h;
+  }
+
+  // ── NHL Goalie Stats ────────────────────────────────────────────────────
+  if (t === 'nhl_goalie') {
+    const name = d.player_name || 'Goalie';
+    const rec  = d.recent || [];
+    const rec5 = d.wins != null
+      ? `${d.wins}-${d.losses||0}${d.ot_losses ? '-' + d.ot_losses : ''}`
+      : '—';
+    let h = `<div class="prop-ctx-hdr"><span>🥅 ${name} — Goalie Stats</span><span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--d-muted);">2024–25 Season</span></div>`;
+    h += `<div class="prop-ctx-stat-row">
+      <div class="prop-ctx-stat"><div class="pcs-val">${d.save_pct != null ? d.save_pct.toFixed(3) : '—'}</div><div class="pcs-lbl">SV%</div></div>
+      <div class="prop-ctx-stat"><div class="pcs-val">${d.gaa != null ? d.gaa.toFixed(2) : '—'}</div><div class="pcs-lbl">GAA</div></div>
+      <div class="prop-ctx-stat"><div class="pcs-val">${d.shots_against_per_gm != null ? d.shots_against_per_gm : '—'}</div><div class="pcs-lbl">SA/gm</div></div>
+      <div class="prop-ctx-stat"><div class="pcs-val">${rec5}</div><div class="pcs-lbl">Record</div></div>
+    </div>`;
+    if (rec.length) {
+      h += '<div>';
+      for (const g of rec) {
+        const svp  = g.save_pct != null ? g.save_pct.toFixed(3) : '—';
+        const dec  = g.decision === 'W' ? '🟢' : g.decision === 'L' ? '🔴' : g.decision === 'O' ? '🟡' : '◻';
+        const date = g.date ? g.date.slice(5) : '';
+        const ha   = g.home_or_away === 'H' ? 'vs' : '@';
+        h += `<div class="prop-ctx-gamelog-row">
+          <span class="pgl-date">${date}</span>
+          <span class="pgl-dec">${dec}</span>
+          <span class="pgl-opp">${ha} ${g.opponent||'?'}</span>
+          <span style="color:var(--d-muted);font-size:0.62rem;">${g.shots_against != null ? g.shots_against + ' SA' : ''}</span>
+          <span class="pgl-val">SV% ${svp}</span>
+        </div>`;
+      }
+      h += '</div>';
+    }
+    return h;
+  }
+
+  // ── NHL Player Shots on Goal ────────────────────────────────────────────
+  if (t === 'nhl_player_sog') {
+    const name = d.player_name || 'Player';
+    const rec  = d.recent || [];
+    let h = `<div class="prop-ctx-hdr"><span>🏒 ${name} — Shots on Goal</span><span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--d-muted);">2024–25 Season</span></div>`;
+    h += `<div class="prop-ctx-stat-row">
+      <div class="prop-ctx-stat"><div class="pcs-val">${d.season_sog_per_gm != null ? d.season_sog_per_gm : '—'}</div><div class="pcs-lbl">Season avg</div></div>
+      <div class="prop-ctx-stat"><div class="pcs-val">${d.last5_sog_per_gm != null ? d.last5_sog_per_gm : '—'}</div><div class="pcs-lbl">Last 5</div></div>
+      <div class="prop-ctx-stat"><div class="pcs-val">${d.last10_sog_per_gm != null ? d.last10_sog_per_gm : '—'}</div><div class="pcs-lbl">Last 10</div></div>
+    </div>`;
+    if (rec.length) {
+      h += '<div>';
+      for (const g of rec.slice(0, 7)) {
+        const date    = g.date ? g.date.slice(5) : '';
+        const ha      = g.home_or_away === 'H' ? 'vs' : '@';
+        const sogHi   = (g.sog != null && g.sog >= 4) ? ' class="pgl-val st-highlight"' : ' class="pgl-val"';
+        const goalMrk = g.goals > 0 ? ` <span style="color:var(--d-green);font-size:0.6rem;">⚽${g.goals}</span>` : '';
+        h += `<div class="prop-ctx-gamelog-row">
+          <span class="pgl-date">${date}</span>
+          <span class="pgl-opp">${ha} ${g.opponent||'?'}</span>
+          ${g.toi ? `<span style="color:var(--d-muted);font-size:0.62rem;">${g.toi}</span>` : ''}
+          <span${sogHi}>${g.sog != null ? g.sog + ' SOG' : '—'}${goalMrk}</span>
+        </div>`;
+      }
+      h += '</div>';
+    }
+    return h;
+  }
+
+  return '<div style="padding:8px 12px;font-size:0.72rem;color:var(--d-muted);">No prop context available.</div>';
+}
+
 // ── Combined Analysis Panel (Projection + AI) ────────────────────────────
 function toggleAnalysisPanel(betId, btn) {
   const wrap = document.getElementById('analysis-wrap-' + betId);
@@ -4796,7 +4991,7 @@ function toggleAnalysisPanel(betId, btn) {
   btn.classList.add('open');
   btn.textContent = '✕ Close';
 
-  // Load projection data if not already loaded
+  // Load projection data if not already loaded (game bets)
   const projPanel = document.getElementById('proj-panel-' + betId);
   if (projPanel && projPanel.innerHTML.trim() === '') {
     if (_projCache[betId]) {
@@ -4805,6 +5000,17 @@ function toggleAnalysisPanel(betId, btn) {
       // Use a silent dummy btn — _loadProjection sets .textContent/.disabled on it harmlessly
       const _db = { textContent: '', disabled: false };
       _loadProjection(betId, _db, projPanel);
+    }
+  }
+
+  // Load prop context if not already loaded (prop bets)
+  const propCtxPanel = document.getElementById('prop-ctx-panel-' + betId);
+  if (propCtxPanel && propCtxPanel.style.display === 'none') {
+    if (_propCtxCache[betId]) {
+      propCtxPanel.innerHTML = _buildPropContextHtml(_propCtxCache[betId]);
+      propCtxPanel.style.display = 'block';
+    } else {
+      _loadPropContext(betId, propCtxPanel);
     }
   }
 
