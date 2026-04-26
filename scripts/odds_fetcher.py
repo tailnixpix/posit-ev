@@ -11,7 +11,7 @@ import logging
 from typing import Optional, Union
 import requests
 import pandas as pd
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from config import ODDS_API_KEY, ODDS_API_BASE_URL, LOG_LEVEL
@@ -389,7 +389,7 @@ def get_odds_df(
 def get_props_df(
     sport_keys: list[str] = None,
     bookmakers: list[str] = None,
-    max_games: int = 4,
+    max_games: int = 6,
 ) -> pd.DataFrame:
     """
     Fetch player props for NBA, MLB, and NHL only.
@@ -397,17 +397,27 @@ def get_props_df(
 
     Uses sportsbooks only — prediction markets don't offer player lines.
     One API request per event, so limited to max_games per sport to conserve quota.
+
+    Game selection: takes up to max_games across the next 18 hours so the
+    props pool spans afternoon AND evening games on the same day, not just
+    the earliest N games (which all expire the moment they start).
     """
     sport_keys = [s for s in (sport_keys or PROP_SPORTS) if s in PROP_SPORTS]
     bookmakers = bookmakers or PROPS_BOOKMAKERS
     all_rows = []
-    now_iso = datetime.now(timezone.utc).isoformat()
+    now_utc    = datetime.now(timezone.utc)
+    now_iso    = now_utc.isoformat()
+    window_iso = (now_utc + timedelta(hours=18)).isoformat()
 
     for sport in sport_keys:
         # Lightweight call — just need event IDs and commence times
         games = fetch_odds(sport, markets=["h2h"], bookmakers=["draftkings"])
+        # Take games starting within the next 18 hours, sorted by start time.
+        # 18 hours covers a full day's afternoon + evening slate and ensures
+        # evening games are included even when the pipeline runs at noon.
         upcoming = sorted(
-            [g for g in games if g.get("commence_time", "") >= now_iso],
+            [g for g in games
+             if now_iso <= g.get("commence_time", "") <= window_iso],
             key=lambda g: g.get("commence_time", "")
         )[:max_games]
 
