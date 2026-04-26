@@ -2419,7 +2419,7 @@ main { max-width: none !important; padding: 0 !important; }
         <span class="upgrade-nudge-icon">📊</span>
         <div>
           <div class="upgrade-nudge-title">{{ bet_count }} live +EV picks right now</div>
-          <div class="upgrade-nudge-sub">Pro members see every pick, every market, updated hourly. You're on the free plan.</div>
+          <div class="upgrade-nudge-sub">Pro members see every pick, every market, updated every 30 min. You're on the free plan.</div>
         </div>
       </div>
       <div class="upgrade-nudge-actions">
@@ -2708,7 +2708,7 @@ main { max-width: none !important; padding: 0 !important; }
         {% elif cache_status and cache_status.last_run %}
         <p>Last scan found {{ cache_status.last_count }} bet(s). Updated {{ cache_status.last_run.strftime('%I:%M %p UTC') }}.{% if next_refresh %} Next refresh at {{ next_refresh.strftime('%I:%M %p UTC') }}.{% endif %}</p>
         {% else %}
-        <p>The pipeline scans odds every hour. Refresh in a minute — a scan was just triggered.</p>
+        <p>The pipeline scans odds every 30 minutes. Refresh in a minute — a scan was just triggered.</p>
         {% endif %}
         <button onclick="location.reload()" style="margin-top:14px;background:var(--d-green-dim);border:1px solid rgba(0,214,143,0.25);color:var(--d-green);border-radius:8px;padding:8px 18px;font-family:inherit;font-size:0.82rem;font-weight:600;cursor:pointer;">↻ Refresh Page</button>
       </div>

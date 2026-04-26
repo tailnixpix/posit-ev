@@ -17,6 +17,7 @@ Auth routes (handled by web/auth.py router):
 EV Cache:
     refresh_ev_cache() runs the full pipeline every 30 minutes via APScheduler
     (AsyncIOScheduler). On startup it runs immediately, then again every 30 min.
+    Props are skipped for sports that returned no game-level odds in the same run.
     Results are written atomically to the EVBetCache table, replacing all prior rows.
     /dashboard reads directly from EVBetCache — no live API calls on page load.
 
@@ -246,8 +247,18 @@ def refresh_ev_cache() -> int:
         ev_df = run_pipeline()
 
         # ── Player props (NBA, MLB, NHL) ──────────────────────────────────
+        # Only fetch props for sports that actually returned game-level odds.
+        # If a sport had no games (empty response from the odds endpoint), skip
+        # the per-game props calls entirely — saves ~10 API requests per idle sport.
+        _active_sports = set(ev_df["sport_key"].unique()) if not ev_df.empty else set()
+        _prop_sports_active = [s for s in ["basketball_nba", "baseball_mlb", "icehockey_nhl"]
+                                if s in _active_sports]
+        if _prop_sports_active:
+            log.info("Props fetch: active prop sports today: %s", _prop_sports_active)
+        else:
+            log.info("Props fetch: no active prop sports — skipping props entirely.")
         try:
-            props_df = get_props_df()
+            props_df = get_props_df(sport_keys=_prop_sports_active) if _prop_sports_active else _pd.DataFrame()
             if not props_df.empty:
                 props_ev_df = find_positive_ev_props(props_df)
                 if not props_ev_df.empty:
@@ -638,12 +649,12 @@ async def on_startup() -> None:
         except Exception:
             _db.rollback()
 
-    # Hourly refresh — runs at startup then every 60 minutes
+    # Every-30-min refresh — runs at startup then every 30 minutes
     scheduler.add_job(
         refresh_ev_cache,
-        trigger=IntervalTrigger(minutes=60),
+        trigger=IntervalTrigger(minutes=30),
         id="ev_cache_refresh",
-        name="Refresh EV bet cache (hourly)",
+        name="Refresh EV bet cache (every 30 min)",
         next_run_time=datetime.now(timezone.utc),   # run once at startup
         misfire_grace_time=120,
         replace_existing=True,
@@ -678,7 +689,7 @@ async def on_startup() -> None:
     )
 
     scheduler.start()
-    log.info("APScheduler started — EV cache refreshes hourly + 7:59 AM CT pre-newsletter, newsletter sends at 8 AM CT.")
+    log.info("APScheduler started — EV cache refreshes every 30 min + 7:59 AM CT pre-newsletter, newsletter sends at 8 AM CT.")
 
 
 @app.on_event("shutdown")

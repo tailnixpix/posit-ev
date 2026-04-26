@@ -672,7 +672,7 @@ def send_daily_newsletter() -> dict:
 <p style="font-size:14px; color:#555270; line-height:1.7; margin:0 0 20px;">
   This is your free daily pick from Posit+EV. EV Pro members get the
   <strong>full daily scan</strong> — usually 10&ndash;30 picks across NHL, NBA,
-  MLB, and more — refreshed every hour on a live dashboard.
+  MLB, and more — refreshed every 30 minutes on a live dashboard.
 </p>
 
 <a href="{_base_url}/pricing"
@@ -811,7 +811,7 @@ def send_correction_newsletter() -> dict:
 <p style="font-size:14px; color:#555270; line-height:1.7; margin:0 0 20px;">
   This is today&rsquo;s corrected free pick from Posit+EV. EV Pro members get the
   <strong>full daily scan</strong> &mdash; usually 10&ndash;30 picks across NHL, NBA,
-  MLB, and more &mdash; refreshed every hour on a live dashboard.
+  MLB, and more &mdash; refreshed every 30 minutes on a live dashboard.
 </p>
 
 <a href="{_base_url}/pricing"
