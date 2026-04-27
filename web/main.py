@@ -791,8 +791,13 @@ async def on_startup() -> None:
 
 
 def _start_telegram_bot() -> None:
-    """Launch telegram_bot.main() in a daemon thread alongside the web server."""
-    import threading, sys as _sys
+    """Launch telegram_bot in a daemon thread with its own event loop.
+
+    run_polling() installs OS signal handlers which only work on the main
+    thread, so we call run_polling_async() instead — it uses the async
+    context-manager API and never touches signal handlers.
+    """
+    import threading, sys as _sys, asyncio
 
     bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "")
     if not bot_token:
@@ -800,14 +805,18 @@ def _start_telegram_bot() -> None:
         return
 
     def _run():
+        # Give the thread its own event loop so asyncio doesn't complain.
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
         try:
-            # telegram_bot.py is in the project root, one level up from web/
             _sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-            from telegram_bot import main as bot_main
+            from telegram_bot import run_polling_async
             log.info("Telegram bot starting…")
-            bot_main()
+            loop.run_until_complete(run_polling_async())
         except Exception as exc:
             log.error("Telegram bot crashed: %s", exc, exc_info=True)
+        finally:
+            loop.close()
 
     t = threading.Thread(target=_run, name="telegram-bot", daemon=True)
     t.start()
