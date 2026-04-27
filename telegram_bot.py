@@ -693,30 +693,38 @@ SPORT_KEYWORDS: dict = {
 }
 
 
+    # Words that carry no signal and should be stripped before keyword matching
+_NOISE_WORDS = {
+    "find", "me", "a", "an", "the", "good", "best", "any", "some", "show",
+    "give", "get", "what", "whats", "what's", "is", "are", "there", "pick",
+    "picks", "bet", "bets", "betting", "wager", "wagers", "play", "plays",
+    "for", "today", "tonight", "now", "current", "right", "now", "on",
+    "with", "in", "at", "of", "to", "and", "or", "my", "i", "can", "you",
+    "should", "would", "could", "recommend", "suggest", "worth", "taking",
+    "worth", "placing", "available", "have", "do", "look", "like",
+}
+
+
 def _parse_free_text(text: str) -> tuple:
     """
-    Parse a free-form message into (team_query, filter_market, sport_keys).
+    Parse a free-form natural-language message into (team_query, filter_market, sport_keys).
 
-    Tokens are matched against market and sport keyword lists; whatever
-    remains is treated as the team name.  Order doesn't matter.
-
-    Examples
-    --------
-    "Lakers props"      → ("Lakers", "player_props", None)
-    "NHL spread"        → ("",        "spreads",      [...nhl key...])
-    "Arsenal moneyline" → ("Arsenal", "h2h",          None)
-    "Bruins"            → ("Bruins",  None,            None)
-    "nba total"         → ("",        "totals",        [...nba key...])
+    Strips noise words first so conversational queries resolve correctly:
+        "find me a good MLB bet for today"  → ("", None, ["baseball_mlb"])
+        "any good NBA props tonight?"       → ("", "player_props", ["basketball_nba"])
+        "Lakers props"                      → ("Lakers", "player_props", None)
+        "NHL spread"                        → ("", "spreads", ["icehockey_nhl"])
+        "Arsenal moneyline"                 → ("Arsenal", "h2h", None)
     """
-    from scripts.odds_fetcher import SPORT_KEYS as ALL_SPORT_KEYS
-
     tokens     = text.strip().split()
     remaining  = []
     market_key = None
     sport_keys = None
 
     for token in tokens:
-        lower = token.lower()
+        lower = token.lower().rstrip("?!.,")
+        if lower in _NOISE_WORDS:
+            continue                          # strip filler
         if lower in MARKET_KEYWORDS and market_key is None:
             market_key = MARKET_KEYWORDS[lower]
         elif lower in SPORT_KEYWORDS and sport_keys is None:
@@ -741,57 +749,25 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
     team_query, filter_market, sport_keys = _parse_free_text(text)
 
-    # Sport-only query (e.g. "NHL" or "nba totals") — run a mini scan
+    # Sport-only (or sport+market) query — pull from the live DB cache instantly
     if not team_query and sport_keys:
-        await update.message.chat.send_action(ChatAction.TYPING)
-        try:
-            from scripts.odds_fetcher import get_odds_df
-            from models.ev_calculator import find_all_positive_ev
-            from scripts.report_generator import _format_time
-
-            markets = [filter_market] if filter_market and filter_market != "player_props" \
-                      else ALL_STANDARD_MARKETS
-            odds_df = get_odds_df(sport_keys=sport_keys, markets=markets)
-            if odds_df.empty:
-                await _reply(update, f"❌ No odds data found for that league right now.")
-                return
-
-            ev_df = find_all_positive_ev(odds_df, markets=markets, ev_threshold=0.0)
-            positive = ev_df[ev_df["ev_pct"] > 0] if not ev_df.empty else ev_df
-
-            if positive.empty:
-                label = MARKET_LABELS.get(filter_market, "all markets") if filter_market else "all markets"
-                await _reply(update, f"❌ No +EV bets found for that league / {label} right now.")
-                return
-
-            # Format top 8 as a compact list
-            lines = [f"💰 <b>+EV — {text.title()}</b>\n"]
-            for _, row in positive.head(8).iterrows():
-                ev_pct = row.get("ev_pct", 0)
-                mkt    = MARKET_LABELS.get(row.get("market", ""), "")
-                lines.append(
-                    f"{_ev_emoji(ev_pct)} <b>{mkt}</b> | {row.get('outcome_name','')} "
-                    f"{_format_odds(row.get('american_odds'))}"
-                )
-                lines.append(
-                    f"   {row.get('game','')} — {row.get('bookmaker','')} | EV: <b>{ev_pct:+.1f}%</b>"
-                )
-            await _reply(update, "\n".join(lines))
-        except Exception as exc:
-            log.error("handle_text sport scan failed: %s", exc)
-            await _reply(update, f"⚠️ Scan failed.\n<code>{exc}</code>")
+        # Fake the args so cmd_picks handles it cleanly
+        league_token = next((k for k, v in SPORT_KEYWORDS.items() if v == sport_keys), None)
+        market_token = next((k for k, v in MARKET_KEYWORDS.items() if v == filter_market), None) if filter_market else None
+        context.args = [t for t in [league_token, market_token] if t]
+        await cmd_picks(update, context)
         return
 
     # No team and no sport — prompt
     if not team_query:
         await _reply(update,
-            "👋 Just type a team name, sport, or market to get started.\n\n"
-            "<b>Examples:</b>\n"
-            "  <code>Lakers</code>\n"
+            "👋 Just ask naturally — here are some examples:\n\n"
+            "  <code>find me a good MLB bet today</code>\n"
+            "  <code>any NHL props tonight?</code>\n"
+            "  <code>best NBA picks</code>\n"
             "  <code>Lakers props</code>\n"
-            "  <code>Arsenal moneyline</code>\n"
-            "  <code>NHL spread</code>\n"
-            "  <code>NBA totals</code>"
+            "  <code>Arsenal moneyline</code>\n\n"
+            "Or use commands: /picks · /picks mlb · /picks nhl props"
         )
         return
 
