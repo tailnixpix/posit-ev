@@ -786,6 +786,33 @@ async def on_startup() -> None:
     scheduler.start()
     log.info("APScheduler started — EV cache refreshes every 30 min + 7:59 AM CT pre-newsletter, newsletter sends at 8 AM CT.")
 
+    # Start Telegram bot in a background daemon thread (runs its own event loop)
+    _start_telegram_bot()
+
+
+def _start_telegram_bot() -> None:
+    """Launch telegram_bot.main() in a daemon thread alongside the web server."""
+    import threading, sys as _sys
+
+    bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "")
+    if not bot_token:
+        log.info("TELEGRAM_BOT_TOKEN not set — Telegram bot disabled.")
+        return
+
+    def _run():
+        try:
+            # telegram_bot.py is in the project root, one level up from web/
+            _sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+            from telegram_bot import main as bot_main
+            log.info("Telegram bot starting…")
+            bot_main()
+        except Exception as exc:
+            log.error("Telegram bot crashed: %s", exc, exc_info=True)
+
+    t = threading.Thread(target=_run, name="telegram-bot", daemon=True)
+    t.start()
+    log.info("Telegram bot thread launched.")
+
 
 @app.on_event("shutdown")
 async def on_shutdown() -> None:

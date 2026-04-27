@@ -807,6 +807,161 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
 
 # ---------------------------------------------------------------------------
+# Auth guard — only respond to the configured CHAT_ID
+# ---------------------------------------------------------------------------
+
+from telegram_notifier import CHAT_ID as _ALLOWED_CHAT_ID
+
+def _is_authorized(update: Update) -> bool:
+    """Return True only if the message is from the configured TELEGRAM_CHAT_ID."""
+    if not _ALLOWED_CHAT_ID:
+        return True   # no restriction configured — allow all (dev mode)
+    return str(update.effective_chat.id) == str(_ALLOWED_CHAT_ID)
+
+
+async def _auth_guard(update: Update) -> bool:
+    """Send a rejection and return False if the sender is not authorized."""
+    if not _is_authorized(update):
+        log.warning("Unauthorised message from chat_id=%s", update.effective_chat.id)
+        await update.message.reply_text("⛔ Unauthorised.")
+        return False
+    return True
+
+
+# ---------------------------------------------------------------------------
+# /picks — instant picks from the live DB cache (no API calls)
+# ---------------------------------------------------------------------------
+
+MARKET_DISPLAY = {
+    "h2h":           "Moneyline",
+    "spreads":       "Spread",
+    "totals":        "Total",
+    "team_totals":   "Team Total",
+    "nrfi":          "NRFI/YRFI",
+    "player_points": "Pts", "player_rebounds": "Reb", "player_assists": "Ast",
+    "player_shots_on_goal": "SOG", "player_goals": "Goals",
+    "batter_home_runs": "HR", "pitcher_strikeouts": "K's",
+    "batter_total_bases": "Total Bases", "batter_hits": "Hits",
+}
+
+LEAGUE_DISPLAY = {
+    "icehockey_nhl": "NHL", "basketball_nba": "NBA", "baseball_mlb": "MLB",
+    "soccer_epl": "EPL", "soccer_spain_la_liga": "La Liga",
+    "soccer_germany_bundesliga": "Bundesliga", "soccer_usa_mls": "MLS",
+    "soccer_uefa_champs_league": "UCL", "americanfootball_nfl": "NFL",
+}
+
+async def cmd_picks(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """
+    /picks [league] [market]
+
+    Returns the current +EV picks straight from the live dashboard cache —
+    instant, no API calls required. Refreshes automatically every 30 min.
+
+    Examples:
+        /picks           — all picks sorted by EV%
+        /picks nhl       — NHL only
+        /picks props     — props only
+        /picks mlb props — MLB props only
+    """
+    if not await _auth_guard(update):
+        return
+
+    # Parse optional filters from args
+    args = [a.lower() for a in (context.args or [])]
+    league_filter = None
+    market_filter = None
+    for token in args:
+        if token in LEAGUE_ALIASES:
+            league_filter = LEAGUE_ALIASES[token]
+        elif token in MARKET_KEYWORDS:
+            market_filter = MARKET_KEYWORDS[token]
+
+    # Query the live cache
+    from db.database import SessionLocal, EVBetCache
+    from datetime import datetime, timezone
+    db = SessionLocal()
+    try:
+        query = db.query(EVBetCache)
+        if league_filter:
+            query = query.filter(EVBetCache.league == league_filter)
+        if market_filter == "player_props":
+            query = query.filter(EVBetCache.is_prop.is_(True))
+        elif market_filter:
+            query = query.filter(EVBetCache.market == market_filter)
+        # Only upcoming games
+        now = datetime.now(timezone.utc)
+        query = query.filter(
+            (EVBetCache.commence_time == None) | (EVBetCache.commence_time > now)
+        )
+        bets = query.order_by(EVBetCache.ev_percent.desc()).limit(25).all()
+    finally:
+        db.close()
+
+    if not bets:
+        league_hint = f" [{league_filter.upper() if league_filter else 'all leagues'}]" if args else ""
+        await _reply(update,
+            f"📭 No +EV picks in cache right now{league_hint}.\n"
+            "The dashboard refreshes every 30 min — try again shortly."
+        )
+        return
+
+    # Build filter label
+    filter_parts = []
+    if league_filter:
+        filter_parts.append(LEAGUE_DISPLAY.get(league_filter, league_filter.upper()))
+    if market_filter:
+        filter_parts.append(MARKET_DISPLAY.get(market_filter, market_filter.replace("_", " ").title()))
+    filter_label = " · ".join(filter_parts) if filter_parts else "All"
+
+    now_str = datetime.now(timezone.utc).strftime("%-I:%M %p UTC")
+    lines = [f"⚡ <b>+EV Picks</b>  [{filter_label}]  <i>as of {now_str}</i>\n"]
+
+    for bet in bets:
+        odds_str  = f"+{bet.odds}" if bet.odds > 0 else str(bet.odds)
+        league    = LEAGUE_DISPLAY.get(bet.league, bet.league or "")
+        market    = MARKET_DISPLAY.get(bet.market, (bet.market or "").replace("_", " ").title())
+        book      = bet.book.title() if bet.book else ""
+        ev        = f"{bet.ev_percent:.1f}%"
+        team      = bet.team or ""
+        if bet.point is not None:
+            pt = int(bet.point) if bet.point == int(bet.point) else bet.point
+            team = f"{team} {'+' if float(bet.point) > 0 else ''}{pt}" if bet.market == "spreads" else f"{team} {pt}"
+        player    = f" ({bet.player_name})" if bet.player_name else ""
+        game_time = ""
+        if bet.commence_time:
+            from zoneinfo import ZoneInfo
+            ct = bet.commence_time.astimezone(ZoneInfo("America/Chicago"))
+            game_time = f"  🕐 {ct.strftime('%-I:%M %p CT')}"
+
+        lines.append(
+            f"• <b>{team}</b>{player}  {odds_str}  <b>{ev} EV</b>\n"
+            f"  {league} · {market} · {book}{game_time}"
+        )
+
+    lines.append(f"\n<i>Showing top {len(bets)} picks. Use /picks nhl, /picks props, etc. to filter.</i>")
+    await _reply(update, "\n".join(lines))
+    log.info("/picks [%s] → %d picks returned to chat_id=%s", filter_label, len(bets), update.effective_chat.id)
+
+
+# Apply auth guard to existing interactive commands
+_orig_cmd_start = cmd_start
+async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not await _auth_guard(update): return
+    await _orig_cmd_start(update, context)
+
+_orig_cmd_help = cmd_help
+async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not await _auth_guard(update): return
+    await _orig_cmd_help(update, context)
+
+_orig_handle_text = handle_text
+async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not await _auth_guard(update): return
+    await _orig_handle_text(update, context)
+
+
+# ---------------------------------------------------------------------------
 # Bot entrypoint
 # ---------------------------------------------------------------------------
 
@@ -820,13 +975,14 @@ def main() -> None:
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start",  cmd_start))
     app.add_handler(CommandHandler("help",   cmd_help))
+    app.add_handler(CommandHandler("picks",  cmd_picks))
     app.add_handler(CommandHandler("game",   cmd_game))
     app.add_handler(CommandHandler("today",  cmd_today))
     app.add_handler(CommandHandler("report", cmd_report))
     # Free-text handler — must be registered last so commands take priority
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
-    log.info("Bot running. Send /start in Telegram to begin — or just type a team name!")
+    log.info("Bot running — /picks for instant DB picks, /game <team> for live EV.")
     app.run_polling(allowed_updates=Update.ALL_TYPES)
 
 
