@@ -890,7 +890,8 @@ async def cmd_picks(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         filter_parts.append(MARKET_DISPLAY.get(market_filter, market_filter.replace("_", " ").title()))
     filter_label = " · ".join(filter_parts) if filter_parts else "All"
 
-    now_str = datetime.now(timezone.utc).strftime("%-I:%M %p UTC")
+    from zoneinfo import ZoneInfo
+    now_str = datetime.now(ZoneInfo("America/Chicago")).strftime("%-I:%M %p CT")
     lines = [f"⚡ <b>+EV Picks</b>  [{filter_label}]  <i>as of {now_str}</i>\n"]
 
     for bet in bets:
