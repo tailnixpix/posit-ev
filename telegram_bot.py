@@ -941,13 +941,8 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 # Bot entrypoint
 # ---------------------------------------------------------------------------
 
-def main() -> None:
-    if not BOT_TOKEN:
-        print("ERROR: TELEGRAM_BOT_TOKEN not set in .env")
-        sys.exit(1)
-
-    log.info("Starting bot (polling)…")
-
+def _build_app():
+    """Build the Application with all handlers registered."""
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start",  cmd_start))
     app.add_handler(CommandHandler("help",   cmd_help))
@@ -955,11 +950,37 @@ def main() -> None:
     app.add_handler(CommandHandler("game",   cmd_game))
     app.add_handler(CommandHandler("today",  cmd_today))
     app.add_handler(CommandHandler("report", cmd_report))
-    # Free-text handler — must be registered last so commands take priority
+    # Free-text handler — registered last so commands take priority
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
+    return app
 
-    log.info("Bot running — /picks for instant DB picks, /game <team> for live EV.")
-    app.run_polling(allowed_updates=Update.ALL_TYPES)
+
+async def run_polling_async() -> None:
+    """
+    Start polling using the async context-manager API.
+
+    Unlike run_polling(), this does NOT install OS signal handlers, so it is
+    safe to call from a background thread (not the main thread).
+    """
+    import asyncio
+    app = _build_app()
+    async with app:
+        await app.start()
+        await app.updater.start_polling(allowed_updates=Update.ALL_TYPES)
+        log.info("Bot polling started — waiting for messages.")
+        await asyncio.sleep(float("inf"))   # run until the thread is killed
+
+
+def main() -> None:
+    """Entry point for running the bot standalone (python telegram_bot.py)."""
+    import asyncio
+    if not BOT_TOKEN:
+        print("ERROR: TELEGRAM_BOT_TOKEN not set in .env")
+        sys.exit(1)
+
+    log.info("Starting bot (polling)…")
+    # run_polling() is fine here — we ARE on the main thread
+    _build_app().run_polling(allowed_updates=Update.ALL_TYPES)
 
 
 if __name__ == "__main__":
