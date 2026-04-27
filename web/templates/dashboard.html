@@ -2577,6 +2577,17 @@ main { max-width: none !important; padding: 0 !important; }
       <button class="qfilter-btn" data-filter="clvdir" data-value="neg">⚠️ CLV− <span class="chip-count"></span></button>
     </div>
 
+    <div class="sidebar-section-label">Model Edge
+      <span style="font-size:0.6rem;color:var(--d-muted);font-weight:400;margin-left:4px;">our % vs book %</span>
+    </div>
+    <div class="qfilter-btns" style="flex-wrap:wrap;gap:4px;">
+      <button class="qfilter-btn active" data-edge="0">Any</button>
+      <button class="qfilter-btn" data-edge="5">5%+</button>
+      <button class="qfilter-btn" data-edge="8">8%+</button>
+      <button class="qfilter-btn" data-edge="12">12%+</button>
+      <button class="qfilter-btn" data-edge="15">15%+</button>
+    </div>
+
     {% if bets %}
     {% set _bn = {'draftkings':'DraftKings','fanduel':'FanDuel','betmgm':'BetMGM','caesars':'Caesars','williamhill_us':'Caesars WH','pointsbet':'Fanatics','betfair_ex_uk':'Betfair','betfair_ex_us':'Betfair US','pinnacle':'Pinnacle','mybookie':'MyBookie','bovada':'Bovada','kalshi':'Kalshi','novig':'NoVig','polymarket':'Polymarket','prophetx':'ProphetX','betopenly':'BetOpenly','betrivers':'BetRivers','espnbet':'ESPN Bet','hardrockbet':'Hard Rock Bet','betonlineag':'BetOnline'} %}
     {% set _sb = namespace(v=[]) %}
@@ -2702,6 +2713,7 @@ main { max-width: none !important; padding: 0 !important; }
                data-player-name="{{ bet.player_name or '' }}"
                data-ev="{{ '%.2f'|format(bet.ev_percent) }}"
                data-true-prob="{{ '%.4f'|format(bet.true_prob) }}"
+               data-edge="{{ '%.1f'|format(_true_pct - _implied_pct) }}"
                data-odds="{{ bet.odds }}"
                data-team="{{ team_display }}"
                data-game="{{ bet.game or '' }}"
@@ -3102,6 +3114,18 @@ main { max-width: none !important; padding: 0 !important; }
         <button class="qfilter-btn active" data-filter="clvdir" data-value="all">All <span class="chip-count"></span></button>
         <button class="qfilter-btn" data-filter="clvdir" data-value="pos">📈 CLV+ <span class="chip-count"></span></button>
         <button class="qfilter-btn" data-filter="clvdir" data-value="neg">⚠️ CLV− <span class="chip-count"></span></button>
+      </div>
+    </div>
+
+    {# Model Edge #}
+    <div>
+      <div class="mf-section-label">Model Edge <span style="font-size:0.6rem;color:var(--d-muted);font-weight:400;margin-left:4px;">our % vs book %</span></div>
+      <div class="mf-btns">
+        <button class="qfilter-btn active" data-edge="0">Any</button>
+        <button class="qfilter-btn" data-edge="5">5%+</button>
+        <button class="qfilter-btn" data-edge="8">8%+</button>
+        <button class="qfilter-btn" data-edge="12">12%+</button>
+        <button class="qfilter-btn" data-edge="15">15%+</button>
       </div>
     </div>
 
@@ -3641,6 +3665,7 @@ let activeIsProp = 'all', activeDay = 'all';  // 'all' | 'true' (props only) | '
 let activePropMarket = 'all';                 // prop sub-type filter
 let activeSort   = 'ev_desc', activeMinEv = 0, activeSearch = '';
 let activeCLVDir = 'all';
+let activeMinEdge = 0;  // model edge filter: true_prob% − book_implied% ≥ threshold
 let _isCompact   = localStorage.getItem('positplusev_compact') === '1';
 
 // ── Apply compact ──────────────────────────────────────────────────────────
@@ -3904,6 +3929,7 @@ function _countFor(dimension, value) {
     const propOk   = ip === 'all' || card.dataset.isProp === ip;
     const propMktOk= pm === 'all' || card.dataset.propMarket === pm;
     const evOk     = parseFloat(card.dataset.ev) >= activeMinEv;
+    const edgeCOk  = parseFloat(card.dataset.edge || '0') >= activeMinEdge;
     const srchOk   = !activeSearch ||
       (card.dataset.team   || '').toLowerCase().includes(activeSearch) ||
       (card.dataset.game   || '').toLowerCase().includes(activeSearch) ||
@@ -3915,7 +3941,7 @@ function _countFor(dimension, value) {
       if (activeDay === 'today')    dayOk = cd === todayStr;
       if (activeDay === 'tomorrow') dayOk = cd === tomorrowStr;
     }
-    if (leagueOk && marketOk && bookOk && clvDirOk && propOk && propMktOk && evOk && srchOk && dayOk) count++;
+    if (leagueOk && marketOk && bookOk && clvDirOk && propOk && propMktOk && evOk && edgeCOk && srchOk && dayOk) count++;
   });
   return count;
 }
@@ -3969,6 +3995,7 @@ function applyFilters() {
     const propOk       = activeIsProp === 'all' || card.dataset.isProp === activeIsProp;
     const propMarketOk = activePropMarket === 'all' || card.dataset.propMarket === activePropMarket;
     const evOk         = parseFloat(card.dataset.ev) >= activeMinEv;
+    const edgeOk       = parseFloat(card.dataset.edge || '0') >= activeMinEdge;
     const searchOk = !activeSearch ||
       (card.dataset.team || '').toLowerCase().includes(activeSearch) ||
       (card.dataset.game || '').toLowerCase().includes(activeSearch) ||
@@ -3982,7 +4009,7 @@ function applyFilters() {
       if (activeDay === 'tomorrow') dayOk = cd === tomorrowStr;
     }
 
-    const show = leagueOk && marketOk && bookOk && clvDirOk && propOk && propMarketOk && evOk && searchOk && dayOk;
+    const show = leagueOk && marketOk && bookOk && clvDirOk && propOk && propMarketOk && evOk && edgeOk && searchOk && dayOk;
     card.style.display = show ? '' : 'none';
     if (show) {
       visible++;
@@ -4487,10 +4514,22 @@ document.querySelectorAll('.qfilter-btn[data-ev]').forEach(btn => {
   btn.addEventListener('click', () => { _setEvSlider(parseFloat(btn.dataset.ev)); });
 });
 
+// ── Model Edge filter buttons ─────────────────────────────────────────────
+function _setEdgeFilter(val) {
+  activeMinEdge = val;
+  document.querySelectorAll('.qfilter-btn[data-edge]').forEach(b => b.classList.toggle('active', parseFloat(b.dataset.edge) === val));
+  applyFilters();
+  updateFilterBadge();
+}
+document.querySelectorAll('.qfilter-btn[data-edge]').forEach(btn => {
+  btn.addEventListener('click', () => { _setEdgeFilter(parseFloat(btn.dataset.edge)); });
+});
+
 function clearFilters() {
   activeLeague = 'all'; activeMarket = 'all';
   activeBooks.clear(); activeDay = 'all'; activeCLVDir = 'all';
-  activeMinEv = 0; activeSearch = '';
+  activeMinEv = 0; activeMinEdge = 0; activeSearch = '';
+  document.querySelectorAll('.qfilter-btn[data-edge]').forEach(b => b.classList.toggle('active', b.dataset.edge === '0'));
   document.getElementById('globalSearch').value = '';
   _setEvSlider(0);
   _setIsProp('all');
@@ -4510,6 +4549,7 @@ function updateFilterBadge() {
     activeBooks.size  > 0,
     activeCLVDir      !== 'all',
     activeMinEv       > 0,
+    activeMinEdge     > 0,
     activeIsProp      !== 'all',
     activePropMarket  !== 'all',
   ].filter(Boolean).length;
