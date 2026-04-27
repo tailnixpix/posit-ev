@@ -280,6 +280,130 @@ main { max-width: none !important; padding: 0 !important; }
 .kelly-info-btn:hover { color: var(--d-green); }
 
 /* ── Kelly info modal ── */
+/* ── Help modal ─────────────────────────────────────────────── */
+.help-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+  z-index: 700;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+.help-modal-overlay.open { display: flex; }
+.help-modal {
+  background: var(--d-surface);
+  border: 1px solid var(--d-border);
+  border-radius: 18px;
+  width: min(680px, 95vw);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 701;
+}
+.help-modal-hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px 14px;
+  border-bottom: 1px solid var(--d-border);
+  flex-shrink: 0;
+}
+.help-modal-hdr h2 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--d-text);
+  margin: 0;
+}
+.help-modal-close {
+  background: none;
+  border: none;
+  color: var(--d-muted);
+  cursor: pointer;
+  font-size: 1.25rem;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+.help-modal-close:hover { background: var(--d-card); color: var(--d-text); }
+.help-modal-body {
+  overflow-y: auto;
+  padding: 20px 22px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.help-section {
+  border-bottom: 1px solid var(--d-border);
+  padding-bottom: 18px;
+  margin-bottom: 18px;
+}
+.help-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.help-section-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--d-text);
+  margin: 0 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.help-section p {
+  font-size: 0.8rem;
+  color: var(--d-sub);
+  line-height: 1.65;
+  margin: 0 0 7px;
+}
+.help-section p:last-child { margin-bottom: 0; }
+.help-section strong { color: var(--d-text); }
+.help-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.help-pill {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: rgba(0,214,143,0.08);
+  border: 1px solid rgba(0,214,143,0.2);
+  color: var(--d-text);
+}
+.help-pill.purple { background: rgba(139,92,246,0.1); border-color: rgba(139,92,246,0.25); }
+.help-pill.orange { background: rgba(251,146,60,0.1); border-color: rgba(251,146,60,0.25); }
+.help-pill.blue   { background: rgba(59,130,246,0.1);  border-color: rgba(59,130,246,0.25); }
+.help-ex {
+  background: var(--d-card);
+  border: 1px solid var(--d-border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-top: 10px;
+  font-size: 0.77rem;
+  color: var(--d-sub);
+  line-height: 1.6;
+}
+.help-ex strong { color: #00D68F; }
+.btn-help {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 7px 11px;
+  border-radius: 8px;
+  border: 1px solid var(--d-border);
+  background: none;
+  color: var(--d-sub);
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: inherit;
+  transition: color .15s, border-color .15s;
+}
+.btn-help:hover { color: var(--d-text); border-color: var(--d-muted); }
+
 .kelly-modal-overlay {
   position: fixed;
   inset: 0;
@@ -2537,6 +2661,7 @@ main { max-width: none !important; padding: 0 !important; }
         </div>
         <button class="view-toggle-btn" id="trackerToggle" onclick="openTrackerDrawer()" style="border:1px solid var(--d-border);border-radius:8px;padding:7px 11px;position:relative;" title="Bet Tracker">📊 Tracker<span class="tracker-badge" id="trackerBadge" style="display:none;"></span></button>
         <button class="btn-parlay-mode" id="parlayModeBtn" onclick="toggleParlayMode()" title="Build a 2–5 leg parlay and check combined EV + Kelly sizing">🎰 Parlay</button>
+        <button class="btn-help" onclick="openHelpModal()" title="How to use this dashboard">❓ Help</button>
       </div>
     </div>
 
@@ -3654,6 +3779,19 @@ function _setKellyFrac(frac) {
   if (hintLabel) hintLabel.textContent = label;
   updateKellyDisplays();
 }
+
+function openHelpModal() {
+  document.getElementById('helpModalOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeHelpModal(e) {
+  if (e && e.target !== document.getElementById('helpModalOverlay')) return;
+  document.getElementById('helpModalOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeHelpModal();
+});
 
 function openKellyInfo() {
   document.getElementById('kellyModal').style.display = 'block';
@@ -5517,6 +5655,119 @@ _buildPropTypeChips();
 </script>
 
 {# ── Kelly info modal ── #}
+{# ── Help Modal ──────────────────────────────────────────────────────────── #}
+<div class="help-modal-overlay" id="helpModalOverlay" onclick="closeHelpModal(event)">
+  <div class="help-modal" onclick="event.stopPropagation()">
+    <div class="help-modal-hdr">
+      <h2>❓ How to use Posit+EV</h2>
+      <button class="help-modal-close" onclick="closeHelpModal()">✕</button>
+    </div>
+    <div class="help-modal-body">
+
+      <div class="help-section">
+        <p class="help-section-title">📐 What is +EV betting?</p>
+        <p>Every sportsbook builds a profit margin (called the <strong>vig</strong>) into their odds. But books aren't perfect — sometimes they price an outcome lower than its true probability. That gap is your <strong>edge</strong>.</p>
+        <p><strong>+EV (positive expected value)</strong> means that if you placed this bet thousands of times, you'd profit on average. It doesn't guarantee a win tonight — it means the math is in your favour over time, the same way a casino's edge works for them.</p>
+        <div class="help-ex">
+          Example: DraftKings offers +145 on the Bruins. Our model says the true probability is 46% — but +145 only implies 41%. That 5-point gap is your edge. Bet enough of these and the math compounds in your favour.
+        </div>
+      </div>
+
+      <div class="help-section">
+        <p class="help-section-title">🃏 Reading a bet card</p>
+        <p><strong>EV%</strong> — the expected profit per $100 wagered. A 5% EV bet returns $5 on average per $100 staked. Higher is better; anything above 3% is meaningful.</p>
+        <p><strong>True Probability</strong> — the real estimated probability of this outcome, calculated by removing the vig from the sharpest books in the market (Pinnacle, NoVig, exchanges). This is our best estimate of what will actually happen.</p>
+        <p><strong>Implied Probability</strong> — what the sportsbook's odds imply the probability is. When this is lower than the True Probability, you have an edge.</p>
+        <p><strong>Odds</strong> — American odds offered by the book. Positive odds (+150) mean you win $150 per $100 staked. Negative odds (-120) mean you stake $120 to win $100.</p>
+        <p><strong>¼ Kelly %</strong> — the recommended percentage of your bankroll to stake on this bet. See the Kelly section below for more detail.</p>
+      </div>
+
+      <div class="help-section">
+        <p class="help-section-title">📊 Market types</p>
+        <div class="help-pill-row">
+          <span class="help-pill">Moneyline</span>
+          <span class="help-pill">Spread</span>
+          <span class="help-pill">Total</span>
+          <span class="help-pill">Team Total</span>
+          <span class="help-pill">NRFI / YRFI</span>
+          <span class="help-pill purple">Player Props</span>
+        </div>
+        <p style="margin-top:10px;"><strong>Moneyline</strong> — bet on who wins outright. <strong>Spread</strong> — bet on the margin of victory (e.g. Team A -3.5 must win by 4+). <strong>Total (O/U)</strong> — combined score over or under a number. <strong>Team Total</strong> — one team's score over or under. <strong>NRFI</strong> — No Run First Inning; <strong>YRFI</strong> — Yes Run First Inning.</p>
+        <p><strong>Player Props</strong> — bets on individual player statistics: points, rebounds, assists, goals, shots, strikeouts, home runs, etc. These often have more pricing errors than game markets because books spend less time sharpening them.</p>
+      </div>
+
+      <div class="help-section">
+        <p class="help-section-title">📈 CLV — Closing Line Value</p>
+        <p>The <strong>closing line</strong> is the final odds a book posts before a game starts. Sharp bettors consistently beat the closing line — meaning they get better odds than the final market price. CLV is the gold standard for evaluating whether your bets are good, independent of wins and losses.</p>
+        <p>The <strong>CLV pill</strong> on each card shows how much the line has moved since opening. A <strong>green pill</strong> means the line moved in your favour (the market confirmed your edge). A <strong>red pill</strong> means it moved against you.</p>
+        <div class="help-ex">
+          Example: You bet +145 at open. The line closes at +120. The book sharpened the line toward your bet — that's <strong style="color:#00D68F;">+CLV confirmed</strong>, a strong signal your model is beating the market.
+        </div>
+      </div>
+
+      <div class="help-section">
+        <p class="help-section-title">🔥 Sharp money signals</p>
+        <p><strong>Bet %</strong> — the percentage of all bets placed on this side (from Action Network public data). When a small % of bettors are on a side but it's getting most of the money, that's a sharp signal.</p>
+        <p><strong>Money %</strong> — the percentage of total dollars wagered on this side. <strong>High money % with low bet %</strong> means large, sophisticated bettors are on this side — a classic sharp money indicator.</p>
+        <p><strong>Sharp Score</strong> — our composite signal (0–100) combining money vs. bet split, line movement direction, and market timing. Scores above 70 suggest professional money is active.</p>
+        <p><strong>🔥 Sharp move</strong> badge — appears on prop cards when the implied probability has steamed 3+ percentage points since opening, indicating coordinated sharp action on this line.</p>
+      </div>
+
+      <div class="help-section">
+        <p class="help-section-title">🤖 +EV Insight (AI Analysis)</p>
+        <p>Click <strong>Analyze</strong> on any bet card to generate a full AI breakdown powered by Claude. It takes 10–20 seconds the first time; results are cached for 6 hours.</p>
+        <p><strong>Confidence Score (0–100)</strong> — aggregates edge strength, sharp money confirmation, line movement, and real-world context into a single conviction rating. 75+ is high conviction; below 50 means proceed cautiously.</p>
+        <p><strong>Kelly sizing</strong> — Claude's own stake recommendation, calibrated to the specific confidence of this bet rather than a flat formula.</p>
+        <p>The analysis also includes team form, injury signals, game-log context for props, and a plain-English explanation of why the edge exists.</p>
+      </div>
+
+      <div class="help-section">
+        <p class="help-section-title">📐 Kelly Criterion &amp; bankroll sizing</p>
+        <p>The <strong>Kelly Criterion</strong> is a formula that calculates the mathematically optimal bet size based on your edge and the odds. Betting full Kelly is theoretically perfect but extremely volatile in practice.</p>
+        <p>We use <strong>¼ Kelly</strong> — the industry standard among professional bettors. It captures most of the long-run growth while dramatically reducing the chance of a bad run wiping out your bankroll.</p>
+        <p>Set your bankroll in the sidebar (desktop) or filters panel (mobile) and every card will show you a dollar amount to stake.</p>
+        <div class="help-ex">
+          Example: $1,000 bankroll. A bet shows ¼ Kelly: 2.5% → stake <strong style="color:#00D68F;">$25</strong> on this bet.
+        </div>
+      </div>
+
+      <div class="help-section">
+        <p class="help-section-title">⚡ Prediction markets &amp; betting exchanges</p>
+        <div class="help-pill-row">
+          <span class="help-pill blue">Kalshi</span>
+          <span class="help-pill blue">Polymarket</span>
+          <span class="help-pill orange">NoVig</span>
+          <span class="help-pill orange">ProphetX</span>
+          <span class="help-pill orange">BetOpenly</span>
+        </div>
+        <p style="margin-top:10px;"><strong>Prediction markets</strong> (Kalshi, Polymarket) are CFTC-regulated and available in all 50 states. You're trading contracts rather than betting with a sportsbook — no vig, just market pricing.</p>
+        <p><strong>Betting exchanges</strong> (NoVig, ProphetX, BetOpenly) match bettors directly against each other with ~1–2% commission instead of the typical 5–10% sportsbook vig. <strong>They never limit winning bettors</strong> — a major advantage if you're consistently profitable.</p>
+        <p>These platforms also serve as our <strong>sharp-market reference</strong> for calculating true probability on every pick — including traditional sportsbook bets.</p>
+      </div>
+
+      <div class="help-section">
+        <p class="help-section-title">🎰 Parlay builder</p>
+        <p>Click <strong>Parlay</strong> in the toolbar to enter parlay mode. Select 2–5 bet cards and the builder automatically calculates the combined odds, combined EV%, and the Kelly-sized stake for the parlay as a whole.</p>
+        <p>Note: parlays are generally lower EV than individual bets because the vig compounds across legs. Only use this for bets where you have strong conviction on each leg.</p>
+      </div>
+
+      <div class="help-section">
+        <p class="help-section-title">📊 Bet Tracker</p>
+        <p>Click <strong>Tracker</strong> in the toolbar to log bets and track your results over time. Add any bet — on or off the dashboard — with the stake, odds, and outcome. The tracker calculates your running P&amp;L, ROI, and win rate.</p>
+        <p>Your tracked bets also show a <strong>CLV result</strong> once the game starts, so you can see whether you consistently beat the closing line (the most reliable long-run signal of a profitable model).</p>
+      </div>
+
+      <div class="help-section">
+        <p class="help-section-title">🔍 Filters &amp; sorting</p>
+        <p>Use the <strong>league chips</strong> (NHL, NBA, MLB, etc.) to filter by sport. Use the <strong>market chips</strong> (Moneyline, Spread, Props, etc.) to filter by bet type. Use the <strong>book filter</strong> to show only bets available at specific sportsbooks you have accounts with.</p>
+        <p>Sort by <strong>EV% High→Low</strong> to see your best mathematical edges first. Sort by <strong>Game Time</strong> to see bets starting soonest. The <strong>EV% slider</strong> in the sidebar lets you raise the minimum threshold to see only higher-confidence edges.</p>
+        <p>The dashboard refreshes automatically every 30 minutes. If you see <em>"Picks refreshed — reload the page"</em> when trying to analyze a bet, just reload to get the latest picks.</p>
+      </div>
+
+    </div>
+  </div>
+</div>
+
 <div class="kelly-modal-overlay" id="kellyModalOverlay" onclick="closeKellyInfo()"></div>
 <div class="kelly-modal" id="kellyModal">
   <div class="kelly-modal-hdr">
