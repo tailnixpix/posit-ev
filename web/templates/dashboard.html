@@ -4869,7 +4869,9 @@ function toggleAiPanel(btn) {
       if (loadEl)  loadEl.style.display  = 'none';
       if (errorEl) {
         const msg = String(err.message || '');
-        if (msg.startsWith('504')) {
+        if (msg.startsWith('404')) {
+          errorEl.textContent = '🔄 Picks refreshed — reload the page to analyze.';
+        } else if (msg.startsWith('504')) {
           errorEl.textContent = 'Analysis timed out — tap to retry.';
         } else if (msg.startsWith('500') || msg.startsWith('502')) {
           errorEl.textContent = 'Analysis service error — tap to retry.';
@@ -5117,7 +5119,8 @@ function toggleAnalysisPanel(betId, btn) {
       if (loadEl)  loadEl.style.display  = 'none';
       if (errorEl) {
         const msg = String(err.message || '');
-        errorEl.textContent = msg.startsWith('504') ? 'Analysis timed out — tap to retry.'
+        errorEl.textContent = msg.startsWith('404') ? '🔄 Picks refreshed — reload the page to analyze.'
+                            : msg.startsWith('504') ? 'Analysis timed out — tap to retry.'
                             : msg.startsWith('5')   ? 'Analysis service error — tap to retry.'
                             : 'Analysis unavailable — tap to retry.';
         errorEl.style.display = 'block';
