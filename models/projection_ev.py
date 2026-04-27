@@ -26,6 +26,7 @@ from models.ev_calculator import (
     expected_value,
     EV_THRESHOLD_PCT,
     DEFAULT_STAKE,
+    MAX_JUICE_AMERICAN,
 )
 from models.no_vig import american_to_implied
 
@@ -354,7 +355,7 @@ def find_positive_ev_model(
                     had_model_prob = True
                     ev = expected_value(prob, odds, stake)
 
-                    if ev["ev_pct"] > ev_threshold:
+                    if ev["ev_pct"] > ev_threshold and odds >= MAX_JUICE_AMERICAN:
                         model_rows.append({
                             "game_id":       str(game_id),
                             "game":          game_label,
