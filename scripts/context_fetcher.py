@@ -1471,12 +1471,64 @@ def fetch_game_context(game: str, league: str, commence_dt=None) -> dict:
                     result[f"{side}_streak"] = (
                         sk.get("shortDisplayValue") or sk.get("displayValue", "")
                     )
+                # Capture team ID for manager lookup below
+                team_id = c.get("team", {}).get("id")
+                if team_id:
+                    result[f"_{side}_team_id"] = team_id   # internal, stripped later
             notes = [n.get("headline", "")
                      for n in matched.get("notes", []) if n.get("headline")]
             if notes:
                 result["game_notes"] = notes
     except Exception as _e:
         log.debug("fetch_game_context: ESPN scoreboard error: %s", _e)
+
+    # ── Soccer: current manager via ESPN teams endpoint ───────────────────
+    # Fetch live — never rely on Claude's training data for coaching staff.
+    if league.startswith("soccer_") and sport_path:
+        for side in ("home", "away"):
+            team_id_key = f"_{side}_team_id"
+            team_id = result.pop(team_id_key, None)   # remove internal key
+
+            # Fallback: look up team ID from the full teams list if scoreboard didn't match
+            if not team_id:
+                try:
+                    teams_data = _get(
+                        f"https://site.api.espn.com/apis/site/v2/sports/{sport_path}/teams"
+                    )
+                    name_to_check = home_name if side == "home" else away_name
+                    for entry in teams_data.get("sports", [{}])[0].get("leagues", [{}])[0].get("teams", []):
+                        t = entry.get("team", {})
+                        disp = t.get("displayName", "")
+                        if _overlap(disp, name_to_check):
+                            team_id = t.get("id")
+                            break
+                except Exception as _te:
+                    log.debug("fetch_game_context: ESPN teams list error (%s): %s", side, _te)
+
+            if not team_id:
+                continue
+            try:
+                team_data = _get(
+                    f"https://site.api.espn.com/apis/site/v2/sports/{sport_path}/teams/{team_id}"
+                )
+                coaches = team_data.get("team", {}).get("coaches", [])
+                manager = None
+                for co in coaches:
+                    pos = (co.get("position", {}) or {}).get("name", "").lower()
+                    if pos in ("manager", "head coach", "coach", "first-team manager"):
+                        first = co.get("firstName", "")
+                        last  = co.get("lastName", "")
+                        manager = f"{first} {last}".strip()
+                        break
+                if not manager and coaches:
+                    # Fallback: first listed coach
+                    co = coaches[0]
+                    manager = f"{co.get('firstName', '')} {co.get('lastName', '')}".strip()
+                if manager:
+                    result[f"{side}_manager"] = manager
+                    log.debug("fetch_game_context: %s manager=%s (%s)", side, manager, team_id)
+            except Exception as _me:
+                log.debug("fetch_game_context: ESPN manager fetch error (%s team_id=%s): %s", side, team_id, _me)
 
     # ── NHL: standings (points, last-10, playoff position/clinch) ────────
     if league == "icehockey_nhl":

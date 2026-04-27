@@ -417,22 +417,27 @@ Skip anything not in the data.
 
     "soccer_epl": """
 Lead with the single strongest fact: table stakes (relegation, title race, top-4 — with specific points gap) or form. State last 5 W/D/L. Named injuries if present in context.
+If "home_manager" or "away_manager" is in the context data, you may reference the manager by that name. If those fields are absent, do NOT mention managers at all.
 """,
 
     "soccer_spain_la_liga": """
 Lead with La Liga table stakes (title, UCL fight, relegation) with specific points gap if applicable. State last 5 form. Named absences from context only.
+If "home_manager" or "away_manager" is in the context data, you may reference the manager by that name. If those fields are absent, do NOT mention managers at all.
 """,
 
     "soccer_germany_bundesliga": """
 Lead with Bundesliga table stakes if applicable. State last 5 form and current streak.
+If "home_manager" or "away_manager" is in the context data, you may reference the manager by that name. If those fields are absent, do NOT mention managers at all.
 """,
 
     "soccer_usa_mls": """
 State last 5 form and current streak. Mention playoff positioning if within 3 points. MLS home advantage is meaningful — note home/away record split if in the data.
+If "home_manager" or "away_manager" is in the context data, you may reference the manager by that name. If those fields are absent, do NOT mention managers at all.
 """,
 
     "soccer_uefa_champs_league": """
 If knockout second leg: state the aggregate score and exactly what each team needs to advance — this is the lead, and the most important fact. Suspension risk (one yellow from a ban). Last 5 form.
+If "home_manager" or "away_manager" is in the context data, you may reference the manager by that name. If those fields are absent, do NOT mention managers at all.
 """,
 }
 
@@ -446,6 +451,7 @@ Tone rules (strictly enforced):
 - If only pipeline signals are available (no live context), make those compelling — sharp money %, line movement direction, model edge. Do NOT say "insufficient live data" or list what data you wish you had.
 - 1 sentence maximum on risk. Name something specific that could sink this bet.
 - Never reference internal systems, field names, arrays, or API terminology.
+- CRITICAL — coaching staff and rosters: Never assert a specific manager, head coach, or recent signing/transfer by name unless that name appears explicitly in the Live Context Data provided. Coaching changes and transfers happen constantly; your training data is stale. If the context supplies a manager name (e.g. "home_manager": "Ruben Amorim"), use it. If it does not, omit any reference to coaching staff entirely rather than risk citing someone who was fired months ago.
 - Respond with ONLY the JSON object. No preamble, no markdown fences."""
 
 
