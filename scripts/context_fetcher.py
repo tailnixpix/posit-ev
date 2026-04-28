@@ -989,9 +989,18 @@ _MLB_LG_RPG     = 4.50   # 2024 MLB league-average runs per game per team
 _MLB_HOME_BOOST = 1.025  # home-field advantage multiplier (~54% implied win rate)
 _MLB_PYTH_EXP   = 1.83   # Pythagorean exponent tuned for baseball
 
-# Within-run caches — reset every process restart (i.e. every pipeline run)
-_MLB_TEAM_STATS_CACHE: dict = {}   # team_id (int) → {rpg, era, ops}
-_MLB_SCHED_CACHE: dict      = {}   # date_str → list of enriched game entries
+# TTL-based caches — entries expire so late pitcher changes / same-day scratches
+# are picked up without restarting the Railway process.
+import time as _time
+_MLB_SCHED_CACHE:       dict = {}   # date_str → (_fetched_at, entries)
+_MLB_TEAM_STATS_CACHE:  dict = {}   # team_id  → (_fetched_at, stats)
+_MLB_PITCHER_ERA_CACHE: dict = {}   # pitcher_id → (_fetched_at, era)
+
+_MLB_SCHED_TTL       = 1800    # 30 min — re-fetch if starters change/scratch
+_MLB_TEAM_STATS_TTL  = 21600   # 6 h  — team RPG/ERA stable within a day
+_MLB_ERA_TTL         = 10800   # 3 h  — starter ERA stable but refresh regularly
+
+_MLB_ET = ZoneInfo("America/New_York")  # MLB schedule API uses ET dates
 
 
 def _safe_era(val) -> Optional[float]:
@@ -1046,12 +1055,15 @@ def fetch_mlb_team_stats(team_id: int) -> dict:
 
 
 def _fetch_mlb_team_stats_cached(team_id: int) -> dict:
-    """Cached wrapper around fetch_mlb_team_stats — fetches once per pipeline run."""
+    """TTL-cached wrapper around fetch_mlb_team_stats (refreshes every 6 h)."""
     if not team_id:
         return {}
-    if team_id not in _MLB_TEAM_STATS_CACHE:
-        _MLB_TEAM_STATS_CACHE[team_id] = fetch_mlb_team_stats(team_id)
-    return _MLB_TEAM_STATS_CACHE[team_id]
+    entry = _MLB_TEAM_STATS_CACHE.get(team_id)
+    if entry and (_time.monotonic() - entry[0] < _MLB_TEAM_STATS_TTL):
+        return entry[1]
+    stats = fetch_mlb_team_stats(team_id)
+    _MLB_TEAM_STATS_CACHE[team_id] = (_time.monotonic(), stats)
+    return stats
 
 
 def _load_mlb_sched_enriched(date_str: str) -> list:
@@ -1099,14 +1111,16 @@ _MLB_PITCHER_ERA_CACHE: dict = {}
 
 
 def _get_pitcher_era(pitcher_id: Optional[int]) -> Optional[float]:
-    """Fetch and cache ERA for one pitcher. Returns None if unavailable."""
+    """TTL-cached ERA fetch for one pitcher (refreshes every 3 h)."""
     if not pitcher_id:
         return None
-    if pitcher_id not in _MLB_PITCHER_ERA_CACHE:
-        stats = fetch_mlb_pitcher_stats(pitcher_id)
-        era = _safe_era(stats.get("era"))
-        _MLB_PITCHER_ERA_CACHE[pitcher_id] = era   # None is a valid cached result
-    return _MLB_PITCHER_ERA_CACHE[pitcher_id]
+    entry = _MLB_PITCHER_ERA_CACHE.get(pitcher_id)
+    if entry and (_time.monotonic() - entry[0] < _MLB_ERA_TTL):
+        return entry[1]
+    stats = fetch_mlb_pitcher_stats(pitcher_id)
+    era = _safe_era(stats.get("era"))
+    _MLB_PITCHER_ERA_CACHE[pitcher_id] = (_time.monotonic(), era)
+    return era
 
 
 def _match_mlb_sched_entry(games: list, away_str: str, home_str: str) -> Optional[dict]:
@@ -1158,13 +1172,18 @@ def build_mlb_game_projection(game: str) -> dict:
 
     away_str, home_str = [s.strip() for s in game.split(" @ ", 1)]
 
-    # Find schedule entry — check today and tomorrow so both day/next-day bets work
+    # Find schedule entry — check today and tomorrow in ET (MLB API uses ET dates).
+    # Use TTL cache so late starter changes / scratches are picked up within 30 min.
     entry = None
     for days_ahead in (0, 1):
-        date_str = (datetime.now(timezone.utc) + timedelta(days=days_ahead)).strftime("%Y-%m-%d")
-        if date_str not in _MLB_SCHED_CACHE:
-            _MLB_SCHED_CACHE[date_str] = _load_mlb_sched_enriched(date_str)
-        entry = _match_mlb_sched_entry(_MLB_SCHED_CACHE[date_str], away_str, home_str)
+        date_str = (datetime.now(_MLB_ET) + timedelta(days=days_ahead)).strftime("%Y-%m-%d")
+        cached = _MLB_SCHED_CACHE.get(date_str)
+        if not cached or (_time.monotonic() - cached[0] >= _MLB_SCHED_TTL):
+            entries = _load_mlb_sched_enriched(date_str)
+            _MLB_SCHED_CACHE[date_str] = (_time.monotonic(), entries)
+        else:
+            entries = cached[1]
+        entry = _match_mlb_sched_entry(entries, away_str, home_str)
         if entry:
             break
 
@@ -1655,9 +1674,12 @@ def fetch_game_context(game: str, league: str, commence_dt=None) -> dict:
     # ── MLB: probable pitchers ────────────────────────────────────────────
     elif league == "baseball_mlb":
         try:
-            pit_date = (commence_dt.strftime("%Y-%m-%d")
-                        if commence_dt
-                        else datetime.now(timezone.utc).strftime("%Y-%m-%d"))
+            # MLB schedule API uses ET dates — a 9:40 PM ET game on April 27
+            # has commence_time = April 28 UTC, so we MUST convert to ET first.
+            if commence_dt:
+                pit_date = commence_dt.astimezone(_MLB_ET).strftime("%Y-%m-%d")
+            else:
+                pit_date = datetime.now(_MLB_ET).strftime("%Y-%m-%d")
             sched = _get(
                 _MLB_SCHEDULE,
                 params={"sportId": 1, "date": pit_date,

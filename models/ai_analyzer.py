@@ -413,6 +413,7 @@ Lead with the single strongest fact for this bet (use only what's in context):
 - SERIES CONTEXT: Sweep scenario or series lead — strong motivational signal.
 - TEAM FORM: Current streak and last-10 record.
 Skip anything not in the data.
+CRITICAL — pitcher names: Only cite a starter by name if their name appears in `pitcher_matchup`, `home_pitcher`, or `away_pitcher` in the context data. Never assert a pitcher name from training knowledge — starters get scratched, traded, and reassigned constantly and your training data is months stale. If the context shows no pitcher data, write "starter TBA" rather than guessing.
 """,
 
     "soccer_epl": """
