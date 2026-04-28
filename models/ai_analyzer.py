@@ -946,7 +946,10 @@ def analyze_bet(bet: dict, optimal_client: Optional[OptimalClient] = None) -> Op
     # Extract fields with fallbacks
     analysis_obj = raw.get("analysis", {})
     confidence = float(raw.get("confidence_score", 50))
-    kelly_frac = float(raw.get("kelly_fractional_pct", _kelly(bet.get("true_prob", 0.5), bet.get("odds", -110))))
+    # Always recompute Kelly from the model's raw true_prob — never trust Claude's
+    # kelly_fractional_pct, which is based on its own true_prob_refined and can
+    # diverge from what the card's metric cell shows.
+    kelly_frac = _kelly(bet.get("true_prob", 0.5), bet.get("odds", -110))
     true_prob_refined = float(raw.get("true_prob_refined", bet.get("true_prob", 0.5)))
     ev_refined = float(raw.get("ev_pct_refined", bet.get("ev_percent", 0.0)))
     ctx_quality = raw.get("context_quality", "")

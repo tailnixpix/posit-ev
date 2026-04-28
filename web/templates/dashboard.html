@@ -5119,14 +5119,7 @@ function toggleAiPanel(btn) {
       const metaEl  = document.getElementById('ai-meta-'   + betId);
       const bodyEl  = document.getElementById('ai-body-'   + betId);
       const footEl  = document.getElementById('ai-footer-' + betId);
-      if (metaEl) {
-        const conf = data.confidence_score;
-        const confClass = conf >= 75 ? 'ai-conf-high' : conf >= 50 ? 'ai-conf-med' : 'ai-conf-low';
-        const confLabel = conf >= 75 ? '🟢 High Conf' : conf >= 50 ? '🟡 Medium' : '🔴 Low';
-        metaEl.innerHTML = `<span class="ai-conf ${confClass}">${confLabel} (${conf}%)</span>`;
-        if (data.kelly_pct) metaEl.innerHTML += ` <span class="ai-kelly-chip">¼ Kelly: ${parseFloat(data.kelly_pct).toFixed(1)}%</span>`;
-        if (data.edge_tag)  metaEl.innerHTML += ` <span class="ai-edge-tag">⚡ ${data.edge_tag}</span>`;
-      }
+      _renderAiMeta(metaEl, betId, data);
       if (bodyEl) {
         bodyEl.innerHTML = `<div class="ai-panel-body">${(data.analysis || '').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>')}</div>`;
       }
@@ -5369,14 +5362,7 @@ function toggleAnalysisPanel(betId, btn) {
       const metaEl = document.getElementById('ai-meta-'   + betId);
       const bodyEl = document.getElementById('ai-body-'   + betId);
       const footEl = document.getElementById('ai-footer-' + betId);
-      if (metaEl) {
-        const conf = data.confidence_score;
-        const cc = conf >= 75 ? 'ai-conf-high' : conf >= 50 ? 'ai-conf-med' : 'ai-conf-low';
-        const cl = conf >= 75 ? '🟢 High Conf' : conf >= 50 ? '🟡 Medium' : '🔴 Low';
-        metaEl.innerHTML = `<span class="ai-conf ${cc}">${cl} (${conf}%)</span>`;
-        if (data.kelly_pct) metaEl.innerHTML += ` <span class="ai-kelly-chip">¼ Kelly: ${parseFloat(data.kelly_pct).toFixed(1)}%</span>`;
-        if (data.edge_tag)  metaEl.innerHTML += ` <span class="ai-edge-tag">⚡ ${data.edge_tag}</span>`;
-      }
+      _renderAiMeta(metaEl, betId, data);
       if (bodyEl) {
         bodyEl.innerHTML = `<div class="ai-panel-body">${(data.analysis || '').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>')}</div>`;
       }
@@ -5410,7 +5396,7 @@ function toggleAnalysisPanel(betId, btn) {
               const metaEl = document.getElementById('ai-meta-'   + betId);
               const bodyEl = document.getElementById('ai-body-'   + betId);
               const footEl = document.getElementById('ai-footer-' + betId);
-              if (metaEl) { const c=data.confidence_score; const cc=c>=75?'ai-conf-high':c>=50?'ai-conf-med':'ai-conf-low'; const cl=c>=75?'🟢 High Conf':c>=50?'🟡 Medium':'🔴 Low'; metaEl.innerHTML=`<span class="ai-conf ${cc}">${cl} (${c}%)</span>${data.kelly_pct?` <span class="ai-kelly-chip">¼ Kelly: ${parseFloat(data.kelly_pct).toFixed(1)}%</span>`:''}`; }
+              _renderAiMeta(metaEl, betId, data);
               if (bodyEl) bodyEl.innerHTML=`<div class="ai-panel-body">${(data.analysis||'').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')}</div>`;
               if (footEl && data.generated_at) footEl.innerHTML=`Generated at ${new Date(data.generated_at).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})} — Claude Opus 4.6`;
             })
@@ -5849,6 +5835,30 @@ function closeTrackerDrawer() {
     card.dataset.hasCompare = '1';   // flag used by the "Multi-book" filter
   });
 })();
+
+// ── Analysis panel meta renderer ──────────────────────────────────────────
+// Computes Kelly directly from the card's data-prob / data-odds so it always
+// matches the metric cell on the card (same formula, same fraction selector).
+function _renderAiMeta(metaEl, betId, data) {
+  if (!metaEl) return;
+  const conf       = data.confidence_score || 0;
+  const confClass  = conf >= 75 ? 'ai-conf-high' : conf >= 50 ? 'ai-conf-med' : 'ai-conf-low';
+  const confLabel  = conf >= 75 ? '🟢 High Conf'  : conf >= 50 ? '🟡 Medium'  : '🔴 Low';
+  let html = `<span class="ai-conf ${confClass}">${confLabel} (${conf}%)</span>`;
+
+  // Find this card's kelly-val element — it already holds data-prob and data-odds
+  const card    = document.querySelector(`.bet-card[data-bet-id="${betId}"]`);
+  const kellyEl = card ? card.querySelector('.kelly-val') : null;
+  if (kellyEl) {
+    const kPct   = halfKelly(parseFloat(kellyEl.dataset.prob), kellyEl.dataset.odds);
+    const kLabel = _kellyFracLabel(_getKellyFrac());
+    if (kPct > 0)
+      html += ` <span class="ai-kelly-chip">${kLabel}: ${(kPct * 100).toFixed(1)}%</span>`;
+  }
+
+  if (data.edge_tag) html += ` <span class="ai-edge-tag">⚡ ${data.edge_tag}</span>`;
+  metaEl.innerHTML = html;
+}
 
 // ── Init ───────────────────────────────────────────────────────────────────
 sortCards();
