@@ -2647,6 +2647,11 @@ main { max-width: none !important; padding: 0 !important; }
       <button class="qfilter-btn" data-edge="15">15%+</button>
     </div>
 
+    <div class="sidebar-section-label">Price Data</div>
+    <div class="qfilter-btns" style="flex-wrap:wrap;gap:4px;">
+      <button class="qfilter-btn" id="multiBookBtn" data-multibook="1">📊 Multi-book only</button>
+    </div>
+
     {% if bets %}
     {% set _bn = {'draftkings':'DraftKings','fanduel':'FanDuel','betmgm':'BetMGM','caesars':'Caesars','williamhill_us':'Caesars WH','pointsbet':'Fanatics','betfair_ex_uk':'Betfair','betfair_ex_us':'Betfair US','pinnacle':'Pinnacle','mybookie':'MyBookie','bovada':'Bovada','kalshi':'Kalshi','novig':'NoVig','polymarket':'Polymarket','prophetx':'ProphetX','betopenly':'BetOpenly','betrivers':'BetRivers','espnbet':'ESPN Bet','hardrockbet':'Hard Rock Bet','betonlineag':'BetOnline'} %}
     {% set _sb = namespace(v=[]) %}
@@ -3191,6 +3196,14 @@ main { max-width: none !important; padding: 0 !important; }
       </div>
     </div>
 
+    {# Price Data #}
+    <div>
+      <div class="mf-section-label">Price Data</div>
+      <div class="mf-btns">
+        <button class="qfilter-btn" id="multiBookBtnMobile" data-multibook="1">📊 Multi-book only</button>
+      </div>
+    </div>
+
     {# Bankroll #}
     <div>
       <div class="mf-section-label">My Bankroll</div>
@@ -3728,6 +3741,7 @@ let activePropMarket = 'all';                 // prop sub-type filter
 let activeSort   = 'ev_desc', activeMinEv = 0, activeSearch = '';
 let activeCLVDir = 'all';
 let activeMinEdge = 0;  // model edge filter: true_prob% − book_implied% ≥ threshold
+let activeMultiBook = false;  // when true: show only cards that have a price comparison strip
 let _isCompact   = localStorage.getItem('positplusev_compact') === '1';
 
 // ── Apply compact ──────────────────────────────────────────────────────────
@@ -3990,8 +4004,9 @@ function _countFor(dimension, value) {
     const clvDirOk = clv === 'all' || (card.dataset.clvDir || '') === clv;
     const propOk   = ip === 'all' || card.dataset.isProp === ip;
     const propMktOk= pm === 'all' || card.dataset.propMarket === pm;
-    const evOk     = parseFloat(card.dataset.ev) >= activeMinEv;
-    const edgeCOk  = parseFloat(card.dataset.edge || '0') >= activeMinEdge;
+    const evOk       = parseFloat(card.dataset.ev) >= activeMinEv;
+    const edgeCOk   = parseFloat(card.dataset.edge || '0') >= activeMinEdge;
+    const mbOk      = !activeMultiBook || card.dataset.hasCompare === '1';
     const srchOk   = !activeSearch ||
       (card.dataset.team   || '').toLowerCase().includes(activeSearch) ||
       (card.dataset.game   || '').toLowerCase().includes(activeSearch) ||
@@ -4003,7 +4018,7 @@ function _countFor(dimension, value) {
       if (activeDay === 'today')    dayOk = cd === todayStr;
       if (activeDay === 'tomorrow') dayOk = cd === tomorrowStr;
     }
-    if (leagueOk && marketOk && bookOk && clvDirOk && propOk && propMktOk && evOk && edgeCOk && srchOk && dayOk) count++;
+    if (leagueOk && marketOk && bookOk && clvDirOk && propOk && propMktOk && evOk && edgeCOk && mbOk && srchOk && dayOk) count++;
   });
   return count;
 }
@@ -4058,6 +4073,7 @@ function applyFilters() {
     const propMarketOk = activePropMarket === 'all' || card.dataset.propMarket === activePropMarket;
     const evOk         = parseFloat(card.dataset.ev) >= activeMinEv;
     const edgeOk       = parseFloat(card.dataset.edge || '0') >= activeMinEdge;
+    const multiBookOk  = !activeMultiBook || card.dataset.hasCompare === '1';
     const searchOk = !activeSearch ||
       (card.dataset.team || '').toLowerCase().includes(activeSearch) ||
       (card.dataset.game || '').toLowerCase().includes(activeSearch) ||
@@ -4071,7 +4087,7 @@ function applyFilters() {
       if (activeDay === 'tomorrow') dayOk = cd === tomorrowStr;
     }
 
-    const show = leagueOk && marketOk && bookOk && clvDirOk && propOk && propMarketOk && evOk && edgeOk && searchOk && dayOk;
+    const show = leagueOk && marketOk && bookOk && clvDirOk && propOk && propMarketOk && evOk && edgeOk && multiBookOk && searchOk && dayOk;
     card.style.display = show ? '' : 'none';
     if (show) {
       visible++;
@@ -4587,11 +4603,23 @@ document.querySelectorAll('.qfilter-btn[data-edge]').forEach(btn => {
   btn.addEventListener('click', () => { _setEdgeFilter(parseFloat(btn.dataset.edge)); });
 });
 
+// ── Multi-book toggle ─────────────────────────────────────────────────────
+function _setMultiBook(val) {
+  activeMultiBook = val;
+  document.querySelectorAll('[data-multibook]').forEach(b => b.classList.toggle('active', val));
+  applyFilters();
+  updateFilterBadge();
+}
+document.querySelectorAll('[data-multibook]').forEach(btn => {
+  btn.addEventListener('click', () => { _setMultiBook(!activeMultiBook); });
+});
+
 function clearFilters() {
   activeLeague = 'all'; activeMarket = 'all';
   activeBooks.clear(); activeDay = 'all'; activeCLVDir = 'all';
-  activeMinEv = 0; activeMinEdge = 0; activeSearch = '';
+  activeMinEv = 0; activeMinEdge = 0; activeMultiBook = false; activeSearch = '';
   document.querySelectorAll('.qfilter-btn[data-edge]').forEach(b => b.classList.toggle('active', b.dataset.edge === '0'));
+  document.querySelectorAll('[data-multibook]').forEach(b => b.classList.remove('active'));
   document.getElementById('globalSearch').value = '';
   _setEvSlider(0);
   _setIsProp('all');
@@ -4612,6 +4640,7 @@ function updateFilterBadge() {
     activeCLVDir      !== 'all',
     activeMinEv       > 0,
     activeMinEdge     > 0,
+    activeMultiBook,
     activeIsProp      !== 'all',
     activePropMarket  !== 'all',
   ].filter(Boolean).length;
@@ -5817,6 +5846,7 @@ function closeTrackerDrawer() {
       <div class="odds-compare-label">Odds comparison</div>
       <div class="odds-compare-pills">${pillsHtml}</div>
       ${noteHtml}`;
+    card.dataset.hasCompare = '1';   // flag used by the "Multi-book" filter
   });
 })();
 
