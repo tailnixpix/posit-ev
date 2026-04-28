@@ -171,19 +171,76 @@ ODDS_FORMAT = "american"
 # The free tier allows ~500 requests/month; respect a small delay between calls.
 REQUEST_DELAY_SEC = 1.0
 
+# Credit alert thresholds — send Telegram warning when remaining drops below these.
+LOW_CREDIT_THRESHOLD      = 500   # yellow alert
+CRITICAL_CREDIT_THRESHOLD = 100   # red alert
+
+# ---------------------------------------------------------------------------
+# API quota tracking (module-level, shared across all fetch calls in a run)
+# ---------------------------------------------------------------------------
+
+_QUOTA_STATE: dict = {
+    "remaining": None,   # int — credits left as of last successful response header
+    "used":      None,   # int — credits used so far
+    "exhausted": False,  # True when OUT_OF_USAGE_CREDITS error is received
+}
+
+
+def get_quota_state() -> dict:
+    """Return a snapshot of the current API quota state."""
+    return dict(_QUOTA_STATE)
+
+
+def reset_quota_state() -> None:
+    """Reset exhausted flag at the start of a new pipeline run."""
+    _QUOTA_STATE["exhausted"] = False
+
+
 # ---------------------------------------------------------------------------
 # HTTP helpers
 # ---------------------------------------------------------------------------
 
 def _get(url: str, params: dict, retries: int = 3) -> Optional[Union[dict, list]]:
     """GET with retry/back-off. Returns parsed JSON or None on failure."""
+    # Short-circuit immediately if we already know credits are exhausted this run.
+    if _QUOTA_STATE["exhausted"]:
+        log.debug("Skipping request — quota exhausted: %s", url)
+        return None
+
     for attempt in range(1, retries + 1):
         try:
             resp = requests.get(url, params=params, timeout=15)
+
+            # Track quota from response headers on every call
             remaining = resp.headers.get("x-requests-remaining")
-            used = resp.headers.get("x-requests-used")
+            used      = resp.headers.get("x-requests-used")
             if remaining is not None:
+                try:
+                    _QUOTA_STATE["remaining"] = int(remaining)
+                    _QUOTA_STATE["used"]      = int(used) if used is not None else None
+                except ValueError:
+                    pass
                 log.debug("API quota — used: %s  remaining: %s", used, remaining)
+
+            # 401 — check for credit exhaustion vs. bad key
+            if resp.status_code == 401:
+                try:
+                    body = resp.json()
+                except Exception:
+                    body = {}
+                if body.get("error_code") == "OUT_OF_USAGE_CREDITS":
+                    _QUOTA_STATE["exhausted"] = True
+                    log.critical(
+                        "The Odds API quota exhausted (OUT_OF_USAGE_CREDITS). "
+                        "All remaining fetch calls are aborted. "
+                        "Renew credits at https://the-odds-api.com"
+                    )
+                else:
+                    log.error(
+                        "The Odds API returned 401 Unauthorized — check ODDS_API_KEY. "
+                        "Body: %s", body
+                    )
+                return None
 
             if resp.status_code == 429:
                 wait = int(resp.headers.get("Retry-After", 60))

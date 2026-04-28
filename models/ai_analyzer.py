@@ -961,16 +961,9 @@ def analyze_bet(bet: dict, optimal_client: Optional[OptimalClient] = None) -> Op
     rec      = analysis_obj.get("recommended_action", "Moderate Bet")
     edge_tag = analysis_obj.get("edge_tag", "")
 
-    # Prepend a data-quality notice if context was thin
-    ctx_notice = ""
-    if ctx_quality and ("SPARSE" in ctx_quality or "NONE" in ctx_quality):
-        ctx_notice = "⚠️ *Live data was limited for this pick — treat confidence accordingly.*\n\n"
-
     formatted = (
-        f"{ctx_notice}"
         f"**{rec}**\n\n"
-        f"{why_bet}\n\n"
-        f"⚠️ {risk}"
+        f"{why_bet}"
     )
 
     return {

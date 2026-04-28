@@ -324,10 +324,65 @@ def refresh_ev_cache() -> int:
         # Lazy import so the web process doesn't pay the pandas/requests import
         # cost at startup — only on the first scheduled run.
         from scripts.report_generator import run_pipeline
-        from scripts.odds_fetcher import get_props_df, get_futures_df
+        from scripts.odds_fetcher import (
+            get_props_df, get_futures_df,
+            get_quota_state, reset_quota_state,
+            LOW_CREDIT_THRESHOLD, CRITICAL_CREDIT_THRESHOLD,
+        )
         from models.ev_calculator import find_positive_ev_props, find_all_positive_ev
         import pandas as _pd
+
+        # Reset exhausted flag so a renewed key works on the very next run
+        reset_quota_state()
+
         ev_df = run_pipeline()
+
+        # ── API quota check — alert immediately if credits ran out ────────
+        _quota = get_quota_state()
+        if _quota["exhausted"]:
+            _quota_msg = (
+                "🚨 *Odds API credits exhausted* — bet cards are paused.\n"
+                "Renew at https://the-odds-api.com to restore the feed."
+            )
+            log.critical("EV cache: Odds API quota exhausted — notifying via Telegram.")
+            try:
+                from telegram_notifier import send_message as _tg_send
+                import asyncio as _asyncio
+                _asyncio.run(_tg_send(_quota_msg))
+            except Exception as _tg_exc:
+                log.warning("Telegram quota alert failed: %s", _tg_exc)
+            _cache_status.update({
+                "running": False, "last_count": 0,
+                "last_error": "OUT_OF_USAGE_CREDITS",
+                "last_run": datetime.now(timezone.utc),
+            })
+            return 0
+
+        # ── Low credit warning ────────────────────────────────────────────
+        _remaining = _quota.get("remaining")
+        if _remaining is not None:
+            if _remaining <= CRITICAL_CREDIT_THRESHOLD:
+                log.critical("Odds API credits critically low: %d remaining.", _remaining)
+                try:
+                    from telegram_notifier import send_message as _tg_send
+                    import asyncio as _asyncio
+                    _asyncio.run(_tg_send(
+                        f"🔴 *Odds API: only {_remaining} credits left!* "
+                        f"Renew soon at https://the-odds-api.com"
+                    ))
+                except Exception:
+                    pass
+            elif _remaining <= LOW_CREDIT_THRESHOLD:
+                log.warning("Odds API credits low: %d remaining.", _remaining)
+                try:
+                    from telegram_notifier import send_message as _tg_send
+                    import asyncio as _asyncio
+                    _asyncio.run(_tg_send(
+                        f"⚠️ *Odds API: {_remaining} credits remaining.* "
+                        f"Consider topping up at https://the-odds-api.com"
+                    ))
+                except Exception:
+                    pass
 
         # ── Player props (NBA, MLB, NHL) ──────────────────────────────────
         # Only fetch props for sports that actually returned game-level odds.
