@@ -339,9 +339,10 @@ footer, footer a, footer span { color: var(--d-muted) !important; }
       <a href="/account/billing-portal" class="acct-btn acct-btn-ghost">💳 Manage Billing</a>
       {% endif %}
 
-      {% if user.is_subscribed and user.stripe_subscription_id and not cancel_at_period_end %}
+      {% set can_cancel = (user.is_subscribed or is_trial) and (user.stripe_subscription_id or user.stripe_customer_id) and not cancel_at_period_end %}
+      {% if can_cancel %}
       <button class="acct-btn acct-btn-danger" onclick="toggleCancelConfirm()">Cancel Subscription</button>
-      {% elif user.is_subscribed and cancel_at_period_end %}
+      {% elif (user.is_subscribed or is_trial) and cancel_at_period_end %}
       <form action="/account/reactivate-subscription" method="post" style="margin:0;">
         <button type="submit" class="acct-btn acct-btn-primary">↩ Keep Subscription</button>
       </form>
@@ -349,13 +350,18 @@ footer, footer a, footer span { color: var(--d-muted) !important; }
     </div>
 
     {# Cancel confirmation — revealed by JS #}
-    {% if user.is_subscribed and user.stripe_subscription_id and not cancel_at_period_end %}
+    {% set can_cancel = (user.is_subscribed or is_trial) and (user.stripe_subscription_id or user.stripe_customer_id) and not cancel_at_period_end %}
+    {% if can_cancel %}
     <div class="cancel-confirm" id="cancelConfirm">
       <p class="cancel-confirm-copy">
         <strong>Are you sure you want to cancel?</strong><br>
+        {% if is_trial %}
+        Your free trial will end immediately and you won't be charged.
+        {% else %}
         You'll keep full access to the dashboard and all picks
         {% if period_end_str %}until <strong>{{ period_end_str }}</strong>{% else %}until the end of your billing period{% endif %}.
         After that your account will be downgraded and you'll lose access.
+        {% endif %}
       </p>
       <div class="cancel-confirm-btns">
         <form action="/account/cancel-subscription" method="post" style="margin:0;">

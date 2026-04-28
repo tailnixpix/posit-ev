@@ -1696,10 +1696,36 @@ async def cancel_subscription(request: Request, db: Session = Depends(get_db)):
     user = _get_authed_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=303)
+
+    _stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
+
+    # If stripe_subscription_id is missing, look it up from Stripe using the
+    # customer ID — covers webhook-miss cases where the field was never written.
+    if not user.stripe_subscription_id and user.stripe_customer_id:
+        try:
+            subs = _stripe.Subscription.list(
+                customer=user.stripe_customer_id,
+                status="all",
+                limit=5,
+            )
+            active = next(
+                (s for s in subs.auto_paging_iter()
+                 if s.status in ("active", "trialing", "past_due")),
+                None,
+            )
+            if active:
+                user.stripe_subscription_id = active.id
+                db.commit()
+                log.info(
+                    "cancel_subscription: recovered stripe_subscription_id=%s for user %s",
+                    active.id, user.email,
+                )
+        except _stripe.error.StripeError as exc:
+            log.error("cancel_subscription: Stripe lookup failed for user %s: %s", user.email, exc)
+
     if not user.stripe_subscription_id:
         return RedirectResponse(url="/account?cancel_error=no_sub", status_code=303)
 
-    _stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
     try:
         _stripe.Subscription.modify(
             user.stripe_subscription_id,
