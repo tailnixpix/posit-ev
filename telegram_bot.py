@@ -572,32 +572,17 @@ async def cmd_game(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def cmd_today(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """/today — full daily EV scan, same as running main.py --league all --market all."""
-    await _reply(update, "⏳ Running full EV scan across all leagues… (this takes ~15s)")
-    await update.message.chat.send_action(ChatAction.TYPING)
-
-    try:
-        from scripts.report_generator import run_pipeline
-        from scripts.odds_fetcher import SPORT_KEYS
-        from telegram_notifier import notify_pipeline_results
-
-        ev_df = run_pipeline(sport_keys=SPORT_KEYS, markets=ALL_STANDARD_MARKETS)
-        notify_pipeline_results(ev_df, title="On-Demand Daily Report")
-
-        count = len(ev_df) if ev_df is not None and not ev_df.empty else 0
-        await _reply(update, f"✅ Scan complete — <b>{count} +EV bet(s)</b> sent to chat.")
-
-    except Exception as exc:
-        log.error("/today failed: %s", exc)
-        await _reply(update, f"⚠️ Scan failed.\n<code>{exc}</code>")
+    """/today — all +EV picks from the live dashboard cache (no API calls)."""
+    context.args = []
+    await cmd_picks(update, context)
 
 
 async def cmd_report(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
     /report [league] [market]
 
-    Run a full EV scan for a specific league and optional market.
-    If no league given, scans all leagues (same as /today).
+    Returns +EV picks from the live dashboard cache filtered by league and/or market.
+    No API calls — reads the same data as the dashboard.
 
     Examples:
         /report mlb
@@ -605,70 +590,8 @@ async def cmd_report(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         /report nba moneyline
         /report        (all leagues)
     """
-    from main import resolve_leagues, resolve_markets
-    from scripts.report_generator import run_pipeline
-    from telegram_notifier import notify_pipeline_results
-
-    raw_args = list(context.args) if context.args else []
-    log.info("/report called with args: %s", raw_args)
-
-    # Parse league and market from args
-    league_args = []
-    market_args = []
-    for token in raw_args:
-        if token.lower() in LEAGUE_ALIASES:
-            league_args.append(token.lower())
-        elif token.lower() in MARKET_KEYWORDS:
-            market_args.append(token.lower())
-        else:
-            log.warning("/report — unrecognised token: %r", token)
-
-    # Defaults
-    if not league_args:
-        league_args = ["all"]
-    if not market_args:
-        market_args = ["all"]
-
-    log.info("/report resolved — leagues: %s  markets: %s", league_args, market_args)
-
-    # Resolve to API keys
-    try:
-        sport_keys = resolve_leagues(league_args)
-        log.info("/report sport_keys: %s", sport_keys)
-    except SystemExit:
-        await _reply(update,
-            f"❌ Unknown league. Valid options: {', '.join(LEAGUE_ALIASES.keys())}")
-        return
-
-    std_markets, _ = resolve_markets(market_args)
-    if not std_markets:
-        std_markets = ALL_STANDARD_MARKETS
-    log.info("/report markets: %s", std_markets)
-
-    league_label = ", ".join(t.upper() for t in league_args) if "all" not in league_args else "All Leagues"
-    mkt_label    = ", ".join(t.title() for t in market_args) if "all" not in market_args else "All Markets"
-
-    await _reply(update, f"⏳ Running EV scan — <b>{league_label}</b> / {mkt_label}…")
-    await update.message.chat.send_action(ChatAction.TYPING)
-
-    try:
-        ev_df = run_pipeline(sport_keys=sport_keys, markets=std_markets)
-        log.info("/report pipeline complete — %d rows", len(ev_df) if ev_df is not None else 0)
-
-        notify_pipeline_results(ev_df, title=f"{league_label} EV Report")
-
-        count = len(ev_df) if ev_df is not None and not ev_df.empty else 0
-        if count == 0:
-            await _reply(update,
-                f"❌ No +EV bets found for <b>{league_label}</b> / {mkt_label} "
-                f"above the 3% threshold right now.")
-        else:
-            await _reply(update,
-                f"✅ <b>{count} +EV bet(s)</b> found for {league_label} — report sent above.")
-
-    except Exception as exc:
-        log.error("/report failed: %s", exc, exc_info=True)
-        await _reply(update, f"⚠️ Scan failed.\n<code>{exc}</code>")
+    # Delegate directly to cmd_picks — it handles the same league/market args
+    await cmd_picks(update, context)
 
 
 # ---------------------------------------------------------------------------
