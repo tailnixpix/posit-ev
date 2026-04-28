@@ -2324,17 +2324,27 @@ async def admin_grant_trial(
     redirect_page: int = Form(1),
     db: Session = Depends(get_db),
 ):
-    """Grant (or extend) a free trial for a user — sets trial_ends_at = now + days."""
+    """
+    Grant or extend access for a user.
+
+    days=0  → indefinite comp (clears trial_ends_at, sets is_subscribed=True)
+    days>0  → timed comp (sets trial_ends_at = now + days, sets is_subscribed=True)
+    """
     if not _is_admin(request):
         return RedirectResponse(url="/admin/login", status_code=303)
     user = db.query(User).filter(User.id == user_id).first()
     if user:
-        from datetime import datetime, timezone, timedelta as _td
-        new_end = datetime.now(timezone.utc) + _td(days=days)
-        user.trial_ends_at = new_end
-        user.is_subscribed = True          # ensure access is active
+        if days == 0:
+            user.trial_ends_at = None       # indefinite — no expiry
+            user.is_subscribed = True
+            log.info("Admin granted indefinite comp access to %s", user.email)
+        else:
+            from datetime import timedelta as _td
+            new_end = datetime.now(timezone.utc) + _td(days=days)
+            user.trial_ends_at = new_end
+            user.is_subscribed = True
+            log.info("Admin granted %d-day access to %s (ends %s)", days, user.email, new_end.date())
         db.commit()
-        log.info("Admin granted %d-day trial to %s (ends %s)", days, user.email, new_end.date())
     params = f"?tier={redirect_tier}&q={redirect_q}&page={redirect_page}"
     return RedirectResponse(url=f"/admin{params}", status_code=303)
 
