@@ -2049,6 +2049,65 @@ main { max-width: none !important; padding: 0 !important; }
 }
 
 /* ── Book strip: best odds + Bet Now button ─────────────────── */
+/* ── Cross-book price comparison strip ── */
+.odds-compare-wrap {
+  margin: 6px 0 10px;
+}
+.odds-compare-label {
+  font-size: 0.6rem;
+  color: var(--d-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 5px;
+}
+.odds-compare-pills {
+  display: flex;
+  gap: 5px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 1px;
+}
+.odds-compare-pills::-webkit-scrollbar { display: none; }
+.oc-pill {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 5px 9px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  cursor: default;
+}
+.oc-pill.oc-best {
+  background: rgba(0,214,143,0.08);
+  border-color: rgba(0,214,143,0.28);
+}
+.oc-book {
+  font-size: 0.6rem;
+  color: var(--d-muted);
+  white-space: nowrap;
+  max-width: 72px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.oc-pill.oc-best .oc-book { color: var(--d-green); }
+.oc-odds {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--d-text);
+  font-variant-numeric: tabular-nums;
+}
+.oc-pill.oc-best .oc-odds { color: var(--d-green); }
+.odds-compare-note {
+  font-size: 0.6rem;
+  color: var(--d-muted);
+  margin-top: 4px;
+}
+.odds-compare-note .oc-note-pos { color: var(--d-green); font-weight: 700; }
+
 .card-book-strip {
   display: flex;
   align-items: center;
@@ -2839,6 +2898,9 @@ main { max-width: none !important; padding: 0 !important; }
                   <div class="mc-lbl kelly-size-label">¼ Kelly</div>
                 </div>
               </div>
+
+              {# — Cross-book price comparison (populated by JS) — #}
+              {% if bet.all_book_odds %}<div class="odds-compare-wrap" id="oc-{{ bet.id }}"></div>{% endif %}
 
               {# — Best Book + Bet CTA — #}
               <div class="card-book-strip">
@@ -5669,6 +5731,94 @@ function closeTrackerDrawer() {
   document.getElementById('trackerOverlay').classList.remove('open');
   document.body.style.overflow = '';
 }
+
+// ── Cross-book price comparison renderer ──────────────────────────────────
+(function _renderBookComparisons() {
+  const NAMES = {
+    draftkings:'DraftKings', fanduel:'FanDuel', betmgm:'BetMGM',
+    caesars:'Caesars', williamhill_us:'Caesars', pointsbet:'Fanatics',
+    betrivers:'BetRivers', espnbet:'ESPN Bet', hardrockbet:'Hard Rock',
+    betonlineag:'BetOnline', mybookie:'MyBookie', bovada:'Bovada',
+    pinnacle:'Pinnacle', novig:'NoVig', prophetx:'ProphetX',
+    betopenly:'BetOpenly', betfair_ex_uk:'Betfair', betfair_ex_us:'Betfair US',
+    kalshi:'Kalshi', polymarket:'Polymarket',
+  };
+
+  function fmtOdds(n) { return n > 0 ? '+' + n : '' + n; }
+
+  document.querySelectorAll('.bet-card[data-all-book-odds]').forEach(card => {
+    const wrap = card.querySelector('.odds-compare-wrap');
+    if (!wrap) return;
+
+    let map;
+    try { map = JSON.parse(card.dataset.allBookOdds); } catch(e) { return; }
+
+    const entries = Object.entries(map)
+      .filter(([, o]) => typeof o === 'number' && isFinite(o))
+      .sort((a, b) => b[1] - a[1]);   // highest American odds first = best price first
+
+    if (entries.length < 2) return;   // nothing to compare
+
+    const currentBook = (card.dataset.book || '').toLowerCase();
+    const currentOdds = parseInt(card.dataset.odds, 10);
+
+    // Determine which pill is "ours" — prefer book match, fall back to odds match
+    const isBest = ([book, odds]) =>
+      book.toLowerCase() === currentBook || odds === currentOdds;
+
+    // Show up to 4 pills: current book always shown, rest are best alternatives
+    const MAX = 4;
+    let shown = [];
+    // Always include the current book entry first (will be highlighted)
+    const ourEntry = entries.find(isBest) || [currentBook, currentOdds];
+    shown.push(ourEntry);
+    for (const e of entries) {
+      if (shown.length >= MAX) break;
+      if (!isBest(e)) shown.push(e);
+    }
+    // Sort shown: our book first, rest by odds desc
+    shown = [ourEntry, ...shown.filter(e => !isBest(e))];
+
+    // Pills HTML
+    const pillsHtml = shown.map(([book, odds]) => {
+      const best = isBest([book, odds]);
+      const name = NAMES[book.toLowerCase()] || (book.charAt(0).toUpperCase() + book.slice(1));
+      const label = name.length > 11 ? name.slice(0, 10) + '…' : name;
+      return `<div class="oc-pill${best ? ' oc-best' : ''}">
+        <span class="oc-book">${label}${best ? ' ✓' : ''}</span>
+        <span class="oc-odds">${fmtOdds(odds)}</span>
+      </div>`;
+    }).join('');
+
+    // Savings note: compare our price to the next-best alternative
+    let noteHtml = '';
+    const alts = entries.filter(e => !isBest(e));
+    if (alts.length > 0) {
+      const [nextBook, nextOdds] = alts[0];
+      const gap = currentOdds - nextOdds;  // positive = we have better price
+      const nextName = NAMES[nextBook.toLowerCase()] || nextBook;
+      if (gap > 0) {
+        noteHtml = `<div class="odds-compare-note">
+          <span class="oc-note-pos">+${gap} pts</span> better than ${nextName} (${fmtOdds(nextOdds)})
+        </div>`;
+      } else if (gap < 0) {
+        // Our book isn't the best — show best available
+        const [bestBook, bestOdds] = entries[0];
+        const bestName = NAMES[bestBook.toLowerCase()] || bestBook;
+        noteHtml = `<div class="odds-compare-note">
+          ${bestName} has <span class="oc-note-pos">${fmtOdds(bestOdds)}</span> — best price available
+        </div>`;
+      } else {
+        noteHtml = `<div class="odds-compare-note">Matched best price across ${entries.length} books</div>`;
+      }
+    }
+
+    wrap.innerHTML = `
+      <div class="odds-compare-label">Odds comparison</div>
+      <div class="odds-compare-pills">${pillsHtml}</div>
+      ${noteHtml}`;
+  });
+})();
 
 // ── Init ───────────────────────────────────────────────────────────────────
 sortCards();
