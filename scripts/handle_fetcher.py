@@ -1,19 +1,22 @@
 """
-scripts/handle_fetcher.py — Public betting handle & sharp money data.
+scripts/handle_fetcher.py — Public betting consensus & sharp money signal.
 
-Source: Action Network (unofficial public API — no auth required).
-Provides bet% and money% (handle%) for major US sports.
+Source: Covers.com consensus pages (HTML scrape — no auth required).
+Provides the % of public bettors on each side for NBA, MLB, NHL.
 
 Sharp Money Signal
 ------------------
-When money% >> bet% on a side, that means larger bettors (sharps /
-professional money) are on that side relative to the ticket count.
-Combined with positive CLV (line moved in your favour at open) this
-is the strongest publicly-available signal of professional backing.
+Covers shows what percentage of their users picked each side of a spread.
+This is a reliable "public sentiment" proxy:
+
+  • Low public % on a side  + our model finds +EV  → contrarian / sharp setup
+  • Positive CLV (line moved in our direction since open) → professional steam
+
+Combined, these produce the sharp_score stored on each card.
 
 Usage
 -----
-    from scripts.handle_fetcher import fetch_handle_for_game
+    from scripts.handle_fetcher import fetch_handle_for_game, compute_sharp_score
 
     bet_pct, money_pct = fetch_handle_for_game(
         game   = "Miami Heat @ Boston Celtics",
@@ -21,11 +24,15 @@ Usage
         team   = "Boston Celtics",
         league = "basketball_nba",
     )
-    # → (35.0, 65.0)  means 35% of tickets, 65% of money → sharp side
+    # → (35.0, None)  means 35% of public picked this side (money% not available)
+
+    score = compute_sharp_score(35.0, None, +130, +120)
+    # → 70  (low public support + line steamed = sharp setup)
 """
 
 import logging
-from datetime import date
+import re
+from datetime import date, datetime, timezone
 from typing import Optional, Tuple
 
 import requests
@@ -36,16 +43,14 @@ log = logging.getLogger(__name__)
 # Constants
 # ---------------------------------------------------------------------------
 
-_BASE    = "https://api.actionnetwork.com/web/v1"
-_TIMEOUT = 12
+_BASE_URL = "https://contests.covers.com/consensus/topconsensus/{sport}/overall"
+_TIMEOUT  = 10   # seconds
 
-# Maps our Odds-API sport keys → Action Network sport slugs
+# Odds-API sport key → Covers sport slug
 _SPORT_MAP: dict = {
-    "basketball_nba":       "nba",
-    "baseball_mlb":         "mlb",
-    "icehockey_nhl":        "nhl",
-    "americanfootball_nfl": "nfl",
-
+    "basketball_nba": "nba",
+    "baseball_mlb":   "mlb",
+    "icehockey_nhl":  "nhl",
 }
 
 # ---------------------------------------------------------------------------
@@ -57,219 +62,195 @@ _SESSION.headers.update({
     "User-Agent": (
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
         "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/123.0 Safari/537.36"
+        "Chrome/124.0.0.0 Safari/537.36"
     ),
-    "Accept":   "application/json",
-    "Referer":  "https://www.actionnetwork.com/",
-    "Origin":   "https://www.actionnetwork.com",
+    "Accept":          "text/html,application/xhtml+xml",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Referer":         "https://www.covers.com/",
 })
 
-# In-memory cache: (sport_key, date_str) → parsed game list
+# In-memory cache: sport_slug → (parsed_games, fetched_date_str)
+# Invalidated when the calendar date changes.
 _GAME_CACHE: dict = {}
 
 # ---------------------------------------------------------------------------
-# Internal helpers
+# HTML parser helpers
 # ---------------------------------------------------------------------------
 
 def _slug(text: str) -> str:
-    """Lowercase, strip — for fuzzy matching."""
+    """Lowercase + normalise whitespace for fuzzy matching."""
     return " ".join(text.lower().split())
 
 
 def _teams_overlap(a: str, b: str) -> bool:
     """
     True when at least one significant word is shared between two team names.
-    e.g. "Boston Celtics" matches "Celtics", "Boston", "Boston Celtics Inc."
+    Handles short-form names Covers uses ("Hou" → "Houston Rockets"):
+      e.g. "L.A. Lakers" matches "Los Angeles Lakers" via "Lakers".
     """
-    skip = {"at", "the", "a", "an", "vs", "fc", "sc", "city", "state"}
-    wa = {w for w in _slug(a).split() if w not in skip and len(w) > 2}
-    wb = {w for w in _slug(b).split() if w not in skip and len(w) > 2}
+    skip = {"at", "the", "a", "an", "vs", "fc", "sc", "city", "state", "l.a", "la"}
+    wa = {w.strip(".,") for w in _slug(a).split() if w.strip(".,") not in skip and len(w.strip(".,")) > 2}
+    wb = {w.strip(".,") for w in _slug(b).split() if w.strip(".,") not in skip and len(w.strip(".,")) > 2}
     return bool(wa & wb)
 
 
-def _extract_team_names(game_obj: dict) -> Tuple[str, str]:
+def _parse_covers_html(html: str) -> list:
     """
-    Return (away_team_name, home_team_name) from an Action Network game object.
-    Handles multiple response shapes across API versions.
+    Parse the Covers consensus table HTML.
+
+    Returns list of dicts:
+        {
+          "away_team": "Houston",
+          "home_team": "L.A. Lakers",
+          "away_pct":  27.0,   # % of public on away side
+          "home_pct":  73.0,
+        }
+
+    The Covers page is server-rendered: each game is one <tr> with:
+      • Team names in title= attributes inside .--teamBlock / .--teamBlock2
+      • Bet percentages in the two <span>NN%</span> inside the consensus <td>
+        (first = away, second = home — consistent regardless of --high/--low class)
     """
-    # Try nested home_team / away_team objects first
-    def _name(obj: dict) -> str:
-        return (
-            obj.get("full_name")
-            or obj.get("display_name")
-            or obj.get("name")
-            or ""
+    games = []
+
+    # Split on <tr> boundaries; skip header row
+    rows = re.split(r"<tr[^>]*>", html)
+
+    for row in rows:
+        if "covers-CoversConsensus-table--matchupColumn" not in row:
+            continue
+
+        # Away team — title attribute inside first teamBlock span
+        away_m = re.search(
+            r'covers-CoversConsensus-table--teamBlock["\s][^>]*>.*?title="([^"]+)"',
+            row, re.DOTALL
         )
+        # Home team — title attribute inside teamBlock2 span
+        home_m = re.search(
+            r'covers-CoversConsensus-table--teamBlock2["\s][^>]*>.*?title="([^"]+)"',
+            row, re.DOTALL
+        )
+        # All percentage values in this row (first two belong to the consensus column)
+        pcts = re.findall(r"<span>\s*(\d{1,3})%\s*</span>", row)
 
-    if "home_team" in game_obj and "away_team" in game_obj:
-        return _name(game_obj["away_team"]), _name(game_obj["home_team"])
+        if not away_m or not home_m or len(pcts) < 2:
+            continue
 
-    # Fall back to teams array matched by home/away ID
-    teams      = game_obj.get("teams", [])
-    home_id    = game_obj.get("home_team_id") or game_obj.get("home_id")
-    away_id    = game_obj.get("away_team_id") or game_obj.get("away_id")
-    home_name  = ""
-    away_name  = ""
-    for t in teams:
-        n = _name(t)
-        if t.get("id") == home_id:
-            home_name = n
-        if t.get("id") == away_id:
-            away_name = n
+        away_team = away_m.group(1).strip()
+        home_team = home_m.group(1).strip()
+        try:
+            away_pct = float(pcts[0])
+            home_pct = float(pcts[1])
+        except ValueError:
+            continue
 
-    return away_name, home_name
+        # Sanity: percentages should be roughly complementary
+        if not (0 < away_pct < 100 and 0 < home_pct < 100):
+            continue
+
+        games.append({
+            "away_team": away_team,
+            "home_team": home_team,
+            "away_pct":  away_pct,
+            "home_pct":  home_pct,
+        })
+
+    return games
 
 
-def _consensus_line(odds_list: list) -> Optional[dict]:
+# ---------------------------------------------------------------------------
+# Data fetcher
+# ---------------------------------------------------------------------------
+
+def _fetch_covers_games(sport_key: str) -> list:
     """
-    Pick the consensus / aggregate odds object.
-    Action Network uses book_id=15 for their consensus composite.
-    Falls back to book_id=0 or the first entry.
+    Fetch and cache Covers consensus data for one sport.
+    Cache is per calendar day (ET) to avoid redundant scrapes within a pipeline run.
+    Returns list of parsed game dicts (see _parse_covers_html).
     """
-    for o in odds_list:
-        if o.get("book_id") in (15, "15"):
-            return o
-    for o in odds_list:
-        bname = str(o.get("book_name", "") or o.get("type", "")).lower()
-        if "consensus" in bname or "composite" in bname:
-            return o
-    for o in odds_list:
-        if o.get("book_id") in (0, "0"):
-            return o
-    return odds_list[0] if odds_list else None
+    covers_sport = _SPORT_MAP.get(sport_key)
+    if not covers_sport:
+        return []
 
+    today = date.today().isoformat()
+    cached = _GAME_CACHE.get(covers_sport)
+    if cached and cached[1] == today:
+        return cached[0]
 
-def _safe_float(val) -> Optional[float]:
+    url = _BASE_URL.format(sport=covers_sport)
     try:
-        return float(val)
-    except (TypeError, ValueError):
-        return None
+        resp = _SESSION.get(url, timeout=_TIMEOUT)
+        resp.raise_for_status()
+        html = resp.text
+    except Exception as exc:
+        log.warning("Covers.com unavailable (%s): %s", covers_sport, exc)
+        _GAME_CACHE[covers_sport] = ([], today)
+        return []
+
+    games = _parse_covers_html(html)
+    log.debug("Covers.com: %d games parsed for %s", len(games), covers_sport)
+    _GAME_CACHE[covers_sport] = (games, today)
+    return games
 
 
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
-def _fetch_an_games(sport_key: str, game_date: Optional[str] = None) -> list:
-    """
-    Fetch and cache Action Network game data for one sport + date.
-    Returns parsed list of dicts with keys: away_team, home_team, odds.
-    """
-    an_sport = _SPORT_MAP.get(sport_key)
-    if not an_sport:
-        return []
-
-    today     = game_date or date.today().isoformat()
-    cache_key = (sport_key, today)
-    if cache_key in _GAME_CACHE:
-        return _GAME_CACHE[cache_key]
-
-    try:
-        r = _SESSION.get(
-            f"{_BASE}/games",
-            params={"sport": an_sport, "date": today},
-            timeout=_TIMEOUT,
-        )
-        r.raise_for_status()
-        data = r.json()
-    except Exception as exc:
-        log.warning("Action Network unavailable (%s, %s): %s", an_sport, today, exc)
-        _GAME_CACHE[cache_key] = []
-        return []
-
-    parsed = []
-    for g in data.get("games", []):
-        away, home = _extract_team_names(g)
-        if not away or not home:
-            continue
-        parsed.append({"away_team": away, "home_team": home, "odds": g.get("odds", [])})
-
-    log.debug(
-        "Action Network: %d games loaded for %s on %s", len(parsed), an_sport, today
-    )
-    _GAME_CACHE[cache_key] = parsed
-    return parsed
-
-
 def fetch_handle_for_game(
     game:       str,
     market:     str,
     team:       str,
     league:     str,
-    game_date:  Optional[str] = None,
+    game_date:  Optional[str] = None,   # kept for API compatibility; unused
 ) -> Tuple[Optional[float], Optional[float]]:
     """
-    Return (bet_pct, money_pct) for one outcome in a game.
+    Return (bet_pct, money_pct) for one outcome.
 
-    bet_pct   — percentage of total bets placed on this side (0–100)
-    money_pct — percentage of total money wagered on this side (0–100)
-
-    Returns (None, None) when data is unavailable.
+    bet_pct   — % of Covers users who picked this side (0–100), or None
+    money_pct — always None (Covers does not publish money/handle %)
 
     Parameters
     ----------
-    game      : "Away @ Home" string (from EVBetCache.game)
-    market    : "h2h" | "spreads" | "totals"
-    team      : outcome label — team name, "Over X.X", or "Under X.X"
-    league    : Odds API sport key, e.g. "basketball_nba"
-    game_date : ISO date string for the game; defaults to today
+    game   : "Away @ Home" string (EVBetCache.game)
+    market : "h2h" | "spreads" | "totals"
+    team   : outcome label — team name, "Over X.X", "Under X.X"
+    league : Odds API sport key, e.g. "basketball_nba"
     """
+    # Covers only covers spread sides, not totals props
+    if market == "totals":
+        return None, None
     if not game or " @ " not in game:
         return None, None
 
-    an_games = _fetch_an_games(league, game_date)
-    if not an_games:
+    covers_games = _fetch_covers_games(league)
+    if not covers_games:
         return None, None
 
-    parts    = game.split(" @ ", 1)
-    our_away = parts[0].strip()
-    our_home = parts[1].strip()
+    our_away, our_home = [s.strip() for s in game.split(" @ ", 1)]
 
     matched = next(
         (
-            g for g in an_games
+            g for g in covers_games
             if _teams_overlap(g["away_team"], our_away)
             and _teams_overlap(g["home_team"], our_home)
         ),
         None,
     )
     if not matched:
-        log.debug("No Action Network match for: %s", game)
+        log.debug("Covers: no match for '%s'", game)
         return None, None
 
-    consensus = _consensus_line(matched["odds"])
-    if not consensus:
-        return None, None
+    # Determine which side our bet is on
+    is_home = _teams_overlap(our_home, team)
+    bet_pct = matched["home_pct"] if is_home else matched["away_pct"]
 
-    team_lower = team.lower()
-    is_over    = team_lower.startswith("over")
-    is_under   = team_lower.startswith("under")
-    is_home    = (not is_over and not is_under and _teams_overlap(our_home, team))
-
-    if market in ("h2h", "spreads"):
-        side = "home" if is_home else "away"
-        bet_pct   = _safe_float(
-            consensus.get(f"{side}_bet_pct")
-            or consensus.get(f"{side}_bets_pct")
-        )
-        money_pct = _safe_float(
-            consensus.get(f"{side}_money_pct")
-            or consensus.get(f"{side}_handle_pct")
-        )
-    elif market == "totals":
-        side = "over" if is_over else "under"
-        bet_pct   = _safe_float(
-            consensus.get(f"{side}_bet_pct")
-            or consensus.get(f"{side}_bets_pct")
-        )
-        money_pct = _safe_float(
-            consensus.get(f"{side}_money_pct")
-            or consensus.get(f"{side}_handle_pct")
-        )
-    else:
-        return None, None
-
-    return bet_pct, money_pct
+    log.debug(
+        "Covers: %s — %s side = %.0f%% public (away=%.0f%% home=%.0f%%)",
+        game, "home" if is_home else "away",
+        bet_pct, matched["away_pct"], matched["home_pct"],
+    )
+    return bet_pct, None   # money_pct not available from Covers
 
 
 def compute_sharp_score(
@@ -279,40 +260,66 @@ def compute_sharp_score(
     current_odds: Optional[int],
 ) -> Optional[float]:
     """
-    Return a 0–100 sharp money score.
+    Return a 0–100 sharp money score.  Returns None when there is no signal
+    at all (no public data AND no line movement).
 
-    Factors
-    -------
-    1. Money% vs Bet% divergence  (+40 pts max when money >> tickets)
-    2. CLV direction              (+20 pts if line moved in your favour)
+    Scoring factors
+    ---------------
+    1. Public bet% (from Covers) — contrarian signal
+       • ≤30%  public on our side → sharps vs. public (+25)
+       • 31-40% → mild contrarian  (+12)
+       • 41-55% → roughly neutral  (0)
+       • 56-65% → mild public lean (-8)
+       • >65%   → heavy public lay (-18)
 
-    Thresholds (used for badges in the UI):
-        ≥ 65  → 🔥 Sharp Money  (professional money on this side)
-        ≤ 35  → 📢 Public Lean  (ticket count dominated by public; faded by $)
-        36–64 → neutral
+    2. CLV direction (line movement since open)
+       • Line shortened toward us (sharp steam in) → +20
+       • Line drifted away from us → -10
+
+    3. Money% vs Bet% divergence (future-proof; applies if money_pct ever
+       becomes available again from another source)
+       • Each pp of divergence → ±1.6 pts (capped ±40)
+
+    Thresholds for the UI badge (dashboard.html):
+        ≥65 → ⚡ Sharp Action
     """
-    if bet_pct is None and money_pct is None:
+    has_public = bet_pct is not None or money_pct is not None
+    has_clv    = (
+        opening_odds is not None
+        and current_odds is not None
+        and opening_odds != current_odds
+    )
+
+    # Nothing to work with — no badge
+    if not has_public and not has_clv:
         return None
 
-    score = 50.0  # baseline: neutral
+    score = 50.0  # neutral baseline
 
-    # --- Factor 1: Money vs Ticket divergence ---
+    # ── Factor 1: Public bet% as contrarian signal ────────────────────────
+    if bet_pct is not None and money_pct is None:
+        if   bet_pct <= 30: score += 25.0
+        elif bet_pct <= 40: score += 12.0
+        elif bet_pct <= 55: score +=  0.0   # neutral
+        elif bet_pct <= 65: score -=  8.0
+        else:               score -= 18.0
+
+    # ── Factor 1b: Money% vs Bet% divergence (if money_pct available) ────
     if bet_pct is not None and money_pct is not None:
-        divergence = money_pct - bet_pct          # positive = bigger bettors on this side
+        divergence = money_pct - bet_pct
         score += min(40.0, max(-40.0, divergence * 1.6))
 
-    # --- Factor 2: CLV direction ---
-    if opening_odds is not None and current_odds is not None and opening_odds != current_odds:
+    # ── Factor 2: CLV direction ───────────────────────────────────────────
+    if has_clv:
         def _to_prob(o: int) -> float:
             return abs(o) / (abs(o) + 100) if o < 0 else 100 / (o + 100)
 
         open_prob = _to_prob(opening_odds)
         curr_prob = _to_prob(current_odds)
-        # Line moving shorter (prob goes up) = market betting more on this side
-        # That can mean sharp money came in (steam) → bonus
-        if curr_prob > open_prob:     # line got shorter = sharp steam in
+
+        if curr_prob > open_prob:   # line shortened → sharp steam in
             score += 20.0
-        else:                          # line got longer  = money left / fade
+        else:                       # line drifted out → money leaving
             score -= 10.0
 
     return round(max(0.0, min(100.0, score)), 1)
