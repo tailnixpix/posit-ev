@@ -1195,11 +1195,13 @@ html { scroll-behavior: smooth; }
   <div class="tr-banner-inner">
     <span class="tr-banner-label">📊 Pick Record</span>
     <span class="tr-banner-div">·</span>
-    <span class="tr-banner-stat">
-      <strong>{{ track_won }}W – {{ track_lost }}L</strong>
-      {% if track_win_rate %}<span class="tr-banner-pct">&nbsp;({{ track_win_rate }}% win rate)</span>{% endif %}
+    {% if track_roi is not none %}
+    <span class="tr-banner-stat {% if track_roi >= 0 %}tr-banner-pl-pos{% else %}tr-banner-pl-neg{% endif %}">
+      <strong>{% if track_roi >= 0 %}+{{ '%.1f'|format(track_roi) }}%{% else %}{{ '%.1f'|format(track_roi) }}%{% endif %} ROI</strong>
+      <span class="tr-banner-pct">&nbsp;({{ track_won + track_lost }} bets)</span>
     </span>
     <span class="tr-banner-div">·</span>
+    {% endif %}
     <span class="tr-banner-stat {% if track_pl >= 0 %}tr-banner-pl-pos{% else %}tr-banner-pl-neg{% endif %}">
       <strong>{% if track_pl >= 0 %}+${{ '%.2f'|format(track_pl) }}{% else %}-${{ '%.2f'|format(-track_pl) }}{% endif %}</strong>
       &nbsp;P&amp;L
@@ -2178,8 +2180,15 @@ html { scroll-behavior: smooth; }
         <div class="tr-stat-lbl">Settled picks</div>
       </div>
       <div class="tr-stat">
+        {% if track_roi is not none %}
+        <div class="tr-stat-val" style="color:{% if track_roi >= 0 %}#16A34A{% else %}#DC2626{% endif %};">
+          {% if track_roi >= 0 %}+{{ '%.1f'|format(track_roi) }}%{% else %}{{ '%.1f'|format(track_roi) }}%{% endif %}
+        </div>
+        <div class="tr-stat-lbl">ROI · {{ track_won }}W – {{ track_lost }}L</div>
+        {% else %}
         <div class="tr-stat-val" style="color:#16A34A;">{{ track_won }}W – {{ track_lost }}L</div>
-        <div class="tr-stat-lbl">Record{% if track_win_rate %} · {{ track_win_rate }}% win rate{% endif %}</div>
+        <div class="tr-stat-lbl">Record</div>
+        {% endif %}
       </div>
       <div class="tr-stat">
         <div class="tr-stat-val" style="color:{% if track_pl >= 0 %}#16A34A{% else %}#DC2626{% endif %};">

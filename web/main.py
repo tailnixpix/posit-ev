@@ -1539,9 +1539,9 @@ async def landing(request: Request, db: Session = Depends(get_db)):
     settled  = [p for p in all_picks if p.result in ("won", "lost", "push")]
     won      = sum(1 for p in settled if p.result == "won")
     lost     = sum(1 for p in settled if p.result == "lost")
-    win_rate = round(won / (won + lost) * 100) if (won + lost) > 0 else None
 
-    # P&L based on $20 flat unit size
+    # P&L and ROI based on $20 flat unit size
+    # ROI = net profit / total amount staked × 100
     UNIT = 20.0
     total_pl = 0.0
     for p in settled:
@@ -1551,16 +1551,20 @@ async def landing(request: Request, db: Session = Depends(get_db)):
             total_pl += UNIT * p.odds / 100 if p.odds > 0 else UNIT * 100 / abs(p.odds)
         elif p.result == "lost":
             total_pl -= UNIT
-        # push = 0
+        # push = 0 net, but stake was still risked
     total_pl    = round(total_pl, 2)
     total_units = round(total_pl / UNIT, 2)
+
+    # ROI denominator = staked amount on all decisive bets (won + lost)
+    decisive = won + lost
+    track_roi = round(total_pl / (UNIT * decisive) * 100, 1) if decisive > 0 else None
 
     return templates.TemplateResponse(request, "index.html", {
         "track_picks":    all_picks,
         "track_won":      won,
         "track_lost":     lost,
         "track_total":    len(settled),
-        "track_win_rate": win_rate,
+        "track_roi":      track_roi,
         "track_pl":       total_pl,
         "track_units":    total_units,
     })
