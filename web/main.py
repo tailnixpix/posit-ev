@@ -385,23 +385,25 @@ def refresh_ev_cache() -> int:
                     pass
 
         # ── Player props (NBA, MLB, NHL) ──────────────────────────────────
-        # Only fetch props for sports that actually returned game-level odds.
-        # If a sport had no games (empty response from the odds endpoint), skip
-        # the per-game props calls entirely — saves ~10 API requests per idle sport.
-        _active_sports = set(ev_df["sport_key"].unique()) if not ev_df.empty else set()
-        _prop_sports_active = [s for s in ["basketball_nba", "baseball_mlb", "icehockey_nhl"]
-                                if s in _active_sports]
-        if _prop_sports_active:
-            log.info("Props fetch: active prop sports today: %s", _prop_sports_active)
-        else:
-            log.info("Props fetch: no active prop sports — skipping props entirely.")
+        # Always attempt props for all configured prop sports.
+        # get_props_df() does its own h2h check per sport and returns empty rows
+        # for any sport with no upcoming games — no need to pre-filter here.
+        # Filtering by ev_df (positive EV game bets) was a bug: it silently
+        # skipped prop fetches whenever there were no +EV game-level bets for
+        # a sport, even though props are a completely independent market.
+        from scripts.odds_fetcher import PROP_SPORTS as _PROP_SPORTS
+        log.info("Props fetch: attempting all prop sports: %s", _PROP_SPORTS)
         try:
-            props_df = get_props_df(sport_keys=_prop_sports_active) if _prop_sports_active else _pd.DataFrame()
+            props_df = get_props_df(sport_keys=_PROP_SPORTS)
             if not props_df.empty:
                 props_ev_df = find_positive_ev_props(props_df)
                 if not props_ev_df.empty:
                     ev_df = _pd.concat([ev_df, props_ev_df], ignore_index=True)
                     log.info("Props: found %d +EV prop bets.", len(props_ev_df))
+                else:
+                    log.info("Props: no +EV prop bets found (threshold not met).")
+            else:
+                log.info("Props: no prop data returned (no games in window or API issue).")
         except Exception as _props_exc:
             log.warning("Props fetch/calc failed (non-fatal): %s", _props_exc)
 

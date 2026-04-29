@@ -61,6 +61,7 @@ SPORTSBOOK_BOOKMAKERS = [
     "pointsbet",
     "caesars",
     "betfair_ex_uk",   # Betfair Exchange — lowest vig (~2%), gold-standard sharp reference
+    "pinnacle",        # Sharpest sportsbook globally — included for true-prob anchoring in game markets
 ]
 
 # Prediction markets: federally regulated contract exchanges (CFTC / commodity law).
@@ -106,10 +107,16 @@ PROP_SHARP_REFERENCE_BOOKS = [
 # prevent sportsbook-vs-sportsbook EV signals that Novig's efficient market would
 # not support.  Novig props are NOT surfaced as bets in the output — only its
 # probability reference matters.  (See find_positive_ev_props in ev_calculator.py.)
+#
+# Books excluded from the SPORTSBOOK_BOOKMAKERS slice for props:
+#   betfair_ex_uk — UK-only exchange, no US prop coverage
+#   pinnacle      — added to SPORTSBOOK_BOOKMAKERS for game-level but already
+#                   included via PROP_SHARP_REFERENCE_BOOKS as reference-only
+_PROPS_SPORTSBOOK_EXCLUDE = {"betfair_ex_uk", "pinnacle"}
 PROPS_BOOKMAKERS = (
-    [b for b in SPORTSBOOK_BOOKMAKERS if b != "betfair_ex_uk"]
+    [b for b in SPORTSBOOK_BOOKMAKERS if b not in _PROPS_SPORTSBOOK_EXCLUDE]
     + PROP_EXTRA_SPORTSBOOKS
-    + PROP_SHARP_REFERENCE_BOOKS
+    + PROP_SHARP_REFERENCE_BOOKS   # Pinnacle as reference-only (source_type = "exchange")
     + ["novig"]
 )
 
@@ -131,7 +138,20 @@ PROP_MARKETS = ["player_props"]  # fetched separately (event-level endpoint)
 # NOTE: team_totals caused 422 across all sports (unsupported by prediction-market
 # bookmakers in our list). NRFI/YRFI are NOT available via The Odds API — all
 # variant keys (nrfi, first_inning_nrfi, game_nrfi, etc.) return 422.
-SPORT_MARKETS_EXTRA: dict = {}
+_SOCCER_KEYS = [
+    "soccer_epl",
+    "soccer_spain_la_liga",
+    "soccer_germany_bundesliga",
+    "soccer_usa_mls",
+    "soccer_uefa_champs_league",
+]
+# Soccer-specific markets:
+#   h2h_3_way  — 3-way moneyline (Home / Draw / Away), standard for soccer
+#   btts       — Both Teams to Score (Yes / No)
+SPORT_MARKETS_EXTRA: dict = {
+    sport: ["h2h_3_way", "btts"]
+    for sport in _SOCCER_KEYS
+}
 
 # Sports that support player prop fetching via event-level endpoint
 PROP_SPORTS = ["basketball_nba", "baseball_mlb", "icehockey_nhl"]
@@ -162,6 +182,7 @@ PROP_MARKETS_BY_SPORT: dict = {
         # The Odds API returns 422 for these keys (unrecognised market names).
         "player_points", "player_goals", "player_assists",
         "player_shots_on_goal", "player_blocked_shots",
+        "player_saves",       # Goalie saves Over/Under — top sportsbook coverage
     ],
 }
 
@@ -455,23 +476,25 @@ def get_props_df(
     Uses sportsbooks only — prediction markets don't offer player lines.
     One API request per event, so limited to max_games per sport to conserve quota.
 
-    Game selection: takes up to max_games across the next 18 hours so the
-    props pool spans afternoon AND evening games on the same day, not just
-    the earliest N games (which all expire the moment they start).
+    Game selection: takes up to max_games across the next 30 hours so the
+    props pool spans a full day's afternoon AND evening slate plus next-day
+    afternoon games, ensuring props are available even when the pipeline runs
+    late in the evening (was 18 hours, extended to 30 for next-day coverage).
     """
     sport_keys = [s for s in (sport_keys or PROP_SPORTS) if s in PROP_SPORTS]
     bookmakers = bookmakers or PROPS_BOOKMAKERS
     all_rows = []
     now_utc    = datetime.now(timezone.utc)
     now_iso    = now_utc.isoformat()
-    window_iso = (now_utc + timedelta(hours=18)).isoformat()
+    window_iso = (now_utc + timedelta(hours=30)).isoformat()
 
     for sport in sport_keys:
         # Lightweight call — just need event IDs and commence times
         games = fetch_odds(sport, markets=["h2h"], bookmakers=["draftkings"])
-        # Take games starting within the next 18 hours, sorted by start time.
-        # 18 hours covers a full day's afternoon + evening slate and ensures
-        # evening games are included even when the pipeline runs at noon.
+        # Take games starting within the next 30 hours, sorted by start time.
+        # 30 hours (was 18h) ensures next-day afternoon games are included even
+        # when the pipeline runs late in the evening — e.g. a 9pm run now covers
+        # games up to 3am the following night, capturing a full day+half slate.
         upcoming = sorted(
             [g for g in games
              if now_iso <= g.get("commence_time", "") <= window_iso],

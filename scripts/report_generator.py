@@ -250,6 +250,19 @@ def run_pipeline(
         log.warning("No odds data returned from API.")
         return pd.DataFrame()
 
+    # ── Include sport-specific extra markets in EV evaluation ────────────────
+    # SPORT_MARKETS_EXTRA contains soccer-specific markets (h2h_3_way, btts)
+    # that were fetched alongside the standard markets. We must explicitly add
+    # them to ev_markets so find_positive_ev_model processes them — it only
+    # evaluates markets in its markets list, ignoring anything else in odds_df.
+    from scripts.odds_fetcher import SPORT_MARKETS_EXTRA as _SPORT_EXTRA
+    _all_extra = {m for extras in _SPORT_EXTRA.values() for m in extras}
+    _fetched_markets = set(odds_df["market"].unique())
+    for _xmkt in sorted(_all_extra & _fetched_markets):
+        if _xmkt not in ev_markets:
+            ev_markets.append(_xmkt)
+            log.info("EV evaluation: including extra market '%s'", _xmkt)
+
     # ── Fetch model projections for all games ─────────────────────────────────
     log.info("Fetching Optimal model projections...")
     proj_map = _build_projection_map(odds_df)
