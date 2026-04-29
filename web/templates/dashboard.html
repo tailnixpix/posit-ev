@@ -2846,6 +2846,7 @@ main { max-width: none !important; padding: 0 !important; }
               {% else %}
                 <div class="card-bet-name">
                   <span class="bet-name-team">{{ team_display }}</span>
+                  {% if bet.market == 'h2h' %}<span class="bet-name-market">Moneyline</span>{% endif %}
                 </div>
                 {# Hot/cold streak badge #}
                 {% if (bet.home_trend or bet.away_trend) and ' @ ' in (bet.game or '') %}
@@ -4123,6 +4124,8 @@ function applyFilters() {
   // Reapply game grouping if active (games mode or all mode)
   if (_gamesGrouped && activeIsProp !== 'true') _applyGameGrouping();
   else _clearGameGroupHeaders();
+
+  _saveFilters();
 }
 
 // ── Sport pills ────────────────────────────────────────────────────────────
@@ -4615,6 +4618,7 @@ document.querySelectorAll('[data-multibook]').forEach(btn => {
 });
 
 function clearFilters() {
+  try { localStorage.removeItem('positplusev_filters'); } catch(e) {}
   activeLeague = 'all'; activeMarket = 'all';
   activeBooks.clear(); activeDay = 'all'; activeCLVDir = 'all';
   activeMinEv = 0; activeMinEdge = 0; activeMultiBook = false; activeSearch = '';
@@ -4630,6 +4634,96 @@ function clearFilters() {
   _buildPropTypeChips(); // rebuild with all leagues visible again
   applyFilters();
   updateFilterBadge();
+}
+
+// ── Filter state persistence ───────────────────────────────────────────────
+function _saveFilters() {
+  try {
+    localStorage.setItem('positplusev_filters', JSON.stringify({
+      league:     activeLeague,
+      isProp:     activeIsProp,
+      market:     activeMarket,
+      propMarket: activePropMarket,
+      sort:       activeSort,
+      minEv:      activeMinEv,
+      minEdge:    activeMinEdge,
+      clvDir:     activeCLVDir,
+      multiBook:  activeMultiBook,
+      day:        activeDay,
+      books:      [...activeBooks],
+    }));
+  } catch(e) {}
+}
+
+function _restoreFilters() {
+  try {
+    const raw = localStorage.getItem('positplusev_filters');
+    if (!raw) return;
+    const s = JSON.parse(raw);
+
+    // Restore scalar state
+    activeLeague    = s.league    || 'all';
+    activeCLVDir    = s.clvDir    || 'all';
+    activeDay       = s.day       || 'all';
+    activeSort      = s.sort      || 'ev_desc';
+    activeMinEv     = typeof s.minEv   === 'number' ? s.minEv   : 0;
+    activeMinEdge   = typeof s.minEdge === 'number' ? s.minEdge : 0;
+    activeMultiBook = !!s.multiBook;
+    activePropMarket = s.propMarket || 'all';
+    if (Array.isArray(s.books)) { activeBooks.clear(); s.books.forEach(b => activeBooks.add(b)); }
+
+    // League pills
+    document.querySelectorAll('.sport-pill[data-filter="league"]').forEach(b =>
+      b.classList.toggle('active', b.dataset.value === activeLeague)
+    );
+
+    // isProp — handles section show/hide and prop type chip rebuild
+    _setIsProp(s.isProp || 'all');
+
+    // Market chips — restore after _setIsProp (which may reset it for props mode)
+    activeMarket = s.market || 'all';
+    document.querySelectorAll('.qfilter-btn[data-filter="market"]').forEach(b =>
+      b.classList.toggle('active', b.dataset.value === activeMarket)
+    );
+
+    // CLV direction chips
+    document.querySelectorAll('.qfilter-btn[data-filter="clvdir"]').forEach(b =>
+      b.classList.toggle('active', b.dataset.value === activeCLVDir)
+    );
+
+    // Day buttons (sidebar + mobile bottom nav)
+    ['all','today','tomorrow'].forEach(d => {
+      document.getElementById('sideDay-' + d)?.classList.toggle('active', d === activeDay);
+      document.getElementById('bn-' + d)?.classList.toggle('active', d === activeDay);
+    });
+
+    // EV slider + chips
+    if (evSlider)       evSlider.value             = activeMinEv;
+    if (evSliderMobile) evSliderMobile.value        = activeMinEv;
+    if (evSliderVal)    evSliderVal.textContent     = activeMinEv + '%';
+    if (evSliderValMob) evSliderValMob.textContent  = activeMinEv + '%';
+    document.querySelectorAll('.qfilter-btn[data-ev]').forEach(b =>
+      b.classList.toggle('active', parseFloat(b.dataset.ev) === activeMinEv)
+    );
+
+    // Edge chips
+    document.querySelectorAll('.qfilter-btn[data-edge]').forEach(b =>
+      b.classList.toggle('active', parseFloat(b.dataset.edge) === activeMinEdge)
+    );
+
+    // Multi-book toggle
+    document.querySelectorAll('[data-multibook]').forEach(b =>
+      b.classList.toggle('active', activeMultiBook)
+    );
+
+    // Book chips
+    _syncBookChipVisuals();
+
+    // Sort select
+    const sortSel = document.getElementById('sortSelect');
+    if (sortSel) sortSel.value = activeSort;
+
+  } catch(e) {}
 }
 
 // ── Mobile filter sheet ────────────────────────────────────────────────────
@@ -5861,6 +5955,7 @@ function _renderAiMeta(metaEl, betId, data) {
 }
 
 // ── Init ───────────────────────────────────────────────────────────────────
+_restoreFilters();   // re-apply saved filter state before first render
 sortCards();
 applyFilters();
 updateFilterBadge();
