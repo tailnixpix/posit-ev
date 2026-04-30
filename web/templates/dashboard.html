@@ -1583,6 +1583,7 @@ main { max-width: none !important; padding: 0 !important; }
   background: rgba(251, 146, 60, 0.12);
   color: #FB923C;
   border: 1px solid rgba(251, 146, 60, 0.28);
+  cursor: help;
 }
 
 /* ── Bet search helper toast ── */
@@ -2868,7 +2869,8 @@ main { max-width: none !important; padding: 0 !important; }
 
               {# — Sharp Action badge — #}
               {% if bet.sharp_score is not none and bet.sharp_score >= 65 %}
-                <div class="card-hr-steam">⚡ Sharp Action · {{ "%.0f"|format(bet.sharp_score) }}/100</div>
+                <div class="card-hr-steam"
+                     title="Sharp Action: professional bettors (sharps) appear to be on this side. Signals include low public betting % on this side, line movement in our favour since open, or both. Sharps move lines — when they agree with our model, it's a stronger edge.">⚡ Sharp Action · {{ "%.0f"|format(bet.sharp_score) }}/100</div>
               {% endif %}
 
               {# — Game + Time context — #}
@@ -6042,6 +6044,7 @@ _buildPropTypeChips();
         <p><strong>Money %</strong> — the percentage of total dollars wagered on this side. <strong>High money % with low bet %</strong> means large, sophisticated bettors are on this side — a classic sharp money indicator.</p>
         <p><strong>Sharp Score</strong> — our composite signal (0–100) combining money vs. bet split, line movement direction, and market timing. Scores above 70 suggest professional money is active.</p>
         <p><strong>🔥 Sharp move</strong> badge — appears on prop cards when the implied probability has steamed 3+ percentage points since opening, indicating coordinated sharp action on this line.</p>
+        <p><strong>⚡ Sharp Action</strong> badge — appears on game cards when professional bettors (sharps) appear to be on the same side as our model. It combines two signals: (1) a low % of the public is betting this side — sharps tend to bet against the crowd — and (2) the line has moved in our favour since opening, meaning the market is pricing in sharp money. When both signals align, it's a stronger indication the edge is real.</p>
       </div>
 
       <div class="help-section">
