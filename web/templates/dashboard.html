@@ -2869,7 +2869,7 @@ main { max-width: none !important; padding: 0 !important; }
               {# — Sharp Action badge — #}
               {% if bet.sharp_score is not none and bet.sharp_score >= 65 %}
                 <div class="card-hr-steam"
-                     title="Sharp Action: professional bettors (sharps) appear to be on this side. Signals include low public betting % on this side, line movement in our favour since open, or both. Sharps move lines — when they agree with our model, it's a stronger edge.">⚡ Sharp Action · {{ "%.0f"|format(bet.sharp_score) }}/100</div>
+                     onclick="showSharpPopover(event,{{ '%.0f'|format(bet.sharp_score) }})">⚡ Sharp Action · {{ "%.0f"|format(bet.sharp_score) }}/100</div>
               {% endif %}
 
               {# — Game + Time context — #}
@@ -3047,6 +3047,15 @@ main { max-width: none !important; padding: 0 !important; }
     <button class="clv-pop-close" onclick="hideClvPopover()">✕</button>
   </div>
   <div class="clv-pop-body" id="clvPopBody"></div>
+</div>
+
+{# Sharp Action popover #}
+<div class="clv-popover" id="sharpPopover">
+  <div class="clv-pop-hdr">
+    <div class="clv-pop-title" id="sharpPopTitle">⚡ Sharp Action</div>
+    <button class="clv-pop-close" onclick="hideSharpPopover()">✕</button>
+  </div>
+  <div class="clv-pop-body" id="sharpPopBody"></div>
 </div>
 
 {# Tracker Drawer #}
@@ -5551,6 +5560,30 @@ function showClvPopover(e,isPos){
 function hideClvPopover(){document.getElementById('clvPopover').classList.remove('visible');}
 document.addEventListener('click',e=>{const p=document.getElementById('clvPopover');if(p.classList.contains('visible')&&!p.contains(e.target))hideClvPopover();});
 document.addEventListener('scroll',hideClvPopover,true);
+
+// ── Sharp Action Popover ────────────────────────────────────────────────────
+function showSharpPopover(e, score){
+  e.stopPropagation();
+  hideClvPopover();
+  const strong = score >= 80;
+  const title  = strong ? '⚡ Strong Sharp Action' : '⚡ Sharp Action';
+  const body   = strong
+    ? '<strong>Professional money is heavily on this side.</strong><br><br>A high sharp score means two things are true: (1) the public is mostly betting the other side, and (2) the line has moved <em>toward</em> this bet since opening. That combination means large, sophisticated bettors are driving the price — and they agree with our model.<br><br><span class="clv-highlight">Sharp consensus + model edge = the strongest setup we surface.</span>'
+    : '<strong>Professional bettors appear to be on this side.</strong><br><br>Sharps are the small percentage of bettors that books actually fear — they bet based on edge, not gut. When the public is mostly on the other side but the line moves <em>this</em> way, it\'s sharp money pushing it.<br><br>Combined with our +EV model finding an edge here, this is a meaningful confirmation signal.';
+  document.getElementById('sharpPopTitle').textContent = title;
+  document.getElementById('sharpPopBody').innerHTML    = body;
+  const pop=document.getElementById('sharpPopover');
+  pop.classList.add('visible');
+  const popW=300,popH=pop.offsetHeight,rect=e.target.getBoundingClientRect();
+  let left=rect.left+rect.width/2-popW/2, top=rect.top-popH-10;
+  if(top<8)top=rect.bottom+10;
+  left=Math.max(8,Math.min(left,window.innerWidth-popW-8));
+  pop.style.left=left+'px'; pop.style.top=top+'px'; pop.style.maxWidth=popW+'px';
+}
+function hideSharpPopover(){document.getElementById('sharpPopover').classList.remove('visible');}
+document.addEventListener('click',e=>{const p=document.getElementById('sharpPopover');if(p.classList.contains('visible')&&!p.contains(e.target))hideSharpPopover();});
+document.addEventListener('scroll',hideSharpPopover,true);
+document.addEventListener('keydown',e=>{if(e.key==='Escape')hideSharpPopover();});
 
 // ── Bet Tracker ────────────────────────────────────────────────────────────
 const TRACKER_KEY = 'positev_tracker_v1';
