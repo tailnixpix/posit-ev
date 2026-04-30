@@ -1165,6 +1165,15 @@ async def get_projection(bet_id: int, request: Request, db: Session = Depends(ge
     if bet_row.is_prop or not bet_row.game or " @ " not in (bet_row.game or ""):
         raise HTTPException(status_code=422, detail="No game projection for this bet type")
 
+    # Soccer leagues: Optimal doesn't model soccer — skip immediately rather
+    # than making a live call that will always fail (and look "slow" to users).
+    _SOCCER_LEAGUES = {
+        "soccer_epl", "soccer_spain_la_liga", "soccer_germany_bundesliga",
+        "soccer_usa_mls", "soccer_uefa_champs_league",
+    }
+    if (bet_row.league or "") in _SOCCER_LEAGUES:
+        raise HTTPException(status_code=422, detail="No model projection available for soccer")
+
     import asyncio
     from scripts.context_fetcher import fetch_game_projections, fetch_game_context as _fgc
 
@@ -1222,26 +1231,35 @@ async def get_projection(bet_id: int, request: Request, db: Session = Depends(ge
 
     else:
         # ── Slow path: no pipeline data — hit Optimal + ESPN live ────────────
+        # This only runs for bets added after the last pipeline run (< 30 min
+        # window). Cap the live call at 12 s so users aren't left hanging.
         log.info("Projection live-fetch (no pipeline data) for bet_id=%d", bet_id)
-        proj_future = loop.run_in_executor(
-            None, fetch_game_projections, bet_row.game, bet_row.league
-        )
-        ctx_future = loop.run_in_executor(
-            None, _fgc, bet_row.game, bet_row.league, bet_row.commence_time
-        )
-        results = await asyncio.gather(proj_future, ctx_future, return_exceptions=True)
-        proj = results[0] if not isinstance(results[0], Exception) else None
-        ctx  = results[1] if not isinstance(results[1], Exception) else {}
-
-        if isinstance(results[0], Exception):
-            log.error("Projection fetch error for bet_id=%d: %s", bet_id, results[0])
-        if isinstance(results[1], Exception):
-            log.warning("Context fetch error for bet_id=%d: %s", bet_id, results[1])
+        try:
+            proj, ctx = await asyncio.wait_for(
+                asyncio.gather(
+                    loop.run_in_executor(None, fetch_game_projections, bet_row.game, bet_row.league),
+                    loop.run_in_executor(None, _fgc, bet_row.game, bet_row.league, bet_row.commence_time),
+                    return_exceptions=True,
+                ),
+                timeout=12.0,
+            )
+            if isinstance(proj, Exception):
+                log.error("Projection fetch error for bet_id=%d: %s", bet_id, proj)
+                proj = None
+            if isinstance(ctx, Exception):
+                log.warning("Context fetch error for bet_id=%d: %s", bet_id, ctx)
+                ctx = {}
+        except asyncio.TimeoutError:
+            log.warning("Projection live-fetch timed out for bet_id=%d", bet_id)
+            proj = None
+            ctx  = {}
 
         if not proj and not ctx:
+            # No data at all — return 422 so the frontend shows the clean
+            # "no projection" message instead of a scary error.
             raise HTTPException(
-                status_code=503,
-                detail="Projection service is temporarily unavailable — please try again in a moment"
+                status_code=422,
+                detail="Projection not yet available — refresh after the next pipeline run"
             )
 
     # Merge: context base + projection overrides (projection wins on conflicts)

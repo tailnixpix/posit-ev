@@ -5120,18 +5120,16 @@ function _loadProjection(betId, btn, panel, attempt) {
           return;
         }
       }
-      // Show manual retry option after all auto-retries exhausted
+      // Show refresh prompt — projection data loads with the page, so a reload fixes it
       panel.innerHTML = `<div style="padding:10px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-        <span style="font-size:0.75rem;color:var(--d-muted);">⚠️ Projection service is slow right now.</span>
+        <span style="font-size:0.75rem;color:var(--d-muted);">Projection unavailable — refresh to load.</span>
         <button id="proj-retry-${betId}"
           style="background:var(--d-bright);border:1px solid var(--d-border);border-radius:6px;color:var(--d-sub);font-size:0.72rem;font-weight:600;padding:5px 10px;cursor:pointer;font-family:inherit;">
-          Try again
+          🔄 Refresh page
         </button>
       </div>`;
       const retryBtn = document.getElementById('proj-retry-' + betId);
-      if (retryBtn) retryBtn.addEventListener('click', () => {
-        _loadProjection(betId, document.getElementById('analyze-btn-' + betId) || {textContent:'',disabled:false}, panel, 1);
-      });
+      if (retryBtn) retryBtn.addEventListener('click', () => location.reload());
     });
 }
 
