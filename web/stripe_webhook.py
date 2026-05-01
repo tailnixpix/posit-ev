@@ -325,7 +325,12 @@ async def stripe_webhook(request: Request):
     IMPORTANT: reads raw bytes — must not use a JSON body parser so the
     signature verification works correctly.
     """
-    payload    = await request.body()
+    try:
+        payload = await request.body()
+    except Exception as exc:
+        log.error("Stripe webhook: failed to read request body: %s", exc)
+        return JSONResponse({"error": "body read failed"}, status_code=400)
+
     sig_header = request.headers.get("stripe-signature", "")
 
     if not _WEBHOOK_SECRET:
