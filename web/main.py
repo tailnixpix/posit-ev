@@ -41,9 +41,10 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
-from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.middleware.sessions import SessionMiddleware
+from starlette.requests import Request as StarletteRequest
 from starlette.responses import Response
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -890,38 +891,69 @@ async def on_shutdown() -> None:
 # Subscription middleware
 # ---------------------------------------------------------------------------
 
-class SubscriptionMiddleware(BaseHTTPMiddleware):
+class SubscriptionMiddleware:
     """
-    Intercepts every request to /dashboard.
+    Pure ASGI middleware that guards /dashboard and /welcome.
 
-    1. Missing / invalid JWT        → redirect /login
+    Replaces BaseHTTPMiddleware to avoid Starlette's known issue where
+    BaseHTTPMiddleware wraps the ASGI `receive` callable even on pass-through
+    paths — this corrupts the raw request body and breaks Stripe webhook
+    signature verification (construct_event gets empty bytes → 400).
+
+    For unguarded paths (including /stripe/webhook) the original scope,
+    receive, and send are passed directly to the next app — the body is
+    never touched.
+
+    1. Missing / invalid JWT            → redirect /login
     2. User not subscribed AND
-       not within active trial window → redirect /pricing
-    3. Subscribed OR in active trial → pass through
+       not within active trial window   → redirect /pricing
+    3. Subscribed OR in active trial    → pass through
 
     Trial safety net: if is_subscribed is False but trial_ends_at is set
     and still in the future, the user is mid-trial and gets full access.
     The flag is healed in-place so subsequent requests skip this check.
     """
 
-    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        path = scope.get("path", "")
         protected = ("/dashboard", "/welcome")
-        if not any(request.url.path.startswith(p) for p in protected):
-            return await call_next(request)
+        if not any(path.startswith(p) for p in protected):
+            # Unguarded path — pass through without touching receive at all.
+            # This is critical for /stripe/webhook: the raw body must remain
+            # intact for Stripe signature verification.
+            await self.app(scope, receive, send)
+            return
+
+        # Build a request object only to read cookies/headers — no body read.
+        request = StarletteRequest(scope, receive)
+
+        async def _send_redirect(url: str) -> None:
+            response = RedirectResponse(url=url, status_code=303)
+            await response(scope, receive, send)
 
         token = get_token_from_request(request)
         if not token:
-            return RedirectResponse(url="/login", status_code=303)
+            await _send_redirect("/login")
+            return
 
         payload = decode_access_token(token)
         if not payload:
-            return RedirectResponse(url="/login", status_code=303)
+            await _send_redirect("/login")
+            return
 
         db: Session = SessionLocal()
         try:
             user = db.query(User).filter(User.id == int(payload["sub"])).first()
             if not user:
-                return RedirectResponse(url="/login", status_code=303)
+                await _send_redirect("/login")
+                return
 
             if not user.is_subscribed:
                 # Safety net: honor an active trial window even if the
@@ -943,11 +975,13 @@ class SubscriptionMiddleware(BaseHTTPMiddleware):
                         log.warning("SubscriptionMiddleware: flag heal failed: %s", _heal_exc)
                     # Allow through regardless of whether the heal succeeded
                 else:
-                    return RedirectResponse(url="/pricing", status_code=303)
+                    await _send_redirect("/pricing")
+                    return
         finally:
             db.close()
 
-        return await call_next(request)
+        # Authorized — pass through with original receive intact.
+        await self.app(scope, receive, send)
 
 
 app.add_middleware(SubscriptionMiddleware)
