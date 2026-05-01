@@ -739,7 +739,7 @@ def send_daily_newsletter() -> dict:
             _bh_analysis_html = f"""
 <div style="height:1px; background:#EEEDFE; margin:24px 0 20px;"></div>
 <p style="margin:0 0 14px; font-size:11px; font-weight:700; letter-spacing:2px;
-           text-transform:uppercase; color:#7F77DD;">AI Analysis</p>
+           text-transform:uppercase; color:#7F77DD;">Sharp Analysis</p>
 
 <div style="background:#1E1A47; border-radius:8px; padding:14px 20px; margin:0 0 18px;">
   <p style="margin:0; font-size:14px; font-weight:700; color:#FAC775;">🎯 {_bh_edge}</p>
