@@ -2045,8 +2045,14 @@ async def admin_dashboard(
         User.stripe_subscription_id.is_(None),
         ~_active_trial_cond,
     ).count()
+    # Unsubscribed: had a real Stripe subscription, now cancelled, no active trial
+    user_unsubscribed = db.query(User).filter(
+        User.is_subscribed.is_(False),
+        User.stripe_subscription_id.isnot(None),
+        ~_active_trial_cond,
+    ).count()
     user_paid  = user_paid_stripe + user_comped   # backward-compat total (excl. trial)
-    user_free  = user_total - user_paid - user_trial
+    user_free  = user_total - user_paid - user_trial - user_unsubscribed
 
     # Build filtered query — tier filter matches the counter logic exactly
     query = db.query(User)
@@ -2064,9 +2070,16 @@ async def admin_dashboard(
             User.stripe_subscription_id.is_(None),
             ~_active_trial_cond,
         )
+    elif tier == "unsubscribed":
+        query = query.filter(
+            User.is_subscribed.is_(False),
+            User.stripe_subscription_id.isnot(None),
+            ~_active_trial_cond,
+        )
     elif tier == "free":
         query = query.filter(
             User.is_subscribed.is_(False),
+            User.stripe_subscription_id.is_(None),
             ~_active_trial_cond,
         )
     if q and q.strip():
@@ -2194,6 +2207,7 @@ async def admin_dashboard(
             "user_trial":        user_trial,
             "user_comped":       user_comped,
             "user_free":         user_free,
+            "user_unsubscribed": user_unsubscribed,
             "now_utc_dt":        _now_admin,
             # Pagination metadata
             "filtered_total":   filtered_total,

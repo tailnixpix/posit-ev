@@ -1032,6 +1032,10 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
          class="tier-tab {% if current_tier == 'free' %}active{% endif %}">
         Free ({{ user_free }})
       </a>
+      <a href="/admin?tier=unsubscribed&q={{ current_q }}&page=1"
+         class="tier-tab {% if current_tier == 'unsubscribed' %}active{% endif %}">
+        Unsubscribed ({{ user_unsubscribed }})
+      </a>
     </div>
 
     {# Search #}
@@ -1081,6 +1085,8 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
               <span class="tag tag-paid">💳 Paid</span>
             {% elif u.is_subscribed %}
               <span class="tag" style="background:rgba(234,179,8,0.1);color:#92400E;border:1px solid rgba(234,179,8,0.3);">🎁 Comped</span>
+            {% elif u.stripe_subscription_id %}
+              <span class="tag" style="background:rgba(220,38,38,0.1);color:#B91C1C;border:1px solid rgba(220,38,38,0.3);">🚫 Cancelled</span>
             {% else %}
               <span class="tag tag-free">Free</span>
             {% endif %}
