@@ -1159,6 +1159,23 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
             </form>
             {% endif %}
 
+            {# ── Move to Unsubscribed — shown for subscribed users with a Stripe sub,
+                  or any user stuck in Trial who has been cancelled in Stripe ─── #}
+            {% if u.stripe_subscription_id and not (not u.is_subscribed and not u.trial_ends_at) %}
+            <form method="post" action="/admin/mark-unsubscribed" style="margin:0;">
+              <input type="hidden" name="user_id" value="{{ u.id }}" />
+              <input type="hidden" name="redirect_tier" value="{{ current_tier }}" />
+              <input type="hidden" name="redirect_q" value="{{ current_q }}" />
+              <input type="hidden" name="redirect_page" value="{{ current_page }}" />
+              <button type="submit" style="font-size:0.72rem;padding:3px 10px;height:26px;
+                background:rgba(220,38,38,0.06);color:#B91C1C;border:1px solid rgba(220,38,38,0.3);
+                border-radius:5px;cursor:pointer;font-family:inherit;font-weight:600;
+                white-space:nowrap;">
+                🚫 Mark Unsubscribed
+              </button>
+            </form>
+            {% endif %}
+
             </div>
           </td>
         </tr>

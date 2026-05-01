@@ -2026,13 +2026,26 @@ async def admin_dashboard(
     # Global stats — always unfiltered counts (efficient, no full table load)
     _now_admin = datetime.now(timezone.utc)
     user_total = db.query(User).count()
-    # "In trial" = active trial_ends_at, regardless of is_subscribed (the
-    # SubscriptionMiddleware heals is_subscribed on next login, so a freshly-
-    # activated trial may briefly have is_subscribed=False in the DB).
+    # Tier priority (highest wins):
+    #   1. Unsubscribed  — is_subscribed=False AND stripe_subscription_id IS NOT NULL
+    #                      (cancelled Stripe sub beats any lingering trial_ends_at)
+    #   2. Trial         — is_subscribed=True  AND active trial_ends_at
+    #   3. Paid          — is_subscribed=True  AND stripe_subscription_id IS NOT NULL, no trial
+    #   4. Comped        — is_subscribed=True  AND no stripe sub, no trial
+    #   5. Free          — is_subscribed=False AND no stripe_subscription_id
     _active_trial_cond = (
         User.trial_ends_at.isnot(None) & (User.trial_ends_at > _now_admin)
     )
-    user_trial = db.query(User).filter(_active_trial_cond).count()
+    # Unsubscribed: cancelled stripe sub, regardless of any leftover trial date
+    user_unsubscribed = db.query(User).filter(
+        User.is_subscribed.is_(False),
+        User.stripe_subscription_id.isnot(None),
+    ).count()
+    # Trial: actively subscribed + trial date in future (cancelled users excluded above)
+    user_trial = db.query(User).filter(
+        _active_trial_cond,
+        User.is_subscribed.is_(True),
+    ).count()
     # Paid via Stripe: subscribed + stripe sub + no active trial
     user_paid_stripe = db.query(User).filter(
         User.is_subscribed.is_(True),
@@ -2045,19 +2058,16 @@ async def admin_dashboard(
         User.stripe_subscription_id.is_(None),
         ~_active_trial_cond,
     ).count()
-    # Unsubscribed: had a real Stripe subscription, now cancelled, no active trial
-    user_unsubscribed = db.query(User).filter(
-        User.is_subscribed.is_(False),
-        User.stripe_subscription_id.isnot(None),
-        ~_active_trial_cond,
-    ).count()
     user_paid  = user_paid_stripe + user_comped   # backward-compat total (excl. trial)
     user_free  = user_total - user_paid - user_trial - user_unsubscribed
 
     # Build filtered query — tier filter matches the counter logic exactly
     query = db.query(User)
     if tier == "trial":
-        query = query.filter(_active_trial_cond)
+        query = query.filter(
+            _active_trial_cond,
+            User.is_subscribed.is_(True),
+        )
     elif tier == "paid":
         query = query.filter(
             User.is_subscribed.is_(True),
@@ -2071,16 +2081,15 @@ async def admin_dashboard(
             ~_active_trial_cond,
         )
     elif tier == "unsubscribed":
+        # Cancelled stripe sub beats any leftover trial date — no trial condition
         query = query.filter(
             User.is_subscribed.is_(False),
             User.stripe_subscription_id.isnot(None),
-            ~_active_trial_cond,
         )
     elif tier == "free":
         query = query.filter(
             User.is_subscribed.is_(False),
             User.stripe_subscription_id.is_(None),
-            ~_active_trial_cond,
         )
     if q and q.strip():
         query = query.filter(User.email.ilike(f"%{q.strip()}%"))
@@ -2473,6 +2482,48 @@ async def admin_grant_trial(
             user.is_subscribed = True
             log.info("Admin granted %d-day access to %s (ends %s)", days, user.email, new_end.date())
         db.commit()
+    params = f"?tier={redirect_tier}&q={redirect_q}&page={redirect_page}"
+    return RedirectResponse(url=f"/admin{params}", status_code=303)
+
+
+@app.post("/admin/mark-unsubscribed")
+async def admin_mark_unsubscribed(
+    request: Request,
+    user_id: int = Form(...),
+    redirect_tier: str = Form("all"),
+    redirect_q: str = Form(""),
+    redirect_page: int = Form(1),
+    db: Session = Depends(get_db),
+):
+    """
+    Manually move a user to the Unsubscribed tier.
+
+    - Sets is_subscribed=False
+    - Clears trial_ends_at
+    - Cancels any active Stripe subscription
+    - Keeps stripe_subscription_id so the user appears in the Unsubscribed tab
+    """
+    if not _is_admin(request):
+        return RedirectResponse(url="/admin/login", status_code=303)
+    user = db.query(User).filter(User.id == user_id).first()
+    if user:
+        # Cancel Stripe subscription if one exists and is still active
+        if user.stripe_subscription_id:
+            try:
+                import stripe as _stripe
+                _stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
+                sub = _stripe.Subscription.retrieve(user.stripe_subscription_id)
+                if sub.status not in ("canceled", "incomplete_expired"):
+                    _stripe.Subscription.cancel(user.stripe_subscription_id)
+                    log.info("Admin mark-unsubscribed: cancelled Stripe sub %s for %s",
+                             user.stripe_subscription_id, user.email)
+            except Exception as _exc:
+                log.warning("Admin mark-unsubscribed: Stripe cancel failed for %s (continuing): %s",
+                            user.email, _exc)
+        user.is_subscribed = False
+        user.trial_ends_at = None
+        db.commit()
+        log.info("Admin mark-unsubscribed: moved %s to Unsubscribed tier", user.email)
     params = f"?tier={redirect_tier}&q={redirect_q}&page={redirect_page}"
     return RedirectResponse(url=f"/admin{params}", status_code=303)
 
