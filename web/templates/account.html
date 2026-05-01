@@ -276,13 +276,15 @@ footer, footer a, footer span { color: var(--d-muted) !important; }
   <div class="acct-alert acct-alert-error">❌ Password must be at least 8 characters.</div>
   {% endif %}
   {% if cancel_done %}
-  <div class="acct-alert acct-alert-info">ℹ️ Your subscription has been cancelled. You'll keep full access until the end of your current billing period.</div>
+  <div class="acct-alert acct-alert-info">ℹ️ Your subscription has been cancelled and your access has ended.</div>
   {% endif %}
   {% if reactivated %}
   <div class="acct-alert acct-alert-success">✅ Subscription reactivated — your plan will continue as normal.</div>
   {% endif %}
   {% if cancel_error == 'stripe' %}
   <div class="acct-alert acct-alert-error">❌ Something went wrong — please try again or <a href="#" onclick="openSupportModal();return false;" style="color:inherit;text-decoration:underline;">contact support</a>.</div>
+  {% elif cancel_error == 'no_sub' %}
+  <div class="acct-alert acct-alert-error">❌ No active subscription found. If you believe this is an error, please <a href="#" onclick="openSupportModal();return false;" style="color:inherit;text-decoration:underline;">contact support</a>.</div>
   {% endif %}
   {% if portal_error %}
   <div class="acct-alert acct-alert-error">❌ Couldn't open the billing portal right now. Please try again shortly.</div>
@@ -356,11 +358,9 @@ footer, footer a, footer span { color: var(--d-muted) !important; }
       <p class="cancel-confirm-copy">
         <strong>Are you sure you want to cancel?</strong><br>
         {% if is_trial %}
-        Your free trial will end immediately and you won't be charged.
+        Your free trial will be cancelled <strong>immediately</strong>. You'll lose access right away and won't be charged.
         {% else %}
-        You'll keep full access to the dashboard and all picks
-        {% if period_end_str %}until <strong>{{ period_end_str }}</strong>{% else %}until the end of your billing period{% endif %}.
-        After that your account will be downgraded and you'll lose access.
+        Your subscription will be cancelled <strong>immediately</strong> and you'll lose access right away.
         {% endif %}
       </p>
       <div class="cancel-confirm-btns">

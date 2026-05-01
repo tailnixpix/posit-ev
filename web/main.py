@@ -1657,6 +1657,17 @@ async def account_page(request: Request, db: Session = Depends(get_db)):
             if sub.current_period_end:
                 period_end_dt  = datetime.fromtimestamp(int(sub.current_period_end), tz=_CT)
                 period_end_str = period_end_dt.strftime("%B %-d, %Y")
+            # Heal stale is_subscribed when Stripe confirms the subscription is gone.
+            # This happens when a subscription is cancelled outside the app (e.g. via
+            # Stripe dashboard) and the webhook event was missed or delayed.
+            if sub_status in ("canceled", "incomplete_expired") and user.is_subscribed:
+                user.is_subscribed = False
+                db.commit()
+                log.info(
+                    "account_page: healed is_subscribed=False for %s "
+                    "(Stripe status=%s, sub=%s)",
+                    user.email, sub_status, user.stripe_subscription_id,
+                )
         except Exception as exc:
             log.warning("account_page: Stripe fetch failed for user %s: %s", user.email, exc)
 
@@ -1715,7 +1726,7 @@ async def change_password(
 
 @app.post("/account/cancel-subscription")
 async def cancel_subscription(request: Request, db: Session = Depends(get_db)):
-    """Set cancel_at_period_end=True on Stripe — access retained until period end."""
+    """Immediately cancel the Stripe subscription — access ends right away."""
     user = _get_authed_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=303)
@@ -1750,13 +1761,36 @@ async def cancel_subscription(request: Request, db: Session = Depends(get_db)):
         return RedirectResponse(url="/account?cancel_error=no_sub", status_code=303)
 
     try:
-        _stripe.Subscription.modify(
-            user.stripe_subscription_id,
-            cancel_at_period_end=True,
-        )
-        log.info("Subscription cancel_at_period_end=True for user %s", user.email)
-    except _stripe.error.StripeError as exc:
-        log.error("Cancel subscription failed for user %s: %s", user.email, exc)
+        # Immediately cancel — no grace period, no end-of-cycle access.
+        # Stripe fires customer.subscription.deleted; webhook also sets is_subscribed=False.
+        _stripe.Subscription.cancel(user.stripe_subscription_id)
+        log.info("Subscription cancelled immediately for user %s", user.email)
+        # Revoke access in DB right away — don't wait for the webhook.
+        user.is_subscribed = False
+        user.trial_ends_at = None
+        db.commit()
+    except _stripe.error.InvalidRequestError as exc:
+        # Subscription no longer exists in Stripe (cancelled externally, test→live
+        # migration, etc.).  Heal the DB and treat this as a successful cancel so
+        # users aren't stuck on an error page.
+        err_str = str(exc).lower()
+        if "no such subscription" in err_str or "already been canceled" in err_str:
+            log.warning(
+                "cancel_subscription: sub %s not found / already cancelled in Stripe "
+                "for user %s — healing DB and treating as success.",
+                user.stripe_subscription_id, user.email,
+            )
+            try:
+                user.is_subscribed = False
+                user.trial_ends_at = None
+                db.commit()
+            except Exception as _db_exc:
+                log.error("cancel_subscription: DB heal failed: %s", _db_exc)
+            return RedirectResponse(url="/account?cancel_done=1", status_code=303)
+        log.error("Cancel subscription InvalidRequestError for user %s: %s", user.email, exc)
+        return RedirectResponse(url="/account?cancel_error=stripe", status_code=303)
+    except Exception as exc:
+        log.error("Cancel subscription failed for user %s: %s", user.email, exc, exc_info=True)
         return RedirectResponse(url="/account?cancel_error=stripe", status_code=303)
 
     return RedirectResponse(url="/account?cancel_done=1", status_code=303)
@@ -1778,8 +1812,8 @@ async def reactivate_subscription(request: Request, db: Session = Depends(get_db
             cancel_at_period_end=False,
         )
         log.info("Subscription reactivated for user %s", user.email)
-    except _stripe.error.StripeError as exc:
-        log.error("Reactivate subscription failed for user %s: %s", user.email, exc)
+    except Exception as exc:
+        log.error("Reactivate subscription failed for user %s: %s", user.email, exc, exc_info=True)
         return RedirectResponse(url="/account?cancel_error=stripe", status_code=303)
 
     return RedirectResponse(url="/account?reactivated=1", status_code=303)
@@ -2219,6 +2253,40 @@ async def admin_grant_access(
         return RedirectResponse(url="/admin/login", status_code=303)
     user = db.query(User).filter(User.id == user_id).first()
     if user:
+        # If the user has a Stripe subscription that still exists and has a
+        # pending cancellation, undo it so they continue billing normally.
+        # If the subscription was already cancelled (e.g. by admin revoke or
+        # self-cancel), this is comp / manual override — DB-only, no Stripe action.
+        if user.stripe_subscription_id:
+            try:
+                _stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
+                sub = _stripe.Subscription.retrieve(user.stripe_subscription_id)
+                if sub.status in ("active", "trialing", "past_due"):
+                    if sub.cancel_at_period_end:
+                        _stripe.Subscription.modify(
+                            user.stripe_subscription_id,
+                            cancel_at_period_end=False,
+                        )
+                        log.info(
+                            "Admin grant: undid pending Stripe cancellation for %s (sub %s)",
+                            user.email, user.stripe_subscription_id,
+                        )
+                    else:
+                        log.info(
+                            "Admin grant: Stripe sub %s for %s is already active — DB flag only.",
+                            user.stripe_subscription_id, user.email,
+                        )
+                else:
+                    # Subscription is cancelled in Stripe — granting as comp (DB only).
+                    log.info(
+                        "Admin grant: Stripe sub %s for %s is %s — granting comp access (DB only).",
+                        user.stripe_subscription_id, user.email, sub.status,
+                    )
+            except Exception as _exc:
+                log.warning(
+                    "Admin grant: Stripe check failed for %s (continuing DB grant): %s",
+                    user.email, _exc,
+                )
         user.is_subscribed = True
         db.commit()
         log.info("Admin granted access to %s", user.email)
@@ -2330,7 +2398,30 @@ async def admin_revoke_access(
         return RedirectResponse(url="/admin/login", status_code=303)
     user = db.query(User).filter(User.id == user_id).first()
     if user:
+        # Cancel the Stripe subscription immediately so the user is not charged
+        # on any future billing cycle or at the end of their trial.
+        # This is non-fatal — the DB revoke below always runs regardless.
+        if user.stripe_subscription_id:
+            try:
+                _stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
+                _stripe.Subscription.cancel(user.stripe_subscription_id)
+                log.info(
+                    "Admin revoked: cancelled Stripe sub %s for %s",
+                    user.stripe_subscription_id, user.email,
+                )
+            except _stripe.error.InvalidRequestError as _exc:
+                # Sub already cancelled in Stripe — that's fine.
+                log.info(
+                    "Admin revoked: Stripe sub %s for %s already cancelled: %s",
+                    user.stripe_subscription_id, user.email, _exc,
+                )
+            except Exception as _exc:
+                log.error(
+                    "Admin revoked: Stripe cancel failed for %s (continuing DB revoke): %s",
+                    user.email, _exc,
+                )
         user.is_subscribed = False
+        user.trial_ends_at = None
         db.commit()
         log.info("Admin revoked access from %s", user.email)
     params = f"?tier={redirect_tier}&q={redirect_q}&page={redirect_page}"

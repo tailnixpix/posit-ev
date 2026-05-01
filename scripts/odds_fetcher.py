@@ -164,7 +164,8 @@ PROP_MARKETS_BY_SPORT: dict = {
         "player_points", "player_rebounds", "player_assists",
         "player_threes", "player_blocks", "player_steals",
         "player_turnovers",       # turnovers over/under
-        "player_double_double",   # yes/no double-double
+        # player_double_double removed — The Odds API returns 422 for yes/no
+        # special markets (unrecognised market type in the event-level endpoint).
     ],
     "baseball_mlb": [
         # Team markets (event-level, same fetch/parse path as props)
@@ -178,11 +179,11 @@ PROP_MARKETS_BY_SPORT: dict = {
         "pitcher_earned_runs",
     ],
     "icehockey_nhl": [
-        # player_anytime_goalscorer and player_power_play_points removed —
-        # The Odds API returns 422 for these keys (unrecognised market names).
+        # player_anytime_goalscorer, player_power_play_points, and player_saves
+        # removed — The Odds API returns 422 for these keys (unrecognised market
+        # names in the event-level endpoint).
         "player_points", "player_goals", "player_assists",
         "player_shots_on_goal", "player_blocked_shots",
-        "player_saves",       # Goalie saves Over/Under — top sportsbook coverage
     ],
 }
 
