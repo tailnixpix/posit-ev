@@ -3,16 +3,27 @@
 <!--
   Posit+EV Daily Newsletter — newsletter_template.html
   Jinja2 variables:
-    {{ date_str }}        — e.g. "March 27, 2026"
-    {{ league }}          — e.g. "NHL"
-    {{ team }}            — outcome name, e.g. "Boston Bruins"
-    {{ market }}          — e.g. "Moneyline"
-    {{ book }}            — e.g. "DraftKings"
-    {{ odds }}            — pre-formatted, e.g. "+145"
-    {{ synopsis }}        — 4-5 sentence AI-generated text
-    {{ base_url }}        — e.g. "https://www.posit-ev.com"
-    {{ unsubscribe_url }} — full URL with signed token
-  EV% is intentionally omitted — shown only to paid subscribers on the dashboard.
+    {{ date_str }}          — e.g. "March 27, 2026"
+    {{ league }}            — e.g. "NHL"
+    {{ team }}              — outcome name, e.g. "Boston Bruins"
+    {{ market }}            — e.g. "Moneyline"
+    {{ book }}              — e.g. "DraftKings"
+    {{ source_type }}       — "sportsbook" or "prediction_market"
+    {{ odds }}              — pre-formatted, e.g. "+145"
+    {{ point }}             — spread/total line, e.g. "+3.5" or ""
+    {{ ev_percent }}        — float, e.g. 7.2
+    {{ true_prob }}         — float 0-1, e.g. 0.44
+    {{ synopsis }}          — 4-5 sentence AI intro text
+    {{ base_url }}          — e.g. "https://www.posit-ev.com"
+    {{ unsubscribe_url }}   — full URL with signed token
+
+    Analysis fields (rendered only when analysis_available is True):
+    {{ analysis_available }}  — bool
+    {{ edge_tag }}            — e.g. "Sharp steam confirms the model"
+    {{ why_bet }}             — 3-4 sentence verified analysis
+    {{ risk }}                — 1-sentence risk factor
+    {{ confidence_score }}    — int 1-100
+    {{ recommended_action }}  — "Strong Bet" | "Moderate Bet" | "Lean" | "Pass"
 -->
 <head>
   <meta charset="UTF-8" />
@@ -67,7 +78,7 @@
      PREVIEW TEXT (hidden — shows in inbox snippet, not in email body)
      ──────────────────────────────────────────────────────────────────── -->
 <div style="display:none; font-size:1px; color:#ECEAFE; line-height:1px; max-height:0px; max-width:0px; opacity:0; overflow:hidden;">
-  Today's free +EV pick: {{ team }} · {{ market }} · {{ book }} · {{ odds }}
+  {% if analysis_available %}Today's pick + AI analysis: {{ team }} · {{ edge_tag }} · {{ odds }}{% else %}Today's free +EV pick: {{ team }} · {{ market }} · {{ book }} · {{ odds }}{% endif %}
   &zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;
 </div>
 
@@ -282,17 +293,30 @@
 
                   </table><!-- /pick-grid -->
 
-                  <!-- Subtle "EV% for subscribers" teaser -->
-                  <p style="margin:16px 0 0; padding:10px 14px;
-                              background-color:#EEEDFE; border-radius:6px;
-                              font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
-                              font-size:12px; color:#7F77DD; text-align:center;">
-                    &#128274;&nbsp; Expected value edge visible to
-                    <a href="{{ base_url }}/pricing"
-                       style="color:#534AB7; font-weight:700; text-decoration:none;">
-                      EV Pro subscribers
-                    </a>
-                  </p>
+                  <!-- EV edge display -->
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                         style="margin-top:16px;">
+                    <tr>
+                      <td style="padding:14px 18px; background-color:#1E1A47; border-radius:8px;">
+                        <p style="margin:0; padding:0;
+                                   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+                                   font-size:10px; font-weight:700; letter-spacing:1.5px;
+                                   text-transform:uppercase; color:rgba(255,255,255,0.45);">
+                          Expected Value Edge
+                        </p>
+                        <p style="margin:5px 0 0; padding:0;
+                                   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+                                   font-size:26px; font-weight:800; color:#FAC775; line-height:1.1;">
+                          +{{ ev_percent }}%
+                        </p>
+                        <p style="margin:4px 0 0; padding:0;
+                                   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+                                   font-size:12px; color:rgba(255,255,255,0.45);">
+                          True probability: {{ (true_prob * 100) | round(1) }}%
+                        </p>
+                      </td>
+                    </tr>
+                  </table>
 
                 </td>
               </tr>
@@ -334,6 +358,140 @@
                 </td>
               </tr>
             </table>
+
+
+            {% if analysis_available %}
+            <!-- ════════════════════════════════════════════════════════
+                 AI ANALYSIS SECTION
+                 ════════════════════════════════════════════════════ -->
+
+            <!-- Divider -->
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                   style="margin:0 0 24px;">
+              <tr>
+                <td style="height:1px; background-color:#EEEDFE; font-size:0; line-height:0;">&nbsp;</td>
+              </tr>
+            </table>
+
+            <!-- Section label -->
+            <p style="margin:0 0 14px; padding:0;
+                       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+                       font-size:11px; font-weight:700; letter-spacing:2px;
+                       text-transform:uppercase; color:#7F77DD;">
+              AI Analysis
+            </p>
+
+            <!-- Edge tag dark banner -->
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                   style="margin-bottom:20px;">
+              <tr>
+                <td style="background-color:#1E1A47; border-radius:8px; padding:14px 20px;">
+                  <p style="margin:0; padding:0;
+                             font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+                             font-size:14px; font-weight:700; color:#FAC775; letter-spacing:0.3px;">
+                    &#127919;&nbsp; {{ edge_tag }}
+                  </p>
+                </td>
+              </tr>
+            </table>
+
+            <!-- Why bet — gold accent bar -->
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                   style="margin-bottom:20px;">
+              <tr>
+                <td style="width:4px; background-color:#FAC775; border-radius:4px 0 0 4px; font-size:0; line-height:0;">&nbsp;</td>
+                <td style="background-color:#FFFDF7; border-radius:0 8px 8px 0;
+                            padding:16px 20px; border-top:1px solid #F0E8C4;
+                            border-right:1px solid #F0E8C4; border-bottom:1px solid #F0E8C4;">
+                  <p style="margin:0; padding:0;
+                             font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+                             font-size:14px; line-height:1.8; color:#2C2820;">
+                    {{ why_bet }}
+                  </p>
+                </td>
+              </tr>
+            </table>
+
+            <!-- Confidence + Verdict row -->
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                   style="margin-bottom:16px;">
+              <tr>
+                <!-- Confidence -->
+                <td style="width:50%; padding-right:8px; vertical-align:top;">
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                    <tr>
+                      <td style="background-color:#F4F3FC; border:1px solid #D6D2F8;
+                                  border-radius:8px; padding:14px 16px;">
+                        <p style="margin:0 0 6px; padding:0;
+                                   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+                                   font-size:10px; font-weight:700; letter-spacing:1.5px;
+                                   text-transform:uppercase; color:#AFA9EC;">
+                          Confidence
+                        </p>
+                        <p style="margin:0; padding:0;
+                                   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+                                   font-size:24px; font-weight:800;
+                                   color:{% if confidence_score >= 70 %}#0F6E56{% elif confidence_score >= 50 %}#92400E{% else %}#991B1B{% endif %};">
+                          {{ confidence_score }}<span style="font-size:12px; font-weight:500; opacity:0.6;">/100</span>
+                        </p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+                <!-- Verdict -->
+                <td style="width:50%; padding-left:8px; vertical-align:top;">
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                    <tr>
+                      <td style="background-color:#F4F3FC; border:1px solid #D6D2F8;
+                                  border-radius:8px; padding:14px 16px;">
+                        <p style="margin:0 0 6px; padding:0;
+                                   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+                                   font-size:10px; font-weight:700; letter-spacing:1.5px;
+                                   text-transform:uppercase; color:#AFA9EC;">
+                          Verdict
+                        </p>
+                        <p style="margin:0; padding:0;
+                                   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+                                   font-size:15px; font-weight:700; line-height:1.3;
+                                   color:{% if recommended_action == 'Strong Bet' %}#0F6E56{% elif recommended_action == 'Moderate Bet' %}#534AB7{% elif recommended_action == 'Lean' %}#92400E{% else %}#991B1B{% endif %};">
+                          {{ recommended_action }}
+                        </p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+
+            {% if risk %}
+            <!-- Risk note -->
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                   style="margin-bottom:28px;">
+              <tr>
+                <td style="background-color:#FFF8F0; border:1px solid #F9D8A8;
+                            border-radius:8px; padding:12px 18px;">
+                  <p style="margin:0; padding:0;
+                             font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+                             font-size:13px; color:#78350F; line-height:1.65;">
+                    &#9888;&#65039;&nbsp;<strong>Risk:</strong>&nbsp;{{ risk }}
+                  </p>
+                </td>
+              </tr>
+            </table>
+            {% else %}
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                   style="margin-bottom:28px;"><tr><td style="height:0; font-size:0;">&nbsp;</td></tr></table>
+            {% endif %}
+
+            {% else %}
+            <!-- No analysis available — simple spacing before CTA -->
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                   style="margin-bottom:32px;">
+              <tr>
+                <td style="height:1px; background-color:#EEEDFE; font-size:0; line-height:0;">&nbsp;</td>
+              </tr>
+            </table>
+            {% endif %}
 
 
             <!-- ── CTA button ──────────────────────────────────────── -->
@@ -391,14 +549,14 @@
                   <p style="margin:0 0 6px; padding:0;
                               font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
                               font-size:13px; font-weight:700; color:#ffffff;">
-                    You&#8217;re only seeing 1 of today&#8217;s picks.
+                    Like this analysis? You&#8217;re seeing 1 of today&#8217;s picks.
                   </p>
                   <p style="margin:0; padding:0;
                               font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
                               font-size:13px; line-height:1.7; color:rgba(255,255,255,0.65);">
-                    EV Pro members see <em>every</em> +EV bet from the full daily scan &mdash;
-                    with EV%, true probability, and exact &frac12;&nbsp;Kelly stake sizing.
-                    Usually 10&ndash;30 picks per day across NHL, NBA, MLB, and more.
+                    EV Pro members get this <em>full AI breakdown on every pick</em> &mdash;
+                    usually 10&ndash;30 bets per day across NHL, NBA, MLB, and more &mdash;
+                    with live odds, sharp money signals, and exact Kelly stake sizing.
                     <a href="{{ base_url }}/pricing"
                        style="color:#FAC775; font-weight:700; text-decoration:none;">
                       Get full access for $10/month &rarr;

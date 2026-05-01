@@ -443,6 +443,61 @@ def _generate_synopsis(bet: EVBetCache) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Full AI analysis (for newsletter — uses live data, graded by quality)
+# ---------------------------------------------------------------------------
+
+def _get_full_analysis(bet: EVBetCache) -> Optional[dict]:
+    """
+    Run the full ai_analyzer pipeline on the daily pick.
+
+    Returns the analysis dict when context_quality is MODERATE or RICH
+    (meaning real live data was successfully fetched and used).
+    Returns None for NONE/SPARSE — we fall back to the synopsis in that case
+    so nothing speculative goes into the email.
+    """
+    try:
+        from models.ai_analyzer import analyze_bet as _analyze_bet  # lazy import
+        bet_dict = {
+            "id":                 getattr(bet, "id", 0),
+            "game":               getattr(bet, "game", "") or "",
+            "market":             getattr(bet, "market", "") or "",
+            "team":               getattr(bet, "team", "") or "",
+            "odds":               getattr(bet, "odds", 0) or 0,
+            "true_prob":          getattr(bet, "true_prob", 0) or 0,
+            "ev_percent":         getattr(bet, "ev_percent", 0) or 0,
+            "league":             getattr(bet, "league", "") or "",
+            "point":              getattr(bet, "point", None),
+            "player_name":        getattr(bet, "player_name", None),
+            "is_prop":            getattr(bet, "is_prop", False),
+            "commence_time":      getattr(bet, "commence_time", None),
+            "proj_home_score":    getattr(bet, "proj_home_score", None),
+            "proj_away_score":    getattr(bet, "proj_away_score", None),
+            "proj_total":         getattr(bet, "proj_total", None),
+            "proj_home_win_prob": getattr(bet, "proj_home_win_prob", None),
+            "home_trend":         getattr(bet, "home_trend", None),
+            "away_trend":         getattr(bet, "away_trend", None),
+            "all_book_odds":      getattr(bet, "all_book_odds", None),
+            "opening_odds":       getattr(bet, "opening_odds", None),
+            "bet_pct":            getattr(bet, "bet_pct", None),
+            "money_pct":          getattr(bet, "money_pct", None),
+            "sharp_score":        getattr(bet, "sharp_score", None),
+        }
+        result = _analyze_bet(bet_dict)
+        if not result:
+            log.info("Newsletter analysis: no result returned — using synopsis fallback.")
+            return None
+        cq = result.get("context_quality", "NONE")
+        if "MODERATE" in cq or "RICH" in cq:
+            log.info("Newsletter analysis: full analysis ready (context_quality=%s).", cq)
+            return result
+        log.info("Newsletter analysis: context_quality=%s — too sparse, using synopsis fallback.", cq)
+        return None
+    except Exception as exc:
+        log.warning("Newsletter full analysis failed (synopsis fallback): %s", exc)
+        return None
+
+
+# ---------------------------------------------------------------------------
 # Daily email builder
 # ---------------------------------------------------------------------------
 
@@ -451,6 +506,7 @@ def _build_daily_email(
     synopsis: str,
     date_str: str,
     to_email: str,
+    analysis: Optional[dict] = None,
 ) -> str:
     """
     Render newsletter_template.html for a single recipient.
@@ -521,6 +577,21 @@ def _build_daily_email(
         "unsubscribe_url": unsub_url,
     }
 
+    # ── Analysis fields (quality-gated — only set when live data was fetched) ──
+    _raw          = (analysis.get("raw") or {}) if analysis else {}
+    _analysis_obj = (_raw.get("analysis") or {}) if isinstance(_raw.get("analysis"), dict) else {}
+    ctx.update({
+        "ev_percent":         round(float(getattr(bet, "ev_percent", 0) or 0), 1),
+        "true_prob":          float(getattr(bet, "true_prob", 0) or 0),
+        "analysis_available": analysis is not None,
+        "edge_tag":           analysis.get("edge_tag", "")                      if analysis else "",
+        "why_bet":            _analysis_obj.get("why_bet", "")                  if analysis else "",
+        "risk":               _analysis_obj.get("risk", "")                     if analysis else "",
+        "confidence_score":   int(analysis.get("confidence_score", 0) or 0)     if analysis else 0,
+        "recommended_action": _analysis_obj.get("recommended_action", "")       if analysis else "",
+        "kelly_pct":          analysis.get("kelly_pct")                          if analysis else None,
+    })
+
     try:
         tmpl = _email_env.get_template("newsletter_template.html")
         return tmpl.render(**ctx)
@@ -568,6 +639,9 @@ def send_daily_newsletter() -> dict:
 
     # 2. AI synopsis
     synopsis = _generate_synopsis(bet)
+
+    # 2c. Full AI analysis — quality-gated, falls back to None if context is sparse
+    analysis = _get_full_analysis(bet)
 
     # 2b. Persist today's pick snapshot (idempotent — skips if today's row already exists)
     today_date_ct = datetime.now(LOCAL_TZ).date()
@@ -640,6 +714,65 @@ def send_daily_newsletter() -> dict:
 
         ev_color = "#534AB7" if ev_pct > 8 else ("#0F6E56" if ev_pct > 5 else "#B45309")
 
+        # ── Build optional analysis block ────────────────────────────────────
+        _bh_analysis_html = ""
+        if analysis:
+            _bh_raw  = analysis.get("raw") or {}
+            _bh_aobj = (_bh_raw.get("analysis") or {}) if isinstance(_bh_raw.get("analysis"), dict) else {}
+            _bh_edge    = analysis.get("edge_tag", "")
+            _bh_why     = _bh_aobj.get("why_bet", "")
+            _bh_risk    = _bh_aobj.get("risk", "")
+            _bh_conf    = int(analysis.get("confidence_score", 0) or 0)
+            _bh_rec     = _bh_aobj.get("recommended_action", "")
+            _bh_conf_color = "#0F6E56" if _bh_conf >= 70 else ("#92400E" if _bh_conf >= 50 else "#991B1B")
+            _bh_rec_color  = (
+                "#0F6E56" if _bh_rec == "Strong Bet" else
+                "#534AB7" if _bh_rec == "Moderate Bet" else
+                "#92400E" if _bh_rec == "Lean" else
+                "#991B1B"
+            )
+            _bh_risk_html = (
+                f'<div style="background:#FFF8F0; border:1px solid #F9D8A8; border-radius:8px;'
+                f'padding:12px 18px; margin:0 0 20px; font-size:13px; color:#78350F; line-height:1.65;">'
+                f'<strong>⚠️ Risk:</strong> {_bh_risk}</div>'
+            ) if _bh_risk else ""
+            _bh_analysis_html = f"""
+<div style="height:1px; background:#EEEDFE; margin:24px 0 20px;"></div>
+<p style="margin:0 0 14px; font-size:11px; font-weight:700; letter-spacing:2px;
+           text-transform:uppercase; color:#7F77DD;">AI Analysis</p>
+
+<div style="background:#1E1A47; border-radius:8px; padding:14px 20px; margin:0 0 18px;">
+  <p style="margin:0; font-size:14px; font-weight:700; color:#FAC775;">🎯 {_bh_edge}</p>
+</div>
+
+<div style="border-left:4px solid #FAC775; background:#FFFDF5; border-radius:0 8px 8px 0;
+            padding:16px 20px; margin:0 0 18px; border:1px solid #F0E8C4; border-left:4px solid #FAC775;">
+  <p style="margin:0; font-size:14px; line-height:1.8; color:#2C2820;">{_bh_why}</p>
+</div>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+       style="margin-bottom:16px;">
+  <tr>
+    <td style="width:50%; padding-right:8px; vertical-align:top;">
+      <div style="background:#F4F3FC; border:1px solid #D6D2F8; border-radius:8px; padding:14px 16px;">
+        <p style="margin:0 0 6px; font-size:10px; font-weight:700; letter-spacing:1.5px;
+                   text-transform:uppercase; color:#AFA9EC;">Confidence</p>
+        <p style="margin:0; font-size:24px; font-weight:800; color:{_bh_conf_color};">
+          {_bh_conf}<span style="font-size:12px; opacity:0.6;">/100</span></p>
+      </div>
+    </td>
+    <td style="width:50%; padding-left:8px; vertical-align:top;">
+      <div style="background:#F4F3FC; border:1px solid #D6D2F8; border-radius:8px; padding:14px 16px;">
+        <p style="margin:0 0 6px; font-size:10px; font-weight:700; letter-spacing:1.5px;
+                   text-transform:uppercase; color:#AFA9EC;">Verdict</p>
+        <p style="margin:0; font-size:15px; font-weight:700; color:{_bh_rec_color};">{_bh_rec}</p>
+      </div>
+    </td>
+  </tr>
+</table>
+{_bh_risk_html}
+"""
+
         body_html = f"""
 <h2 style="color:#1A1450; font-size:20px; font-weight:700; margin:0 0 16px;">
   Today&rsquo;s Free +EV Pick &mdash; {date_str}
@@ -668,11 +801,11 @@ def send_daily_newsletter() -> dict:
             color:#3D3860; line-height:1.75;">
   {synopsis}
 </div>
-
+{_bh_analysis_html}
 <p style="font-size:14px; color:#555270; line-height:1.7; margin:0 0 20px;">
-  This is your free daily pick from Posit+EV. EV Pro members get the
-  <strong>full daily scan</strong> — usually 10&ndash;30 picks across NHL, NBA,
-  MLB, and more — refreshed every 30 minutes on a live dashboard.
+  Like this analysis? EV Pro members get the <strong>full AI breakdown on every pick</strong> &mdash;
+  usually 10&ndash;30 bets per day across NHL, NBA, MLB, and more, with live odds,
+  sharp money signals, and exact Kelly stake sizing.
 </p>
 
 <a href="{_base_url}/pricing"
@@ -693,7 +826,7 @@ def send_daily_newsletter() -> dict:
     # Resend fallback (or primary if Beehiiv not configured)
     sent = failed = 0
     for email in emails:
-        html = _build_daily_email(bet, synopsis, date_str, email)
+        html = _build_daily_email(bet, synopsis, date_str, email, analysis=analysis)
         ok   = _send(email, subject, html)
         if ok:
             sent += 1
@@ -1346,12 +1479,31 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Test Posit+EV email sender")
-    parser.add_argument("--to",        required=True,      help="Recipient email address")
-    parser.add_argument("--welcome",   action="store_true", help="Send account welcome email")
-    parser.add_argument("--nl-welcome",action="store_true", help="Send newsletter welcome email")
-    parser.add_argument("--picks",     action="store_true", help="Send daily picks email (legacy)")
-    parser.add_argument("--daily",     action="store_true", help="Run full send_daily_newsletter()")
+    parser.add_argument("--to",         required=True,       help="Recipient email address")
+    parser.add_argument("--welcome",    action="store_true", help="Send account welcome email")
+    parser.add_argument("--nl-welcome", action="store_true", help="Send newsletter welcome email")
+    parser.add_argument("--picks",      action="store_true", help="Send daily picks email (legacy)")
+    parser.add_argument("--daily",      action="store_true", help="Run full send_daily_newsletter()")
+    parser.add_argument("--test-pick",  action="store_true", help="Send single test daily pick to --to (with AI analysis)")
     args = parser.parse_args()
+
+    if args.test_pick:
+        import logging as _log
+        _log.basicConfig(level=_log.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+        _date_str = datetime.now(LOCAL_TZ).strftime("%B %-d, %Y")
+        _bet = get_top_ev_bet()
+        if not _bet:
+            print("ERROR: no bet found in EVBetCache — cannot send test email.")
+        else:
+            print(f"Bet: {getattr(_bet,'game','')} | {getattr(_bet,'team','')} | {getattr(_bet,'ev_percent',0):.1f}% EV")
+            _synopsis = _generate_synopsis(_bet)
+            print(f"Synopsis: {_synopsis[:80]}...")
+            _analysis = _get_full_analysis(_bet)
+            print(f"Analysis quality: {_analysis.get('context_quality') if _analysis else 'N/A (synopsis fallback)'}")
+            _html = _build_daily_email(_bet, _synopsis, _date_str, args.to, analysis=_analysis)
+            _subject = f"[TEST] Posit+EV | Daily Pick — {_date_str}"
+            _ok = _send(args.to, _subject, _html)
+            print("Test pick email sent:", _ok)
 
     if args.welcome:
         print("Account welcome email sent:", send_welcome_email(args.to))
