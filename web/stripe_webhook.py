@@ -347,67 +347,80 @@ async def stripe_webhook(request: Request):
         log.error("Stripe webhook parse error: %s", exc)
         return JSONResponse({"error": "parse error"}, status_code=400)
 
-    event_type = event["type"]
-    data       = event["data"]["object"]
-    log.info("Stripe event received: %s  id=%s", event_type, event["id"])
+    # Use attribute access (.type, .data.object) which works across all
+    # stripe-python SDK versions.  Dict-style access (event["type"]) was
+    # silently broken in stripe-python >= 10 and throws TypeError in v15.
+    try:
+        event_type = event.type
+        data       = event.data.object
+        event_id   = event.id
+    except Exception as exc:
+        log.error("Stripe webhook: failed to read event fields: %s", exc, exc_info=True)
+        return JSONResponse({"error": "event parse error"}, status_code=400)
 
-    # ── checkout.session.completed ─────────────────────────────────────────
-    if event_type == "checkout.session.completed":
-        customer_id     = data.get("customer", "")
-        subscription_id = data.get("subscription", "")
-        customer_email  = (
-            (data.get("customer_details") or {}).get("email", "")
-            or data.get("customer_email", "")
-        )
-        # Activate regardless of payment_status — Stripe only fires this event
-        # on successful checkout; trials show "no_payment_required".
-        _set_subscribed(customer_id, subscription_id, subscribed=True, customer_email=customer_email)
+    log.info("Stripe event received: %s  id=%s", event_type, event_id)
 
-    # ── customer.subscription.updated ─────────────────────────────────────
-    elif event_type == "customer.subscription.updated":
-        customer_id     = data.get("customer", "")
-        subscription_id = data.get("id", "")
-        status          = data.get("status", "")
-        # Active statuses that should retain dashboard access
-        active = status in ("active", "trialing")
-        # Sync trial_end if present (Stripe includes it on trialing subscriptions)
-        trial_end_ts = data.get("trial_end")
-        trial_ends_at = (
-            datetime.fromtimestamp(int(trial_end_ts), tz=timezone.utc)
-            if trial_end_ts else None
-        )
-        _set_subscribed(customer_id, subscription_id, subscribed=active, trial_ends_at=trial_ends_at)
-        log.info(
-            "Subscription %s status=%s → is_subscribed=%s trial_ends=%s",
-            subscription_id, status, active, trial_ends_at,
-        )
+    try:
+        # ── checkout.session.completed ─────────────────────────────────────
+        if event_type == "checkout.session.completed":
+            customer_id     = getattr(data, "customer", "") or ""
+            subscription_id = getattr(data, "subscription", "") or ""
+            # customer_details is a nested object; fall back to top-level email
+            _cd            = getattr(data, "customer_details", None)
+            customer_email = (
+                (getattr(_cd, "email", "") or "")
+                if _cd else ""
+            ) or (getattr(data, "customer_email", "") or "")
+            # Activate regardless of payment_status — trials show "no_payment_required"
+            _set_subscribed(customer_id, subscription_id, subscribed=True,
+                            customer_email=customer_email)
 
-    # ── customer.subscription.deleted ─────────────────────────────────────
-    elif event_type == "customer.subscription.deleted":
-        customer_id     = data.get("customer", "")
-        subscription_id = data.get("id", "")
-        _set_subscribed(customer_id, subscription_id, subscribed=False)
-
-    # ── invoice.payment_failed ─────────────────────────────────────────────
-    elif event_type == "invoice.payment_failed":
-        customer_id     = data.get("customer", "")
-        attempt         = data.get("attempt_count", 0)
-        subscription_id = data.get("subscription", "")
-        log.warning(
-            "Payment failed for customer %s (attempt %s).",
-            customer_id, attempt,
-        )
-        # Revoke access after 3 consecutive failures — by this point Stripe
-        # has retried over several days with no success.
-        if isinstance(attempt, int) and attempt >= 3:
-            _set_subscribed(customer_id, subscription_id, subscribed=False)
-            log.warning(
-                "Access revoked for customer %s after %d failed payment attempts.",
-                customer_id, attempt,
+        # ── customer.subscription.updated ─────────────────────────────────
+        elif event_type == "customer.subscription.updated":
+            customer_id     = getattr(data, "customer", "") or ""
+            subscription_id = getattr(data, "id", "") or ""
+            status          = getattr(data, "status", "") or ""
+            active          = status in ("active", "trialing")
+            trial_end_ts    = getattr(data, "trial_end", None)
+            trial_ends_at   = (
+                datetime.fromtimestamp(int(trial_end_ts), tz=timezone.utc)
+                if trial_end_ts else None
+            )
+            _set_subscribed(customer_id, subscription_id, subscribed=active,
+                            trial_ends_at=trial_ends_at)
+            log.info(
+                "Subscription %s status=%s → is_subscribed=%s trial_ends=%s",
+                subscription_id, status, active, trial_ends_at,
             )
 
-    else:
-        log.debug("Stripe event ignored: %s", event_type)
+        # ── customer.subscription.deleted ─────────────────────────────────
+        elif event_type == "customer.subscription.deleted":
+            customer_id     = getattr(data, "customer", "") or ""
+            subscription_id = getattr(data, "id", "") or ""
+            _set_subscribed(customer_id, subscription_id, subscribed=False)
+
+        # ── invoice.payment_failed ─────────────────────────────────────────
+        elif event_type == "invoice.payment_failed":
+            customer_id     = getattr(data, "customer", "") or ""
+            attempt         = getattr(data, "attempt_count", 0) or 0
+            subscription_id = getattr(data, "subscription", "") or ""
+            log.warning("Payment failed for customer %s (attempt %s).", customer_id, attempt)
+            if isinstance(attempt, int) and attempt >= 3:
+                _set_subscribed(customer_id, subscription_id, subscribed=False)
+                log.warning(
+                    "Access revoked for customer %s after %d failed payment attempts.",
+                    customer_id, attempt,
+                )
+
+        else:
+            log.debug("Stripe event ignored: %s", event_type)
+
+    except Exception as exc:
+        log.error("Stripe webhook: unhandled error processing %s: %s", event_type, exc,
+                  exc_info=True)
+        # Return 200 so Stripe doesn't keep retrying a handler crash.
+        # The error is logged for investigation.
+        return JSONResponse({"status": "error", "event": event_type, "detail": str(exc)})
 
     # Always return 200 so Stripe doesn't retry
     return JSONResponse({"status": "ok", "event": event_type})

@@ -14,7 +14,7 @@ python-telegram-bot>=22.0
 fastapi
 uvicorn[standard]
 jinja2
-stripe
+stripe>=7.0.0,<10.0.0
 resend
 python-jose
 passlib[bcrypt]
