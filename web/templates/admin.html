@@ -1176,6 +1176,22 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
             </form>
             {% endif %}
 
+            {# ── Sync Stripe — pull live Stripe status and heal DB ── #}
+            {% if u.stripe_customer_id or u.stripe_subscription_id %}
+            <form method="post" action="/admin/sync-stripe-user" style="margin:0;">
+              <input type="hidden" name="email" value="{{ u.email }}" />
+              <input type="hidden" name="redirect_tier" value="{{ current_tier }}" />
+              <input type="hidden" name="redirect_q" value="{{ current_q }}" />
+              <input type="hidden" name="redirect_page" value="{{ current_page }}" />
+              <button type="submit" style="font-size:0.72rem;padding:3px 10px;height:26px;
+                background:rgba(99,102,241,0.07);color:#4338CA;border:1px solid rgba(99,102,241,0.3);
+                border-radius:5px;cursor:pointer;font-family:inherit;font-weight:600;
+                white-space:nowrap;">
+                ↻ Sync Stripe
+              </button>
+            </form>
+            {% endif %}
+
             </div>
           </td>
         </tr>

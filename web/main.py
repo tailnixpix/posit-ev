@@ -2390,19 +2390,26 @@ async def admin_sync_stripe_user(
             return RedirectResponse(url=f"/admin{params}&error=user_not_found", status_code=303)
         return JSONResponse({"status": "error", "detail": f"No user found for {email}"}, status_code=404)
 
-    # Search Stripe for all customers with this email
-    best_sub = None
-    best_customer_id = None
+    # Search Stripe for all customers with this email.
+    # Track the best active sub and the most recent cancelled sub separately
+    # so we can heal is_subscribed in both directions.
+    best_active_sub    = None
+    best_cancelled_sub = None
+    best_customer_id   = None
     try:
         customers = _stripe.Customer.search(query=f'email:"{user.email}"', limit=10)
         for cust in customers.auto_paging_iter():
             subs = _stripe.Subscription.list(customer=cust.id, status="all", limit=10)
             for sub in subs.auto_paging_iter():
                 if sub.status in ("active", "trialing", "past_due"):
-                    # Prefer the most recently created subscription
-                    if best_sub is None or sub.created > best_sub.created:
-                        best_sub = sub
+                    if best_active_sub is None or sub.created > best_active_sub.created:
+                        best_active_sub  = sub
                         best_customer_id = cust.id
+                elif sub.status in ("canceled", "incomplete_expired"):
+                    if best_cancelled_sub is None or sub.created > best_cancelled_sub.created:
+                        best_cancelled_sub = sub
+                        if best_customer_id is None:
+                            best_customer_id = cust.id
     except Exception as _exc:
         log.error("admin_sync_stripe_user: Stripe search failed for %s: %s", email, _exc)
         if _is_admin(request):
@@ -2410,31 +2417,49 @@ async def admin_sync_stripe_user(
             return RedirectResponse(url=f"/admin{params}", status_code=303)
         return JSONResponse({"status": "error", "detail": str(_exc)}, status_code=500)
 
-    if best_sub:
-        trial_end_ts = getattr(best_sub, "trial_end", None)
+    if best_active_sub:
+        # Active subscription found — ensure DB reflects access
+        trial_end_ts = getattr(best_active_sub, "trial_end", None)
         trial_ends_at = (
             datetime.fromtimestamp(int(trial_end_ts), tz=timezone.utc)
             if trial_end_ts else None
         )
-        user.is_subscribed            = True
-        user.stripe_subscription_id   = best_sub.id
-        user.stripe_customer_id       = best_customer_id
+        user.is_subscribed          = True
+        user.stripe_subscription_id = best_active_sub.id
+        user.stripe_customer_id     = best_customer_id
         if trial_ends_at is not None:
             user.trial_ends_at = trial_ends_at
         db.commit()
         log.info(
-            "admin_sync_stripe_user: synced %s → sub=%s status=%s trial_ends=%s",
-            user.email, best_sub.id, best_sub.status, trial_ends_at,
+            "admin_sync_stripe_user: synced ACTIVE %s → sub=%s status=%s trial_ends=%s",
+            user.email, best_active_sub.id, best_active_sub.status, trial_ends_at,
         )
         result = {
-            "status": "synced", "email": user.email,
-            "sub_id": best_sub.id, "sub_status": best_sub.status,
+            "status": "synced_active", "email": user.email,
+            "sub_id": best_active_sub.id, "sub_status": best_active_sub.status,
             "trial_ends_at": trial_ends_at.isoformat() if trial_ends_at else None,
         }
+    elif best_cancelled_sub:
+        # No active sub, but a cancelled one exists — heal to Unsubscribed
+        user.is_subscribed          = False
+        user.trial_ends_at          = None
+        user.stripe_subscription_id = best_cancelled_sub.id   # keep for Unsubscribed tab
+        if best_customer_id:
+            user.stripe_customer_id = best_customer_id
+        db.commit()
+        log.info(
+            "admin_sync_stripe_user: healed CANCELLED %s → sub=%s status=%s → is_subscribed=False",
+            user.email, best_cancelled_sub.id, best_cancelled_sub.status,
+        )
+        result = {
+            "status": "synced_cancelled", "email": user.email,
+            "sub_id": best_cancelled_sub.id, "sub_status": best_cancelled_sub.status,
+            "detail": "Subscription is cancelled in Stripe — user moved to Unsubscribed.",
+        }
     else:
-        result = {"status": "no_active_sub", "email": user.email,
-                  "detail": "No active/trialing Stripe subscription found for this email."}
-        log.warning("admin_sync_stripe_user: no active sub found for %s", user.email)
+        result = {"status": "no_sub_found", "email": user.email,
+                  "detail": "No Stripe subscription found for this email."}
+        log.warning("admin_sync_stripe_user: no subscription found for %s", user.email)
 
     if _is_admin(request):
         params = f"?tier={redirect_tier}&q={redirect_q}&page={redirect_page}"
