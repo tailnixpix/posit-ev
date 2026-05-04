@@ -2798,12 +2798,7 @@ main { max-width: none !important; padding: 0 !important; }
                {% if bet.all_book_odds %}data-all-book-odds="{{ bet.all_book_odds | e }}"{% endif %}
                onclick="_onBetCardClick(event, this)">
 
-            {# ── Top Pick ribbon ──────────────────────────────────────── #}
-            {% if loop.index0 == 0 %}
-            <div class="card-ribbon ribbon-top1">🏆 Top Pick — Highest Model Edge</div>
-            {% elif loop.index0 == 1 %}
-            <div class="card-ribbon ribbon-top2">✅ Strong Pick — High Model Edge</div>
-            {% endif %}
+            {# ── Top Pick ribbon — injected dynamically by JS after sort/filter ── #}
 
             {# ── Card Header ──────────────────────────────────────────── #}
             <div class="card-hdr">
@@ -4000,6 +3995,8 @@ function sortCards() {
     }
   });
   cards.forEach(c => grid.appendChild(c));
+  // Ribbons track sort order — reassign after reorder
+  _updateTopPickRibbon();
 }
 document.getElementById('sortSelect').addEventListener('change', function() { activeSort = this.value; sortCards(); });
 
@@ -4070,6 +4067,27 @@ function updateChipCounts() {
     const el = btn.querySelector('.chip-count');
     if (el) el.textContent = n > 0 ? n : '';
   });
+}
+
+// ── Top Pick ribbon — always tracks the first two VISIBLE cards ───────────
+function _updateTopPickRibbon() {
+  // Remove any existing ribbon divs
+  document.querySelectorAll('.card-ribbon').forEach(r => r.remove());
+  // Find the first two visible bet-cards (after sort + filter)
+  const visible = Array.from(document.querySelectorAll('.bet-card'))
+    .filter(c => c.style.display !== 'none');
+  if (visible[0]) {
+    const r1 = document.createElement('div');
+    r1.className = 'card-ribbon ribbon-top1';
+    r1.textContent = '🏆 Top Pick — Highest Model Edge';
+    visible[0].insertBefore(r1, visible[0].firstChild);
+  }
+  if (visible[1]) {
+    const r2 = document.createElement('div');
+    r2.className = 'card-ribbon ribbon-top2';
+    r2.textContent = '✅ Strong Pick — High Model Edge';
+    visible[1].insertBefore(r2, visible[1].firstChild);
+  }
 }
 
 // ── Apply filters ──────────────────────────────────────────────────────────
@@ -4144,6 +4162,9 @@ function applyFilters() {
   else _clearGameGroupHeaders();
 
   _saveFilters();
+
+  // Ribbons must be re-stamped last, after grouping headers are in place
+  _updateTopPickRibbon();
 }
 
 // ── Sport pills ────────────────────────────────────────────────────────────
