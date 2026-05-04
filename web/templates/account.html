@@ -200,6 +200,91 @@ footer, footer a, footer span { color: var(--d-muted) !important; }
 .cancel-confirm-copy strong { color: var(--d-red); }
 .cancel-confirm-btns { display: flex; gap: 8px; flex-wrap: wrap; }
 
+/* ── Cancelled confirmation modal ────────────────────────────── */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+  backdrop-filter: blur(4px);
+  z-index: 9000;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.modal-overlay.open { display: flex; }
+.modal-box {
+  background: var(--d-card);
+  border: 1px solid var(--d-border);
+  border-radius: 16px;
+  padding: 36px 32px 28px;
+  max-width: 400px;
+  width: 100%;
+  text-align: center;
+  animation: modal-in 0.2s ease;
+}
+@keyframes modal-in {
+  from { opacity: 0; transform: scale(0.94) translateY(8px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);   }
+}
+.modal-icon {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  background: rgba(255,91,91,0.12);
+  border: 1px solid rgba(255,91,91,0.25);
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 18px;
+  font-size: 1.6rem;
+}
+.modal-title {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--d-text);
+  margin: 0 0 10px;
+}
+.modal-body {
+  font-size: 0.86rem;
+  color: var(--d-sub);
+  line-height: 1.7;
+  margin: 0 0 24px;
+}
+.modal-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.modal-btn-primary {
+  display: block;
+  width: 100%;
+  padding: 11px;
+  background: #534AB7;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: none;
+  transition: opacity 0.12s;
+}
+.modal-btn-primary:hover { opacity: 0.88; }
+.modal-btn-ghost {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  background: transparent;
+  color: var(--d-muted);
+  border: 1px solid var(--d-border);
+  border-radius: 8px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.modal-btn-ghost:hover { border-color: var(--d-sub); color: var(--d-sub); }
+
 /* ── Form fields ─────────────────────────────────────────────── */
 .acct-form-group { margin-bottom: 14px; }
 .acct-form-group label {
@@ -275,9 +360,7 @@ footer, footer a, footer span { color: var(--d-muted) !important; }
   {% elif pw_error == 'too_short' %}
   <div class="acct-alert acct-alert-error">❌ Password must be at least 8 characters.</div>
   {% endif %}
-  {% if cancel_done %}
-  <div class="acct-alert acct-alert-info">ℹ️ Your subscription has been cancelled and your access has ended.</div>
-  {% endif %}
+  {# cancel_done modal is rendered at bottom of page and opened via JS #}
   {% if reactivated %}
   <div class="acct-alert acct-alert-success">✅ Subscription reactivated — your plan will continue as normal.</div>
   {% endif %}
@@ -423,10 +506,54 @@ footer, footer a, footer span { color: var(--d-muted) !important; }
 
 </div>
 
+{% if cancel_done %}
+<!-- Subscription cancelled confirmation modal -->
+<div class="modal-overlay" id="cancelDoneModal">
+  <div class="modal-box">
+    <div class="modal-icon">✕</div>
+    <h2 class="modal-title">Subscription Cancelled</h2>
+    <p class="modal-body">
+      Your subscription has been cancelled and your access has ended.<br>
+      We're sorry to see you go — you can resubscribe any time.
+    </p>
+    <div class="modal-actions">
+      <a href="/pricing" class="modal-btn-primary">Resubscribe — $10/month →</a>
+      <button class="modal-btn-ghost" onclick="closeCancelDoneModal()">Dismiss</button>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 <script>
 function toggleCancelConfirm() {
   const panel = document.getElementById('cancelConfirm');
   if (panel) panel.classList.toggle('open');
 }
+
+function closeCancelDoneModal() {
+  const m = document.getElementById('cancelDoneModal');
+  if (m) m.classList.remove('open');
+  // Clean the URL so a refresh doesn't re-open the modal
+  const url = new URL(window.location);
+  url.searchParams.delete('cancel_done');
+  window.history.replaceState({}, '', url);
+}
+
+// Auto-open the cancellation modal if the URL contains cancel_done=1
+(function () {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('cancel_done')) {
+    const m = document.getElementById('cancelDoneModal');
+    if (m) m.classList.add('open');
+  }
+})();
+
+// Close modal when clicking the backdrop
+document.addEventListener('click', function (e) {
+  const m = document.getElementById('cancelDoneModal');
+  if (m && m.classList.contains('open') && e.target === m) {
+    closeCancelDoneModal();
+  }
+});
 </script>
 {% endblock %}
