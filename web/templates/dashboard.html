@@ -902,6 +902,60 @@ main { max-width: none !important; padding: 0 !important; }
 .ai-panel-body strong { color: var(--d-text); font-size: 0.9rem; }
 .ai-panel-footer { margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(155,121,250,0.12); font-size: 0.62rem; color: var(--d-muted); font-style: italic; }
 
+/* ── Analysis Visual Panel ───────────────────────────────────────────────── */
+.ai-vis { display: flex; flex-direction: column; gap: 14px; }
+
+/* Verdict + confidence bar */
+.ai-verdict-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ai-verdict-badge { padding: 5px 13px; border-radius: 20px; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.4px; white-space: nowrap; }
+.avb-strong   { background: rgba(0,214,143,0.15);  color: #00D68F; border: 1px solid rgba(0,214,143,0.35); }
+.avb-moderate { background: rgba(245,197,66,0.12); color: #F5C542; border: 1px solid rgba(245,197,66,0.3); }
+.avb-value    { background: rgba(79,158,255,0.12); color: #4F9EFF; border: 1px solid rgba(79,158,255,0.3); }
+.avb-lean     { background: rgba(155,121,250,0.1); color: #9B79FA; border: 1px solid rgba(155,121,250,0.25); }
+.ai-conf-wrap { display: flex; align-items: center; gap: 7px; flex: 1; min-width: 120px; }
+.ai-conf-track { flex: 1; height: 5px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; }
+.ai-conf-fill  { height: 100%; border-radius: 3px; transition: width 0.6s cubic-bezier(0.4,0,0.2,1); }
+.acf-high { background: linear-gradient(90deg,#00D68F,#00b87a); }
+.acf-med  { background: linear-gradient(90deg,#F5C542,#e6a80a); }
+.acf-low  { background: linear-gradient(90deg,#FF5B5B,#d63c3c); }
+.ai-conf-num { font-size: 0.68rem; font-weight: 700; white-space: nowrap; }
+.acf-high ~ .ai-conf-num, .ai-conf-wrap.acf-high-wrap .ai-conf-num { color: #00D68F; }
+
+/* Probability comparison bars */
+.ai-prob-section { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; padding: 11px 13px; display: flex; flex-direction: column; gap: 7px; }
+.ai-prob-hdr { font-size: 0.58rem; font-weight: 700; letter-spacing: 0.9px; text-transform: uppercase; color: var(--d-muted); }
+.ai-prob-row { display: flex; align-items: center; gap: 8px; }
+.ai-prob-lbl { font-size: 0.64rem; font-weight: 600; width: 40px; flex-shrink: 0; }
+.ai-prob-lbl.lbl-model { color: #4F9EFF; }
+.ai-prob-lbl.lbl-book  { color: var(--d-muted); }
+.ai-prob-bar-wrap { flex: 1; height: 7px; background: rgba(255,255,255,0.07); border-radius: 4px; overflow: hidden; }
+.ai-prob-bar { height: 100%; border-radius: 4px; transition: width 0.6s cubic-bezier(0.4,0,0.2,1); }
+.apb-model { background: linear-gradient(90deg,#4F9EFF,#9B79FA); }
+.apb-book  { background: rgba(255,255,255,0.22); }
+.ai-prob-pct { font-size: 0.7rem; font-weight: 700; width: 36px; text-align: right; flex-shrink: 0; }
+.ai-prob-pct.pct-model { color: #4F9EFF; }
+.ai-prob-pct.pct-book  { color: var(--d-muted); }
+.ai-edge-callout { font-size: 0.72rem; font-weight: 700; color: #00D68F; padding-top: 2px; }
+
+/* Signal chips row */
+.ai-signals { display: flex; flex-wrap: wrap; gap: 7px; }
+.ai-sig { display: flex; align-items: center; gap: 6px; padding: 7px 11px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.04); min-width: 0; }
+.ai-sig-icon { font-size: 0.95rem; flex-shrink: 0; }
+.ai-sig-body { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.ai-sig-label { font-size: 0.55rem; font-weight: 700; letter-spacing: 0.7px; text-transform: uppercase; color: var(--d-muted); }
+.ai-sig-val   { font-size: 0.72rem; font-weight: 700; color: var(--d-text); white-space: nowrap; }
+.ai-sig.sig-ev    { border-color: rgba(0,214,143,0.3);  background: rgba(0,214,143,0.06); }
+.ai-sig.sig-sharp { border-color: rgba(245,197,66,0.3); background: rgba(245,197,66,0.06); }
+.ai-sig.sig-clv   { border-color: rgba(79,158,255,0.3); background: rgba(79,158,255,0.07); }
+.ai-sig.sig-proj  { border-color: rgba(155,121,250,0.3);background: rgba(155,121,250,0.07); }
+.ai-sig.sig-neg   { border-color: rgba(255,91,91,0.25); background: rgba(255,91,91,0.05); }
+
+/* Why-bet narrative */
+.ai-why { border-top: 1px solid rgba(255,255,255,0.07); padding-top: 12px; display: flex; flex-direction: column; gap: 5px; }
+.ai-why-hdr { font-size: 0.58rem; font-weight: 700; letter-spacing: 0.9px; text-transform: uppercase; color: var(--d-muted); }
+.ai-why-body { font-size: 0.8rem; line-height: 1.6; color: var(--d-sub); }
+.ai-why-body strong { color: var(--d-text); }
+
 /* ── TABLE VIEW ── */
 .table-view { display: none; overflow-x: auto; }
 .ev-table {
@@ -5218,6 +5272,7 @@ function toggleAiPanel(btn) {
   const betId = btn.dataset.betId;
   const panel = document.getElementById('ai-panel-' + betId);
   if (!panel) return;
+  const card  = btn.closest('.bet-card');
   const isOpen = panel.classList.contains('open');
   panel.classList.toggle('open', !isOpen);
   btn.style.transition = 'opacity 0.15s';
@@ -5251,9 +5306,7 @@ function toggleAiPanel(btn) {
       const bodyEl  = document.getElementById('ai-body-'   + betId);
       const footEl  = document.getElementById('ai-footer-' + betId);
       _renderAiMeta(metaEl, betId, data);
-      if (bodyEl) {
-        bodyEl.innerHTML = `<div class="ai-panel-body">${(data.analysis || '').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>')}</div>`;
-      }
+      if (bodyEl) bodyEl.innerHTML = _buildAnalysisHtml(data, card);
       if (footEl) {
         footEl.innerHTML = data.rule_based
           ? 'Powered by model signals'
@@ -5427,6 +5480,7 @@ function _buildPropContextHtml(d) {
 function toggleAnalysisPanel(betId, btn) {
   const wrap = document.getElementById('analysis-wrap-' + betId);
   if (!wrap) return;
+  const card   = btn.closest('.bet-card');
   const isOpen = wrap.classList.contains('open');
 
   if (isOpen) {
@@ -5498,9 +5552,7 @@ function toggleAnalysisPanel(betId, btn) {
       const bodyEl = document.getElementById('ai-body-'   + betId);
       const footEl = document.getElementById('ai-footer-' + betId);
       _renderAiMeta(metaEl, betId, data);
-      if (bodyEl) {
-        bodyEl.innerHTML = `<div class="ai-panel-body">${(data.analysis || '').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>')}</div>`;
-      }
+      if (bodyEl) bodyEl.innerHTML = _buildAnalysisHtml(data, card);
       if (footEl) {
         footEl.innerHTML = data.rule_based
           ? 'Powered by model signals'
@@ -5521,11 +5573,9 @@ function toggleAnalysisPanel(betId, btn) {
         errorEl.style.cursor  = 'pointer';
         errorEl.onclick = () => {
           delete _aiCache[betId];
-          // Reset to loading state in-place (no panel toggle flicker)
           errorEl.style.display   = 'none';
           if (loadEl)    loadEl.style.display    = 'block';
           if (contentEl) contentEl.style.display = 'none';
-          // Re-trigger only the AI fetch portion
           fetch('/api/analysis/' + betId)
             .then(r => r.ok ? r.json() : r.json().catch(()=>({})).then(b=>{throw new Error(r.status+':'+(b.detail||''));}))
             .then(data => {
@@ -5536,8 +5586,8 @@ function toggleAnalysisPanel(betId, btn) {
               const bodyEl = document.getElementById('ai-body-'   + betId);
               const footEl = document.getElementById('ai-footer-' + betId);
               _renderAiMeta(metaEl, betId, data);
-              if (bodyEl) bodyEl.innerHTML=`<div class="ai-panel-body">${(data.analysis||'').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')}</div>`;
-              if (footEl && data.generated_at) footEl.innerHTML=`Generated at ${new Date(data.generated_at).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})} — Claude Opus 4.6`;
+              if (bodyEl) bodyEl.innerHTML = _buildAnalysisHtml(data, card);
+              if (footEl) footEl.innerHTML = data.rule_based ? 'Powered by model signals' : 'Powered by Sharp Analysis';
             })
             .catch(() => { if (loadEl) loadEl.style.display='none'; if (errorEl) errorEl.style.display='block'; });
         };
@@ -6002,23 +6052,167 @@ function closeTrackerDrawer() {
 // ── Analysis panel meta renderer ──────────────────────────────────────────
 // Computes Kelly directly from the card's data-prob / data-odds so it always
 // matches the metric cell on the card (same formula, same fraction selector).
-function _renderAiMeta(metaEl, betId, data) {
-  if (!metaEl) return;
-  const conf       = data.confidence_score || 0;
-  const confClass  = conf >= 75 ? 'ai-conf-high' : conf >= 50 ? 'ai-conf-med' : 'ai-conf-low';
-  const confLabel  = conf >= 75 ? '🟢 High Conf'  : conf >= 50 ? '🟡 Medium'  : '🔴 Low';
-  let html = `<span class="ai-conf ${confClass}">${confLabel} (${conf}%)</span>`;
+// ── Visual analysis panel builder ──────────────────────────────────────────
+function _buildAnalysisHtml(data, card) {
+  const conf     = data.confidence_score || 0;
+  const confCls  = conf >= 75 ? 'acf-high' : conf >= 50 ? 'acf-med' : 'acf-low';
+  const confColour = conf >= 75 ? '#00D68F' : conf >= 50 ? '#F5C542' : '#FF5B5B';
 
-  // Find this card's kelly-val element — it already holds data-prob and data-odds
+  // Verdict badge
+  const rec    = data.recommended_action || _extractVerdict(data.analysis) || 'Value Bet';
+  const recCls = rec.toLowerCase().includes('strong')   ? 'avb-strong'
+               : rec.toLowerCase().includes('moderate') ? 'avb-moderate'
+               : rec.toLowerCase().includes('value')    ? 'avb-value'
+               : 'avb-lean';
+
+  // Probabilities — read from card dataset (already rendered server-side)
+  const trueProb = parseFloat(card?.dataset?.trueProb || '0');
+  const rawOdds  = parseInt(card?.dataset?.odds || '-110', 10);
+  const impliedProb = rawOdds > 0 ? 100 / (rawOdds + 100) : Math.abs(rawOdds) / (Math.abs(rawOdds) + 100);
+  const edgePP   = ((trueProb - impliedProb) * 100).toFixed(1);
+  const truePct  = (trueProb * 100).toFixed(1);
+  const implPct  = (impliedProb * 100).toFixed(1);
+  // Scale bars relative to whichever is larger
+  const maxP     = Math.max(trueProb, impliedProb);
+  const modelW   = maxP > 0 ? ((trueProb / maxP) * 100).toFixed(1) : '100';
+  const bookW    = maxP > 0 ? ((impliedProb / maxP) * 100).toFixed(1) : '100';
+  const edgeSign = parseFloat(edgePP) >= 0 ? '+' : '';
+
+  // ── Signal chips ─────────────────────────────────────────────────────────
+  let chips = '';
+
+  // EV chip — always
+  const evPct = parseFloat(card?.dataset?.ev || '0');
+  chips += `<div class="ai-sig sig-ev">
+    <span class="ai-sig-icon">⚡</span>
+    <div class="ai-sig-body">
+      <span class="ai-sig-label">EV Edge</span>
+      <span class="ai-sig-val">+${evPct.toFixed(1)}%</span>
+    </div>
+  </div>`;
+
+  // Sharp money chip
+  const moneyPct = card?.dataset?.moneyPct != null ? parseFloat(card.dataset.moneyPct) : null;
+  const betPct   = card?.dataset?.betPct   != null ? parseFloat(card.dataset.betPct)   : null;
+  if (moneyPct != null) {
+    const isRev  = betPct != null && moneyPct > betPct + 8;
+    const icon   = isRev ? '🔄' : moneyPct >= 60 ? '💰' : moneyPct < 40 ? '🔻' : '💵';
+    const cls    = moneyPct >= 55 ? 'sig-sharp' : moneyPct < 40 ? 'sig-neg' : '';
+    const label  = isRev ? 'Reverse LM' : 'Sharp $';
+    const val    = isRev ? `${Math.round(betPct)}% bets / ${Math.round(moneyPct)}% $` : `${Math.round(moneyPct)}% on side`;
+    chips += `<div class="ai-sig ${cls}">
+      <span class="ai-sig-icon">${icon}</span>
+      <div class="ai-sig-body">
+        <span class="ai-sig-label">${label}</span>
+        <span class="ai-sig-val">${val}</span>
+      </div>
+    </div>`;
+  }
+
+  // Sharp score chip
+  const sharpSc = card?.dataset?.sharpScore != null ? parseFloat(card.dataset.sharpScore) : null;
+  if (sharpSc != null) {
+    const icon = sharpSc >= 70 ? '🎯' : sharpSc >= 50 ? '📊' : '📉';
+    const cls  = sharpSc >= 65 ? 'sig-sharp' : sharpSc < 35 ? 'sig-neg' : '';
+    chips += `<div class="ai-sig ${cls}">
+      <span class="ai-sig-icon">${icon}</span>
+      <div class="ai-sig-body">
+        <span class="ai-sig-label">Sharp Score</span>
+        <span class="ai-sig-val">${Math.round(sharpSc)}/100</span>
+      </div>
+    </div>`;
+  }
+
+  // Line movement chip
+  const openOdds = card?.dataset?.openingOdds ? parseInt(card.dataset.openingOdds, 10) : null;
+  if (openOdds != null) {
+    const curOdds = rawOdds;
+    const favourable = curOdds > openOdds;
+    const opStr  = openOdds > 0 ? `+${openOdds}` : String(openOdds);
+    const cuStr  = curOdds  > 0 ? `+${curOdds}`  : String(curOdds);
+    chips += `<div class="ai-sig ${favourable ? 'sig-clv' : 'sig-neg'}">
+      <span class="ai-sig-icon">${favourable ? '📈' : '📉'}</span>
+      <div class="ai-sig-body">
+        <span class="ai-sig-label">Line Move</span>
+        <span class="ai-sig-val">${opStr} → ${cuStr}</span>
+      </div>
+    </div>`;
+  }
+
+  // Projection chip (game bets)
+  const homeWp = card?.dataset?.projHomeWp ? parseFloat(card.dataset.projHomeWp) : null;
+  if (homeWp != null) {
+    chips += `<div class="ai-sig sig-proj">
+      <span class="ai-sig-icon">🎲</span>
+      <div class="ai-sig-body">
+        <span class="ai-sig-label">Model Proj</span>
+        <span class="ai-sig-val">Home ${(homeWp*100).toFixed(0)}%</span>
+      </div>
+    </div>`;
+  }
+
+  // ── Why-bet narrative ─────────────────────────────────────────────────────
+  // Strip the leading **Verdict**\n\n from the analysis text
+  const rawText = (data.analysis || '');
+  const whyRaw  = rawText.replace(/^\*\*[^*]+\*\*\n\n?/, '').trim();
+  const whyHtml = whyRaw
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n\n/g, '</p><p style="margin-top:7px;">')
+    .replace(/\n/g, '<br>');
+
+  return `<div class="ai-vis">
+    <div class="ai-verdict-row">
+      <span class="ai-verdict-badge ${recCls}">${rec}</span>
+      <div class="ai-conf-wrap">
+        <div class="ai-conf-track">
+          <div class="ai-conf-fill ${confCls}" style="width:${conf}%"></div>
+        </div>
+        <span class="ai-conf-num" style="color:${confColour}">Confidence ${conf}%</span>
+      </div>
+    </div>
+
+    <div class="ai-prob-section">
+      <div class="ai-prob-hdr">Probability Edge</div>
+      <div class="ai-prob-row">
+        <span class="ai-prob-lbl lbl-model">Model</span>
+        <div class="ai-prob-bar-wrap"><div class="ai-prob-bar apb-model" style="width:${modelW}%"></div></div>
+        <span class="ai-prob-pct pct-model">${truePct}%</span>
+      </div>
+      <div class="ai-prob-row">
+        <span class="ai-prob-lbl lbl-book">Book</span>
+        <div class="ai-prob-bar-wrap"><div class="ai-prob-bar apb-book" style="width:${bookW}%"></div></div>
+        <span class="ai-prob-pct pct-book">${implPct}%</span>
+      </div>
+      <div class="ai-edge-callout">${edgeSign}${edgePP}pp in your favour</div>
+    </div>
+
+    <div class="ai-signals">${chips}</div>
+
+    <div class="ai-why">
+      <div class="ai-why-hdr">Why this pick</div>
+      <div class="ai-why-body"><p>${whyHtml}</p></div>
+    </div>
+  </div>`;
+}
+
+function _extractVerdict(text) {
+  const m = (text || '').match(/^\*\*([^*]+)\*\*/);
+  return m ? m[1] : '';
+}
+
+function _renderAiMeta(metaEl, betId, data) {
+  // Confidence + verdict now live inside _buildAnalysisHtml — meta only shows
+  // the Kelly chip and edge tag so the header stays uncluttered.
+  if (!metaEl) return;
+  let html = '';
   const card    = document.querySelector(`.bet-card[data-bet-id="${betId}"]`);
   const kellyEl = card ? card.querySelector('.kelly-val') : null;
   if (kellyEl) {
     const kPct   = halfKelly(parseFloat(kellyEl.dataset.prob), kellyEl.dataset.odds);
     const kLabel = _kellyFracLabel(_getKellyFrac());
     if (kPct > 0)
-      html += ` <span class="ai-kelly-chip">${kLabel}: ${(kPct * 100).toFixed(1)}%</span>`;
+      html += `<span class="ai-kelly-chip">${kLabel}: ${(kPct * 100).toFixed(1)}%</span>`;
   }
-
   if (data.edge_tag) html += ` <span class="ai-edge-tag">⚡ ${data.edge_tag}</span>`;
   metaEl.innerHTML = html;
 }

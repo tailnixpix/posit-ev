@@ -1487,18 +1487,24 @@ async def get_analysis(bet_id: int, request: Request, db: Session = Depends(get_
         raise HTTPException(status_code=404, detail="Bet not found")
 
     # Return cached analysis if fresh (< 6 hours old)
+    import re as _re
     cache_cutoff = datetime.now(timezone.utc) - timedelta(hours=6)
     if (
         bet_row.analysis
         and bet_row.analysis_generated_at
         and bet_row.analysis_generated_at > cache_cutoff
     ):
+        # Extract recommended_action from stored text "**Strong Bet**\n\n..."
+        _m   = _re.match(r"^\*\*([^*]+)\*\*", bet_row.analysis or "")
+        _rec = _m.group(1) if _m else ""
         return JSONResponse({
-            "analysis":          bet_row.analysis,
-            "confidence_score":  bet_row.confidence_score,
-            "kelly_pct":         bet_row.kelly_pct,
-            "cached":            True,
-            "edge_tag":          "",
+            "analysis":             bet_row.analysis,
+            "confidence_score":     bet_row.confidence_score,
+            "kelly_pct":            bet_row.kelly_pct,
+            "cached":               True,
+            "rule_based":           False,
+            "edge_tag":             "",
+            "recommended_action":   _rec,
         })
 
     # Build bet dict for analyzer — include ALL rich pipeline fields so Claude
@@ -1580,13 +1586,15 @@ async def get_analysis(bet_id: int, request: Request, db: Session = Depends(get_
             log.warning("Failed to cache analysis for bet_id=%d: %s", bet_id, exc)
             db.rollback()
 
+    _rec = (result.get("raw") or {}).get("analysis", {}).get("recommended_action", "") or ""
     return JSONResponse({
-        "analysis":          result["analysis"],
-        "confidence_score":  result["confidence_score"],
-        "kelly_pct":         result["kelly_pct"],
-        "edge_tag":          result.get("edge_tag", ""),
-        "cached":            False,
-        "rule_based":        rule_based,
+        "analysis":             result["analysis"],
+        "confidence_score":     result["confidence_score"],
+        "kelly_pct":            result["kelly_pct"],
+        "edge_tag":             result.get("edge_tag", ""),
+        "cached":               False,
+        "rule_based":           rule_based,
+        "recommended_action":   _rec,
     })
 
 

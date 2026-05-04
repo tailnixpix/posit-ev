@@ -1065,88 +1065,103 @@ def rule_based_analyze_bet(bet: dict) -> dict:
     elif ev_pct >= 7:               edge_tag = "High Edge"
     else:                           edge_tag = "Model Edge"
 
-    # ── Build analysis paragraphs ─────────────────────────────────────────────
-    paras = []
-    true_pct    = round(true_prob * 100, 1)
-    implied_pct = round(implied_prob * 100, 1)
-    edge_pp     = round(prob_edge_pp, 1)
-    sign        = "+" if edge_pp >= 0 else ""
+    # ── Build narrative why-bet text ──────────────────────────────────────────
+    # The visual panel renders the raw numbers (bars, chips), so the narrative
+    # explains what the signals MEAN together — not a list of percentages.
+    true_pct = round(true_prob * 100, 1)
+    edge_pp  = round(prob_edge_pp, 1)
+    sign     = "+" if edge_pp >= 0 else ""
 
     subject = (f"{player_name} ({team})" if is_prop and player_name
                else team if team else "this side")
 
-    # 1. Probability edge — always shown
-    paras.append(
-        f"The model gives **{subject}** a **{true_pct}%** probability, "
-        f"versus the book's implied **{implied_pct}%** — "
-        f"a **{sign}{edge_pp}pp edge** producing the +{round(ev_pct, 1)}% EV."
-    )
+    sentences = []
 
-    # 2. Sharp money signals (if data available)
-    sharp_parts = []
-    if bet_pct   is not None: sharp_parts.append(f"**{round(float(bet_pct))}%** of bets")
-    if money_pct is not None: sharp_parts.append(f"**{round(float(money_pct))}%** of dollars")
-    if sharp_score is not None:
-        ss_val  = round(float(sharp_score))
-        level   = "high" if ss_val >= 70 else "moderate" if ss_val >= 50 else "low"
-        sharp_parts.append(f"sharp score **{ss_val}/100** ({level})")
-    if sharp_parts:
-        side_note = ("on this side" if money_pct is None or float(money_pct) >= 50
-                     else "leaning the other side")
-        paras.append("Sharp action: " + ", ".join(sharp_parts) + f" — {side_note}.")
+    # Core edge sentence
+    if edge_pp >= 5:
+        sentences.append(
+            f"The market is significantly underpricing **{subject}** — "
+            f"the model sees a **{sign}{edge_pp}pp gap** that the book hasn't closed."
+        )
+    else:
+        sentences.append(
+            f"The model identifies a **{sign}{edge_pp}pp mispricing** on **{subject}** "
+            f"that generates repeatable positive expected value."
+        )
 
-    # 3. Line movement
+    # Sharp money interpretation
+    mp = float(money_pct) if money_pct is not None else None
+    bp = float(bet_pct)   if bet_pct   is not None else None
+    ss = float(sharp_score) if sharp_score is not None else None
+
+    if mp is not None and bp is not None and mp > bp + 8:
+        sentences.append(
+            f"Reverse line movement: only {round(bp)}% of tickets are on {subject.split('(')[0].strip()}, "
+            f"but {round(mp)}% of the money is — a classic sharp bettor signature."
+        )
+    elif mp is not None and mp >= 65:
+        sentences.append(
+            f"Significant dollar flow ({round(mp)}%) has landed on this side, "
+            f"suggesting professional alignment with the model's edge."
+        )
+    elif mp is not None and mp < 38:
+        sentences.append(
+            f"The public is fading this side ({round(mp)}% of money), "
+            f"but the model's probability advantage persists — sharp value often hides in contrarian spots."
+        )
+    elif ss is not None and ss >= 65:
+        sentences.append(
+            f"Sharp money indicators are elevated (score {round(ss)}/100), "
+            f"consistent with informed bettor activity on this line."
+        )
+
+    # Line movement interpretation
     if opening_odds is not None and opening_odds != odds:
         op_str  = f"+{opening_odds}" if opening_odds > 0 else str(opening_odds)
         cur_str = f"+{odds}" if odds > 0 else str(odds)
         if clv_favorable:
-            paras.append(
-                f"Line has moved **in our favour** since open: {op_str} → {cur_str}. "
-                f"Positive CLV — sharp money is likely driving the move."
+            sentences.append(
+                f"The line has already moved in our favour ({op_str} → {cur_str}), "
+                f"confirming smart money is on the same side — getting in now still captures CLV."
             )
         else:
-            paras.append(
-                f"Line has moved against: {op_str} → {cur_str}. "
-                f"Book has shortened the price; edge remains but monitor further movement."
+            sentences.append(
+                f"The line has moved against since open ({op_str} → {cur_str}). "
+                f"The model edge remains, but the window is narrowing — act before further movement."
             )
 
-    # 4. Team form + model projection (game bets only)
+    # Game context (game bets only)
     if not is_prop and game and " @ " in game:
         away_team, home_team = game.split(" @ ", 1)
         away_team = away_team.strip()
         home_team = home_team.strip()
-        form_parts = []
-        if away_trend: form_parts.append(f"{away_team}: {away_trend}")
-        if home_trend: form_parts.append(f"{home_team}: {home_trend}")
-        if form_parts:
-            paras.append("Recent form — " + " · ".join(form_parts) + ".")
         if proj_home_win_prob is not None:
             hwp = round(float(proj_home_win_prob) * 100, 1)
             awp = round(100.0 - hwp, 1)
-            proj_line = (
-                f"Model projection: {home_team} **{hwp}%** / {away_team} **{awp}%** win probability."
+            bet_team_is_home = team and home_team.lower().endswith(team.lower().split()[-1].lower())
+            model_wp = hwp if bet_team_is_home else awp
+            sentences.append(
+                f"The game model projects a {round(model_wp)}% win probability for the bet side"
+                + (f", with a projected total of {round(float(proj_total), 1)}." if proj_total else ".")
             )
-            if proj_total is not None:
-                proj_line += f" Projected total: **{round(float(proj_total), 1)}**."
-            paras.append(proj_line)
+        if home_trend and away_trend:
+            sentences.append(f"Recent form — {home_team}: {home_trend} · {away_team}: {away_trend}.")
 
-    # 5. Risk summary
+    # Risk/closing sentence
     risk_notes = []
     if opening_odds is not None and not clv_favorable and opening_odds != odds:
-        risk_notes.append("line moved against this bet since open")
-    if money_pct is not None and float(money_pct) < 40:
-        risk_notes.append("majority of dollars are on the other side")
+        risk_notes.append("line has moved against this bet")
+    if mp is not None and mp < 40:
+        risk_notes.append("majority of money is on the other side")
     if ev_pct < 4:
-        risk_notes.append("thin edge — small unit sizing recommended")
+        risk_notes.append("slim edge — use reduced unit size")
     if adj_flags:
         risk_notes.append("model adjustments applied: " + adj_flags.replace("|", ", ").replace("_", " "))
 
     if risk_notes:
-        paras.append("Risk: " + "; ".join(risk_notes) + ".")
-    else:
-        paras.append("No significant risk flags — standard unit sizing applies.")
+        sentences.append("⚠ Note: " + "; ".join(risk_notes) + ".")
 
-    why_bet   = "\n\n".join(paras)
+    why_bet   = " ".join(sentences)
     formatted = f"**{rec}**\n\n{why_bet}"
 
     return {
