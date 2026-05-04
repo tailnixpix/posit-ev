@@ -1558,19 +1558,27 @@ async def get_analysis(bet_id: int, request: Request, db: Session = Depends(get_
         log.error("AI analysis failed for bet_id=%d: %s", bet_id, exc)
         raise HTTPException(status_code=500, detail="Analysis generation failed")
 
+    rule_based = False
     if result is None:
-        raise HTTPException(status_code=502, detail="Analysis service unavailable")
+        # AI service unavailable (e.g. credit balance depleted) —
+        # fall back to rule-based analysis derived from pipeline data.
+        from models.ai_analyzer import rule_based_analyze_bet
+        result     = rule_based_analyze_bet(bet_dict)
+        rule_based = True
+        log.info("get_analysis: using rule-based fallback for bet_id=%d", bet_id)
 
-    # Persist to DB
-    try:
-        bet_row.analysis               = result["analysis"]
-        bet_row.analysis_generated_at  = datetime.now(timezone.utc)
-        bet_row.confidence_score       = result["confidence_score"]
-        bet_row.kelly_pct              = result["kelly_pct"]
-        db.commit()
-    except Exception as exc:
-        log.warning("Failed to cache analysis for bet_id=%d: %s", bet_id, exc)
-        db.rollback()
+    # Persist to DB only for real Claude analyses (rule-based is trivially fast
+    # to regenerate and we don't want it poisoning the cache).
+    if not rule_based:
+        try:
+            bet_row.analysis               = result["analysis"]
+            bet_row.analysis_generated_at  = datetime.now(timezone.utc)
+            bet_row.confidence_score       = result["confidence_score"]
+            bet_row.kelly_pct              = result["kelly_pct"]
+            db.commit()
+        except Exception as exc:
+            log.warning("Failed to cache analysis for bet_id=%d: %s", bet_id, exc)
+            db.rollback()
 
     return JSONResponse({
         "analysis":          result["analysis"],
@@ -1578,6 +1586,7 @@ async def get_analysis(bet_id: int, request: Request, db: Session = Depends(get_
         "kelly_pct":         result["kelly_pct"],
         "edge_tag":          result.get("edge_tag", ""),
         "cached":            False,
+        "rule_based":        rule_based,
     })
 
 

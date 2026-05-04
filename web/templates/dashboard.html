@@ -5254,8 +5254,12 @@ function toggleAiPanel(btn) {
       if (bodyEl) {
         bodyEl.innerHTML = `<div class="ai-panel-body">${(data.analysis || '').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>')}</div>`;
       }
-      if (footEl && data.generated_at) {
-        footEl.innerHTML = `Generated at ${new Date(data.generated_at).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})} — Claude Opus 4.6`;
+      if (footEl) {
+        footEl.innerHTML = data.rule_based
+          ? 'Powered by model signals'
+          : data.generated_at
+            ? `Generated at ${new Date(data.generated_at).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})} — Claude Opus 4.6`
+            : 'Powered by Sharp Analysis';
       }
     })
     .catch(err => {
@@ -5497,8 +5501,12 @@ function toggleAnalysisPanel(betId, btn) {
       if (bodyEl) {
         bodyEl.innerHTML = `<div class="ai-panel-body">${(data.analysis || '').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>')}</div>`;
       }
-      if (footEl && data.generated_at) {
-        footEl.innerHTML = `Generated at ${new Date(data.generated_at).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})} — Claude Opus 4.6`;
+      if (footEl) {
+        footEl.innerHTML = data.rule_based
+          ? 'Powered by model signals'
+          : data.generated_at
+            ? `Generated at ${new Date(data.generated_at).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})} — Claude Opus 4.6`
+            : 'Powered by Sharp Analysis';
       }
     })
     .catch(err => {

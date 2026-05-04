@@ -979,6 +979,196 @@ def analyze_bet(bet: dict, optimal_client: Optional[OptimalClient] = None) -> Op
 
 
 # ---------------------------------------------------------------------------
+# Rule-based analysis fallback (no API call)
+# ---------------------------------------------------------------------------
+
+def rule_based_analyze_bet(bet: dict) -> dict:
+    """
+    Generate structured analysis purely from pipeline data fields.
+    No external API call — used as fallback when the AI service is unavailable.
+
+    Draws on: EV%, true_prob vs implied_prob, sharp money signals,
+    CLV direction, line movement, team trends, and score projections.
+    """
+    # ── Extract fields ────────────────────────────────────────────────────────
+    true_prob    = float(bet.get("true_prob") or 0.5)
+    implied_prob = float(bet.get("implied_prob") or 0.0)
+    ev_pct       = float(bet.get("ev_percent") or 0.0)
+    odds         = int(bet.get("odds") or -110)
+    opening_odds = bet.get("opening_odds")
+    bet_pct      = bet.get("bet_pct")
+    money_pct    = bet.get("money_pct")
+    sharp_score  = bet.get("sharp_score")
+    home_trend   = (bet.get("home_trend") or "").strip()
+    away_trend   = (bet.get("away_trend") or "").strip()
+    game         = (bet.get("game") or "").strip()
+    team         = (bet.get("team") or "").strip()
+    is_prop      = bool(bet.get("is_prop"))
+    player_name  = (bet.get("player_name") or "").strip()
+    adj_flags    = (bet.get("adj_flags") or "").strip()
+    proj_home_win_prob = bet.get("proj_home_win_prob")
+    proj_total         = bet.get("proj_total")
+
+    # Derive implied_prob if not pre-computed
+    if not implied_prob:
+        if odds > 0:
+            implied_prob = 100.0 / (odds + 100.0)
+        else:
+            implied_prob = abs(odds) / (abs(odds) + 100.0)
+
+    prob_edge_pp = (true_prob - implied_prob) * 100.0
+    kelly_frac   = _kelly(true_prob, odds)
+
+    # ── Confidence score (0–100) ──────────────────────────────────────────────
+    confidence = 50.0
+
+    if ev_pct >= 10:   confidence += 15
+    elif ev_pct >= 7:  confidence += 10
+    elif ev_pct >= 5:  confidence += 7
+    elif ev_pct >= 3:  confidence += 4
+
+    if money_pct is not None:
+        mp = float(money_pct)
+        if mp >= 70:   confidence += 12
+        elif mp >= 60: confidence += 7
+        elif mp >= 55: confidence += 3
+        elif mp < 40:  confidence -= 5
+
+    if sharp_score is not None:
+        ss = float(sharp_score)
+        if ss >= 75:   confidence += 10
+        elif ss >= 60: confidence += 6
+        elif ss < 30:  confidence -= 5
+
+    clv_favorable = False
+    if opening_odds is not None and opening_odds != odds:
+        # Higher odds (less negative / more positive) = better price
+        if odds > opening_odds:
+            confidence   += 8
+            clv_favorable = True
+        else:
+            confidence -= 3
+
+    confidence = max(20.0, min(90.0, confidence))
+
+    # ── Recommended action ────────────────────────────────────────────────────
+    if ev_pct >= 8:    rec = "Strong Bet"
+    elif ev_pct >= 5:  rec = "Moderate Bet"
+    elif ev_pct >= 3:  rec = "Value Bet"
+    else:              rec = "Lean"
+
+    # ── Edge tag ──────────────────────────────────────────────────────────────
+    has_sharp = sharp_score is not None and float(sharp_score or 0) >= 65
+    if clv_favorable and has_sharp: edge_tag = "CLV + Sharp"
+    elif clv_favorable:             edge_tag = "CLV Edge"
+    elif has_sharp:                 edge_tag = "Sharp Money"
+    elif ev_pct >= 7:               edge_tag = "High Edge"
+    else:                           edge_tag = "Model Edge"
+
+    # ── Build analysis paragraphs ─────────────────────────────────────────────
+    paras = []
+    true_pct    = round(true_prob * 100, 1)
+    implied_pct = round(implied_prob * 100, 1)
+    edge_pp     = round(prob_edge_pp, 1)
+    sign        = "+" if edge_pp >= 0 else ""
+
+    subject = (f"{player_name} ({team})" if is_prop and player_name
+               else team if team else "this side")
+
+    # 1. Probability edge — always shown
+    paras.append(
+        f"The model gives **{subject}** a **{true_pct}%** probability, "
+        f"versus the book's implied **{implied_pct}%** — "
+        f"a **{sign}{edge_pp}pp edge** producing the +{round(ev_pct, 1)}% EV."
+    )
+
+    # 2. Sharp money signals (if data available)
+    sharp_parts = []
+    if bet_pct   is not None: sharp_parts.append(f"**{round(float(bet_pct))}%** of bets")
+    if money_pct is not None: sharp_parts.append(f"**{round(float(money_pct))}%** of dollars")
+    if sharp_score is not None:
+        ss_val  = round(float(sharp_score))
+        level   = "high" if ss_val >= 70 else "moderate" if ss_val >= 50 else "low"
+        sharp_parts.append(f"sharp score **{ss_val}/100** ({level})")
+    if sharp_parts:
+        side_note = ("on this side" if money_pct is None or float(money_pct) >= 50
+                     else "leaning the other side")
+        paras.append("Sharp action: " + ", ".join(sharp_parts) + f" — {side_note}.")
+
+    # 3. Line movement
+    if opening_odds is not None and opening_odds != odds:
+        op_str  = f"+{opening_odds}" if opening_odds > 0 else str(opening_odds)
+        cur_str = f"+{odds}" if odds > 0 else str(odds)
+        if clv_favorable:
+            paras.append(
+                f"Line has moved **in our favour** since open: {op_str} → {cur_str}. "
+                f"Positive CLV — sharp money is likely driving the move."
+            )
+        else:
+            paras.append(
+                f"Line has moved against: {op_str} → {cur_str}. "
+                f"Book has shortened the price; edge remains but monitor further movement."
+            )
+
+    # 4. Team form + model projection (game bets only)
+    if not is_prop and game and " @ " in game:
+        away_team, home_team = game.split(" @ ", 1)
+        away_team = away_team.strip()
+        home_team = home_team.strip()
+        form_parts = []
+        if away_trend: form_parts.append(f"{away_team}: {away_trend}")
+        if home_trend: form_parts.append(f"{home_team}: {home_trend}")
+        if form_parts:
+            paras.append("Recent form — " + " · ".join(form_parts) + ".")
+        if proj_home_win_prob is not None:
+            hwp = round(float(proj_home_win_prob) * 100, 1)
+            awp = round(100.0 - hwp, 1)
+            proj_line = (
+                f"Model projection: {home_team} **{hwp}%** / {away_team} **{awp}%** win probability."
+            )
+            if proj_total is not None:
+                proj_line += f" Projected total: **{round(float(proj_total), 1)}**."
+            paras.append(proj_line)
+
+    # 5. Risk summary
+    risk_notes = []
+    if opening_odds is not None and not clv_favorable and opening_odds != odds:
+        risk_notes.append("line moved against this bet since open")
+    if money_pct is not None and float(money_pct) < 40:
+        risk_notes.append("majority of dollars are on the other side")
+    if ev_pct < 4:
+        risk_notes.append("thin edge — small unit sizing recommended")
+    if adj_flags:
+        risk_notes.append("model adjustments applied: " + adj_flags.replace("|", ", ").replace("_", " "))
+
+    if risk_notes:
+        paras.append("Risk: " + "; ".join(risk_notes) + ".")
+    else:
+        paras.append("No significant risk flags — standard unit sizing applies.")
+
+    why_bet   = "\n\n".join(paras)
+    formatted = f"**{rec}**\n\n{why_bet}"
+
+    return {
+        "analysis":           formatted,
+        "confidence_score":   round(confidence),
+        "kelly_pct":          kelly_frac,
+        "true_prob_refined":  true_prob,
+        "ev_pct_refined":     ev_pct,
+        "context_quality":    "rule_based",
+        "edge_tag":           edge_tag,
+        "raw": {
+            "analysis": {
+                "why_bet":            why_bet,
+                "risk":               "; ".join(risk_notes) if risk_notes else "None",
+                "recommended_action": rec,
+                "edge_tag":           edge_tag,
+            }
+        },
+    }
+
+
+# ---------------------------------------------------------------------------
 # CLI smoke test
 # ---------------------------------------------------------------------------
 
