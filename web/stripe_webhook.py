@@ -118,6 +118,11 @@ def _set_subscribed(
             user.stripe_subscription_id = subscription_id
         if trial_ends_at is not None:
             user.trial_ends_at = trial_ends_at
+        elif not subscribed:
+            # When deactivating a user, always clear trial_ends_at so stale
+            # trial dates don't leave the cancel button visible and accessible
+            # for accounts whose subscriptions are already cancelled in Stripe.
+            user.trial_ends_at = None
 
         db.commit()
         log.info(

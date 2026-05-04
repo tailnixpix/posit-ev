@@ -1771,13 +1771,13 @@ async def cancel_subscription(request: Request, db: Session = Depends(get_db)):
     # customer ID — covers webhook-miss cases where the field was never written.
     if not user.stripe_subscription_id and user.stripe_customer_id:
         try:
-            subs = _stripe.Subscription.list(
+            subs_list = list(_stripe.Subscription.list(
                 customer=user.stripe_customer_id,
                 status="all",
-                limit=5,
-            )
+                limit=10,
+            ).auto_paging_iter())
             active = next(
-                (s for s in subs.auto_paging_iter()
+                (s for s in subs_list
                  if s.status in ("active", "trialing", "past_due")),
                 None,
             )
@@ -1788,6 +1788,20 @@ async def cancel_subscription(request: Request, db: Session = Depends(get_db)):
                     "cancel_subscription: recovered stripe_subscription_id=%s for user %s",
                     active.id, user.email,
                 )
+            elif any(s.status in ("canceled", "incomplete_expired") for s in subs_list):
+                # All subscriptions are already cancelled — heal the DB and treat as success.
+                log.warning(
+                    "cancel_subscription: all Stripe subs are already cancelled for user %s"
+                    " — healing DB.",
+                    user.email,
+                )
+                try:
+                    user.is_subscribed = False
+                    user.trial_ends_at = None
+                    db.commit()
+                except Exception as _db_exc:
+                    log.error("cancel_subscription: DB heal failed: %s", _db_exc)
+                return RedirectResponse(url="/account?cancel_done=1", status_code=303)
         except _stripe.error.StripeError as exc:
             log.error("cancel_subscription: Stripe lookup failed for user %s: %s", user.email, exc)
 
@@ -1804,15 +1818,26 @@ async def cancel_subscription(request: Request, db: Session = Depends(get_db)):
         user.trial_ends_at = None
         db.commit()
     except _stripe.error.InvalidRequestError as exc:
-        # Subscription no longer exists in Stripe (cancelled externally, test→live
-        # migration, etc.).  Heal the DB and treat this as a successful cancel so
-        # users aren't stuck on an error page.
-        err_str = str(exc).lower()
-        if "no such subscription" in err_str or "already been canceled" in err_str:
+        # Subscription no longer exists or is already cancelled — treat as success
+        # so users aren't stuck on an error page.
+        # Stripe uses British spelling ("cancelled") in error messages; we check
+        # both spellings and the machine-readable error code for robustness.
+        err_str  = str(exc).lower()
+        err_code = (getattr(exc, "code", "") or "").lower()
+        already_gone = (
+            err_code in ("subscription_already_cancelled", "resource_already_cancelled",
+                         "subscription_already_canceled")
+            or "no such subscription" in err_str
+            or "already been canceled"  in err_str   # American spelling
+            or "already been cancelled" in err_str   # British spelling (Stripe uses this)
+            or "already canceled"       in err_str
+            or "already cancelled"      in err_str
+        )
+        if already_gone:
             log.warning(
                 "cancel_subscription: sub %s not found / already cancelled in Stripe "
-                "for user %s — healing DB and treating as success.",
-                user.stripe_subscription_id, user.email,
+                "for user %s (code=%s) — healing DB and treating as success.",
+                user.stripe_subscription_id, user.email, err_code,
             )
             try:
                 user.is_subscribed = False
@@ -1821,10 +1846,15 @@ async def cancel_subscription(request: Request, db: Session = Depends(get_db)):
             except Exception as _db_exc:
                 log.error("cancel_subscription: DB heal failed: %s", _db_exc)
             return RedirectResponse(url="/account?cancel_done=1", status_code=303)
-        log.error("Cancel subscription InvalidRequestError for user %s: %s", user.email, exc)
+        log.error("Cancel subscription InvalidRequestError for user %s (code=%s): %s",
+                  user.email, err_code, exc)
+        return RedirectResponse(url="/account?cancel_error=stripe", status_code=303)
+    except _stripe.error.StripeError as exc:
+        # Network errors, rate limits, Stripe outages — log and surface to user
+        log.error("Cancel subscription StripeError for user %s: %s", user.email, exc, exc_info=True)
         return RedirectResponse(url="/account?cancel_error=stripe", status_code=303)
     except Exception as exc:
-        log.error("Cancel subscription failed for user %s: %s", user.email, exc, exc_info=True)
+        log.error("Cancel subscription unexpected error for user %s: %s", user.email, exc, exc_info=True)
         return RedirectResponse(url="/account?cancel_error=stripe", status_code=303)
 
     return RedirectResponse(url="/account?cancel_done=1", status_code=303)
