@@ -4178,16 +4178,17 @@ function applyFilters() {
       if (activeDay === 'tomorrow') dayOk = cd === tomorrowStr;
     }
 
-    const show = leagueOk && marketOk && bookOk && clvDirOk && propOk && propMarketOk && evOk && edgeOk && multiBookOk && searchOk && dayOk;
+    const passOther = leagueOk && marketOk && bookOk && clvDirOk && propOk && propMarketOk && evOk && edgeOk && multiBookOk && searchOk;
+    const show = passOther && dayOk;
     card.style.display = show ? '' : 'none';
-    if (show) {
-      visible++;
-      countByDay.all++;
-      if (cIso) {
-        const cd = ctDateStr(new Date(cIso));
-        if (cd === todayStr)    countByDay.today++;
-        if (cd === tomorrowStr) countByDay.tomorrow++;
-      }
+    if (show) visible++;
+
+    // Day counts ignore the active day filter so buttons always show
+    // how many picks exist for each day given all other active filters.
+    if (passOther && cIso) {
+      const cd = ctDateStr(new Date(cIso));
+      if (cd === todayStr)    countByDay.today++;
+      if (cd === tomorrowStr) countByDay.tomorrow++;
     }
   });
 
