@@ -6131,11 +6131,11 @@ function _buildAnalysisHtml(data, card) {
   const openOdds = card?.dataset?.openingOdds ? parseInt(card.dataset.openingOdds, 10) : null;
   if (openOdds != null) {
     const curOdds = rawOdds;
-    const favourable = curOdds > openOdds;
+    const favorable = curOdds > openOdds;
     const opStr  = openOdds > 0 ? `+${openOdds}` : String(openOdds);
     const cuStr  = curOdds  > 0 ? `+${curOdds}`  : String(curOdds);
-    chips += `<div class="ai-sig ${favourable ? 'sig-clv' : 'sig-neg'}">
-      <span class="ai-sig-icon">${favourable ? '📈' : '📉'}</span>
+    chips += `<div class="ai-sig ${favorable ? 'sig-clv' : 'sig-neg'}">
+      <span class="ai-sig-icon">${favorable ? '📈' : '📉'}</span>
       <div class="ai-sig-body">
         <span class="ai-sig-label">Line Move</span>
         <span class="ai-sig-val">${opStr} → ${cuStr}</span>
@@ -6187,7 +6187,7 @@ function _buildAnalysisHtml(data, card) {
         <div class="ai-prob-bar-wrap"><div class="ai-prob-bar apb-book" style="width:${bookW}%"></div></div>
         <span class="ai-prob-pct pct-book">${implPct}%</span>
       </div>
-      <div class="ai-edge-callout">${edgeSign}${edgePP}pp in your favour</div>
+      <div class="ai-edge-callout">${edgeSign}${edgePP}pp in your favor</div>
     </div>
 
     <div class="ai-signals">${chips}</div>
@@ -6259,9 +6259,9 @@ _buildPropTypeChips();
       <div class="help-section">
         <p class="help-section-title">📐 What is +EV betting?</p>
         <p>Every sportsbook builds a profit margin (called the <strong>vig</strong>) into their odds. But books aren't perfect — sometimes they price an outcome lower than its true probability. That gap is your <strong>edge</strong>.</p>
-        <p><strong>+EV (positive expected value)</strong> means that if you placed this bet thousands of times, you'd profit on average. It doesn't guarantee a win tonight — it means the math is in your favour over time, the same way a casino's edge works for them.</p>
+        <p><strong>+EV (positive expected value)</strong> means that if you placed this bet thousands of times, you'd profit on average. It doesn't guarantee a win tonight — it means the math is in your favor over time, the same way a casino's edge works for them.</p>
         <div class="help-ex">
-          Example: DraftKings offers +145 on the Bruins. Our model says the true probability is 46% — but +145 only implies 41%. That 5-point gap is your edge. Bet enough of these and the math compounds in your favour.
+          Example: DraftKings offers +145 on the Bruins. Our model says the true probability is 46% — but +145 only implies 41%. That 5-point gap is your edge. Bet enough of these and the math compounds in your favor.
         </div>
       </div>
 
@@ -6291,7 +6291,7 @@ _buildPropTypeChips();
       <div class="help-section">
         <p class="help-section-title">📈 CLV — Closing Line Value</p>
         <p>The <strong>closing line</strong> is the final odds a book posts before a game starts. Sharp bettors consistently beat the closing line — meaning they get better odds than the final market price. CLV is the gold standard for evaluating whether your bets are good, independent of wins and losses.</p>
-        <p>The <strong>CLV pill</strong> on each card shows how much the line has moved since opening. A <strong>green pill</strong> means the line moved in your favour (the market confirmed your edge). A <strong>red pill</strong> means it moved against you.</p>
+        <p>The <strong>CLV pill</strong> on each card shows how much the line has moved since opening. A <strong>green pill</strong> means the line moved in your favor (the market confirmed your edge). A <strong>red pill</strong> means it moved against you.</p>
         <div class="help-ex">
           Example: You bet +145 at open. The line closes at +120. The book sharpened the line toward your bet — that's <strong style="color:#00D68F;">+CLV confirmed</strong>, a strong signal your model is beating the market.
         </div>
@@ -6303,7 +6303,7 @@ _buildPropTypeChips();
         <p><strong>Money %</strong> — the percentage of total dollars wagered on this side. <strong>High money % with low bet %</strong> means large, sophisticated bettors are on this side — a classic sharp money indicator.</p>
         <p><strong>Sharp Score</strong> — our composite signal (0–100) combining money vs. bet split, line movement direction, and market timing. Scores above 70 suggest professional money is active.</p>
         <p><strong>🔥 Sharp move</strong> badge — appears on prop cards when the implied probability has steamed 3+ percentage points since opening, indicating coordinated sharp action on this line.</p>
-        <p><strong>⚡ Sharp Action</strong> badge — appears on game cards when professional bettors (sharps) appear to be on the same side as our model. It combines two signals: (1) a low % of the public is betting this side — sharps tend to bet against the crowd — and (2) the line has moved in our favour since opening, meaning the market is pricing in sharp money. When both signals align, it's a stronger indication the edge is real.</p>
+        <p><strong>⚡ Sharp Action</strong> badge — appears on game cards when professional bettors (sharps) appear to be on the same side as our model. It combines two signals: (1) a low % of the public is betting this side — sharps tend to bet against the crowd — and (2) the line has moved in our favor since opening, meaning the market is pricing in sharp money. When both signals align, it's a stronger indication the edge is real.</p>
       </div>
 
       <div class="help-section">

@@ -1121,7 +1121,7 @@ def rule_based_analyze_bet(bet: dict) -> dict:
         cur_str = f"+{odds}" if odds > 0 else str(odds)
         if clv_favorable:
             sentences.append(
-                f"The line has already moved in our favour ({op_str} → {cur_str}), "
+                f"The line has already moved in our favor ({op_str} → {cur_str}), "
                 f"confirming smart money is on the same side — getting in now still captures CLV."
             )
         else:
