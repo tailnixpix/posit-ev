@@ -6131,7 +6131,7 @@ function _buildAnalysisHtml(data, card) {
   const openOdds = card?.dataset?.openingOdds ? parseInt(card.dataset.openingOdds, 10) : null;
   if (openOdds != null) {
     const curOdds = rawOdds;
-    const favorable = curOdds > openOdds;
+    const favorable = openOdds > curOdds;  // line shortened = market confirmed bet = positive CLV
     const opStr  = openOdds > 0 ? `+${openOdds}` : String(openOdds);
     const cuStr  = curOdds  > 0 ? `+${curOdds}`  : String(curOdds);
     chips += `<div class="ai-sig ${favorable ? 'sig-clv' : 'sig-neg'}">

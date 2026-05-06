@@ -1042,8 +1042,9 @@ def rule_based_analyze_bet(bet: dict) -> dict:
 
     clv_favorable = False
     if opening_odds is not None and opening_odds != odds:
-        # Higher odds (less negative / more positive) = better price
-        if odds > opening_odds:
+        # Line shortened (opening > current) = money flowed onto this bet = positive CLV
+        # e.g. +122 → +117: 122 > 117 → positive; -130 → -140: -130 > -140 → positive
+        if opening_odds > odds:
             confidence   += 8
             clv_favorable = True
         else:
