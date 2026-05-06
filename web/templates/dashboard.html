@@ -4183,12 +4183,15 @@ function applyFilters() {
     card.style.display = show ? '' : 'none';
     if (show) visible++;
 
-    // Day counts ignore the active day filter so buttons always show
-    // how many picks exist for each day given all other active filters.
-    if (passOther && cIso) {
-      const cd = ctDateStr(new Date(cIso));
-      if (cd === todayStr)    countByDay.today++;
-      if (cd === tomorrowStr) countByDay.tomorrow++;
+    // Day button counts ignore the active day filter so every button always
+    // shows how many picks exist for that day given all other active filters.
+    if (passOther) {
+      countByDay.all++;
+      if (cIso) {
+        const cd = ctDateStr(new Date(cIso));
+        if (cd === todayStr)    countByDay.today++;
+        if (cd === tomorrowStr) countByDay.tomorrow++;
+      }
     }
   });
 
@@ -4197,7 +4200,7 @@ function applyFilters() {
   if (badge) badge.textContent = visible;
   ['all', 'today', 'tomorrow'].forEach(d => {
     const el = document.getElementById('sdCount-' + d);
-    if (el) el.textContent = d === 'all' ? visible : countByDay[d];
+    if (el) el.textContent = countByDay[d];
   });
   const nr = document.getElementById('no-results-filtered');
   if (nr) nr.style.display = (visible === 0 && cards.length > 0) ? '' : 'none';
