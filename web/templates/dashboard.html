@@ -2617,7 +2617,7 @@ main { max-width: none !important; padding: 0 !important; }
   {# ── Sidebar ── #}
   <aside class="sidebar">
     <div class="sidebar-section-label">View</div>
-    <button class="sidebar-btn active" id="sideDay-all"      onclick="_setSideDay('all')">📅 Upcoming <span class="sidebar-count" id="sdCount-all">—</span></button>
+    <button class="sidebar-btn" id="sideDay-all"      onclick="_setSideDay('all')">📅 Upcoming <span class="sidebar-count" id="sdCount-all">—</span></button>
     <button class="sidebar-btn"        id="sideDay-today"    onclick="_setSideDay('today')">Today <span class="sidebar-count" id="sdCount-today">—</span></button>
     <button class="sidebar-btn"        id="sideDay-tomorrow" onclick="_setSideDay('tomorrow')">Tomorrow <span class="sidebar-count" id="sdCount-tomorrow">—</span></button>
 
@@ -3152,7 +3152,7 @@ main { max-width: none !important; padding: 0 !important; }
 
 {# Bottom nav (mobile) — using div to avoid inheriting global nav{} styles #}
 <div class="bottom-nav" id="bottomNav">
-  <button class="bn-btn active" id="bn-all"      onclick="mobileDayFilter('all')"><span class="bn-icon">📅</span>All</button>
+  <button class="bn-btn" id="bn-all"      onclick="mobileDayFilter('all')"><span class="bn-icon">📅</span>All</button>
   <button class="bn-btn"        id="bn-today"    onclick="mobileDayFilter('today')"><span class="bn-icon">☀️</span>Today</button>
   <button class="bn-btn"        id="bn-tomorrow" onclick="mobileDayFilter('tomorrow')"><span class="bn-icon">🌙</span>Tomorrow</button>
   <button class="bn-btn"        id="bn-search"   onclick="document.getElementById('globalSearch').focus()"><span class="bn-icon">🔍</span>Search</button>
