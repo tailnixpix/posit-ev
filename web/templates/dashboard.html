@@ -3804,7 +3804,7 @@ function _renderParlayPanel() {
 // (prop type chips are built after filter state + helpers are defined — see _buildPropTypeChips call below)
 let activeLeague = 'all', activeMarket = 'all';
 let activeBooks  = new Set();   // empty = All; multi-select (individual books + group presets)
-let activeIsProp = 'all', activeDay = 'all';  // 'all' | 'true' (props only) | 'false' (games only)
+let activeIsProp = 'all', activeDay = 'today';  // default to today; 'all' | 'today' | 'tomorrow'
 let activePropMarket = 'all';                 // prop sub-type filter
 let activeSort   = 'ev_desc', activeMinEv = 0, activeSearch = '';
 let activeCLVDir = 'all';
@@ -4717,7 +4717,7 @@ document.querySelectorAll('[data-multibook]').forEach(btn => {
 function clearFilters() {
   try { localStorage.removeItem('positplusev_filters'); } catch(e) {}
   activeLeague = 'all'; activeMarket = 'all';
-  activeBooks.clear(); activeDay = 'all'; activeCLVDir = 'all';
+  activeBooks.clear(); activeDay = 'today'; activeCLVDir = 'all';
   activeMinEv = 0; activeMinEdge = 0; activeMultiBook = false; activeSearch = '';
   document.querySelectorAll('.qfilter-btn[data-edge]').forEach(b => b.classList.toggle('active', b.dataset.edge === '0'));
   document.querySelectorAll('[data-multibook]').forEach(b => b.classList.remove('active'));
@@ -4761,7 +4761,7 @@ function _restoreFilters() {
     // Restore scalar state
     activeLeague    = s.league    || 'all';
     activeCLVDir    = s.clvDir    || 'all';
-    activeDay       = s.day       || 'all';
+    activeDay       = s.day       || 'today';
     activeSort      = s.sort      || 'ev_desc';
     activeMinEv     = typeof s.minEv   === 'number' ? s.minEv   : 0;
     activeMinEdge   = typeof s.minEdge === 'number' ? s.minEdge : 0;

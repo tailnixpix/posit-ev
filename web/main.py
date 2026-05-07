@@ -1628,7 +1628,7 @@ async def landing(request: Request, db: Session = Depends(get_db)):
     track_roi = round(total_pl / BANKROLL * 100, 1) if len(settled) > 0 else None
 
     return templates.TemplateResponse(request, "index.html", {
-        "track_picks":    all_picks,
+        "track_picks":    settled,   # pending picks excluded — only show settled results
         "track_won":      won,
         "track_lost":     lost,
         "track_total":    len(settled),
