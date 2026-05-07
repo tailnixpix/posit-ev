@@ -2795,7 +2795,7 @@ main { max-width: none !important; padding: 0 !important; }
     </div>
 
     {# ── CARD VIEW ── #}
-    <div class="cards-grid" id="cardsGrid">
+    <div class="cards-grid" id="cardsGrid" style="visibility:hidden">
 
       {% if bets %}
         {% for bet in bets %}
@@ -6226,6 +6226,9 @@ _restoreFilters();   // re-apply saved filter state before first render
 sortCards();
 applyFilters();
 updateFilterBadge();
+// Reveal grid only after filters have been applied — prevents the flash
+// where all picks appear briefly before JS narrows to today's picks.
+document.getElementById('cardsGrid').style.visibility = '';
 _buildPropTypeChips();
 
 // Initial visibility for group toggles (default: 'all' mode → show game group toggle)
