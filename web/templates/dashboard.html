@@ -2915,12 +2915,6 @@ main { max-width: none !important; padding: 0 !important; }
                 {% endif %}
               {% endif %}
 
-              {# — Sharp Action badge — #}
-              {% if bet.sharp_score is not none and bet.sharp_score >= 65 %}
-                <div class="card-hr-steam"
-                     onclick="showSharpPopover(event,{{ '%.0f'|format(bet.sharp_score) }})">⚡ Sharp Action · {{ "%.0f"|format(bet.sharp_score) }}/100</div>
-              {% endif %}
-
               {# — Game + Time context — #}
               <div class="card-context">
                 {% if bet.game %}<span class="ctx-game">{{ bet.game }}</span>{% endif %}
