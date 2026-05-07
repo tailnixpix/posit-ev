@@ -3554,15 +3554,30 @@ function confirmGroupTrack() {
       ? (parseInt(oddsInputEl.value, 10) || cardOdds)
       : cardOdds;
 
+    // Build prop label same as single-track: player + dir/line + stat category
+    const gIsProp     = card.dataset.isProp === 'true';
+    const gPlayer     = card.dataset.playerName || '';
+    const gRawTeam    = card.dataset.team        || '';
+    const gMarketDisp = card.dataset.marketDisplay || card.dataset.market || '';
+    let gBetLabel, gBetMarket;
+    if (gIsProp && gPlayer) {
+      const gDirCap = gRawTeam.charAt(0).toUpperCase() + gRawTeam.slice(1);
+      gBetLabel  = `${gPlayer} ${gDirCap} ${gMarketDisp}`.trim();
+      gBetMarket = '';
+    } else {
+      gBetLabel  = gRawTeam || gPlayer;
+      gBetMarket = gMarketDisp;
+    }
+
     const entry = {
       id:           'trk_' + Date.now() + '_' + i + '_' + (card.dataset.betId || i),
       betCacheId:   card.dataset.betId || '',
-      team:         card.dataset.team          || card.dataset.playerName || '',
+      team:         gBetLabel,
       game:         card.dataset.game          || '',
       odds:         actualOdds,
       book:         book || card.dataset.book  || '',
       league:       card.dataset.league        || '',
-      market:       card.dataset.marketDisplay || card.dataset.market || '',
+      market:       gBetMarket,
       stake:        stake,
       ev:           parseFloat(card.dataset.ev) || 0,
       trackedAt:    new Date().toISOString(),
@@ -5757,15 +5772,30 @@ function confirmTrackBet(betId) {
     ? bookInput.value.trim()
     : (cardEl.dataset.book || '');
 
+  // Build the pick label — for props, combine player name + direction/line + stat category
+  const isProp     = cardEl.dataset.isProp === 'true';
+  const playerName = cardEl.dataset.playerName || '';
+  const rawTeam    = cardEl.dataset.team        || '';
+  const marketDisp = cardEl.dataset.marketDisplay || cardEl.dataset.market || '';
+  let betLabel, betMarket;
+  if (isProp && playerName) {
+    const dirCap = rawTeam.charAt(0).toUpperCase() + rawTeam.slice(1); // "Over 25.5"
+    betLabel  = `${playerName} ${dirCap} ${marketDisp}`.trim();        // "LeBron James Over 25.5 Points"
+    betMarket = '';   // market is already baked into the label
+  } else {
+    betLabel  = rawTeam;
+    betMarket = marketDisp;
+  }
+
   const entry = {
     id:           'trk_' + Date.now() + '_' + betId,
     betCacheId:   betId,
-    team:         cardEl.dataset.team          || '',
+    team:         betLabel,
     game:         cardEl.dataset.game          || '',
     odds:         actualOdds,
     book:         actualBook,
     league:       cardEl.dataset.league        || '',
-    market:       cardEl.dataset.marketDisplay || cardEl.dataset.market || '',
+    market:       betMarket,
     stake:        stake,
     ev:           parseFloat(cardEl.dataset.ev) || 0,
     trackedAt:    new Date().toISOString(),
