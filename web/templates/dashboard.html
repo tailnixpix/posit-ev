@@ -4092,10 +4092,12 @@ function _countFor(dimension, value) {
       (card.dataset.playerName || '').toLowerCase().includes(activeSearch);
     let dayOk = true;
     const cIso = card.dataset.commence;
-    if (activeDay !== 'all' && cIso) {
+    if (cIso) {
       const cd = ctDateStr(new Date(cIso));
-      if (activeDay === 'today')    dayOk = cd === todayStr;
-      if (activeDay === 'tomorrow') dayOk = cd === tomorrowStr;
+      const _dnum = s => { const [m,d,y] = s.split('/'); return y*10000 + parseInt(m)*100 + parseInt(d); };
+      if      (activeDay === 'today')    dayOk = cd === todayStr;
+      else if (activeDay === 'tomorrow') dayOk = cd === tomorrowStr;
+      else if (activeDay === 'all')      dayOk = _dnum(cd) >= _dnum(todayStr);
     }
     if (leagueOk && marketOk && bookOk && clvDirOk && propOk && propMktOk && evOk && edgeCOk && mbOk && srchOk && dayOk) count++;
   });
@@ -4181,10 +4183,12 @@ function applyFilters() {
 
     let dayOk = true;
     const cIso = card.dataset.commence;
-    if (activeDay !== 'all' && cIso) {
+    if (cIso) {
       const cd = ctDateStr(new Date(cIso));
-      if (activeDay === 'today')    dayOk = cd === todayStr;
-      if (activeDay === 'tomorrow') dayOk = cd === tomorrowStr;
+      const _dnum = s => { const [m,d,y] = s.split('/'); return y*10000 + parseInt(m)*100 + parseInt(d); };
+      if      (activeDay === 'today')    dayOk = cd === todayStr;
+      else if (activeDay === 'tomorrow') dayOk = cd === tomorrowStr;
+      else if (activeDay === 'all')      dayOk = _dnum(cd) >= _dnum(todayStr);
     }
 
     const passOther = leagueOk && marketOk && bookOk && clvDirOk && propOk && propMarketOk && evOk && edgeOk && multiBookOk && searchOk;
@@ -4194,12 +4198,16 @@ function applyFilters() {
 
     // Day button counts ignore the active day filter so every button always
     // shows how many picks exist for that day given all other active filters.
+    // "All" (Upcoming) only counts today-or-future games — not stale past picks.
     if (passOther) {
-      countByDay.all++;
       if (cIso) {
         const cd = ctDateStr(new Date(cIso));
+        const _dnum = s => { const [m,d,y] = s.split('/'); return y*10000 + parseInt(m)*100 + parseInt(d); };
+        if (_dnum(cd) >= _dnum(todayStr)) countByDay.all++;
         if (cd === todayStr)    countByDay.today++;
         if (cd === tomorrowStr) countByDay.tomorrow++;
+      } else {
+        countByDay.all++;  // no commence time — include in upcoming
       }
     }
   });
