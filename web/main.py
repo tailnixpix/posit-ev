@@ -1864,49 +1864,40 @@ async def cancel_subscription(request: Request, db: Session = Depends(get_db)):
         # Stripe fires customer.subscription.deleted; webhook also sets is_subscribed=False.
         _stripe.Subscription.cancel(user.stripe_subscription_id)
         log.info("Subscription cancelled immediately for user %s", user.email)
-        # Revoke access in DB right away — don't wait for the webhook.
+    except _stripe.error.InvalidRequestError as exc:
+        # Any InvalidRequestError (already cancelled, expired, no such subscription,
+        # incomplete_expired, etc.) means the subscription is effectively gone in Stripe.
+        # The user's intent is to cancel — always clear DB access and treat as success
+        # regardless of the specific Stripe error message.
+        err_code = (getattr(exc, "code", "") or "").lower()
+        log.warning(
+            "cancel_subscription: InvalidRequestError for sub %s user %s (code=%s): %s "
+            "— clearing DB access and treating as success.",
+            user.stripe_subscription_id, user.email, err_code, exc,
+        )
         user.is_subscribed = False
         user.trial_ends_at = None
-        db.commit()
-    except _stripe.error.InvalidRequestError as exc:
-        # Subscription no longer exists or is already cancelled — treat as success
-        # so users aren't stuck on an error page.
-        # Stripe uses British spelling ("cancelled") in error messages; we check
-        # both spellings and the machine-readable error code for robustness.
-        err_str  = str(exc).lower()
-        err_code = (getattr(exc, "code", "") or "").lower()
-        already_gone = (
-            err_code in ("subscription_already_cancelled", "resource_already_cancelled",
-                         "subscription_already_canceled")
-            or "no such subscription" in err_str
-            or "already been canceled"  in err_str   # American spelling
-            or "already been cancelled" in err_str   # British spelling (Stripe uses this)
-            or "already canceled"       in err_str
-            or "already cancelled"      in err_str
-        )
-        if already_gone:
-            log.warning(
-                "cancel_subscription: sub %s not found / already cancelled in Stripe "
-                "for user %s (code=%s) — healing DB and treating as success.",
-                user.stripe_subscription_id, user.email, err_code,
-            )
-            try:
-                user.is_subscribed = False
-                user.trial_ends_at = None
-                db.commit()
-            except Exception as _db_exc:
-                log.error("cancel_subscription: DB heal failed: %s", _db_exc)
-            return RedirectResponse(url="/account?cancel_done=1", status_code=303)
-        log.error("Cancel subscription InvalidRequestError for user %s (code=%s): %s",
-                  user.email, err_code, exc)
-        return RedirectResponse(url="/account?cancel_error=stripe", status_code=303)
+        try:
+            db.commit()
+        except Exception as _db_exc:
+            log.error("cancel_subscription: DB clear failed: %s", _db_exc)
+        return RedirectResponse(url="/account?cancel_done=1", status_code=303)
     except _stripe.error.StripeError as exc:
-        # Network errors, rate limits, Stripe outages — log and surface to user
+        # Network errors, rate limits, Stripe outages — these are transient.
+        # Log but don't clear access; user can retry.
         log.error("Cancel subscription StripeError for user %s: %s", user.email, exc, exc_info=True)
         return RedirectResponse(url="/account?cancel_error=stripe", status_code=303)
     except Exception as exc:
         log.error("Cancel subscription unexpected error for user %s: %s", user.email, exc, exc_info=True)
         return RedirectResponse(url="/account?cancel_error=stripe", status_code=303)
+
+    # Stripe call succeeded — revoke access in DB immediately (don't wait for webhook)
+    user.is_subscribed = False
+    user.trial_ends_at = None
+    try:
+        db.commit()
+    except Exception as exc:
+        log.error("Cancel subscription: DB commit failed for user %s: %s", user.email, exc)
 
     return RedirectResponse(url="/account?cancel_done=1", status_code=303)
 
