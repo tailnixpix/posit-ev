@@ -265,6 +265,20 @@ def sync_stripe_subscriptions() -> None:
                     user.email, active.id, active.status, trial_ends_at,
                 )
                 healed += 1
+            except _stripe_sync.error.InvalidRequestError as exc:
+                db.rollback()
+                # Stale test-mode customer ID used against live key (or deleted customer).
+                # Clear it so this user stops generating errors on every sync cycle.
+                log.warning(
+                    "stripe_sync: clearing stale stripe_customer_id for %s: %s",
+                    user.email, exc,
+                )
+                try:
+                    user.stripe_customer_id = None
+                    db.commit()
+                except Exception as _dbe:
+                    db.rollback()
+                    log.error("stripe_sync: failed to clear stale customer_id for %s: %s", user.email, _dbe)
             except Exception as exc:
                 db.rollback()
                 log.warning("stripe_sync: error checking %s: %s", user.email, exc)
@@ -1979,11 +1993,20 @@ async def billing_portal(request: Request, db: Session = Depends(get_db)):
         )
         return RedirectResponse(url=portal.url, status_code=303)
     except _stripe.error.InvalidRequestError as exc:
+        # Typically: test-mode customer ID used with live key, or deleted customer.
+        # Clear the stale ID so the user can go through checkout to get a live one.
         log.error(
-            "Billing portal InvalidRequestError for user %s customer %s key_prefix=%s: %s",
+            "Billing portal InvalidRequestError for user %s customer %s key_prefix=%s — "
+            "clearing stale customer_id: %s",
             user.email, user.stripe_customer_id, key_prefix, exc,
         )
-        return RedirectResponse(url="/account?portal_error=1", status_code=303)
+        try:
+            user.stripe_customer_id = None
+            db.commit()
+        except Exception as _dbe:
+            db.rollback()
+            log.error("billing_portal: failed to clear stale customer_id: %s", _dbe)
+        return RedirectResponse(url="/account?portal_error=no_customer", status_code=303)
     except _stripe.error.AuthenticationError as exc:
         log.error(
             "Billing portal AuthenticationError — STRIPE_SECRET_KEY is invalid. key_prefix=%s: %s",
