@@ -2218,6 +2218,16 @@ main { max-width: none !important; padding: 0 !important; }
 .btn-bet-now:active { transform: translateY(0); }
 
 /* ── Actions row: Analyze + Track ───────────────────────────── */
+.card-summary {
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: var(--d-sub);
+  border-left: 2px solid rgba(79,158,255,0.3);
+  padding: 6px 10px;
+  margin: 8px 0 10px;
+  background: rgba(79,158,255,0.04);
+  border-radius: 0 6px 6px 0;
+}
 .card-actions-row {
   display: flex;
   gap: 8px;
@@ -2970,6 +2980,11 @@ main { max-width: none !important; padding: 0 !important; }
                   {{ _cta_icon }} Bet Now →
                 </button>
               </div>
+
+              {# — Inline AI summary — #}
+              {% if bet.card_summary %}
+              <div class="card-summary">{{ bet.card_summary }}</div>
+              {% endif %}
 
               {# — Actions: Analyze + Track — #}
               <div class="card-actions-row">

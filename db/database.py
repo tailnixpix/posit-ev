@@ -144,6 +144,7 @@ class EVBetCache(Base):
     home_trend           = Column(String, nullable=True)   # e.g. "7-3 W4"
     away_trend           = Column(String, nullable=True)
     all_book_odds        = Column(Text, nullable=True)     # JSON: {bookmaker: american_odds} for all books on this line
+    card_summary         = Column(Text, nullable=True)     # Short 2-3 sentence AI summary shown inline on card
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True, nullable=False)
 
     def __repr__(self) -> str:

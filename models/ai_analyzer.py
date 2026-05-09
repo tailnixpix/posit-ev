@@ -979,6 +979,114 @@ def analyze_bet(bet: dict, optimal_client: Optional[OptimalClient] = None) -> Op
 
 
 # ---------------------------------------------------------------------------
+# Card summary — short inline analysis using Haiku (pre-generated at cache time)
+# ---------------------------------------------------------------------------
+
+def generate_card_summary(bet: dict) -> Optional[str]:
+    """
+    Generate a 2-3 sentence plain-English summary of why a bet has edge.
+    Uses claude-haiku-3-5 for cost efficiency (~$0.03 per full cache batch).
+    Returns the summary string, or None on failure.
+    """
+    # ── Assemble the signal block ─────────────────────────────────────────
+    true_prob    = float(bet.get("true_prob") or 0.5)
+    implied_prob = float(bet.get("implied_prob") or 0.0)
+    ev_pct       = float(bet.get("ev_percent") or 0.0)
+    odds         = int(bet.get("odds") or -110)
+    opening_odds = bet.get("opening_odds")
+    bet_pct      = bet.get("bet_pct")
+    money_pct    = bet.get("money_pct")
+    sharp_score  = bet.get("sharp_score")
+    home_trend   = (bet.get("home_trend") or "").strip()
+    away_trend   = (bet.get("away_trend") or "").strip()
+    game         = (bet.get("game") or "").strip()
+    team         = (bet.get("team") or "").strip()
+    market       = (bet.get("market") or "h2h").strip()
+    is_prop      = bool(bet.get("is_prop"))
+    player_name  = (bet.get("player_name") or "").strip()
+    point        = bet.get("point")
+    adj_flags    = (bet.get("adj_flags") or "").strip()
+    proj_home_wp = bet.get("proj_home_win_prob")
+    proj_total   = bet.get("proj_total")
+
+    if not implied_prob and odds:
+        implied_prob = (100.0 / (odds + 100.0)) if odds > 0 else (abs(odds) / (abs(odds) + 100.0))
+
+    odds_str = f"+{odds}" if odds > 0 else str(odds)
+    true_pct = round(true_prob * 100, 1)
+    impl_pct = round(implied_prob * 100, 1)
+    edge_pp  = round((true_prob - implied_prob) * 100, 1)
+
+    if is_prop and player_name:
+        bet_label = f"{player_name} — {team} ({market})"
+    elif market == "spreads" and point is not None:
+        pt_str = f"+{point}" if point > 0 else str(point)
+        bet_label = f"{team} {pt_str}"
+    elif market == "totals" and point is not None:
+        bet_label = f"{team} {point}"
+    else:
+        bet_label = team
+
+    signals = [
+        f"Bet: {bet_label} at {odds_str} in {game}",
+        f"EV: +{ev_pct:.1f}% | Model probability: {true_pct}% vs {impl_pct}% implied ({edge_pp:+.1f}pp edge)",
+    ]
+
+    if sharp_score is not None:
+        level = "high" if sharp_score >= 65 else ("moderate" if sharp_score >= 40 else "low")
+        signals.append(f"Sharp signal: {sharp_score:.0f}/100 ({level})")
+    if money_pct is not None and bet_pct is not None:
+        signals.append(f"Betting splits: {bet_pct:.0f}% of bets / {money_pct:.0f}% of money on this side")
+    if opening_odds and opening_odds != odds:
+        open_str = f"+{opening_odds}" if opening_odds > 0 else str(opening_odds)
+        direction = "steamed toward us (CLV+)" if opening_odds > odds else "drifted away"
+        signals.append(f"Line movement: {open_str} → {odds_str} — {direction}")
+    if home_trend or away_trend:
+        if " @ " in game:
+            away_t, home_t = [s.strip() for s in game.split(" @ ", 1)]
+            if away_trend:
+                signals.append(f"Recent form: {away_t} {away_trend} (away)")
+            if home_trend:
+                signals.append(f"Recent form: {home_t} {home_trend} (home)")
+    if proj_home_wp is not None:
+        signals.append(f"Model projects {round(proj_home_wp*100)}% home win probability")
+    if proj_total is not None:
+        signals.append(f"Model projected total: {proj_total:.1f}")
+    if adj_flags:
+        signals.append(f"Model adjustments: {adj_flags.replace('|', ', ')}")
+
+    signal_block = "\n".join(signals)
+
+    prompt = (
+        "You are a concise sports betting analyst. Given these signals for a +EV bet, "
+        "write EXACTLY 2-3 sentences explaining the key edge. "
+        "Be specific and cite the data. No bullet points, no markdown, no filler phrases. "
+        "Plain sentences only.\n\n"
+        f"{signal_block}"
+    )
+
+    try:
+        client = anthropic.Anthropic(
+            api_key=os.getenv("ANTHROPIC_API_KEY"),
+            timeout=15.0,
+        )
+        message = client.messages.create(
+            model="claude-haiku-4-5",
+            max_tokens=120,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        text = ""
+        for block in message.content:
+            if getattr(block, "type", None) == "text":
+                text = block.text.strip()
+                break
+        return text or None
+    except Exception as exc:
+        log.warning("generate_card_summary failed for bet id=%s: %s", bet.get("id"), exc)
+        return None
+
+
+# ---------------------------------------------------------------------------
 # Rule-based analysis fallback (no API call)
 # ---------------------------------------------------------------------------
 

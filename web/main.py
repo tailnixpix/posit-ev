@@ -674,6 +674,73 @@ def refresh_ev_cache() -> int:
 
 
 # ---------------------------------------------------------------------------
+# Card summary generation — runs in background after each cache refresh
+# ---------------------------------------------------------------------------
+
+def _generate_pending_summaries() -> None:
+    """
+    For every EVBetCache row that has no card_summary yet, generate one using
+    claude-haiku-4-5 via generate_card_summary().  Runs in a background thread
+    after refresh_ev_cache() so it never blocks the scheduler or request cycle.
+    """
+    try:
+        from models.ai_analyzer import generate_card_summary as _gen_summary
+    except ImportError as exc:
+        log.warning("_generate_pending_summaries: import failed: %s", exc)
+        return
+
+    db = SessionLocal()
+    try:
+        pending = (
+            db.query(EVBetCache)
+            .filter(EVBetCache.card_summary.is_(None))
+            .all()
+        )
+        if not pending:
+            return
+        log.info("Card summaries: generating for %d picks…", len(pending))
+        generated = 0
+        for row in pending:
+            bet_dict = {
+                "id":               row.id,
+                "game":             row.game or "",
+                "league":           row.league or "",
+                "market":           row.market or "",
+                "team":             row.team or "",
+                "odds":             row.odds or 0,
+                "true_prob":        row.true_prob or 0.5,
+                "ev_percent":       row.ev_percent or 0.0,
+                "implied_prob":     row.implied_prob,
+                "point":            row.point,
+                "player_name":      row.player_name,
+                "is_prop":          bool(row.is_prop),
+                "opening_odds":     row.opening_odds,
+                "bet_pct":          row.bet_pct,
+                "money_pct":        row.money_pct,
+                "sharp_score":      row.sharp_score,
+                "home_trend":       row.home_trend or "",
+                "away_trend":       row.away_trend or "",
+                "proj_home_win_prob": row.proj_home_win_prob,
+                "proj_total":       row.proj_total,
+                "adj_flags":        row.adj_flags or "",
+            }
+            summary = _gen_summary(bet_dict)
+            if summary:
+                try:
+                    row.card_summary = summary
+                    db.commit()
+                    generated += 1
+                except Exception as _dbe:
+                    db.rollback()
+                    log.warning("Card summaries: DB write failed for id=%d: %s", row.id, _dbe)
+        log.info("Card summaries: generated %d/%d.", generated, len(pending))
+    except Exception as exc:
+        log.error("_generate_pending_summaries: unexpected error: %s", exc, exc_info=True)
+    finally:
+        db.close()
+
+
+# ---------------------------------------------------------------------------
 # Startup / shutdown
 # ---------------------------------------------------------------------------
 
@@ -713,6 +780,7 @@ async def on_startup() -> None:
             _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS all_book_odds TEXT"))
             _db.execute(text("ALTER TABLE daily_picks ADD COLUMN IF NOT EXISTS player_name VARCHAR"))
             _db.execute(text("ALTER TABLE daily_picks ADD COLUMN IF NOT EXISTS is_prop BOOLEAN DEFAULT FALSE"))
+            _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS card_summary TEXT"))
             _db.commit()
         except Exception:
             _db.rollback()
@@ -823,6 +891,17 @@ async def on_startup() -> None:
         id="ev_cache_refresh",
         name="Refresh EV bet cache (every 30 min)",
         next_run_time=datetime.now(timezone.utc),   # run once at startup
+        misfire_grace_time=120,
+        replace_existing=True,
+    )
+    # Generate card summaries ~2 min after each cache refresh so new picks have
+    # summaries by the time users arrive.  Uses Haiku — fast and cheap.
+    scheduler.add_job(
+        _generate_pending_summaries,
+        trigger=IntervalTrigger(minutes=30),
+        id="card_summary_gen",
+        name="Generate card summaries for new picks (every 30 min)",
+        next_run_time=datetime.now(timezone.utc) + __import__("datetime").timedelta(minutes=2),
         misfire_grace_time=120,
         replace_existing=True,
     )
