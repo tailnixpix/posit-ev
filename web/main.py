@@ -2043,7 +2043,7 @@ async def billing_portal_debug(request: Request, db: Session = Depends(get_db)):
         "is_subscribed":       user.is_subscribed,
         "stripe_sub_id":       user.stripe_subscription_id,
         "key_prefix":          _stripe.api_key[:14] if _stripe.api_key else "MISSING",
-        "key_mode":            "live" if (_stripe.api_key or "").startswith("sk_live") else "test",
+        "key_mode":            "live" if any((_stripe.api_key or "").startswith(p) for p in ("sk_live", "rk_live")) else "test",
     }
 
     if not _stripe.api_key:
