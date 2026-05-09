@@ -3708,7 +3708,8 @@ function removeParlayLeg(id) {
   const idx = _parlayLegs.findIndex(l => l.id === id);
   if (idx === -1) return;
   _parlayLegs.splice(idx, 1);
-  const card = document.getElementById('analyze-btn-' + id)?.closest('.bet-card');
+  const _aBtn = document.getElementById('analyze-btn-' + id);
+  const card = _aBtn ? _aBtn.closest('.bet-card') : null;
   if (card) card.classList.remove('parlay-selected');
   _renderParlayPanel();
 }
@@ -3776,7 +3777,8 @@ function _renderParlayPanel() {
     evEl.textContent = `${evSign}${stats.evPct.toFixed(1)}%`;
     evEl.className   = 'ps-val ' + (stats.evPct >= 2 ? 'ps-green' : stats.evPct >= 0 ? 'ps-orange' : 'ps-red');
 
-    const bankroll = parseFloat(document.getElementById('bankrollInput')?.value) || 0;
+    const _bInput = document.getElementById('bankrollInput');
+    const bankroll = parseFloat(_bInput ? _bInput.value : '') || 0;
     if (bankroll > 0 && stats.fracKelly > 0) {
       const dollar = Math.round(stats.fracKelly * bankroll);
       kellyEl.textContent = `$${dollar}`;
@@ -3865,7 +3867,8 @@ function rebuildTable() {
     const betId = c.id ? c.id.replace('bet-','') : '';
     const team  = c.dataset.team || '—';
     const game  = c.dataset.game || '';
-    const league = c.querySelector('.badge-league')?.textContent || '';
+    const _lbadge = c.querySelector('.badge-league');
+    const league = _lbadge ? _lbadge.textContent : '';
     const book  = c.dataset.book || '';
     const leagueKey = c.dataset.league || '';
     const bookMap = _BOOK_URLS[book];
@@ -4279,8 +4282,10 @@ document.getElementById('globalSearch').addEventListener('input', function() {
 function _setSideDay(day) {
   activeDay = day;
   ['all','today','tomorrow'].forEach(d => {
-    document.getElementById('sideDay-' + d)?.classList.toggle('active', d === day);
-    document.getElementById('bn-' + d)?.classList.toggle('active', d === day);
+    const _sd = document.getElementById('sideDay-' + d);
+    if (_sd) _sd.classList.toggle('active', d === day);
+    const _bn = document.getElementById('bn-' + d);
+    if (_bn) _bn.classList.toggle('active', d === day);
   });
   applyFilters();
 }
@@ -4376,10 +4381,10 @@ const _PROP_LABEL_MAP = {
 
 /** Look up the display label for a market key given a specific league. */
 function _propLabel(league, marketKey) {
-  const exact = _PROP_LABEL_MAP[league]?.[marketKey];
+  const exact = _PROP_LABEL_MAP[league] ? _PROP_LABEL_MAP[league][marketKey] : undefined;
   if (exact) return exact;
   if (league.startsWith('soccer_')) {
-    const soc = _PROP_LABEL_MAP.soccer?.[marketKey];
+    const soc = _PROP_LABEL_MAP.soccer ? _PROP_LABEL_MAP.soccer[marketKey] : undefined;
     if (soc) return soc;
   }
   // Fallback: title-case the raw key (strip player_ / batter_ / pitcher_ prefix)
@@ -4816,8 +4821,10 @@ function _restoreFilters() {
 
     // Day buttons (sidebar + mobile bottom nav)
     ['all','today','tomorrow'].forEach(d => {
-      document.getElementById('sideDay-' + d)?.classList.toggle('active', d === activeDay);
-      document.getElementById('bn-' + d)?.classList.toggle('active', d === activeDay);
+      const _rsd = document.getElementById('sideDay-' + d);
+      if (_rsd) _rsd.classList.toggle('active', d === activeDay);
+      const _rbn = document.getElementById('bn-' + d);
+      if (_rbn) _rbn.classList.toggle('active', d === activeDay);
     });
 
     // EV slider + chips
@@ -6111,8 +6118,8 @@ function _buildAnalysisHtml(data, card) {
                : 'avb-lean';
 
   // Probabilities — read from card dataset (already rendered server-side)
-  const trueProb = parseFloat(card?.dataset?.trueProb || '0');
-  const rawOdds  = parseInt(card?.dataset?.odds || '-110', 10);
+  const trueProb = parseFloat((card && card.dataset.trueProb) || '0');
+  const rawOdds  = parseInt((card && card.dataset.odds) || '-110', 10);
   const impliedProb = rawOdds > 0 ? 100 / (rawOdds + 100) : Math.abs(rawOdds) / (Math.abs(rawOdds) + 100);
   const edgePP   = ((trueProb - impliedProb) * 100).toFixed(1);
   const truePct  = (trueProb * 100).toFixed(1);
@@ -6127,7 +6134,7 @@ function _buildAnalysisHtml(data, card) {
   let chips = '';
 
   // EV chip — always
-  const evPct = parseFloat(card?.dataset?.ev || '0');
+  const evPct = parseFloat((card && card.dataset.ev) || '0');
   chips += `<div class="ai-sig sig-ev">
     <span class="ai-sig-icon">⚡</span>
     <div class="ai-sig-body">
@@ -6137,8 +6144,8 @@ function _buildAnalysisHtml(data, card) {
   </div>`;
 
   // Sharp money chip
-  const moneyPct = card?.dataset?.moneyPct != null ? parseFloat(card.dataset.moneyPct) : null;
-  const betPct   = card?.dataset?.betPct   != null ? parseFloat(card.dataset.betPct)   : null;
+  const moneyPct = (card && card.dataset.moneyPct != null) ? parseFloat(card.dataset.moneyPct) : null;
+  const betPct   = (card && card.dataset.betPct   != null) ? parseFloat(card.dataset.betPct)   : null;
   if (moneyPct != null) {
     const isRev  = betPct != null && moneyPct > betPct + 8;
     const icon   = isRev ? '🔄' : moneyPct >= 60 ? '💰' : moneyPct < 40 ? '🔻' : '💵';
@@ -6155,7 +6162,7 @@ function _buildAnalysisHtml(data, card) {
   }
 
   // Sharp score chip
-  const sharpSc = card?.dataset?.sharpScore != null ? parseFloat(card.dataset.sharpScore) : null;
+  const sharpSc = (card && card.dataset.sharpScore != null) ? parseFloat(card.dataset.sharpScore) : null;
   if (sharpSc != null) {
     const icon = sharpSc >= 70 ? '🎯' : sharpSc >= 50 ? '📊' : '📉';
     const cls  = sharpSc >= 65 ? 'sig-sharp' : sharpSc < 35 ? 'sig-neg' : '';
@@ -6169,7 +6176,7 @@ function _buildAnalysisHtml(data, card) {
   }
 
   // Line movement chip
-  const openOdds = card?.dataset?.openingOdds ? parseInt(card.dataset.openingOdds, 10) : null;
+  const openOdds = (card && card.dataset.openingOdds) ? parseInt(card.dataset.openingOdds, 10) : null;
   if (openOdds != null) {
     const curOdds = rawOdds;
     const favorable = openOdds > curOdds;  // line shortened = market confirmed bet = positive CLV
@@ -6185,7 +6192,7 @@ function _buildAnalysisHtml(data, card) {
   }
 
   // Projection chip (game bets)
-  const homeWp = card?.dataset?.projHomeWp ? parseFloat(card.dataset.projHomeWp) : null;
+  const homeWp = (card && card.dataset.projHomeWp) ? parseFloat(card.dataset.projHomeWp) : null;
   if (homeWp != null) {
     chips += `<div class="ai-sig sig-proj">
       <span class="ai-sig-icon">🎲</span>

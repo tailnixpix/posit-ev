@@ -1962,6 +1962,10 @@ async def billing_portal(request: Request, db: Session = Depends(get_db)):
         return RedirectResponse(url="/account?portal_error=no_customer", status_code=303)
 
     _stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
+    if not _stripe.api_key:
+        log.error("billing_portal: STRIPE_SECRET_KEY not configured.")
+        return RedirectResponse(url="/account?portal_error=1", status_code=303)
+
     base_url = os.getenv("BASE_URL", "http://localhost:8000")
     try:
         portal = _stripe.billing_portal.Session.create(
@@ -1969,6 +1973,15 @@ async def billing_portal(request: Request, db: Session = Depends(get_db)):
             return_url=f"{base_url}/account",
         )
         return RedirectResponse(url=portal.url, status_code=303)
+    except _stripe.error.InvalidRequestError as exc:
+        # Most common cause: Customer Portal not activated in Stripe Dashboard.
+        # Configure it at: https://dashboard.stripe.com/settings/billing/portal
+        log.error(
+            "Billing portal InvalidRequestError for user %s customer %s: %s "
+            "— Portal may not be configured in Stripe Dashboard.",
+            user.email, user.stripe_customer_id, exc,
+        )
+        return RedirectResponse(url="/account?portal_error=1", status_code=303)
     except _stripe.error.StripeError as exc:
         log.error("Billing portal StripeError for user %s: %s", user.email, exc)
         return RedirectResponse(url="/account?portal_error=1", status_code=303)
