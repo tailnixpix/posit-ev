@@ -221,7 +221,24 @@ async def subscribe(request: Request):
                 )
                 return RedirectResponse(url="/dashboard", status_code=303)
         except stripe.error.InvalidRequestError:
-            log.warning("/subscribe: stale customer_id %s for %s — will use customer_email.", customer_id_db, email)
+            # Stored customer_id is stale (e.g. left over from Stripe test mode).
+            # Clear it locally AND in the DB so this path is never hit again.
+            log.warning(
+                "/subscribe: stale customer_id %s for %s — clearing from DB and "
+                "falling back to customer_email for checkout.",
+                customer_id_db, email,
+            )
+            customer_id_db = None   # ← must be cleared; otherwise checkout re-uses it and also fails
+            _clear_db = SessionLocal()
+            try:
+                _u = _clear_db.query(User).filter(User.email == email).first()
+                if _u:
+                    _u.stripe_customer_id = None
+                    _clear_db.commit()
+            except Exception as _ce:
+                log.warning("/subscribe: failed to clear stale customer_id in DB: %s", _ce)
+            finally:
+                _clear_db.close()
         except stripe.error.StripeError as exc:
             log.warning("/subscribe: Stripe dedup check failed (%s) — proceeding to checkout.", exc)
 
@@ -240,7 +257,8 @@ async def subscribe(request: Request):
         # Reuse the stored Stripe customer when available — this prevents a new
         # Customer object from being created on each checkout attempt, which was
         # the root cause of duplicate subscriptions.  Fall back to customer_email
-        # only when no customer ID is stored yet (first-time subscriber).
+        # only when no customer ID is stored yet (first-time subscriber), or when
+        # a stale ID was just cleared above.
         if customer_id_db:
             session_kwargs["customer"] = customer_id_db
         else:

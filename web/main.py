@@ -1819,10 +1819,44 @@ async def cancel_subscription(request: Request, db: Session = Depends(get_db)):
                 except Exception as _db_exc:
                     log.error("cancel_subscription: DB heal failed: %s", _db_exc)
                 return RedirectResponse(url="/account?cancel_done=1", status_code=303)
+        except _stripe.error.InvalidRequestError as exc:
+            # Stale customer ID (e.g. test-mode ID in live mode) — clear it so
+            # future requests don't keep hitting the same dead end.
+            log.warning(
+                "cancel_subscription: invalid customer_id %s for %s — clearing from DB: %s",
+                user.stripe_customer_id, user.email, exc,
+            )
+            user.stripe_customer_id = None
+            try:
+                db.commit()
+            except Exception:
+                pass
         except _stripe.error.StripeError as exc:
             log.error("cancel_subscription: Stripe lookup failed for user %s: %s", user.email, exc)
 
     if not user.stripe_subscription_id:
+        # No Stripe subscription ID in DB. Two cases:
+        # 1. Admin-granted trial — no Stripe sub exists at all, just clear DB access.
+        # 2. Stripe-backed trial with a webhook miss — sub exists but wasn't stored.
+        # For case 1, clearing access is the entire "cancel". For case 2, the
+        # Stripe sub will expire naturally or be caught by the next sync.
+        _has_access = user.is_subscribed or (
+            getattr(user, "trial_ends_at", None)
+            and user.trial_ends_at > datetime.now(timezone.utc)
+        )
+        if _has_access:
+            log.info(
+                "cancel_subscription: no stripe_subscription_id for %s — "
+                "clearing DB access directly (admin trial or webhook miss).",
+                user.email,
+            )
+            user.is_subscribed = False
+            user.trial_ends_at = None
+            try:
+                db.commit()
+            except Exception as _dbe:
+                log.error("cancel_subscription: DB clear failed: %s", _dbe)
+            return RedirectResponse(url="/account?cancel_done=1", status_code=303)
         return RedirectResponse(url="/account?cancel_error=no_sub", status_code=303)
 
     try:
