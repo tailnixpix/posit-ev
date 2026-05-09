@@ -425,7 +425,7 @@ footer, footer a, footer span { color: var(--d-muted) !important; }
 
     {# Action buttons #}
     <div class="acct-btn-row">
-      {% if user.stripe_customer_id %}
+      {% if user.is_subscribed or is_trial %}
       <a href="/account/billing-portal" class="acct-btn acct-btn-ghost">💳 Manage Billing</a>
       {% endif %}
 

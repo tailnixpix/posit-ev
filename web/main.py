@@ -1969,22 +1969,36 @@ async def billing_portal(request: Request, db: Session = Depends(get_db)):
     user = _get_authed_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=303)
-    if not user.stripe_customer_id:
-        # No Stripe customer record — typically happens for admin-granted trials
-        # that never went through checkout. Billing portal requires a customer ID.
-        log.warning("billing_portal: no stripe_customer_id for user %s", user.email)
-        return RedirectResponse(url="/account?portal_error=no_customer", status_code=303)
 
     _stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
-    key_prefix = _stripe.api_key[:14] if _stripe.api_key else "MISSING"
     if not _stripe.api_key:
         log.error("billing_portal: STRIPE_SECRET_KEY not configured.")
         return RedirectResponse(url="/account?portal_error=1", status_code=303)
 
     base_url = os.getenv("BASE_URL", "http://localhost:8000")
+
+    # ── Ensure a live-mode customer exists ────────────────────────────────────
+    # If stripe_customer_id is missing (admin trial, test-mode stale ID already
+    # cleared) or invalid, create a fresh live-mode customer so the portal can open.
+    if not user.stripe_customer_id:
+        try:
+            cust = _stripe.Customer.create(
+                email=user.email,
+                metadata={"user_id": str(user.id)},
+            )
+            user.stripe_customer_id = cust.id
+            db.commit()
+            log.info(
+                "billing_portal: created live-mode customer %s for user %s",
+                cust.id, user.email,
+            )
+        except _stripe.error.StripeError as exc:
+            log.error("billing_portal: failed to create customer for %s: %s", user.email, exc)
+            return RedirectResponse(url="/account?portal_error=1", status_code=303)
+
     log.info(
-        "billing_portal: attempting for user %s customer_id=%s key_prefix=%s",
-        user.email, user.stripe_customer_id, key_prefix,
+        "billing_portal: opening portal for user %s customer_id=%s",
+        user.email, user.stripe_customer_id,
     )
     try:
         portal = _stripe.billing_portal.Session.create(
@@ -1993,12 +2007,11 @@ async def billing_portal(request: Request, db: Session = Depends(get_db)):
         )
         return RedirectResponse(url=portal.url, status_code=303)
     except _stripe.error.InvalidRequestError as exc:
-        # Typically: test-mode customer ID used with live key, or deleted customer.
-        # Clear the stale ID so the user can go through checkout to get a live one.
+        # Stale customer ID (e.g. test-mode ID that wasn't cleared yet).
+        # Clear it so next click auto-creates a fresh one.
         log.error(
-            "Billing portal InvalidRequestError for user %s customer %s key_prefix=%s — "
-            "clearing stale customer_id: %s",
-            user.email, user.stripe_customer_id, key_prefix, exc,
+            "billing_portal: InvalidRequestError for user %s customer %s — clearing: %s",
+            user.email, user.stripe_customer_id, exc,
         )
         try:
             user.stripe_customer_id = None
@@ -2006,18 +2019,12 @@ async def billing_portal(request: Request, db: Session = Depends(get_db)):
         except Exception as _dbe:
             db.rollback()
             log.error("billing_portal: failed to clear stale customer_id: %s", _dbe)
-        return RedirectResponse(url="/account?portal_error=no_customer", status_code=303)
-    except _stripe.error.AuthenticationError as exc:
-        log.error(
-            "Billing portal AuthenticationError — STRIPE_SECRET_KEY is invalid. key_prefix=%s: %s",
-            key_prefix, exc,
-        )
         return RedirectResponse(url="/account?portal_error=1", status_code=303)
     except _stripe.error.StripeError as exc:
-        log.error("Billing portal StripeError for user %s key_prefix=%s: %s", user.email, key_prefix, exc)
+        log.error("billing_portal: StripeError for user %s: %s", user.email, exc)
         return RedirectResponse(url="/account?portal_error=1", status_code=303)
     except Exception as exc:
-        log.error("Billing portal unexpected error for user %s: %s", user.email, exc, exc_info=True)
+        log.error("billing_portal: unexpected error for user %s: %s", user.email, exc, exc_info=True)
         return RedirectResponse(url="/account?portal_error=1", status_code=303)
 
 
