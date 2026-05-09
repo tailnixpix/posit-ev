@@ -1977,10 +1977,28 @@ async def billing_portal(request: Request, db: Session = Depends(get_db)):
 
     base_url = os.getenv("BASE_URL", "http://localhost:8000")
 
-    # ── Ensure a live-mode customer exists ────────────────────────────────────
-    # If stripe_customer_id is missing (admin trial, test-mode stale ID already
-    # cleared) or invalid, create a fresh live-mode customer so the portal can open.
-    if not user.stripe_customer_id:
+    def _ensure_live_customer() -> "str | None":
+        """
+        Return a valid live-mode Stripe customer ID for this user.
+        Creates one if missing or stale. Returns None on failure.
+        """
+        if user.stripe_customer_id:
+            # Verify it exists in the current key's mode.
+            try:
+                _stripe.Customer.retrieve(user.stripe_customer_id)
+                return user.stripe_customer_id          # valid — use it
+            except _stripe.error.InvalidRequestError:
+                log.warning(
+                    "billing_portal: stale customer_id %s for %s — will create fresh",
+                    user.stripe_customer_id, user.email,
+                )
+                user.stripe_customer_id = None
+                try:
+                    db.commit()
+                except Exception:
+                    db.rollback()
+
+        # Create a fresh customer in the current key's mode.
         try:
             cust = _stripe.Customer.create(
                 email=user.email,
@@ -1989,42 +2007,30 @@ async def billing_portal(request: Request, db: Session = Depends(get_db)):
             user.stripe_customer_id = cust.id
             db.commit()
             log.info(
-                "billing_portal: created live-mode customer %s for user %s",
+                "billing_portal: created customer %s for %s",
                 cust.id, user.email,
             )
+            return cust.id
         except _stripe.error.StripeError as exc:
             log.error("billing_portal: failed to create customer for %s: %s", user.email, exc)
-            return RedirectResponse(url="/account?portal_error=1", status_code=303)
+            return None
 
-    log.info(
-        "billing_portal: opening portal for user %s customer_id=%s",
-        user.email, user.stripe_customer_id,
-    )
+    customer_id = _ensure_live_customer()
+    if not customer_id:
+        return RedirectResponse(url="/account?portal_error=1", status_code=303)
+
+    log.info("billing_portal: opening portal for %s customer=%s", user.email, customer_id)
     try:
         portal = _stripe.billing_portal.Session.create(
-            customer=user.stripe_customer_id,
+            customer=customer_id,
             return_url=f"{base_url}/account",
         )
         return RedirectResponse(url=portal.url, status_code=303)
-    except _stripe.error.InvalidRequestError as exc:
-        # Stale customer ID (e.g. test-mode ID that wasn't cleared yet).
-        # Clear it so next click auto-creates a fresh one.
-        log.error(
-            "billing_portal: InvalidRequestError for user %s customer %s — clearing: %s",
-            user.email, user.stripe_customer_id, exc,
-        )
-        try:
-            user.stripe_customer_id = None
-            db.commit()
-        except Exception as _dbe:
-            db.rollback()
-            log.error("billing_portal: failed to clear stale customer_id: %s", _dbe)
-        return RedirectResponse(url="/account?portal_error=1", status_code=303)
     except _stripe.error.StripeError as exc:
-        log.error("billing_portal: StripeError for user %s: %s", user.email, exc)
+        log.error("billing_portal: portal session failed for %s: %s", user.email, exc)
         return RedirectResponse(url="/account?portal_error=1", status_code=303)
     except Exception as exc:
-        log.error("billing_portal: unexpected error for user %s: %s", user.email, exc, exc_info=True)
+        log.error("billing_portal: unexpected error for %s: %s", user.email, exc, exc_info=True)
         return RedirectResponse(url="/account?portal_error=1", status_code=303)
 
 
@@ -2051,11 +2057,34 @@ async def billing_portal_debug(request: Request, db: Session = Depends(get_db)):
         result["detail"] = "STRIPE_SECRET_KEY not set"
         return _JSON(result)
 
-    if not user.stripe_customer_id:
-        result["status"] = "no_customer_id"
-        result["detail"] = "stripe_customer_id is None in DB"
-        return _JSON(result)
+    # Verify / create customer
+    if user.stripe_customer_id:
+        try:
+            _stripe.Customer.retrieve(user.stripe_customer_id)
+            result["customer_valid"] = True
+        except _stripe.error.InvalidRequestError as exc:
+            result["customer_valid"] = False
+            result["customer_error"] = str(exc)
+            # Clear stale and create fresh
+            user.stripe_customer_id = None
+            try:
+                db.commit()
+            except Exception:
+                db.rollback()
 
+    if not user.stripe_customer_id:
+        try:
+            cust = _stripe.Customer.create(email=user.email, metadata={"user_id": str(user.id)})
+            user.stripe_customer_id = cust.id
+            db.commit()
+            result["created_customer"] = cust.id
+        except Exception as exc:
+            result["status"] = "error"
+            result["error_type"] = type(exc).__name__
+            result["detail"] = str(exc)
+            return _JSON(result)
+
+    result["stripe_customer_id"] = user.stripe_customer_id
     try:
         portal = _stripe.billing_portal.Session.create(
             customer=user.stripe_customer_id,
