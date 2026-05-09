@@ -2028,6 +2028,49 @@ async def billing_portal(request: Request, db: Session = Depends(get_db)):
         return RedirectResponse(url="/account?portal_error=1", status_code=303)
 
 
+@app.get("/account/billing-portal-debug")
+async def billing_portal_debug(request: Request, db: Session = Depends(get_db)):
+    """Temporary debug endpoint — returns exact Stripe portal status as JSON."""
+    from fastapi.responses import JSONResponse as _JSON
+    user = _get_authed_user(request, db)
+    if not user:
+        return _JSON({"error": "not_authenticated"})
+
+    _stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
+    result = {
+        "user_email":          user.email,
+        "stripe_customer_id":  user.stripe_customer_id,
+        "is_subscribed":       user.is_subscribed,
+        "stripe_sub_id":       user.stripe_subscription_id,
+        "key_prefix":          _stripe.api_key[:14] if _stripe.api_key else "MISSING",
+        "key_mode":            "live" if (_stripe.api_key or "").startswith("sk_live") else "test",
+    }
+
+    if not _stripe.api_key:
+        result["status"] = "error"
+        result["detail"] = "STRIPE_SECRET_KEY not set"
+        return _JSON(result)
+
+    if not user.stripe_customer_id:
+        result["status"] = "no_customer_id"
+        result["detail"] = "stripe_customer_id is None in DB"
+        return _JSON(result)
+
+    try:
+        portal = _stripe.billing_portal.Session.create(
+            customer=user.stripe_customer_id,
+            return_url=os.getenv("BASE_URL", "https://www.posit-ev.com") + "/account",
+        )
+        result["status"] = "success"
+        result["portal_url"] = portal.url
+        return _JSON(result)
+    except Exception as exc:
+        result["status"] = "error"
+        result["error_type"] = type(exc).__name__
+        result["detail"] = str(exc)
+        return _JSON(result)
+
+
 @app.get("/privacy", response_class=HTMLResponse)
 async def privacy(request: Request):
     return templates.TemplateResponse(request, "privacy.html", {})
