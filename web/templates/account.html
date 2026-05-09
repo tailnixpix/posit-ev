@@ -369,8 +369,13 @@ footer, footer a, footer span { color: var(--d-muted) !important; }
   {% elif cancel_error == 'no_sub' %}
   <div class="acct-alert acct-alert-error">❌ No active subscription found. If you believe this is an error, please <a href="#" onclick="openSupportModal();return false;" style="color:inherit;text-decoration:underline;">contact support</a>.</div>
   {% endif %}
-  {% if portal_error %}
-  <div class="acct-alert acct-alert-error">❌ Couldn't open the billing portal right now. Please try again shortly.</div>
+  {% if reactivate_error %}
+  <div class="acct-alert acct-alert-error">❌ Couldn't reactivate your subscription right now. Please try again or <a href="#" onclick="openSupportModal();return false;" style="color:inherit;text-decoration:underline;">contact support</a>.</div>
+  {% endif %}
+  {% if portal_error == 'no_customer' %}
+  <div class="acct-alert acct-alert-error">❌ No billing account on file. To cancel, use the <strong>Cancel Subscription</strong> button below. For other billing help, <a href="#" onclick="openSupportModal();return false;" style="color:inherit;text-decoration:underline;">contact support</a>.</div>
+  {% elif portal_error %}
+  <div class="acct-alert acct-alert-error">❌ Billing portal is unavailable right now. To cancel your subscription, use the <strong>Cancel Subscription</strong> button below. For payment changes, <a href="#" onclick="openSupportModal();return false;" style="color:inherit;text-decoration:underline;">contact support</a>.</div>
   {% endif %}
 
   {# ── Plan & Billing ────────────────────────────────────────── #}

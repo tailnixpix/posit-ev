@@ -1743,6 +1743,7 @@ async def account_page(request: Request, db: Session = Depends(get_db)):
         "cancel_done":          qs.get("cancel_done"),
         "cancel_error":         qs.get("cancel_error"),
         "reactivated":          qs.get("reactivated"),
+        "reactivate_error":     qs.get("reactivate_error"),
         "portal_error":         qs.get("portal_error"),
     })
 
@@ -1883,13 +1884,36 @@ async def cancel_subscription(request: Request, db: Session = Depends(get_db)):
             log.error("cancel_subscription: DB clear failed: %s", _db_exc)
         return RedirectResponse(url="/account?cancel_done=1", status_code=303)
     except _stripe.error.StripeError as exc:
-        # Network errors, rate limits, Stripe outages — these are transient.
-        # Log but don't clear access; user can retry.
-        log.error("Cancel subscription StripeError for user %s: %s", user.email, exc, exc_info=True)
-        return RedirectResponse(url="/account?cancel_error=stripe", status_code=303)
+        # Any Stripe error (auth failure, network outage, rate limit, etc.) while
+        # the user is explicitly requesting cancellation should NOT block them.
+        # Clear DB access immediately and log prominently for manual Stripe follow-up.
+        # The subscription may still be active in Stripe — operations team should
+        # verify via the Stripe Dashboard if needed.
+        log.error(
+            "Cancel subscription StripeError for user %s sub %s: %s "
+            "— clearing DB access anyway (user intent = cancel).",
+            user.email, user.stripe_subscription_id, exc, exc_info=True,
+        )
+        user.is_subscribed = False
+        user.trial_ends_at = None
+        try:
+            db.commit()
+        except Exception as _db_exc:
+            log.error("cancel_subscription: DB clear failed after StripeError: %s", _db_exc)
+        return RedirectResponse(url="/account?cancel_done=1", status_code=303)
     except Exception as exc:
-        log.error("Cancel subscription unexpected error for user %s: %s", user.email, exc, exc_info=True)
-        return RedirectResponse(url="/account?cancel_error=stripe", status_code=303)
+        log.error(
+            "Cancel subscription unexpected error for user %s sub %s: %s "
+            "— clearing DB access anyway.",
+            user.email, user.stripe_subscription_id, exc, exc_info=True,
+        )
+        user.is_subscribed = False
+        user.trial_ends_at = None
+        try:
+            db.commit()
+        except Exception as _db_exc:
+            log.error("cancel_subscription: DB clear failed after Exception: %s", _db_exc)
+        return RedirectResponse(url="/account?cancel_done=1", status_code=303)
 
     # Stripe call succeeded — revoke access in DB immediately (don't wait for webhook)
     user.is_subscribed = False
@@ -1920,7 +1944,7 @@ async def reactivate_subscription(request: Request, db: Session = Depends(get_db
         log.info("Subscription reactivated for user %s", user.email)
     except Exception as exc:
         log.error("Reactivate subscription failed for user %s: %s", user.email, exc, exc_info=True)
-        return RedirectResponse(url="/account?cancel_error=stripe", status_code=303)
+        return RedirectResponse(url="/account?reactivate_error=1", status_code=303)
 
     return RedirectResponse(url="/account?reactivated=1", status_code=303)
 
@@ -1932,7 +1956,10 @@ async def billing_portal(request: Request, db: Session = Depends(get_db)):
     if not user:
         return RedirectResponse(url="/login", status_code=303)
     if not user.stripe_customer_id:
-        return RedirectResponse(url="/account", status_code=303)
+        # No Stripe customer record — typically happens for admin-granted trials
+        # that never went through checkout. Billing portal requires a customer ID.
+        log.warning("billing_portal: no stripe_customer_id for user %s", user.email)
+        return RedirectResponse(url="/account?portal_error=no_customer", status_code=303)
 
     _stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
     base_url = os.getenv("BASE_URL", "http://localhost:8000")
@@ -1943,7 +1970,10 @@ async def billing_portal(request: Request, db: Session = Depends(get_db)):
         )
         return RedirectResponse(url=portal.url, status_code=303)
     except _stripe.error.StripeError as exc:
-        log.error("Billing portal failed for user %s: %s", user.email, exc)
+        log.error("Billing portal StripeError for user %s: %s", user.email, exc)
+        return RedirectResponse(url="/account?portal_error=1", status_code=303)
+    except Exception as exc:
+        log.error("Billing portal unexpected error for user %s: %s", user.email, exc, exc_info=True)
         return RedirectResponse(url="/account?portal_error=1", status_code=303)
 
 
