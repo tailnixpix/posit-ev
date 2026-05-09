@@ -1959,15 +1959,27 @@ async def dashboard(
     Served only after SubscriptionMiddleware confirms valid JWT + active subscription.
     Reads today's +EV bets from EVBetCache — no live API calls on page load.
     """
-    # Only show bets for games that haven't started yet.
-    # Rows with NULL commence_time (rare edge case) are included so they're
-    # never silently dropped.
+    # Only show bets for games that:
+    #   (a) have no commence_time (rare edge case, included so they're never silently dropped), OR
+    #   (b) start on today's date (CT) or later AND haven't started yet.
+    # Two-part filter prevents both stale yesterday rows and already-started games
+    # from appearing even if a cache refresh hasn't run recently.
     _now_utc = datetime.now(timezone.utc)
+    from zoneinfo import ZoneInfo as _ZI
+    _CT2 = _ZI("America/Chicago")
+    _today_ct = datetime.now(_CT2).date()
+    _today_midnight_utc = datetime(
+        _today_ct.year, _today_ct.month, _today_ct.day,
+        tzinfo=_CT2
+    ).astimezone(timezone.utc)
     bets = (
         db.query(EVBetCache)
         .filter(
             (EVBetCache.commence_time == None) |  # noqa: E711
-            (EVBetCache.commence_time > _now_utc)
+            (
+                (EVBetCache.commence_time >= _today_midnight_utc) &
+                (EVBetCache.commence_time > _now_utc)
+            )
         )
         .order_by(EVBetCache.ev_percent.desc())
         .all()
