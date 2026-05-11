@@ -1071,7 +1071,7 @@ def generate_card_summary(bet: dict) -> Optional[str]:
             timeout=15.0,
         )
         message = client.messages.create(
-            model="claude-haiku-4-5",
+            model="claude-haiku-3-5",
             max_tokens=120,
             messages=[{"role": "user", "content": prompt}],
         )

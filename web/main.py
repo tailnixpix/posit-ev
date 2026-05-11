@@ -780,6 +780,14 @@ async def on_startup() -> None:
             _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS all_book_odds TEXT"))
             _db.execute(text("ALTER TABLE daily_picks ADD COLUMN IF NOT EXISTS player_name VARCHAR"))
             _db.execute(text("ALTER TABLE daily_picks ADD COLUMN IF NOT EXISTS is_prop BOOLEAN DEFAULT FALSE"))
+            _db.commit()
+        except Exception:
+            _db.rollback()
+
+    # Migrate card_summary in its own block so a failure here never rolls back
+    # the main migration batch above.
+    with SessionLocal() as _db:
+        try:
             _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS card_summary TEXT"))
             _db.commit()
         except Exception:
@@ -901,7 +909,7 @@ async def on_startup() -> None:
         trigger=IntervalTrigger(minutes=30),
         id="card_summary_gen",
         name="Generate card summaries for new picks (every 30 min)",
-        next_run_time=datetime.now(timezone.utc) + __import__("datetime").timedelta(minutes=2),
+        next_run_time=datetime.now(timezone.utc) + timedelta(minutes=2),
         misfire_grace_time=120,
         replace_existing=True,
     )
