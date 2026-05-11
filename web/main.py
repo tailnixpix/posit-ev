@@ -25,9 +25,11 @@ Run:
     uvicorn web.main:app --reload
 """
 
+import json
 import logging
 import math
 import os
+import re
 import secrets
 import sys
 from datetime import datetime, timedelta, timezone
@@ -674,6 +676,117 @@ def refresh_ev_cache() -> int:
 
 
 # ---------------------------------------------------------------------------
+# Game context enrichment — runs in background after each cache refresh
+# ---------------------------------------------------------------------------
+
+def _parse_game_teams(game: str) -> tuple[str, str]:
+    """
+    Parse 'Away Team @ Home Team' format.
+    Returns (home_team, away_team).  Both empty strings on failure.
+    """
+    if not game:
+        return "", ""
+    m = re.match(r"^(.+?)\s+@\s+(.+)$", game.strip())
+    if m:
+        return m.group(2).strip(), m.group(1).strip()
+    return "", ""
+
+
+def _key_injuries_changed(old_json: str, new_json: str) -> bool:
+    """
+    Return True if the set of Out/Doubtful players changed between two
+    game_context JSON strings (signals summary should be regenerated).
+    """
+    try:
+        def _key_set(raw: str) -> set:
+            ctx = json.loads(raw)
+            return {
+                (inj["player"], inj["status"])
+                for side in ("home", "away")
+                for inj in ctx.get("injuries", {}).get(side, [])
+                if inj.get("status") in ("Out", "Doubtful")
+            }
+        return _key_set(old_json) != _key_set(new_json)
+    except Exception:
+        return False
+
+
+def _enrich_game_contexts() -> None:
+    """
+    Fetch real-world context (injuries, rest, weather, pace) for all active
+    +EV bets and persist to the game_context column.
+
+    Groups bets by game so each unique matchup is only queried once per run.
+    If key injuries changed since the last run, card_summary is cleared so it
+    will be regenerated with fresh context by _generate_pending_summaries().
+    """
+    try:
+        from models.game_context import enrich_game as _enrich
+    except ImportError as exc:
+        log.warning("_enrich_game_contexts: import failed: %s", exc)
+        return
+
+    db = SessionLocal()
+    try:
+        now = datetime.now(timezone.utc)
+        bets = (
+            db.query(EVBetCache)
+            .filter(EVBetCache.commence_time > now)
+            .all()
+        )
+        if not bets:
+            return
+
+        game_ctx_cache: dict[str, dict] = {}
+        updated = 0
+
+        for bet in bets:
+            game_key = bet.game_id or bet.game or f"{bet.league}:{bet.team}"
+
+            if game_key in game_ctx_cache:
+                new_ctx = game_ctx_cache[game_key]
+            else:
+                home, away = _parse_game_teams(bet.game or "")
+                new_ctx = _enrich(
+                    league=bet.league or "",
+                    home_team=home,
+                    away_team=away,
+                    commence_time=bet.commence_time,
+                )
+                game_ctx_cache[game_key] = new_ctx
+
+            if not new_ctx:
+                continue
+
+            new_ctx_json = json.dumps(new_ctx, default=str)
+
+            # If key injuries changed → clear summary so it regenerates
+            if bet.game_context and _key_injuries_changed(bet.game_context, new_ctx_json):
+                bet.card_summary = None
+                log.info(
+                    "game_context: injury change for %r — card_summary cleared", bet.game
+                )
+
+            bet.game_context = new_ctx_json
+            updated += 1
+
+        if updated:
+            try:
+                db.commit()
+                log.info(
+                    "game_context: enriched %d bets (%d unique games)",
+                    updated, len(game_ctx_cache),
+                )
+            except Exception as dbe:
+                db.rollback()
+                log.error("game_context: DB commit failed: %s", dbe)
+    except Exception as exc:
+        log.error("_enrich_game_contexts: unexpected error: %s", exc, exc_info=True)
+    finally:
+        db.close()
+
+
+# ---------------------------------------------------------------------------
 # Card summary generation — runs in background after each cache refresh
 # ---------------------------------------------------------------------------
 
@@ -723,6 +836,7 @@ def _generate_pending_summaries() -> None:
                 "proj_home_win_prob": row.proj_home_win_prob,
                 "proj_total":       row.proj_total,
                 "adj_flags":        row.adj_flags or "",
+                "game_context":     row.game_context,   # real-world enrichment JSON
             }
             summary = _gen_summary(bet_dict)
             if summary:
@@ -789,6 +903,14 @@ async def on_startup() -> None:
     with SessionLocal() as _db:
         try:
             _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS card_summary TEXT"))
+            _db.commit()
+        except Exception:
+            _db.rollback()
+
+    # Migrate game_context (real-world enrichment JSON) — isolated block.
+    with SessionLocal() as _db:
+        try:
+            _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS game_context TEXT"))
             _db.commit()
         except Exception:
             _db.rollback()
@@ -899,6 +1021,17 @@ async def on_startup() -> None:
         id="ev_cache_refresh",
         name="Refresh EV bet cache (every 30 min)",
         next_run_time=datetime.now(timezone.utc),   # run once at startup
+        misfire_grace_time=120,
+        replace_existing=True,
+    )
+    # Enrich game context (injuries, rest, weather, pace) ~1 min after cache
+    # refresh.  Runs before summary generation so summaries include fresh data.
+    scheduler.add_job(
+        _enrich_game_contexts,
+        trigger=IntervalTrigger(minutes=30),
+        id="game_context_enrich",
+        name="Enrich game context (injuries/rest/weather/pace) every 30 min",
+        next_run_time=datetime.now(timezone.utc) + timedelta(minutes=1),
         misfire_grace_time=120,
         replace_existing=True,
     )

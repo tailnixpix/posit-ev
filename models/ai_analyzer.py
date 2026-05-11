@@ -1057,6 +1057,69 @@ def generate_card_summary(bet: dict) -> Optional[str]:
 
     signal_block = "\n".join(signals)
 
+    # ── Real-world context (injuries, rest, weather, pace) ────────────────
+    game_context_raw = bet.get("game_context")
+    if game_context_raw:
+        try:
+            ctx = json.loads(game_context_raw)
+            ctx_lines: list[str] = []
+
+            # Injuries — only Out / Doubtful are meaningful
+            for side in ("home", "away"):
+                key_out = [
+                    p["player"]
+                    for p in ctx.get("injuries", {}).get(side, [])
+                    if p.get("status") in ("Out", "Doubtful")
+                ]
+                if key_out:
+                    ctx_lines.append(
+                        f"{side.title()} injuries (Out/Doubtful): {', '.join(key_out[:3])}"
+                    )
+
+            # Rest advantage / back-to-back
+            rest = ctx.get("rest", {})
+            if rest.get("home_b2b"):
+                ctx_lines.append("Home team on back-to-back (0 days rest)")
+            if rest.get("away_b2b"):
+                ctx_lines.append("Away team on back-to-back (0 days rest)")
+            elif (
+                rest.get("home_days_rest") is not None
+                and rest.get("away_days_rest") is not None
+            ):
+                h, a = rest["home_days_rest"], rest["away_days_rest"]
+                if abs(h - a) >= 2:
+                    adv = "Home" if h > a else "Away"
+                    ctx_lines.append(
+                        f"Rest edge: {adv} team ({max(h, a)}d rest vs {min(h, a)}d for opponent)"
+                    )
+
+            # Weather (outdoor games only)
+            weather = ctx.get("weather", {})
+            if weather:
+                ctx_lines.append(f"Weather: {weather['summary']}")
+
+            # Pace / scoring efficiency
+            pace = ctx.get("pace", {})
+            if "home_pace" in pace and "away_pace" in pace:
+                ctx_lines.append(
+                    f"Pace: Home {pace['home_pace']:.0f} vs Away {pace['away_pace']:.0f} poss/48"
+                )
+            elif "home_goals_pg" in pace and "away_goals_pg" in pace:
+                ctx_lines.append(
+                    f"Scoring pace: Home {pace['home_goals_pg']:.1f} vs Away {pace['away_goals_pg']:.1f} goals/gm"
+                )
+            elif "home_runs_pg" in pace and "away_runs_pg" in pace:
+                ctx_lines.append(
+                    f"Scoring pace: Home {pace['home_runs_pg']:.1f} vs Away {pace['away_runs_pg']:.1f} runs/gm"
+                )
+
+            if ctx_lines:
+                signal_block += "\n\nReal-world context:\n" + "\n".join(
+                    f"- {line}" for line in ctx_lines
+                )
+        except Exception:
+            pass  # bad JSON or unexpected shape — just skip context
+
     prompt = (
         "You are a concise sports betting analyst. Given these signals for a +EV bet, "
         "write EXACTLY 2-3 sentences explaining the key edge. "
