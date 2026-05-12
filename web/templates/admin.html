@@ -1247,6 +1247,24 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
 
 {% block scripts %}
 <script>
+/* ── Preserve scroll position across form submissions ── */
+(function () {
+  // Disable browser's own scroll restoration so we control it entirely
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+
+  // Restore saved position immediately (script runs after body is painted)
+  var _savedY = sessionStorage.getItem('adminScroll');
+  if (_savedY !== null) {
+    sessionStorage.removeItem('adminScroll');
+    window.scrollTo(0, parseInt(_savedY, 10));
+  }
+
+  // Capture scroll before every form submit on this page
+  document.addEventListener('submit', function () {
+    sessionStorage.setItem('adminScroll', window.scrollY);
+  });
+})();
+
 /* ── Collapsible sections ── */
 function toggleColl(id) {
   const body = document.getElementById(id);
