@@ -322,6 +322,7 @@ def fetch_player_props(sport_key: str, event_id: str, bookmakers: list[str] = No
     Props use sportsbooks only — Betfair Exchange doesn't offer US player props."""
     prop_markets = PROP_MARKETS_BY_SPORT.get(sport_key, [])
     if not prop_markets:
+        log.warning("fetch_player_props: no prop markets configured for sport %s", sport_key)
         return []
     bookmakers = bookmakers or PROPS_BOOKMAKERS
     url = f"{ODDS_API_BASE_URL}/sports/{sport_key}/events/{event_id}/odds"
@@ -332,10 +333,13 @@ def fetch_player_props(sport_key: str, event_id: str, bookmakers: list[str] = No
         "bookmakers": ",".join(bookmakers),
         "oddsFormat": ODDS_FORMAT,
     }
-    log.debug("Fetching props for event %s (%s)", event_id, sport_key)
+    log.info("Props: fetching event %s (%s) — markets: %s", event_id, sport_key, prop_markets)
     data = _get(url, params)
     time.sleep(REQUEST_DELAY_SEC)
-    return data or []
+    if data is None:
+        log.warning("Props: event %s (%s) returned no data (422/quota/timeout).", event_id, sport_key)
+        return []
+    return data if isinstance(data, (dict, list)) else []
 
 
 # ---------------------------------------------------------------------------
@@ -502,17 +506,26 @@ def get_props_df(
             key=lambda g: g.get("commence_time", "")
         )[:max_games]
 
+        log.info(
+            "Props: %s — %d total games from API, %d within 30h window",
+            sport, len(games), len(upcoming),
+        )
+
         for game in upcoming:
+            game_label = f"{game.get('away_team', '?')} @ {game.get('home_team', '?')}"
             event_data = fetch_player_props(sport, game["id"], bookmakers=bookmakers)
+            before = len(all_rows)
             if isinstance(event_data, dict) and event_data:
                 all_rows.extend(_parse_props(event_data, sport_key=sport))
             elif isinstance(event_data, list):
                 for item in event_data:
                     if isinstance(item, dict):
                         all_rows.extend(_parse_props(item, sport_key=sport))
+            added = len(all_rows) - before
+            log.info("Props: %s — %s parsed %d rows", sport, game_label, added)
 
     if not all_rows:
-        log.debug("No player props data returned.")
+        log.warning("Props: no raw prop data returned across all sports (no games in window, quota issue, or all events returned 422).")
         return pd.DataFrame()
 
     df = pd.DataFrame(all_rows)

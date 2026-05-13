@@ -364,16 +364,26 @@ def find_positive_ev_props(
     SPORTSBOOK_SOURCE = "sportsbook"
 
     all_rows = []
+    # Skip counters — emitted as a single INFO log at the end for Railway visibility
+    _skip_outcomes = 0   # group had != 2 outcomes
+    _skip_books    = 0   # < 2 books or no sportsbooks
+    _total_groups  = 0
 
     for keys, group in props_df.groupby(
         ["game_id", "prop_market", "player", "point"], dropna=False
     ):
+        _total_groups += 1
         game_id, prop_market, player, point = keys
         meta = group.iloc[0]
         game_label = f"{meta['away_team']} @ {meta['home_team']}"
         outcome_order = sorted(group["outcome_name"].unique())
 
         if len(outcome_order) != 2:
+            _skip_outcomes += 1
+            log.debug(
+                "Props EV skip [outcomes≠2]: %s | %s | %s | outcomes=%s",
+                game_label, prop_market, player, list(outcome_order),
+            )
             continue  # props must have Over and Under
 
         book_odds: dict = {}        # all books — used for the sharp reference
@@ -400,6 +410,11 @@ def find_positive_ev_props(
         # Need at least 2 books total (e.g. Novig + one sportsbook) for a
         # meaningful sharp reference, and at least 1 sportsbook to emit a bet.
         if len(book_odds) < 2 or not sportsbook_odds:
+            _skip_books += 1
+            log.debug(
+                "Props EV skip [books]: %s | %s | %s | book_odds=%d sportsbook_odds=%d",
+                game_label, prop_market, player, len(book_odds), len(sportsbook_odds),
+            )
             continue
 
         sharp = sharpest_no_vig(book_odds, outcome_names=outcome_order)
@@ -440,7 +455,16 @@ def find_positive_ev_props(
                 })
                 all_rows.append(row)
 
+    log.info(
+        "Props EV: %d groups total — %d skipped (outcomes≠2), %d skipped (<2 books), %d had sportsbook EV rows",
+        _total_groups, _skip_outcomes, _skip_books, len(all_rows),
+    )
+
     if not all_rows:
+        log.warning(
+            "Props EV: no sportsbook rows generated. "
+            "Likely causes: all player lines covered by <2 books, or all lines have wrong outcome count."
+        )
         return pd.DataFrame()
 
     df = pd.DataFrame(all_rows)
@@ -450,6 +474,10 @@ def find_positive_ev_props(
         (df["ev_pct"] > ev_threshold) &
         (df["american_odds"] >= MAX_JUICE_AMERICAN)
     ].copy()
+    log.info(
+        "Props EV: %d total sportsbook rows → %d meet +EV threshold (>%.1f%% EV, odds≥%d)",
+        len(df), len(positive), ev_threshold, MAX_JUICE_AMERICAN,
+    )
     return positive.sort_values("ev_pct", ascending=False).reset_index(drop=True)
 
 
