@@ -1779,6 +1779,8 @@ async def get_analysis(bet_id: int, request: Request, db: Session = Depends(get_
         "all_book_odds":    bet_row.all_book_odds or "",
         # Source type (sportsbook vs exchange/prediction market)
         "source_type":      bet_row.source_type or "sportsbook",
+        # Stored real-world enrichment (injuries, rest/B2B, weather, pace)
+        "game_context":     bet_row.game_context or "",
     }
 
     # Run analysis in a thread (it's sync/blocking)

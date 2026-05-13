@@ -391,8 +391,10 @@ def _build_context(bet: dict, client: OptimalClient) -> dict:
 _SPORT_CONTEXT = {
     "basketball_nba": """
 Lead with the single strongest fact for this bet (use only what's in context):
-- PLAYOFF SEEDING: If either team is within 2 games of a seed boundary or home-court advantage, open with that scenario and both seeds — this is the lead.
-- BACK-TO-BACK: Name the team explicitly if confirmed. A fatigued team on a B2B typically covers at a materially lower rate.
+- INJURIES: Check `injuries.home` and `injuries.away`. If a star (All-Star level or primary scorer/playmaker) is Out or Doubtful, name them and state the impact — this is often the lead.
+- BACK-TO-BACK: Check `rest.home_b2b` and `rest.away_b2b`. Name the team explicitly if true. B2B teams cover at ~3-4% lower rate — quantify the disadvantage.
+- PLAYOFF SEEDING: If either team is within 2 games of a seed boundary or home-court advantage, open with that scenario and both seeds.
+- PACE MISMATCH: Check `pace.home_pace` vs `pace.away_pace`. A 5+ possession gap between teams creates over/under edge — state the numbers.
 - SHARP STEAM + FORM: If sharp score ≥50 and line moved toward this side, lead with that. Cite the last-10 record and streak.
 - PROPS: State the player's actual hit rate vs. this line from gamelogs (e.g. "Over in 7 of last 10 = 70% vs. 54% implied"). This is what makes or breaks the prop case.
 Skip anything not supported by the data provided.
@@ -400,6 +402,8 @@ Skip anything not supported by the data provided.
 
     "icehockey_nhl": """
 Lead with the single strongest fact for this bet (use only what's in context):
+- INJURIES: Check `injuries.home` and `injuries.away`. A top-6 forward or top-4 defenseman Out/Doubtful has direct line impact — name them.
+- BACK-TO-BACK: Check `rest.home_b2b` and `rest.away_b2b`. NHL B2B is a well-documented fatigue signal — name the team if true.
 - PLAYOFF STAKES: Conference rank, points, gap to wild card or elimination — if meaningful, this is the lead. State exactly what tonight determines.
 - GOALTENDER MATCHUP: Name both confirmed starters and state GAA / save%. If unconfirmed, say so.
 - FORM: Last-10 record and current streak for each team.
@@ -410,6 +414,8 @@ Skip anything not in the data.
 Lead with the single strongest fact for this bet (use only what's in context):
 - PITCHER VS. THIS TEAM (highest priority if pitcher_vs_team is present): State the starter's record, ERA, and number of starts against this specific opponent. This is more predictive than season ERA.
 - PITCHER SEASON STATS: ERA, WHIP. Mention the last start result if available.
+- WEATHER: Check `weather`. Wind >15 mph to center suppresses home runs and scoring; rain affects totals. State speed and direction if relevant.
+- INJURIES: Check `injuries.home` and `injuries.away`. A lineup's cleanup hitter or ace out changes the game total picture.
 - SERIES CONTEXT: Sweep scenario or series lead — strong motivational signal.
 - TEAM FORM: Current streak and last-10 record.
 Skip anything not in the data.
@@ -417,27 +423,32 @@ CRITICAL — pitcher names: Only cite a starter by name if their name appears in
 """,
 
     "soccer_epl": """
-Lead with the single strongest fact: table stakes (relegation, title race, top-4 — with specific points gap) or form. State last 5 W/D/L. Named injuries if present in context.
+Lead with the single strongest fact: table stakes (relegation, title race, top-4 — with specific points gap) or form. State last 5 W/D/L.
+- INJURIES: Check `injuries.home` and `injuries.away`. Named absences from context only — a striker or key midfielder Out changes the goal total picture.
 If "home_manager" or "away_manager" is in the context data, you may reference the manager by that name. If those fields are absent, do NOT mention managers at all.
 """,
 
     "soccer_spain_la_liga": """
-Lead with La Liga table stakes (title, UCL fight, relegation) with specific points gap if applicable. State last 5 form. Named absences from context only.
+Lead with La Liga table stakes (title, UCL fight, relegation) with specific points gap if applicable. State last 5 form.
+- INJURIES: Check `injuries.home` and `injuries.away`. Named absences from context only.
 If "home_manager" or "away_manager" is in the context data, you may reference the manager by that name. If those fields are absent, do NOT mention managers at all.
 """,
 
     "soccer_germany_bundesliga": """
 Lead with Bundesliga table stakes if applicable. State last 5 form and current streak.
+- INJURIES: Check `injuries.home` and `injuries.away`. Named absences from context only.
 If "home_manager" or "away_manager" is in the context data, you may reference the manager by that name. If those fields are absent, do NOT mention managers at all.
 """,
 
     "soccer_usa_mls": """
 State last 5 form and current streak. Mention playoff positioning if within 3 points. MLS home advantage is meaningful — note home/away record split if in the data.
+- INJURIES: Check `injuries.home` and `injuries.away`. Named absences from context only.
 If "home_manager" or "away_manager" is in the context data, you may reference the manager by that name. If those fields are absent, do NOT mention managers at all.
 """,
 
     "soccer_uefa_champs_league": """
 If knockout second leg: state the aggregate score and exactly what each team needs to advance — this is the lead, and the most important fact. Suspension risk (one yellow from a ban). Last 5 form.
+- INJURIES: Check `injuries.home` and `injuries.away`. A key striker or holding mid Out is major context.
 If "home_manager" or "away_manager" is in the context data, you may reference the manager by that name. If those fields are absent, do NOT mention managers at all.
 """,
 }
@@ -568,6 +579,45 @@ def _assess_context_quality(ctx: dict) -> tuple[str, int, list]:
         if stats_count > 0 and "individual pitcher stats" not in " ".join(fields):
             points += stats_count * 1  # +1 per pitcher with ERA/WHIP
             fields.append(f"season stats for {stats_count} pitcher(s)")
+
+    # Stored enrichment keys (injuries, rest, weather, pace)
+    inj = ctx.get("injuries", {})
+    if isinstance(inj, dict) and (inj.get("home") or inj.get("away")):
+        out_list = []
+        for side in ("home", "away"):
+            for p in inj.get(side, []):
+                if isinstance(p, dict) and p.get("status", "").lower() in ("out", "doubtful"):
+                    out_list.append(f"{p.get('name','?')} ({side}, {p.get('status','')})")
+        if out_list:
+            points += 4
+            fields.append(f"injuries: {', '.join(out_list[:4])}")
+        else:
+            points += 1
+            fields.append("injury report (no key absences)")
+
+    rest = ctx.get("rest", {})
+    if isinstance(rest, dict) and (rest.get("home_rest") is not None or rest.get("away_rest") is not None):
+        notes = []
+        if rest.get("home_b2b"):
+            notes.append("home B2B")
+        if rest.get("away_b2b"):
+            notes.append("away B2B")
+        hr = rest.get("home_rest")
+        ar = rest.get("away_rest")
+        if hr is not None and ar is not None:
+            notes.append(f"rest: home {hr}d / away {ar}d")
+        points += 3
+        fields.append(f"rest data ({', '.join(notes) if notes else 'normal rest'})")
+
+    weather = ctx.get("weather", {})
+    if isinstance(weather, dict) and weather:
+        points += 2
+        fields.append(f"weather: {weather.get('summary', 'available')}")
+
+    pace = ctx.get("pace", {})
+    if isinstance(pace, dict) and pace:
+        points += 2
+        fields.append("pace/efficiency stats")
 
     if points == 0:
         label = "NONE — context fetch failed entirely"
@@ -738,9 +788,11 @@ def _build_prompt(bet: dict, ctx: dict) -> tuple[str, str]:
     # Sport-specific analysis block
     sport_block = _SPORT_CONTEXT.get(league, """
 **Sport-Specific Factors to Address (use data from context where available):**
+- INJURIES: Check `injuries.home` and `injuries.away` — name any Out/Doubtful players and state their impact.
+- REST/FATIGUE: Check `rest.home_b2b` / `rest.away_b2b` and `rest.home_rest` / `rest.away_rest` — name any B2B team.
+- WEATHER: Check `weather` — wind, temperature, and conditions for outdoor games.
 - Recent form: wins/losses in last 5-7 games from team history data
 - Key matchup factors relevant to this market
-- Any injury or availability concerns visible in the data
 - Market movement signals from the odds data
 """)
 
@@ -771,6 +823,13 @@ Use as supplementary support. If sparse, lean on the key signals above. Never me
 ```json
 {ctx_json}
 ```
+
+**Stored enrichment guide — always check these keys if present in the JSON above:**
+- `injuries.home` / `injuries.away` — Out/Doubtful players. A star absent = direct line impact; name them.
+- `rest.home_b2b` / `rest.away_b2b` — true means that team played yesterday. Back-to-backs measurably lower cover rates; name the team.
+- `rest.home_rest` / `rest.away_rest` — days since last game. Large rest advantages (≥2 days) matter.
+- `weather` — outdoor games only (NFL/MLB). Extreme wind (>15 mph) suppresses scoring; heavy rain/snow affects totals.
+- `pace.home_pace` / `pace.away_pace` — NBA possessions per 48. High-pace team vs. slow team = over/under edge.
 
 {sport_block}
 
@@ -897,6 +956,25 @@ def analyze_bet(bet: dict, optimal_client: Optional[OptimalClient] = None) -> Op
         ctx = _build_context(bet, optimal_client)
     except Exception as exc:
         log.warning("analyze_bet: context fetch error (non-fatal): %s", exc)
+
+    # Merge stored enrichment (injuries, rest/B2B, weather, pace) computed at
+    # pipeline time by _enrich_game_contexts().  These are always reliable —
+    # inject directly into ctx so Claude sees them alongside live data.
+    stored_gc_raw = bet.get("game_context")
+    if stored_gc_raw:
+        try:
+            stored_gc = json.loads(stored_gc_raw)
+            if isinstance(stored_gc, dict):
+                for key in ("injuries", "rest", "weather", "pace"):
+                    if stored_gc.get(key) and key not in ctx:
+                        ctx[key] = stored_gc[key]
+                log.info(
+                    "analyze_bet: merged stored enrichment keys %s for bet id=%s",
+                    [k for k in ("injuries", "rest", "weather", "pace") if ctx.get(k)],
+                    bet.get("id"),
+                )
+        except Exception as exc:
+            log.warning("analyze_bet: failed to parse stored game_context: %s", exc)
 
     system_prompt, user_prompt = _build_prompt(bet, ctx)
 
