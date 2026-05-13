@@ -2954,23 +2954,6 @@ main { max-width: none !important; padding: 0 !important; }
     </div>
     {% endif %}
 
-    {# ── Trust strip (model track record) ── #}
-    {% if pick_record and pick_record.has_data %}
-    <div class="trust-strip">
-      <span class="ts-icon">📈</span>
-      <span class="ts-label">Model Record</span>
-      <span class="ts-record">{{ pick_record.wins }}-{{ pick_record.losses }}{% if pick_record.pushes %}-{{ pick_record.pushes }}{% endif %}</span>
-      <span class="ts-sep">·</span>
-      {% set _wr = (pick_record.wins / pick_record.total_picks * 100) | round(0) | int %}
-      <span class="ts-winrate">{{ _wr }}% Win</span>
-      <span class="ts-sep">·</span>
-      <span class="ts-roi {{ 'ts-roi-pos' if pick_record.roi >= 0 else 'ts-roi-neg' }}">{{ '+' if pick_record.roi >= 0 else '' }}{{ pick_record.roi }}% ROI</span>
-      <span class="ts-sep">·</span>
-      <span class="ts-units">{{ '+' if pick_record.units >= 0 else '' }}{{ pick_record.units }}u</span>
-      <span class="ts-disclaimer">Daily picks · flat $20 units · {{ pick_record.total_picks }} picks tracked</span>
-    </div>
-    {% endif %}
-
     {# Subheader #}
     <div class="dash-subheader">
       <div class="dash-title-block">
