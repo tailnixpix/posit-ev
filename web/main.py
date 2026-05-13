@@ -2366,6 +2366,14 @@ async def dashboard(
             trial_ends_at        = current_user.trial_ends_at
             trial_days_remaining = max(1, delta.days + (1 if delta.seconds > 0 else 0))
 
+    # Pick record for trust strip (all resolved daily picks)
+    _settled_picks = (
+        db.query(DailyPick)
+        .filter(DailyPick.result.in_(["won", "lost", "push"]))
+        .all()
+    )
+    pick_record_data = _compute_pick_record(_settled_picks) if _settled_picks else None
+
     return templates.TemplateResponse(
         request,
         "dashboard.html",
@@ -2380,6 +2388,7 @@ async def dashboard(
             "pick_still_live":      pick_still_live,
             "trial_days_remaining": trial_days_remaining,
             "trial_ends_at":        trial_ends_at,
+            "pick_record":          pick_record_data,
         },
     )
 

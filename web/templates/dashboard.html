@@ -641,6 +641,185 @@ main { max-width: none !important; padding: 0 !important; }
 .bet-card.ev-med   { border-left: 3px solid var(--d-orange); }
 .bet-card.flash    { animation: ev-flash 0.8s ease; }
 
+/* ── Elite tier: highest-confidence picks ─── */
+.bet-card.tier-elite {
+  border-left: 3px solid var(--d-purple);
+  background: linear-gradient(145deg, rgba(155,121,250,0.06) 0%, var(--d-card) 40%);
+  box-shadow: 0 0 0 1px rgba(155,121,250,0.12), 0 4px 20px rgba(0,0,0,0.25);
+}
+.bet-card.tier-elite:hover {
+  border-color: var(--d-purple);
+  box-shadow: 0 0 0 1px rgba(155,121,250,0.25), 0 6px 28px rgba(155,121,250,0.12), 0 4px 24px rgba(0,0,0,0.35);
+}
+.bet-card.tier-elite .ev-badge.ev-high {
+  background: rgba(155,121,250,0.15);
+  color: var(--d-purple);
+  border-color: rgba(155,121,250,0.35);
+  box-shadow: 0 0 14px rgba(155,121,250,0.25);
+}
+/* Elite ribbon accent at the top of the card */
+.elite-ribbon {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 14px;
+  background: linear-gradient(90deg, rgba(155,121,250,0.2) 0%, rgba(155,121,250,0.05) 100%);
+  border-bottom: 1px solid rgba(155,121,250,0.15);
+  font-size: 0.58rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--d-purple);
+}
+.elite-ribbon-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--d-purple);
+  box-shadow: 0 0 6px rgba(155,121,250,0.8);
+  flex-shrink: 0;
+}
+
+/* ── Trust strip (model performance bar above subheader) ── */
+.trust-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  background: rgba(0,214,143,0.04);
+  border: 1px solid rgba(0,214,143,0.14);
+  border-radius: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.ts-icon { font-size: 0.9rem; flex-shrink: 0; }
+.ts-label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--d-muted);
+  flex-shrink: 0;
+}
+.ts-record {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: var(--d-green);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+.ts-winrate {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--d-text);
+  flex-shrink: 0;
+}
+.ts-roi {
+  font-size: 0.78rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.ts-roi-pos { color: var(--d-green); }
+.ts-roi-neg { color: var(--d-red); }
+.ts-units {
+  font-size: 0.72rem;
+  color: var(--d-sub);
+  flex-shrink: 0;
+}
+.ts-sep { color: var(--d-border); font-size: 0.8rem; }
+.ts-disclaimer {
+  font-size: 0.58rem;
+  color: var(--d-muted);
+  margin-left: auto;
+  font-style: italic;
+}
+@media (max-width: 768px) {
+  .trust-strip { padding: 7px 12px; gap: 7px; }
+  .ts-disclaimer { display: none; }
+}
+
+/* ── Probability bars on card face ── */
+.prob-vis {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 10px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 8px;
+  padding: 9px 10px 7px;
+}
+.pv-hdr {
+  font-size: 0.55rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--d-muted);
+  margin-bottom: 3px;
+}
+.pv-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.pv-lbl {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  width: 38px;
+  flex-shrink: 0;
+}
+.pv-lbl-model { color: #4F9EFF; }
+.pv-lbl-book  { color: var(--d-muted); }
+.pv-track {
+  flex: 1;
+  height: 6px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+}
+.pv-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.7s cubic-bezier(0.4,0,0.2,1);
+}
+.pv-fill-model { background: linear-gradient(90deg, #4F9EFF, #9B79FA); }
+.pv-fill-book  { background: rgba(255,255,255,0.18); }
+.pv-pct {
+  font-size: 0.68rem;
+  font-weight: 700;
+  width: 34px;
+  text-align: right;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+.pv-pct-model { color: #4F9EFF; }
+.pv-pct-book  { color: var(--d-muted); }
+.pv-edge {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--d-green);
+  text-align: right;
+  margin-top: 2px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+
+/* ── Card summary new position ── */
+.card-summary-inline {
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: var(--d-sub);
+  border-left: 2px solid rgba(79,158,255,0.3);
+  padding: 6px 10px;
+  margin: 6px 0 10px;
+  background: rgba(79,158,255,0.04);
+  border-radius: 0 6px 6px 0;
+}
+/* hide old card-summary class (now replaced by card-summary-inline) */
+.card-summary { display: none !important; }
+
 /* Top ribbon */
 .card-ribbon {
   display: flex;
@@ -2339,7 +2518,10 @@ main { max-width: none !important; padding: 0 !important; }
 .cards-grid.compact-mode .card-actions-row,
 .cards-grid.compact-mode .analysis-wrap,
 .cards-grid.compact-mode .track-panel,
-.cards-grid.compact-mode .card-context { display: none !important; }
+.cards-grid.compact-mode .card-context,
+.cards-grid.compact-mode .prob-vis,
+.cards-grid.compact-mode .odds-compare-wrap,
+.cards-grid.compact-mode .card-summary-inline { display: none !important; }
 
 /* ═══════════════════════════════════════════════════════════════
    PARLAY BUILDER
@@ -2772,6 +2954,23 @@ main { max-width: none !important; padding: 0 !important; }
     </div>
     {% endif %}
 
+    {# ── Trust strip (model track record) ── #}
+    {% if pick_record and pick_record.has_data %}
+    <div class="trust-strip">
+      <span class="ts-icon">📈</span>
+      <span class="ts-label">Model Record</span>
+      <span class="ts-record">{{ pick_record.wins }}-{{ pick_record.losses }}{% if pick_record.pushes %}-{{ pick_record.pushes }}{% endif %}</span>
+      <span class="ts-sep">·</span>
+      {% set _wr = (pick_record.wins / pick_record.total_picks * 100) | round(0) | int %}
+      <span class="ts-winrate">{{ _wr }}% Win</span>
+      <span class="ts-sep">·</span>
+      <span class="ts-roi {{ 'ts-roi-pos' if pick_record.roi >= 0 else 'ts-roi-neg' }}">{{ '+' if pick_record.roi >= 0 else '' }}{{ pick_record.roi }}% ROI</span>
+      <span class="ts-sep">·</span>
+      <span class="ts-units">{{ '+' if pick_record.units >= 0 else '' }}{{ pick_record.units }}u</span>
+      <span class="ts-disclaimer">Daily picks · flat $20 units · {{ pick_record.total_picks }} picks tracked</span>
+    </div>
+    {% endif %}
+
     {# Subheader #}
     <div class="dash-subheader">
       <div class="dash-title-block">
@@ -2810,7 +3009,7 @@ main { max-width: none !important; padding: 0 !important; }
       {% if bets %}
         {% for bet in bets %}
           {# ── Derived display values ────────────────────────────────── #}
-          {% if bet.ev_percent >= 5 %}{% set tier = "ev-high" %}{% else %}{% set tier = "ev-med" %}{% endif %}
+          {% if bet.ev_percent >= 10 %}{% set tier = "ev-high tier-elite" %}{% elif bet.ev_percent >= 5 %}{% set tier = "ev-high" %}{% else %}{% set tier = "ev-med" %}{% endif %}
           {% set league_map = {"icehockey_nhl":"NHL","basketball_nba":"NBA","baseball_mlb":"MLB","soccer_epl":"EPL","soccer_spain_la_liga":"La Liga","soccer_germany_bundesliga":"Bundesliga","soccer_usa_mls":"MLS","soccer_uefa_champs_league":"UCL","americanfootball_nfl":"NFL"} %}
           {% set league_display = league_map.get(bet.league, bet.league | upper) %}
           {% set market_map = {"h2h":"Moneyline","h2h_3_way":"3-Way ML","spreads":"Spread","totals":"Total","btts":"Both Teams Score","team_totals":"Team Total","nrfi":"NRFI/YRFI","player_points":"Points","player_rebounds":"Rebounds","player_assists":"Assists","player_threes":"3-Pointers","player_blocks":"Blocks","player_steals":"Steals","player_turnovers":"Turnovers","player_double_double":"Dbl-Dbl","player_points_rebounds_assists":"Pts+Reb+Ast","player_points_rebounds":"Pts+Reb","player_points_assists":"Pts+Ast","player_goals":"Goals","player_shots_on_goal":"SOG","player_blocked_shots":"Blk Shots","player_saves":"Saves","player_anytime_goalscorer":"Anytime Scorer","player_power_play_points":"PP Points","batter_home_runs":"HR","batter_hits":"Hits","batter_rbis":"RBI","batter_total_bases":"Total Bases","batter_stolen_bases":"SB","batter_strikeouts":"Strikeouts","batter_walks":"BB","pitcher_strikeouts":"K's","pitcher_hits_allowed":"Hits Allowed","pitcher_earned_runs":"Earned Runs","pitcher_outs":"Pitcher Outs"} %}
@@ -2861,6 +3060,11 @@ main { max-width: none !important; padding: 0 !important; }
                {% if bet.commence_time %}data-commence="{{ bet.commence_time.isoformat() }}"{% endif %}
                {% if bet.all_book_odds %}data-all-book-odds="{{ bet.all_book_odds | e }}"{% endif %}
                onclick="_onBetCardClick(event, this)">
+
+            {# ── Elite tier accent ribbon ── #}
+            {% if 'tier-elite' in tier %}
+            <div class="elite-ribbon"><span class="elite-ribbon-dot"></span> Elite Pick — Top Conviction</div>
+            {% endif %}
 
             {# ── Top Pick ribbon — injected dynamically by JS after sort/filter ── #}
 
@@ -2946,6 +3150,11 @@ main { max-width: none !important; padding: 0 !important; }
                 {% endif %}
               </div>
 
+              {# — Inline AI summary (shown right before metrics for quick context) — #}
+              {% if bet.card_summary %}
+              <div class="card-summary-inline">{{ bet.card_summary }}</div>
+              {% endif %}
+
               {# — 4-Cell Metrics Strip — #}
               <div class="card-metrics">
                 <div class="metric-cell">
@@ -2967,6 +3176,22 @@ main { max-width: none !important; padding: 0 !important; }
                 </div>
               </div>
 
+              {# — Probability bars: Model vs Book visual edge — #}
+              {% set _edge_pp = (_true_pct - _implied_pct) | round(1) %}
+              <div class="prob-vis">
+                <div class="pv-row">
+                  <span class="pv-lbl pv-lbl-model">Model</span>
+                  <div class="pv-track"><div class="pv-fill pv-fill-model" style="width:{{ [_true_pct, 100] | min }}%"></div></div>
+                  <span class="pv-pct pv-pct-model">{{ "%.0f"|format(_true_pct) }}%</span>
+                </div>
+                <div class="pv-row">
+                  <span class="pv-lbl pv-lbl-book">Book</span>
+                  <div class="pv-track"><div class="pv-fill pv-fill-book" style="width:{{ [_implied_pct, 100] | min }}%"></div></div>
+                  <span class="pv-pct pv-pct-book">{{ "%.0f"|format(_implied_pct) }}%</span>
+                </div>
+                <div class="pv-edge">+{{ "%.1f"|format(_edge_pp) }}pp edge ({{ "%.1f"|format(bet.ev_percent) }}% EV)</div>
+              </div>
+
               {# — Cross-book price comparison (populated by JS) — #}
               {% if bet.all_book_odds %}<div class="odds-compare-wrap" id="oc-{{ bet.id }}"></div>{% endif %}
 
@@ -2980,11 +3205,6 @@ main { max-width: none !important; padding: 0 !important; }
                   {{ _cta_icon }} Bet Now →
                 </button>
               </div>
-
-              {# — Inline AI summary — #}
-              {% if bet.card_summary %}
-              <div class="card-summary">{{ bet.card_summary }}</div>
-              {% endif %}
 
               {# — Actions: Analyze + Track — #}
               <div class="card-actions-row">
