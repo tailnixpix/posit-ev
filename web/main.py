@@ -3222,3 +3222,98 @@ async def admin_send_correction_newsletter(
     result = await loop.run_in_executor(None, send_correction_newsletter)
     log.info("Correction newsletter triggered by admin: %s", result)
     return JSONResponse({"status": "sent", "result": result})
+
+
+# ---------------------------------------------------------------------------
+# Admin: props pipeline diagnostic endpoint
+# ---------------------------------------------------------------------------
+
+@app.get("/admin/test-props")
+async def admin_test_props(
+    request: Request,
+    sport: str = "basketball_nba",
+):
+    """
+    Admin-only diagnostic endpoint.
+    Runs a live props fetch for one sport and returns raw diagnostic data as JSON.
+    Useful for debugging why props are not populating on the dashboard.
+
+    Query params:
+      sport — one of basketball_nba, baseball_mlb, icehockey_nhl (default: basketball_nba)
+    """
+    if not _is_admin(request):
+        return JSONResponse({"error": "Unauthorized"}, status_code=403)
+
+    from scripts.odds_fetcher import (
+        get_props_df, PROP_SPORTS, PROPS_BOOKMAKERS,
+        get_quota_state, PROP_MARKETS_BY_SPORT,
+    )
+    from models.ev_calculator import find_positive_ev_props, EV_THRESHOLD_PCT
+    import pandas as _pd
+
+    if sport not in PROP_SPORTS:
+        return JSONResponse(
+            {"error": f"Invalid sport. Must be one of: {PROP_SPORTS}"},
+            status_code=400,
+        )
+
+    result: dict = {
+        "sport": sport,
+        "bookmakers_used": PROPS_BOOKMAKERS,
+        "markets_used": PROP_MARKETS_BY_SPORT.get(sport, []),
+        "ev_threshold_pct": EV_THRESHOLD_PCT,
+        "quota": get_quota_state(),
+        "props_raw_rows": 0,
+        "unique_players": [],
+        "unique_markets": [],
+        "unique_books": [],
+        "groups_total": 0,
+        "ev_rows_before_threshold": 0,
+        "positive_ev_rows": 0,
+        "sample_rows": [],
+        "error": None,
+    }
+
+    try:
+        import asyncio
+        loop = asyncio.get_event_loop()
+        props_df = await loop.run_in_executor(None, lambda: get_props_df(sport_keys=[sport]))
+
+        result["props_raw_rows"] = len(props_df)
+        result["quota"] = get_quota_state()
+
+        if props_df.empty:
+            result["error"] = "get_props_df returned empty DataFrame — no games in 30h window, quota exhausted, or all events returned 422/None"
+            return JSONResponse(result)
+
+        result["unique_players"] = sorted(props_df["player"].dropna().unique().tolist())[:30]
+        result["unique_markets"] = sorted(props_df["prop_market"].dropna().unique().tolist())
+        result["unique_books"]   = sorted(props_df["bookmaker"].dropna().unique().tolist())
+        result["unique_games"]   = sorted(props_df.apply(
+            lambda r: f"{r.get('away_team','?')} @ {r.get('home_team','?')}", axis=1
+        ).unique().tolist())
+
+        # Count groups
+        groups = list(props_df.groupby(["game_id", "prop_market", "player", "point"], dropna=False))
+        result["groups_total"] = len(groups)
+
+        # Run EV calc
+        ev_df = find_positive_ev_props(props_df, ev_threshold=0.0)  # threshold=0 to see all rows
+        result["ev_rows_before_threshold"] = len(ev_df)
+
+        positive_df = ev_df[ev_df["ev_pct"] > EV_THRESHOLD_PCT] if not ev_df.empty else ev_df
+        result["positive_ev_rows"] = len(positive_df)
+
+        if not ev_df.empty:
+            sample = ev_df.head(10)[["game", "market", "player_name", "outcome_name",
+                                      "bookmaker", "american_odds", "ev_pct", "true_prob"]].copy()
+            sample["american_odds"] = sample["american_odds"].astype(int)
+            sample["ev_pct"]   = sample["ev_pct"].round(2)
+            sample["true_prob"] = sample["true_prob"].round(4)
+            result["sample_rows"] = sample.to_dict(orient="records")
+
+    except Exception as exc:
+        result["error"] = str(exc)
+        log.error("admin/test-props: %s", exc, exc_info=True)
+
+    return JSONResponse(result)
