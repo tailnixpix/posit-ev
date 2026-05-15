@@ -146,6 +146,16 @@ class EVBetCache(Base):
     all_book_odds        = Column(Text, nullable=True)     # JSON: {bookmaker: american_odds} for all books on this line
     card_summary         = Column(Text, nullable=True)     # Short 2-3 sentence AI summary shown inline on card
     game_context         = Column(Text, nullable=True)     # JSON: real-world enrichment (injuries, rest, weather, pace)
+    # Sharp-signal columns (computed at pipeline time by scripts/sharp_signals.py)
+    rlm              = Column(Boolean, nullable=True, default=False)  # Reverse Line Movement detected
+    rlm_note         = Column(String, nullable=True)    # e.g. "72% public against · line moved +110→+130"
+    steam_bps        = Column(Integer, nullable=True)   # basis points line moved toward this bet since open
+    line_shop_bps    = Column(Integer, nullable=True)   # bps better than market average across all books
+    clv_grade        = Column(String, nullable=True)    # A/B/C/D/F — closing line value potential
+    sharp_grade      = Column(String, nullable=True)    # S/A/B/C/D — composite conviction grade
+    pred_mkt_note    = Column(String, nullable=True)    # e.g. "Kalshi: 62% · Polymarket: 64%"
+    pred_mkt_aligned = Column(Boolean, nullable=True, default=False)  # prediction markets agree with model
+    injury_alert     = Column(Text, nullable=True)      # e.g. "Jaylen Brown (SG) Out — Knee"
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True, nullable=False)
 
     def __repr__(self) -> str:

@@ -470,6 +470,15 @@ def refresh_ev_cache() -> int:
             else:
                 return abs(odds) / (abs(odds) + 100)
 
+        # ── Sharp signals setup ───────────────────────────────────────────────
+        from scripts.sharp_signals import (
+            compute_rlm, compute_steam, compute_line_shop_bps,
+            compute_clv_grade, compute_pred_mkt, compute_sharp_grade,
+        )
+        from scripts.espn_fetcher import fetch_injuries_for_sport, get_injury_alert
+        # Pre-fetch ESPN injury reports once per sport (avoids N+1 HTTP calls per game)
+        _injury_caches: dict = {}
+
         # ── Handle / sharp money enrichment (Action Network, non-fatal) ─────────
         from scripts.handle_fetcher import fetch_handle_for_game, compute_sharp_score as _sharp_score
         _handle_map: dict = {}   # (game, market, team) → (bet_pct, money_pct)
@@ -607,6 +616,35 @@ def refresh_ev_cache() -> int:
             _bet_pct, _money_pct = _handle_map.get(_hk, (None, None))
             _sharp = _sharp_score(_bet_pct, _money_pct, opening_odds_val, odds_val) if (_bet_pct is not None or _money_pct is not None) else None
 
+            # ── Sharp signals ─────────────────────────────────────────────────
+            _ev_pct_val   = float(row.get("effective_ev_pct", row.get("ev_pct", 0)) or 0)
+            _true_prob_val = float(row.get("true_prob", 0) or 0)
+            _all_book_json = _safe_proj_str(row.get("all_book_odds"))
+
+            _rlm, _rlm_note         = compute_rlm(_bet_pct, opening_odds_val, odds_val)
+            _steam_bps, _           = compute_steam(opening_odds_val, odds_val)
+            _lshop_bps              = compute_line_shop_bps(_all_book_json, odds_val, row_book)
+            _clv_grade              = compute_clv_grade(_ev_pct_val)
+            _pred_aligned, _pred_note = compute_pred_mkt(_all_book_json, _true_prob_val)
+            _sharp_grade            = compute_sharp_grade(
+                _ev_pct_val, _rlm, _steam_bps, _lshop_bps, _pred_aligned, _clv_grade
+            )
+
+            # ESPN injury alert — fetched once per sport, reused per game row
+            _sport_key = str(row.get("sport_key", "") or "")
+            if _sport_key not in _injury_caches:
+                try:
+                    _injury_caches[_sport_key] = fetch_injuries_for_sport(_sport_key)
+                except Exception:
+                    _injury_caches[_sport_key] = []
+            _game_str   = str(row.get("game", "") or "")
+            _away_team  = _game_str.split(" @ ")[0].strip() if " @ " in _game_str else ""
+            _home_team  = _game_str.split(" @ ")[1].strip() if " @ " in _game_str else ""
+            _inj_alert  = get_injury_alert(
+                _home_team, _away_team, _sport_key,
+                injury_cache=_injury_caches[_sport_key],
+            )
+
             # ── Attach projection snapshot (pre-fetched by report_generator) ──
             def _safe_proj_float(val):
                 try:
@@ -651,7 +689,17 @@ def refresh_ev_cache() -> int:
                 proj_home_display  = _safe_proj_str(row.get("proj_home_display")),
                 home_trend    = _safe_proj_str(row.get("home_trend")),
                 away_trend    = _safe_proj_str(row.get("away_trend")),
-                all_book_odds = _safe_proj_str(row.get("all_book_odds")),
+                all_book_odds = _all_book_json,
+                # Sharp signals
+                rlm              = _rlm,
+                rlm_note         = _rlm_note,
+                steam_bps        = _steam_bps if _steam_bps > 0 else None,
+                line_shop_bps    = _lshop_bps if _lshop_bps > 0 else None,
+                clv_grade        = _clv_grade,
+                sharp_grade      = _sharp_grade,
+                pred_mkt_note    = _pred_note,
+                pred_mkt_aligned = _pred_aligned,
+                injury_alert     = _inj_alert,
             )
             rows.append(cache_row)
 
@@ -903,6 +951,23 @@ async def on_startup() -> None:
     with SessionLocal() as _db:
         try:
             _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS card_summary TEXT"))
+            _db.commit()
+        except Exception:
+            _db.rollback()
+
+    # Migrate sharp-signal columns (added for multi-signal conviction system)
+    with SessionLocal() as _db:
+        try:
+            _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS game_context TEXT"))
+            _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS rlm BOOLEAN DEFAULT FALSE"))
+            _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS rlm_note VARCHAR"))
+            _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS steam_bps INTEGER"))
+            _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS line_shop_bps INTEGER"))
+            _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS clv_grade VARCHAR"))
+            _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS sharp_grade VARCHAR"))
+            _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS pred_mkt_note VARCHAR"))
+            _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS pred_mkt_aligned BOOLEAN DEFAULT FALSE"))
+            _db.execute(text("ALTER TABLE ev_bet_cache ADD COLUMN IF NOT EXISTS injury_alert TEXT"))
             _db.commit()
         except Exception:
             _db.rollback()

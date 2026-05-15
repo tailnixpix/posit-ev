@@ -2758,6 +2758,63 @@ main { max-width: none !important; padding: 0 !important; }
   .btn-parlay-mode { padding: 6px 8px; font-size: 0.7rem; }
 }
 
+/* ── Sharp Grade badge (composite conviction grade S/A/B/C/D) ── */
+.sharp-grade-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 26px; height: 26px; border-radius: 6px;
+  font-size: 0.68rem; font-weight: 800; letter-spacing: 0.03em;
+  cursor: default; flex-shrink: 0;
+}
+.sg-s {
+  background: linear-gradient(135deg,#a78bfa 0%,#f59e0b 100%);
+  color:#fff; box-shadow: 0 0 10px rgba(167,139,250,.45);
+}
+.sg-a { background:rgba(52,211,153,.18); color:#34d399; border:1px solid rgba(52,211,153,.32); }
+.sg-b { background:rgba(96,165,250,.14); color:#60a5fa; border:1px solid rgba(96,165,250,.25); }
+.sg-c { background:rgba(148,163,184,.12); color:#94a3b8; border:1px solid rgba(148,163,184,.22); }
+.sg-d { background:rgba(100,116,139,.1);  color:#64748b; border:1px solid rgba(100,116,139,.18); }
+
+/* ── Sharp Signals bar ──────────────────────────────────────── */
+.sharp-signals-bar {
+  display: flex; align-items: center; flex-wrap: wrap;
+  gap: 5px; margin: 6px 0 10px;
+}
+.sig-pill {
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 2px 8px; border-radius: 100px;
+  font-size: 0.65rem; font-weight: 600; letter-spacing: 0.01em;
+  white-space: nowrap; cursor: default;
+}
+.sig-rlm   { background:rgba(167,139,250,.11); color:#c4b5fd; border:1px solid rgba(167,139,250,.28); }
+.sig-steam { background:rgba(251,146,60,.11);  color:#fb923c; border:1px solid rgba(251,146,60,.28); }
+.sig-shop  { background:rgba(52,211,153,.1);   color:#34d399; border:1px solid rgba(52,211,153,.22); }
+.sig-mkt   { background:rgba(250,204,21,.1);   color:#facc15; border:1px solid rgba(250,204,21,.22); }
+.sig-injury{ background:rgba(248,113,113,.11); color:#f87171; border:1px solid rgba(248,113,113,.28); }
+
+/* ── Injury alert banner (full-text, inside card body) ──────── */
+.inj-alert-bar {
+  background: rgba(248,113,113,.07); border: 1px solid rgba(248,113,113,.22);
+  border-radius: 7px; padding: 6px 10px; font-size: 0.67rem; color: #f87171;
+  margin-bottom: 9px; display: flex; align-items: flex-start; gap: 6px; line-height: 1.45;
+}
+.inj-alert-bar b { color: #fca5a5; font-weight: 700; }
+
+/* ── CLV Grade pill (inside signals bar) ────────────────────── */
+.clv-grade-pill {
+  display: inline-flex; align-items: center;
+  padding: 2px 7px; border-radius: 100px;
+  font-size: 0.64rem; font-weight: 700; letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.clvg-a { background:rgba(52,211,153,.13); color:#34d399; border:1px solid rgba(52,211,153,.28); }
+.clvg-b { background:rgba(96,165,250,.12); color:#60a5fa; border:1px solid rgba(96,165,250,.24); }
+.clvg-c { background:rgba(148,163,184,.1); color:#94a3b8; border:1px solid rgba(148,163,184,.2); }
+.clvg-d,.clvg-f { background:rgba(100,116,139,.1); color:#64748b; border:1px solid rgba(100,116,139,.18); }
+
+/* Compact mode hides signals + injury bars */
+.compact-mode .sharp-signals-bar,
+.compact-mode .inj-alert-bar { display: none !important; }
+
 /* ── Mobile overrides for revamped card ─────────────────────── */
 @media (max-width: 768px) {
   .card-hdr { padding: 8px 12px; gap: 7px; }
@@ -3062,14 +3119,26 @@ main { max-width: none !important; padding: 0 !important; }
                 <span class="badge badge-pm">🔮 PM</span>
                 {% endif %}
               </div>
-              {# Right: EV badge only — never wraps, never crowds #}
+              {# Right: Sharp Grade + EV badge #}
               <div class="card-hdr-right">
+                {% if bet.sharp_grade %}
+                <span class="sharp-grade-badge sg-{{ bet.sharp_grade | lower }}"
+                      title="Sharp conviction grade {{ bet.sharp_grade }}{% if bet.clv_grade %} · CLV {{ bet.clv_grade }}{% endif %}">{{ bet.sharp_grade }}</span>
+                {% endif %}
                 <span class="ev-badge {{ tier }}">+{{ "%.1f"|format(bet.ev_percent) }}% EV</span>
               </div>
             </div>
 
             {# ── Card Body ────────────────────────────────────────────── #}
             <div class="card-body">
+
+              {# — Injury alert banner (shown prominently when key players are out) — #}
+              {% if bet.injury_alert %}
+              <div class="inj-alert-bar">
+                <span style="flex-shrink:0;">🚨</span>
+                <span><b>Injury Alert:</b> {{ bet.injury_alert }}</span>
+              </div>
+              {% endif %}
 
               {# — Bet Identity: what exactly you're betting — #}
               {% if bet.is_prop %}
@@ -3110,6 +3179,45 @@ main { max-width: none !important; padding: 0 !important; }
                     </div>
                   {% endif %}
                 {% endif %}
+              {% endif %}
+
+              {# — Sharp Signals bar — RLM, steam, line shop, market consensus — #}
+              {% if bet.rlm or (bet.steam_bps and bet.steam_bps >= 150) or (bet.line_shop_bps and bet.line_shop_bps >= 50) or bet.pred_mkt_aligned or bet.pred_mkt_note or bet.injury_alert %}
+              <div class="sharp-signals-bar">
+                {# CLV grade pill #}
+                {% if bet.clv_grade and bet.clv_grade not in ('F',) %}
+                <span class="clv-grade-pill clvg-{{ bet.clv_grade | lower }}"
+                      title="Closing Line Value grade: {{ bet.clv_grade }} (based on EV% distance from sharp consensus)">CLV {{ bet.clv_grade }}</span>
+                {% endif %}
+                {# RLM — public fading but line moved our way #}
+                {% if bet.rlm %}
+                <span class="sig-pill sig-rlm"
+                      title="{{ bet.rlm_note or 'Reverse Line Movement: public fading this bet but sharps pushed the line our way' }}">🔄 RLM</span>
+                {% endif %}
+                {# Steam — line moved 150+ bps toward this bet #}
+                {% if bet.steam_bps and bet.steam_bps >= 150 %}
+                <span class="sig-pill sig-steam"
+                      title="Line steamed +{{ bet.steam_bps }} basis points toward this bet since opening — sharp money confirmed">⚡ +{{ bet.steam_bps }}bps</span>
+                {% endif %}
+                {# Line shopping — best price vs market average #}
+                {% if bet.line_shop_bps and bet.line_shop_bps >= 50 %}
+                <span class="sig-pill sig-shop"
+                      title="{{ bet.book | title }} offers {{ bet.line_shop_bps }} basis points better odds than the market average — you're getting the best number">🛒 Best price +{{ bet.line_shop_bps }}bps</span>
+                {% endif %}
+                {# Prediction market alignment #}
+                {% if bet.pred_mkt_aligned %}
+                <span class="sig-pill sig-mkt"
+                      title="Prediction markets confirm this edge — {{ bet.pred_mkt_note or 'Kalshi/Polymarket align with model' }}">🗳️ Mkt Confirmed</span>
+                {% elif bet.pred_mkt_note %}
+                <span class="sig-pill sig-mkt" style="opacity:.55;"
+                      title="{{ bet.pred_mkt_note }}">🗳️ Mkt</span>
+                {% endif %}
+                {# Injury alert pill (detail shown in banner above) #}
+                {% if bet.injury_alert %}
+                <span class="sig-pill sig-injury"
+                      title="{{ bet.injury_alert }}">🚨 Injury Report</span>
+                {% endif %}
+              </div>
               {% endif %}
 
               {# — Game + Time context — #}
