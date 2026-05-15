@@ -1086,11 +1086,20 @@ main { max-width: none !important; padding: 0 !important; }
 
 /* Verdict + confidence bar */
 .ai-verdict-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.ai-verdict-badge { padding: 5px 13px; border-radius: 20px; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.4px; white-space: nowrap; }
-.avb-strong   { background: rgba(0,214,143,0.15);  color: #00D68F; border: 1px solid rgba(0,214,143,0.35); }
-.avb-moderate { background: rgba(245,197,66,0.12); color: #F5C542; border: 1px solid rgba(245,197,66,0.3); }
-.avb-value    { background: rgba(79,158,255,0.12); color: #4F9EFF; border: 1px solid rgba(79,158,255,0.3); }
-.avb-lean     { background: rgba(155,121,250,0.1); color: #9B79FA; border: 1px solid rgba(155,121,250,0.25); }
+.ai-verdict-badge {
+  padding: 8px 18px; border-radius: 20px;
+  font-size: 0.95rem; font-weight: 800; letter-spacing: 0.02em; white-space: nowrap;
+}
+.avb-strong   {
+  background: rgba(0,214,143,0.15);  color: #00D68F; border: 1px solid rgba(0,214,143,0.4);
+  box-shadow: 0 0 14px rgba(0,214,143,0.12);
+}
+.avb-moderate {
+  background: rgba(245,197,66,0.13); color: #F5C542; border: 1px solid rgba(245,197,66,0.35);
+  box-shadow: 0 0 14px rgba(245,197,66,0.1);
+}
+.avb-value    { background: rgba(79,158,255,0.12); color: #4F9EFF; border: 1px solid rgba(79,158,255,0.32); }
+.avb-lean     { background: rgba(155,121,250,0.1); color: #9B79FA; border: 1px solid rgba(155,121,250,0.28); }
 .ai-conf-wrap { display: flex; align-items: center; gap: 7px; flex: 1; min-width: 120px; }
 .ai-conf-track { flex: 1; height: 5px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; }
 .ai-conf-fill  { height: 100%; border-radius: 3px; transition: width 0.6s cubic-bezier(0.4,0,0.2,1); }
@@ -2415,22 +2424,31 @@ main { max-width: none !important; padding: 0 !important; }
 .btn-analyze {
   flex: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  background: rgba(79,158,255,0.07);
-  border: 1px solid rgba(79,158,255,0.2);
+  gap: 3px;
+  background: linear-gradient(135deg, rgba(124,58,237,0.13) 0%, rgba(79,158,255,0.09) 100%);
+  border: 1px solid rgba(124,58,237,0.32);
   border-radius: 8px;
-  padding: 10px 12px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--d-blue);
+  padding: 11px 14px;
   cursor: pointer;
   font-family: inherit;
-  transition: all 0.12s;
+  transition: all 0.15s;
 }
-.btn-analyze:hover { background: rgba(79,158,255,0.14); }
-.btn-analyze.open  { background: rgba(79,158,255,0.12); border-color: rgba(79,158,255,0.35); }
+.btn-analyze-top {
+  font-size: 0.78rem; font-weight: 700; color: #a78bfa;
+}
+.btn-analyze-sub {
+  font-size: 0.59rem; font-weight: 500; color: var(--d-muted); opacity: 0.8;
+}
+.btn-analyze:hover {
+  background: linear-gradient(135deg, rgba(124,58,237,0.2) 0%, rgba(79,158,255,0.14) 100%);
+  border-color: rgba(124,58,237,0.48);
+}
+.btn-analyze.open  {
+  background: rgba(124,58,237,0.14); border-color: rgba(124,58,237,0.42);
+}
 .btn-analyze:disabled { opacity: 0.45; cursor: default; }
 
 /* ── Combined analysis wrapper ──────────────────────────────── */
@@ -2782,16 +2800,8 @@ main { max-width: none !important; padding: 0 !important; }
 }
 .inj-alert-bar b { color: #fca5a5; font-weight: 700; }
 
-/* ── Edge story: data-specific reason to bet each card ──────── */
-.card-edge-story {
-  font-size: 0.72rem; color: var(--d-muted); line-height: 1.6;
-  margin: 3px 0 11px;
-}
-.card-edge-story b { color: #e2e8f0; font-weight: 700; }
-
-/* Compact mode hides injury bar + edge story */
-.compact-mode .inj-alert-bar,
-.compact-mode .card-edge-story { display: none !important; }
+/* Compact mode hides injury bar */
+.compact-mode .inj-alert-bar { display: none !important; }
 
 /* ── Mobile overrides for revamped card ─────────────────────── */
 @media (max-width: 768px) {
@@ -3159,34 +3169,6 @@ main { max-width: none !important; padding: 0 !important; }
                 {% endif %}
               {% endif %}
 
-              {# — Edge Story: data-specific reason to bet this card — #}
-              {% set _edge_pp = (_true_pct - _implied_pct) | round(1) %}
-              <div class="card-edge-story">
-                {# Primary: probability gap, using model projection when available #}
-                {% if bet.market == 'totals' and bet.proj_total and bet.point %}
-                  {% set _proj_gap = (bet.proj_total - bet.point) | round(1) %}
-                  {% if bet.team | lower == 'over' %}
-                  Model projects <b>{{ "%.1f"|format(bet.proj_total) }}</b> pts — book set total at {{ bet.point }}. <b>+{{ "%.1f"|format(_proj_gap) }}-pt gap.</b>
-                  {% else %}
-                  Model projects <b>{{ "%.1f"|format(bet.proj_total) }}</b> pts — book set total at {{ bet.point }}. <b>{{ "%.1f"|format(_proj_gap | abs) }}-pt gap favors under.</b>
-                  {% endif %}
-                {% elif bet.is_prop %}
-                  Model hit rate: <b>{{ "%.0f"|format(_true_pct) }}%</b> — {{ _bk_display }} implies <b>{{ "%.0f"|format(_implied_pct) }}%</b> at {{ odds_str }}. <b>+{{ "%.1f"|format(_edge_pp) }}pp edge.</b>
-                {% else %}
-                  Model probability: <b>{{ "%.0f"|format(_true_pct) }}%</b> — {{ _bk_display }} prices at <b>{{ "%.0f"|format(_implied_pct) }}%</b> ({{ odds_str }}). <b>+{{ "%.1f"|format(_edge_pp) }}pp edge.</b>
-                {% endif %}
-                {# Secondary: strongest confirming signal #}
-                {% if bet.steam_bps and bet.steam_bps >= 150 and bet.opening_odds and bet.opening_odds != bet.odds %}
-                  {% set _op_s = ('+' if bet.opening_odds > 0 else '') ~ bet.opening_odds %}
-                  Line {{ _op_s }}→{{ odds_str }} — sharp steam confirmed.
-                {% elif bet.rlm and bet.rlm_note %}
-                  {{ bet.rlm_note }}.
-                {% elif bet.pred_mkt_aligned and bet.pred_mkt_note %}
-                  {{ bet.pred_mkt_note }}.
-                {% elif bet.bet_pct is not none and bet.bet_pct < 38 %}
-                  {{ "%.0f"|format(100 - bet.bet_pct) }}% of bets on the other side.
-                {% endif %}
-              </div>
 
               {# — Game + Time context — #}
               <div class="card-context">
@@ -3267,7 +3249,10 @@ main { max-width: none !important; padding: 0 !important; }
 
               {# — Actions: Analyze + Track — #}
               <div class="card-actions-row">
-                <button class="btn-analyze" id="analyze-btn-{{ bet.id }}" onclick="toggleAnalysisPanel({{ bet.id }}, this)">📊 Analyze</button>
+                <button class="btn-analyze" id="analyze-btn-{{ bet.id }}" onclick="toggleAnalysisPanel({{ bet.id }}, this)">
+                  <span class="btn-analyze-top">🎯 Should I Bet This?</span>
+                  <span class="btn-analyze-sub">{% if bet.confidence_score %}{{ bet.confidence_score | int }}% AI confidence · {% endif %}Full analysis &amp; verdict</span>
+                </button>
                 <button class="btn-track" id="track-btn-{{ bet.id }}" onclick="toggleTrackPanel({{ bet.id }}, this)">📌 Track</button>
               </div>
 
@@ -5817,14 +5802,16 @@ function toggleAnalysisPanel(betId, btn) {
   if (isOpen) {
     wrap.classList.remove('open');
     btn.classList.remove('open');
-    btn.textContent = '📊 Analyze';
+    { const t = btn.querySelector('.btn-analyze-top'); if (t) t.textContent = '🎯 Should I Bet This?'; }
+    { const s = btn.querySelector('.btn-analyze-sub'); if (s) s.style.display = ''; }
     return;
   }
 
   // Open the panel
   wrap.classList.add('open');
   btn.classList.add('open');
-  btn.textContent = '✕ Close';
+  { const t = btn.querySelector('.btn-analyze-top'); if (t) t.textContent = '✕ Close Analysis'; }
+  { const s = btn.querySelector('.btn-analyze-sub'); if (s) s.style.display = 'none'; }
 
   // Load projection data if not already loaded (game bets)
   const projPanel = document.getElementById('proj-panel-' + betId);
@@ -6517,27 +6504,11 @@ function _buildAnalysisHtml(data, card) {
       </div>
     </div>
 
-    <div class="ai-prob-section">
-      <div class="ai-prob-hdr">Probability Edge</div>
-      <div class="ai-prob-row">
-        <span class="ai-prob-lbl lbl-model">Model</span>
-        <div class="ai-prob-bar-wrap"><div class="ai-prob-bar apb-model" style="width:${modelW}%"></div></div>
-        <span class="ai-prob-pct pct-model">${truePct}%</span>
-      </div>
-      <div class="ai-prob-row">
-        <span class="ai-prob-lbl lbl-book">Book</span>
-        <div class="ai-prob-bar-wrap"><div class="ai-prob-bar apb-book" style="width:${bookW}%"></div></div>
-        <span class="ai-prob-pct pct-book">${implPct}%</span>
-      </div>
-      <div class="ai-edge-callout">${edgeSign}${edgePP}pp in your favor</div>
-    </div>
+    ${whyHtml ? `<div class="ai-why">
+      <div class="ai-why-body"><p>${whyHtml}</p></div>
+    </div>` : ''}
 
     <div class="ai-signals">${chips}</div>
-
-    <div class="ai-why">
-      <div class="ai-why-hdr">Why this pick</div>
-      <div class="ai-why-body"><p>${whyHtml}</p></div>
-    </div>
   </div>`;
 }
 
