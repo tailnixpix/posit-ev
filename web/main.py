@@ -3249,7 +3249,6 @@ async def admin_test_props(
         get_quota_state, PROP_MARKETS_BY_SPORT,
     )
     from models.ev_calculator import find_positive_ev_props, EV_THRESHOLD_PCT
-    import pandas as _pd
 
     if sport not in PROP_SPORTS:
         return JSONResponse(
@@ -3262,7 +3261,7 @@ async def admin_test_props(
         "bookmakers_used": PROPS_BOOKMAKERS,
         "markets_used": PROP_MARKETS_BY_SPORT.get(sport, []),
         "ev_threshold_pct": EV_THRESHOLD_PCT,
-        "quota": get_quota_state(),
+        "quota": None,
         "props_raw_rows": 0,
         "unique_players": [],
         "unique_markets": [],
@@ -3280,7 +3279,7 @@ async def admin_test_props(
         props_df = await loop.run_in_executor(None, lambda: get_props_df(sport_keys=[sport]))
 
         result["props_raw_rows"] = len(props_df)
-        result["quota"] = get_quota_state()
+        result["quota"] = get_quota_state()  # capture post-fetch quota state
 
         if props_df.empty:
             result["error"] = "get_props_df returned empty DataFrame — no games in 30h window, quota exhausted, or all events returned 422/None"
@@ -3289,20 +3288,16 @@ async def admin_test_props(
         result["unique_players"] = sorted(props_df["player"].dropna().unique().tolist())[:30]
         result["unique_markets"] = sorted(props_df["prop_market"].dropna().unique().tolist())
         result["unique_books"]   = sorted(props_df["bookmaker"].dropna().unique().tolist())
-        result["unique_games"]   = sorted(props_df.apply(
-            lambda r: f"{r.get('away_team','?')} @ {r.get('home_team','?')}", axis=1
-        ).unique().tolist())
+        result["unique_games"]   = sorted(
+            (props_df["away_team"].fillna("?") + " @ " + props_df["home_team"].fillna("?")).unique().tolist()
+        )
+        result["groups_total"] = props_df.groupby(
+            ["game_id", "prop_market", "player", "point"], dropna=False
+        ).ngroups
 
-        # Count groups
-        groups = list(props_df.groupby(["game_id", "prop_market", "player", "point"], dropna=False))
-        result["groups_total"] = len(groups)
-
-        # Run EV calc
         ev_df = find_positive_ev_props(props_df, ev_threshold=0.0)  # threshold=0 to see all rows
         result["ev_rows_before_threshold"] = len(ev_df)
-
-        positive_df = ev_df[ev_df["ev_pct"] > EV_THRESHOLD_PCT] if not ev_df.empty else ev_df
-        result["positive_ev_rows"] = len(positive_df)
+        result["positive_ev_rows"] = int((ev_df["ev_pct"] > EV_THRESHOLD_PCT).sum()) if not ev_df.empty else 0
 
         if not ev_df.empty:
             sample = ev_df.head(10)[["game", "market", "player_name", "outcome_name",

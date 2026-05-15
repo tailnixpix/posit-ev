@@ -339,7 +339,7 @@ def fetch_player_props(sport_key: str, event_id: str, bookmakers: list[str] = No
     if data is None:
         log.warning("Props: event %s (%s) returned no data (422/quota/timeout).", event_id, sport_key)
         return []
-    return data if isinstance(data, (dict, list)) else []
+    return data  # _get() guarantees dict or list on success
 
 
 # ---------------------------------------------------------------------------
