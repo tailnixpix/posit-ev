@@ -479,6 +479,18 @@ def refresh_ev_cache() -> int:
         # Pre-fetch ESPN injury reports once per sport (avoids N+1 HTTP calls per game)
         _injury_caches: dict = {}
 
+        # ── Row helper functions — defined once here, used inside the loop ───
+        def _safe_proj_float(val):
+            try:
+                v = float(val)
+                return None if (v != v) else v
+            except (TypeError, ValueError):
+                return None
+
+        def _safe_proj_str(val):
+            s = str(val) if val is not None else ""
+            return s if s not in ("", "nan", "None") else None
+
         # ── Handle / sharp money enrichment (Action Network, non-fatal) ─────────
         from scripts.handle_fetcher import fetch_handle_for_game, compute_sharp_score as _sharp_score
         _handle_map: dict = {}   # (game, market, team) → (bet_pct, money_pct)
@@ -646,17 +658,6 @@ def refresh_ev_cache() -> int:
             )
 
             # ── Attach projection snapshot (pre-fetched by report_generator) ──
-            def _safe_proj_float(val):
-                try:
-                    v = float(val)
-                    return None if (v != v) else v
-                except (TypeError, ValueError):
-                    return None
-
-            def _safe_proj_str(val):
-                s = str(val) if val is not None else ""
-                return s if s not in ("", "nan", "None") else None
-
             cache_row = EVBetCache(
                 game_id       = row_game_id or None,
                 league        = str(row.get("sport_key",      "")),
