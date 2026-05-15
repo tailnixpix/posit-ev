@@ -2782,15 +2782,16 @@ main { max-width: none !important; padding: 0 !important; }
 }
 .inj-alert-bar b { color: #fca5a5; font-weight: 700; }
 
-/* ── Grade-why: one-line plain-English conviction reason ──────── */
-.grade-why {
-  font-size: 0.62rem; color: var(--d-muted); letter-spacing: 0.01em;
-  margin: 2px 0 9px; opacity: 0.75;
+/* ── Edge story: data-specific reason to bet each card ──────── */
+.card-edge-story {
+  font-size: 0.72rem; color: var(--d-muted); line-height: 1.6;
+  margin: 3px 0 11px;
 }
+.card-edge-story b { color: #e2e8f0; font-weight: 700; }
 
-/* Compact mode hides injury bar + conviction reason */
+/* Compact mode hides injury bar + edge story */
 .compact-mode .inj-alert-bar,
-.compact-mode .grade-why { display: none !important; }
+.compact-mode .card-edge-story { display: none !important; }
 
 /* ── Mobile overrides for revamped card ─────────────────────── */
 @media (max-width: 768px) {
@@ -3158,18 +3159,34 @@ main { max-width: none !important; padding: 0 !important; }
                 {% endif %}
               {% endif %}
 
-              {# — Why this pick has conviction (plain English, S/A/B grades only) — #}
-              {% if bet.sharp_grade in ('S', 'A', 'B') %}
-                {% set _ns = namespace(signals=[]) %}
-                {% if bet.rlm %}{% set _ns.signals = _ns.signals + ['Sharp money vs. public'] %}{% endif %}
-                {% if bet.steam_bps and bet.steam_bps >= 150 %}{% set _ns.signals = _ns.signals + ['Line steaming our way'] %}{% endif %}
-                {% if bet.pred_mkt_aligned %}{% set _ns.signals = _ns.signals + ['Markets confirm'] %}{% endif %}
-                {% if bet.line_shop_bps and bet.line_shop_bps >= 50 %}{% set _ns.signals = _ns.signals + ['Best price available'] %}{% endif %}
-                {% if bet.clv_grade in ('S', 'A', 'B') %}{% set _ns.signals = _ns.signals + ['Strong closing line value'] %}{% endif %}
-                {% if _ns.signals %}
-                <div class="grade-why">{{ _ns.signals[:3] | join(' · ') }}</div>
+              {# — Edge Story: data-specific reason to bet this card — #}
+              {% set _edge_pp = (_true_pct - _implied_pct) | round(1) %}
+              <div class="card-edge-story">
+                {# Primary: probability gap, using model projection when available #}
+                {% if bet.market == 'totals' and bet.proj_total and bet.point %}
+                  {% set _proj_gap = (bet.proj_total - bet.point) | round(1) %}
+                  {% if bet.team | lower == 'over' %}
+                  Model projects <b>{{ "%.1f"|format(bet.proj_total) }}</b> pts — book set total at {{ bet.point }}. <b>+{{ "%.1f"|format(_proj_gap) }}-pt gap.</b>
+                  {% else %}
+                  Model projects <b>{{ "%.1f"|format(bet.proj_total) }}</b> pts — book set total at {{ bet.point }}. <b>{{ "%.1f"|format(_proj_gap | abs) }}-pt gap favors under.</b>
+                  {% endif %}
+                {% elif bet.is_prop %}
+                  Model hit rate: <b>{{ "%.0f"|format(_true_pct) }}%</b> — {{ _bk_display }} implies <b>{{ "%.0f"|format(_implied_pct) }}%</b> at {{ odds_str }}. <b>+{{ "%.1f"|format(_edge_pp) }}pp edge.</b>
+                {% else %}
+                  Model probability: <b>{{ "%.0f"|format(_true_pct) }}%</b> — {{ _bk_display }} prices at <b>{{ "%.0f"|format(_implied_pct) }}%</b> ({{ odds_str }}). <b>+{{ "%.1f"|format(_edge_pp) }}pp edge.</b>
                 {% endif %}
-              {% endif %}
+                {# Secondary: strongest confirming signal #}
+                {% if bet.steam_bps and bet.steam_bps >= 150 and bet.opening_odds and bet.opening_odds != bet.odds %}
+                  {% set _op_s = ('+' if bet.opening_odds > 0 else '') ~ bet.opening_odds %}
+                  Line {{ _op_s }}→{{ odds_str }} — sharp steam confirmed.
+                {% elif bet.rlm and bet.rlm_note %}
+                  {{ bet.rlm_note }}.
+                {% elif bet.pred_mkt_aligned and bet.pred_mkt_note %}
+                  {{ bet.pred_mkt_note }}.
+                {% elif bet.bet_pct is not none and bet.bet_pct < 38 %}
+                  {{ "%.0f"|format(100 - bet.bet_pct) }}% of bets on the other side.
+                {% endif %}
+              </div>
 
               {# — Game + Time context — #}
               <div class="card-context">
