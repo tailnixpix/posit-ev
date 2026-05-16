@@ -111,12 +111,13 @@ def _ev_pct(true_prob: float, odds: int) -> float:
 def _fetch_team_form(team_name: str, league_key: str, client: OptimalClient) -> Optional[Any]:
     """
     Fetch recent form for a team using two strategies:
-    1. search_teams → get_team_history (structured data, preferred)
-    2. query() fallback (freeform, used when strategy 1 fails)
+    1. search_teams → name match → get_team_history (preferred when team is in results)
+    2. SQL teams lookup → get_team_history (handles alphabetically-late teams that
+       search_teams truncates, e.g. VGK/WSH/WPG in NHL whose list stops ~24 entries;
+       also replaces the old freeform query fallback since Optimal now requires SQL)
     Returns the form data or None if both fail.
     """
-    # Strategy 1: search → lookup
-    # search_teams returns all teams for the league; find the best name match.
+    # ── Strategy 1: search → name-match → get_team_history ───────────────
     try:
         teams = client.search_teams(team_name, league=league_key) or []
         if isinstance(teams, list) and teams:
@@ -144,8 +145,7 @@ def _fetch_team_form(team_name: str, league_key: str, client: OptimalClient) -> 
                     if hist:
                         log.info("Optimal context: team history fetched via search for %s (id=%s)", team_name, team_id)
                         return hist
-                    else:
-                        log.warning("Optimal context: get_team_history returned nothing for %s (id=%s)", team_name, team_id)
+                    log.warning("Optimal context: get_team_history returned nothing for %s (id=%s)", team_name, team_id)
                 else:
                     log.warning("Optimal context: matched team has no usable id for %s. Keys: %s",
                                 team_name, list(matched_team.keys()))
@@ -154,17 +154,47 @@ def _fetch_team_form(team_name: str, league_key: str, client: OptimalClient) -> 
     except Exception as exc:
         log.warning("Optimal context: search/history chain failed for %s: %s", team_name, exc)
 
-    # Strategy 2: freeform query fallback
+    # ── Strategy 2: SQL teams lookup → get_team_history ──────────────────
+    # search_teams returns teams alphabetically and truncates at ~24 entries,
+    # cutting off teams like VGK (V), WSH, WPG. Querying the teams table
+    # directly by display_name LIKE pattern resolves the UUID regardless of
+    # alphabetical position.  Optimal requires valid SQL — freeform text is rejected.
     try:
-        q = f"Recent form, wins, losses, and results for the {team_name} in {league_key} over the last 10 games"
-        result = client.query(q)
-        if result:
-            log.info("Optimal context: team form fetched via query() fallback for %s", team_name)
-            return {"query_result": result, "source": "freeform_query"}
-        else:
-            log.warning("Optimal context: query() fallback also returned nothing for %s", team_name)
+        # Use the longest meaningful words (>3 chars) for LIKE matching
+        key_words = sorted(
+            [w for w in team_name.lower().split() if len(w) > 3],
+            key=len, reverse=True
+        )[:2]
+        if key_words:
+            like_clauses = " OR ".join(
+                f"LOWER(display_name) LIKE '%{w}%'" for w in key_words
+            )
+            # Include league filter so WNBA/NBA teams don't match NHL queries etc.
+            sql = (
+                f"SELECT id, team_key, display_name, league FROM teams "
+                f"WHERE league = '{league_key}' AND ({like_clauses}) LIMIT 5"
+            )
+            team_rows = client.query(sql)
+            if team_rows and isinstance(team_rows, list):
+                # Pick the row whose display_name contains the most search words
+                search_words = [w for w in team_name.lower().split() if len(w) > 2]
+                best_row, best_hits = None, 0
+                for row in team_rows:
+                    dn = row.get("display_name", "").lower()
+                    hits = sum(1 for w in search_words if w in dn)
+                    if hits > best_hits:
+                        best_hits, best_row = hits, row
+                if best_row and best_hits > 0:
+                    team_id = best_row.get("id") or best_row.get("team_id") or best_row.get("teamId")
+                    if team_id:
+                        hist = client.get_team_history(str(team_id), last_n=10)
+                        if hist:
+                            log.info("Optimal context: team history via SQL teams lookup for %s (id=%s)",
+                                     team_name, team_id)
+                            return hist
+            log.warning("Optimal context: SQL teams lookup returned nothing for %s", team_name)
     except Exception as exc:
-        log.warning("Optimal context: query() fallback failed for %s: %s", team_name, exc)
+        log.warning("Optimal context: SQL teams lookup failed for %s: %s", team_name, exc)
 
     return None
 
