@@ -116,25 +116,39 @@ def _fetch_team_form(team_name: str, league_key: str, client: OptimalClient) -> 
     Returns the form data or None if both fail.
     """
     # Strategy 1: search → lookup
+    # search_teams returns all teams for the league; find the best name match.
     try:
         teams = client.search_teams(team_name, league=league_key) or []
         if isinstance(teams, list) and teams:
-            team_id = (
-                teams[0].get("team_id")
-                or teams[0].get("id")
-                or teams[0].get("teamId")
-                or teams[0].get("team_key")
-            )
-            if team_id:
-                hist = client.get_team_history(str(team_id), last_n=10)
-                if hist:
-                    log.info("Optimal context: team history fetched via search for %s (team_id=%s)", team_name, team_id)
-                    return hist
-                else:
-                    log.warning("Optimal context: get_team_history returned nothing for %s (team_id=%s)", team_name, team_id)
+            search_words = [w for w in team_name.lower().split() if len(w) > 2]
+            matched_team = None
+            for t in teams:
+                dn = t.get("display_name", "").lower()
+                tk = t.get("team_key", "").lower()
+                if any(w in dn for w in search_words) or tk in team_name.lower():
+                    matched_team = t
+                    break
+
+            if matched_team is None:
+                log.warning("Optimal context: search_teams found no name match for '%s' among %d results",
+                            team_name, len(teams))
             else:
-                log.warning("Optimal context: search_teams returned no usable team_id for %s. Keys found: %s",
-                            team_name, list(teams[0].keys()) if teams else [])
+                team_id = (
+                    matched_team.get("id")
+                    or matched_team.get("team_id")
+                    or matched_team.get("teamId")
+                    or matched_team.get("team_key")
+                )
+                if team_id:
+                    hist = client.get_team_history(str(team_id), last_n=10)
+                    if hist:
+                        log.info("Optimal context: team history fetched via search for %s (id=%s)", team_name, team_id)
+                        return hist
+                    else:
+                        log.warning("Optimal context: get_team_history returned nothing for %s (id=%s)", team_name, team_id)
+                else:
+                    log.warning("Optimal context: matched team has no usable id for %s. Keys: %s",
+                                team_name, list(matched_team.keys()))
         else:
             log.warning("Optimal context: search_teams returned no results for %s in %s", team_name, league_key)
     except Exception as exc:
@@ -167,15 +181,16 @@ def _build_context(bet: dict, client: OptimalClient) -> dict:
     player_name = bet.get("player_name")
     market = bet.get("market", "h2h")
 
-    # Derive game_date (YYYY-MM-DD in ET) from commence_time so get_events
+    # Derive game_date (YYYYMMDD in ET) from commence_time so get_events
     # targets the correct calendar day — essential for tomorrow's bets.
+    # NOTE: Optimal get_events expects compact YYYYMMDD format, NOT YYYY-MM-DD.
     game_date: Optional[str] = None
     ct = bet.get("commence_time")
     if ct is not None:
         try:
             from zoneinfo import ZoneInfo
             if hasattr(ct, "astimezone"):
-                game_date = ct.astimezone(ZoneInfo("America/New_York")).strftime("%Y-%m-%d")
+                game_date = ct.astimezone(ZoneInfo("America/New_York")).strftime("%Y%m%d")
         except Exception:
             pass
 
@@ -200,13 +215,35 @@ def _build_context(bet: dict, client: OptimalClient) -> dict:
     except Exception as exc:
         log.warning("Optimal context: events fetch failed for %s: %s", league_key, exc)
 
-    # ── 2. Recent form for both teams (with fallback) ─────────────────────
+    # ── 2. Recent form for both teams ────────────────────────────────────
+    # Primary path: use home_team_id / away_team_id already embedded in the
+    # game event — avoids search_teams, which returns all teams unfiltered.
+    # Fallback: search_teams with name matching for when no event was found.
     if " @ " in game_str:
-        away_team, home_team = game_str.split(" @ ", 1)
-        for team_name in [away_team.strip(), home_team.strip()]:
-            form = _fetch_team_form(team_name, league_key, client)
-            if form is not None:
-                ctx.setdefault("team_history", {})[team_name] = form
+        away_team, home_team = [s.strip() for s in game_str.split(" @ ", 1)]
+        game_event = ctx.get("game_event") or {}
+
+        away_tid = game_event.get("away_team_id")
+        home_tid = game_event.get("home_team_id")
+
+        for team_name, team_id in [(away_team, away_tid), (home_team, home_tid)]:
+            hist = None
+            if team_id:
+                try:
+                    hist = client.get_team_history(team_id, last_n=10)
+                    if hist:
+                        log.info("Optimal context: team history via event ID for %s (%s)", team_name, team_id)
+                    else:
+                        log.warning("Optimal context: get_team_history empty for %s (id=%s)", team_name, team_id)
+                except Exception as exc:
+                    log.warning("Optimal context: get_team_history failed for %s: %s", team_name, exc)
+
+            if not hist:
+                # Fallback: search_teams and match by display_name
+                hist = _fetch_team_form(team_name, league_key, client)
+
+            if hist is not None:
+                ctx.setdefault("team_history", {})[team_name] = hist
 
     if not ctx.get("team_history"):
         log.warning("Optimal context: no team history captured for game='%s'", game_str)
@@ -215,12 +252,17 @@ def _build_context(bet: dict, client: OptimalClient) -> dict:
     if is_prop and player_name:
         try:
             players = client.search_players(player_name, league=league_key) or []
+            player_id = None
             if isinstance(players, list) and players:
-                player_id = (
-                    players[0].get("player_id")
-                    or players[0].get("id")
-                    or players[0].get("playerId")
-                )
+                # search_players returns all players unfiltered — find best name match
+                search_words = [w for w in player_name.lower().split() if len(w) > 1]
+                for p in players:
+                    fn = p.get("full_name", p.get("display_name", p.get("name", ""))).lower()
+                    if all(w in fn for w in search_words):
+                        player_id = p.get("id") or p.get("player_id") or p.get("playerId")
+                        log.info("Optimal context: matched player '%s' → id=%s", player_name, player_id)
+                        break
+
                 if player_id:
                     gamelogs = client.get_player_gamelogs(player_id, last_n=10)
                     if gamelogs:
@@ -228,24 +270,17 @@ def _build_context(bet: dict, client: OptimalClient) -> dict:
                     else:
                         log.warning("Optimal context: player gamelogs empty for %s (id=%s)", player_name, player_id)
 
-                    game_event = ctx.get("game_event", {})
-                    game_id = game_event.get("game_id") or game_event.get("id") if game_event else None
+                    game_event = ctx.get("game_event") or {}
+                    game_id = game_event.get("id") or game_event.get("game_id")
                     if game_id:
                         proj = client.get_player_projections(player_id, game_id=game_id)
                         if proj:
                             ctx["player_projections"] = proj
                 else:
-                    log.warning("Optimal context: no player_id found for %s. Keys: %s",
-                                player_name, list(players[0].keys()) if players else [])
+                    log.warning("Optimal context: no name match for player '%s' among %d results",
+                                player_name, len(players))
             else:
-                # Fallback: query for player recent stats
-                q = f"Recent stats and performance for {player_name} in {league_key} last 10 games"
-                result = client.query(q)
-                if result:
-                    ctx["player_form_query"] = {"query_result": result, "source": "freeform_query"}
-                    log.info("Optimal context: player form via query() fallback for %s", player_name)
-                else:
-                    log.warning("Optimal context: search_players returned nothing for %s", player_name)
+                log.warning("Optimal context: search_players returned nothing for %s", player_name)
         except Exception as exc:
             log.warning("Optimal context: player data failed for %s: %s", player_name, exc)
 

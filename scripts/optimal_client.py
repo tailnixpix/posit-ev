@@ -178,11 +178,11 @@ class OptimalClient:
         Parameters
         ----------
         game_id : str
-            Game identifier from get_events.
+            Event UUID from get_events (passed as event_id to the tool).
         market : str, optional
             e.g. "moneyline", "spread", "total"
         """
-        args: dict = {"game_id": game_id}
+        args: dict = {"event_id": game_id}   # tool expects event_id, not game_id
         if market:
             args["market"] = market
         return _call_tool("get_game_odds", args)
@@ -200,10 +200,11 @@ class OptimalClient:
         Parameters
         ----------
         game_id : str
+            Event UUID (passed as event_id to the tool).
         prop_type : str, optional
             e.g. "points", "rebounds", "assists", "home_runs"
         """
-        args: dict = {"game_id": game_id}
+        args: dict = {"event_id": game_id}   # tool expects event_id
         if prop_type:
             args["prop_type"] = prop_type
         return _call_tool("get_game_player_props", args)
@@ -220,12 +221,13 @@ class OptimalClient:
         Parameters
         ----------
         game_id : str
+            Event UUID (passed as event_id to the tool).
         player_id : str
         prop_type : str
             e.g. "points", "rebounds", "strikeouts"
         """
         return _call_tool("get_player_prop_odds", {
-            "game_id": game_id,
+            "event_id": game_id,   # tool expects event_id
             "player_id": player_id,
             "prop_type": prop_type,
         })
@@ -244,10 +246,11 @@ class OptimalClient:
         ----------
         player_id : str
         game_id : str, optional
+            Event UUID (passed as event_id to the tool).
         """
         args: dict = {"player_id": player_id}
         if game_id:
-            args["game_id"] = game_id
+            args["event_id"] = game_id   # tool expects event_id
         return _call_tool("get_player_projections", args)
 
     def get_player_gamelogs(
@@ -398,7 +401,7 @@ class OptimalClient:
         q : str
             e.g. "Top 5 NBA players by points per game last 10 games"
         """
-        return _call_tool("query", {"query": q})
+        return _call_tool("query", {"sql": q})
 
 
 # ---------------------------------------------------------------------------
