@@ -1786,11 +1786,13 @@ async def get_analysis(bet_id: int, request: Request, db: Session = Depends(get_
     if not bet_row:
         raise HTTPException(status_code=404, detail="Bet not found")
 
-    # Return cached analysis if fresh (< 6 hours old)
+    # Return cached analysis if fresh (< 90 min old) and not force-busted
     import re as _re
-    cache_cutoff = datetime.now(timezone.utc) - timedelta(hours=6)
+    bust = request.query_params.get("bust") == "1"
+    cache_cutoff = datetime.now(timezone.utc) - timedelta(minutes=90)
     if (
-        bet_row.analysis
+        not bust
+        and bet_row.analysis
         and bet_row.analysis_generated_at
         and bet_row.analysis_generated_at > cache_cutoff
     ):

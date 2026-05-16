@@ -715,10 +715,10 @@ def _build_pipeline_section(bet: dict) -> str:
     if opening and opening != current:
         open_str = f"+{opening}" if opening > 0 else str(opening)
         cur_str  = f"+{current}"  if current  > 0 else str(current)
-        if opening > current:  # odds shortened toward us → sharp steam
-            lines.append(f"• Line movement: {open_str} → {cur_str} — steamed in our direction (CLV+, confirms sharp action)")
+        if opening > current:  # odds shortened toward us → sharp money confirming
+            lines.append(f"• Line movement: {open_str} → {cur_str} (steam toward this side — sharp action confirmed)")
         else:
-            lines.append(f"• Line movement: {open_str} → {cur_str} — drifted away from us (monitor for steam reversal)")
+            lines.append(f"• Line movement: {open_str} → {cur_str} (line drifted against — model still shows edge; treat as context, not a disqualifier)")
 
     # ── Recent form (pipeline trend strings) ─────────────────────────────
     ht = bet.get("home_trend", "")
@@ -840,18 +840,21 @@ def _build_prompt(bet: dict, ctx: dict) -> tuple[str, str]:
 **Model edge:** {true_prob_pct}% true probability vs. {implied_prob}% book-implied (+{edge_pct}% gap, {ev_pct}% EV)
 **Fair value odds:** {fair_odds_str}
 
-## Key Signals (use these as the factual basis — always reliable)
+## Pipeline Signals (pre-computed, always reliable)
 
 {pipeline_section}
-
-Sharp money splits, line movement, and model projections are the strongest signals. Weave them into the narrative naturally.
 
 ## Live Context Data Quality
 
 **Status:** {ctx_quality}
 **Additional data:** {ctx_fields_str}
 
-Use as supplementary support. If sparse, lean on the key signals above. Never mention internal field names or API structures.
+**Signal priority for your lead sentence:**
+1. Real-world sport facts from the Live Context Data below: pitcher ERA/matchup history, team win streak, rest advantage, key injury, player prop trend. These are the most compelling to a bettor.
+2. Sharp money % and model projections if context is sparse.
+3. Line movement — weave in naturally as supporting evidence. If the line drifted against the bet, acknowledge it briefly as a risk and explain why the model edge persists despite it. Never lead with adverse line movement.
+
+Never mention internal field names or API structures.
 
 ## Live Context Data
 
@@ -873,7 +876,7 @@ Use as supplementary support. If sparse, lean on the key signals above. Never me
 Write like a sharp bettor tipping off a friend. Someone clicks Analyze and needs to understand in 4–5 sentences exactly WHY this pick has edge and why it's worth placing.
 
 **why_bet** (3–4 sentences, no section headers, no formula recitation):
-Lead with the single sharpest real-world fact you have — a pitcher's terrible history against this lineup, sharp money steaming the line, a specific playoff seeding battle, a player hitting this prop at 70% vs. 54% implied. Then weave in the market angle plainly: what the model sees vs. what the book is pricing, and why that gap exists. Add one supporting fact that makes the case stronger. Keep it concise and direct.
+Lead with the single sharpest real-world fact from the Live Context Data — pitcher ERA/matchup history, team form over last 10, rest advantage, player prop pace, injury to a key opponent. If real-world context is rich, that goes first. Then state the market angle plainly: the probability gap, why the book has mispriced this, and what the model is seeing that the market is missing. Add one supporting signal (sharp money, line steam, projections). If the line drifted against the bet, mention it briefly as a risk — don't lead with it. Keep it concise and direct.
 
 **risk** (1 sentence): Name the specific player, scenario, or matchup factor that could make this bet lose. No generic disclaimers.
 
