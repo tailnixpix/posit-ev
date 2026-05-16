@@ -1184,6 +1184,140 @@ html { scroll-behavior: smooth; }
 }
 .faq-item.faq-open .faq-ans { max-height: 400px; padding-bottom: 18px; }
 
+/* ═══════════════════════════════════════════════════════════════
+   DARK MODE — full dashboard aesthetic throughout landing page
+═══════════════════════════════════════════════════════════════ */
+html { background: #060A14; }
+
+/* All light sections → deep space */
+.section, .section-white, .section-alt, .section-pm,
+.ai-feature-section, .compare-section, .faq-section {
+  background: #060A14;
+  border-top: 1px solid rgba(255,255,255,.05);
+}
+
+/* Grid texture on every section */
+.section, .ai-feature-section, .compare-section, .faq-section {
+  position: relative; overflow: hidden;
+}
+.section::before, .ai-feature-section::before,
+.compare-section::before, .faq-section::before {
+  content: '';
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,.016) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.016) 1px, transparent 1px);
+  background-size: 60px 60px;
+  pointer-events: none; z-index: 0;
+}
+.section > .container, .ai-feature-section > .container,
+.compare-section > .container, .faq-section > .container { position: relative; z-index: 1; }
+
+/* Typography */
+.section-label { color: #a78bfa !important; }
+.section-title { color: #F0F4FF !important; }
+.section-sub   { color: rgba(255,255,255,.6) !important; }
+
+/* Step cards (How it works) */
+.step-card { background: #0F1923; border-color: #1A2740; box-shadow: none; }
+.step-num  { color: rgba(124,58,237,.3); }
+.step-title { color: #e2e8f0; }
+.step-desc  { color: #94a3b8; }
+
+/* AI feature section */
+.ai-feature-section { background: #060A14 !important; }
+.ai-mock-panel { background: #0F1923 !important; border-color: #1A2740 !important;
+                 box-shadow: 0 8px 32px rgba(0,0,0,.5); }
+.ai-mock-section-label { color: #a78bfa !important; border-color: rgba(124,58,237,.2) !important; }
+.ai-mock-section-body  { color: #94a3b8 !important; }
+.ai-feature-list li    { color: #94a3b8; }
+
+/* Prediction markets section */
+.pm-explainer-text { color: rgba(255,255,255,.6); }
+.pm-callout {
+  background: rgba(124,58,237,.08) !important;
+  border-color: rgba(124,58,237,.35) !important;
+}
+.pm-callout p { color: #c4b5fd !important; }
+.pm-callout strong { color: #e2e8f0 !important; }
+.pm-state-badge { color: #00D68F; background: rgba(0,214,143,.08); border-color: rgba(0,214,143,.25); }
+.pm-platform-card { background: #0F1923 !important; border-color: #1A2740 !important; }
+.pm-platform-name { color: #e2e8f0; }
+.pm-platform-desc { color: #64748b; }
+.pm-stat-pill     { background: #1A2740; color: #94a3b8; border: none; }
+
+/* Compare table */
+.compare-section { background: #060A14 !important; }
+.compare-section > .container > h2, .compare-section > .container > p { color: #F0F4FF !important; }
+.compare-table { border-radius: 12px; overflow: hidden; border: 1px solid #1A2740; }
+.compare-table thead th { background: #0F1923 !important; color: #64748b !important;
+                           border-color: #1A2740 !important; }
+.compare-table thead .th-free { background: #0F1923 !important; color: #64748b !important; }
+.compare-table thead .th-pro  {
+  background: rgba(124,58,237,.18) !important;
+  color: #c4b5fd !important;
+  border-bottom: 2px solid rgba(124,58,237,.4) !important;
+}
+.compare-table tbody tr:nth-child(odd)  td { background: rgba(255,255,255,.02); }
+.compare-table tbody tr:nth-child(even) td { background: #0F1923; }
+.compare-table tbody tr:hover td { background: rgba(255,255,255,.04); }
+.compare-table td { color: #94a3b8; border-color: rgba(255,255,255,.04); }
+.compare-table td:first-child { color: #c8d8e8; }
+.compare-table .c-check { color: #00D68F !important; }
+.compare-table .c-dash  { color: #243144 !important; }
+.compare-table .c-price { color: #a78bfa !important; }
+.compare-table .row-highlight td { background: rgba(124,58,237,.1) !important; }
+.compare-table .row-highlight td:first-child { color: #c4b5fd; }
+.compare-table tfoot td { background: #0F1923; border-color: rgba(255,255,255,.05); }
+.compare-cta { background: #7C3AED; border: none; color: #fff; box-shadow: 0 4px 16px rgba(124,58,237,.35); }
+.compare-cta:hover { background: #6D28D9; }
+.tr-table-wrap { border-color: #1A2740; }
+
+/* League cards */
+.league-card { background: #0F1923 !important; border-color: #1A2740 !important; box-shadow: none; }
+.league-card:hover { background: #131D2E !important; border-color: rgba(124,58,237,.35) !important;
+                     transform: translateY(-2px); box-shadow: 0 0 0 1px rgba(124,58,237,.2); }
+.league-name { color: #e2e8f0 !important; }
+.league-full { color: #64748b !important; }
+.market-dot { background: #1A2740 !important; color: #64748b !important; }
+.market-dot-props { background: rgba(124,58,237,.15) !important; color: #a78bfa !important;
+                    border-color: rgba(124,58,237,.25) !important; }
+
+/* Track record table */
+.tr-table-wrap { border-color: #1A2740; }
+.tr-table thead { background: #0F1923; }
+.tr-table th { color: #64748b; border-color: #1A2740; }
+.tr-table td { border-color: rgba(255,255,255,.04); }
+.tr-table tbody tr:hover { background: rgba(255,255,255,.03); }
+.tr-stat-val { color: #e2e8f0 !important; }
+.tr-stat-lbl { color: #64748b !important; }
+.tr-team     { color: #e2e8f0 !important; }
+.tr-date     { color: #64748b !important; }
+.tr-ev       { color: #00D68F !important; }
+.tr-odds     { color: #c8d8e8; }
+.tr-badge    { background: rgba(124,58,237,.15); color: #a78bfa; }
+.tr-won      { background: rgba(0,214,143,.12);  color: #00D68F; }
+.tr-lost     { background: rgba(248,113,113,.12); color: #f87171; }
+.tr-push     { background: rgba(100,116,139,.12); color: #94a3b8; }
+.tr-pending  { background: rgba(245,197,66,.1);   color: #F5C542; }
+.tr-toggle-wrap .tr-toggle-btn {
+  background: #0F1923; border-color: #1A2740; color: #a78bfa;
+}
+.tr-toggle-btn:hover { background: #131D2E; border-color: rgba(124,58,237,.4); }
+.tr-assumption { color: #64748b; }
+
+/* FAQ */
+.faq-section { background: #060A14 !important; }
+.faq-item { border-color: rgba(255,255,255,.06); }
+.faq-q-btn { background: transparent !important; }
+.faq-q-btn:hover { background: rgba(255,255,255,.03) !important; }
+.faq-q-txt { color: #e2e8f0; }
+.faq-caret { color: #a78bfa; }
+.faq-ans   { color: #94a3b8; }
+
+/* Disclosures (inline section) */
+[style*="background:#F9FAFB"] { background: #040710 !important; border-color: rgba(255,255,255,.06) !important; }
+
 </style>
 {% endblock %}
 
@@ -1901,50 +2035,50 @@ html { scroll-behavior: smooth; }
     <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
                 gap: var(--space-5); max-width:900px; margin:0 auto;">
 
-      <div style="background:var(--surface-1,#f8f5ff); border-radius:12px; padding:20px;">
+      <div style="background:#0F1923; border:1px solid #1A2740; border-radius:12px; padding:20px;">
         <div style="font-size:1.5rem; margin-bottom:8px;">🔄</div>
-        <div style="font-weight:700; color:var(--text-primary); margin-bottom:4px; font-size:0.95rem;">Reverse Line Movement</div>
-        <div style="font-size:0.82rem; color:var(--text-secondary); line-height:1.6;">
+        <div style="font-weight:700; color:#e2e8f0; margin-bottom:4px; font-size:0.95rem;">Reverse Line Movement</div>
+        <div style="font-size:0.82rem; color:#94a3b8; line-height:1.6;">
           Public bets one side heavily, but the line moves the other way. Sharps are fading the crowd.
         </div>
       </div>
 
-      <div style="background:var(--surface-1,#f8f5ff); border-radius:12px; padding:20px;">
+      <div style="background:#0F1923; border:1px solid #1A2740; border-radius:12px; padding:20px;">
         <div style="font-size:1.5rem; margin-bottom:8px;">⚡</div>
-        <div style="font-weight:700; color:var(--text-primary); margin-bottom:4px; font-size:0.95rem;">Steam Detection</div>
-        <div style="font-size:0.82rem; color:var(--text-secondary); line-height:1.6;">
+        <div style="font-weight:700; color:#e2e8f0; margin-bottom:4px; font-size:0.95rem;">Steam Detection</div>
+        <div style="font-size:0.82rem; color:#94a3b8; line-height:1.6;">
           Tracks basis-point line movement toward your bet since opening — the fingerprint of coordinated sharp money.
         </div>
       </div>
 
-      <div style="background:var(--surface-1,#f8f5ff); border-radius:12px; padding:20px;">
+      <div style="background:#0F1923; border:1px solid #1A2740; border-radius:12px; padding:20px;">
         <div style="font-size:1.5rem; margin-bottom:8px;">🛒</div>
-        <div style="font-weight:700; color:var(--text-primary); margin-bottom:4px; font-size:0.95rem;">Line Shopping Score</div>
-        <div style="font-size:0.82rem; color:var(--text-secondary); line-height:1.6;">
+        <div style="font-weight:700; color:#e2e8f0; margin-bottom:4px; font-size:0.95rem;">Line Shopping Score</div>
+        <div style="font-size:0.82rem; color:#94a3b8; line-height:1.6;">
           Compares your book's price against all others. Shows exactly how many basis points better you're getting.
         </div>
       </div>
 
-      <div style="background:var(--surface-1,#f8f5ff); border-radius:12px; padding:20px;">
+      <div style="background:#0F1923; border:1px solid #1A2740; border-radius:12px; padding:20px;">
         <div style="font-size:1.5rem; margin-bottom:8px;">📈</div>
-        <div style="font-weight:700; color:var(--text-primary); margin-bottom:4px; font-size:0.95rem;">CLV Projection</div>
-        <div style="font-size:0.82rem; color:var(--text-secondary); line-height:1.6;">
+        <div style="font-weight:700; color:#e2e8f0; margin-bottom:4px; font-size:0.95rem;">CLV Projection</div>
+        <div style="font-size:0.82rem; color:#94a3b8; line-height:1.6;">
           Grades how likely you are to beat the closing line — the most reliable long-run metric in sharp betting.
         </div>
       </div>
 
-      <div style="background:var(--surface-1,#f8f5ff); border-radius:12px; padding:20px;">
+      <div style="background:#0F1923; border:1px solid #1A2740; border-radius:12px; padding:20px;">
         <div style="font-size:1.5rem; margin-bottom:8px;">🗳️</div>
-        <div style="font-weight:700; color:var(--text-primary); margin-bottom:4px; font-size:0.95rem;">Prediction Market Check</div>
-        <div style="font-size:0.82rem; color:var(--text-secondary); line-height:1.6;">
+        <div style="font-weight:700; color:#e2e8f0; margin-bottom:4px; font-size:0.95rem;">Prediction Market Check</div>
+        <div style="font-size:0.82rem; color:#94a3b8; line-height:1.6;">
           Cross-references Kalshi and Polymarket. When zero-vig markets confirm your edge, conviction rises.
         </div>
       </div>
 
-      <div style="background:var(--surface-1,#f8f5ff); border-radius:12px; padding:20px;">
+      <div style="background:#0F1923; border:1px solid #1A2740; border-radius:12px; padding:20px;">
         <div style="font-size:1.5rem; margin-bottom:8px;">🚨</div>
-        <div style="font-weight:700; color:var(--text-primary); margin-bottom:4px; font-size:0.95rem;">Live Injury Alerts</div>
-        <div style="font-size:0.82rem; color:var(--text-secondary); line-height:1.6;">
+        <div style="font-weight:700; color:#e2e8f0; margin-bottom:4px; font-size:0.95rem;">Live Injury Alerts</div>
+        <div style="font-size:0.82rem; color:#94a3b8; line-height:1.6;">
           Real-time injury data from ESPN surfaces key absences directly on the affected bet card.
         </div>
       </div>
@@ -1952,8 +2086,8 @@ html { scroll-behavior: smooth; }
       <div style="background:linear-gradient(135deg,rgba(124,58,237,.12) 0%,rgba(245,158,11,.08) 100%);
                   border:1px solid rgba(124,58,237,.25); border-radius:12px; padding:20px;">
         <div style="font-size:1.5rem; margin-bottom:8px;">🏆</div>
-        <div style="font-weight:700; color:var(--brand-dark,#4c1d95); margin-bottom:4px; font-size:0.95rem;">Sharp Grade (S–D)</div>
-        <div style="font-size:0.82rem; color:var(--text-secondary); line-height:1.6;">
+        <div style="font-weight:700; color:#e2e8f0; margin-bottom:4px; font-size:0.95rem;">Sharp Grade (S–D)</div>
+        <div style="font-size:0.82rem; color:#94a3b8; line-height:1.6;">
           All 6 signals blended into one composite grade. <strong>S</strong> means every signal is firing.
           Never wonder which bets to focus on again.
         </div>
@@ -2177,6 +2311,86 @@ html { scroll-behavior: smooth; }
         </tr>
       </tfoot>
     </table>
+    </div>
+  </div>
+</section>
+
+{# ── Pricing ───────────────────────────────────────────────────────────── #}
+<section style="background:#060A14; padding:88px var(--space-5); border-top:1px solid rgba(255,255,255,.05); position:relative; overflow:hidden;" id="pricing">
+  {# Grid texture #}
+  <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px);background-size:60px 60px;pointer-events:none;z-index:0;"></div>
+  {# Radial glow #}
+  <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:700px;height:500px;background:radial-gradient(ellipse at center,rgba(124,58,237,.14) 0%,transparent 68%);pointer-events:none;z-index:0;"></div>
+
+  <div class="container" style="position:relative;z-index:1;max-width:660px;text-align:center;">
+    <p style="font-size:0.78rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#a78bfa;margin-bottom:12px;">Pricing</p>
+    <h2 style="font-size:clamp(1.8rem,3vw,2.6rem);font-weight:800;color:#F0F4FF;margin-bottom:14px;line-height:1.15;">
+      The sharpest bettors pay <span style="color:#00D68F;">$10 a month</span>.
+    </h2>
+    <p style="color:rgba(255,255,255,.6);font-size:1rem;margin:0 auto 44px;line-height:1.75;max-width:520px;">
+      One winning bet at fair odds pays for your entire month. Everything else is profit.
+    </p>
+
+    {# Pricing card #}
+    <div style="background:#0F1923;border:1px solid rgba(124,58,237,.45);border-radius:20px;padding:40px 36px;max-width:400px;margin:0 auto 36px;box-shadow:0 0 60px rgba(124,58,237,.18),0 0 0 1px rgba(124,58,237,.12);position:relative;overflow:hidden;">
+      {# Card glow #}
+      <div style="position:absolute;top:-80px;right:-60px;width:260px;height:260px;background:radial-gradient(circle,rgba(124,58,237,.22) 0%,transparent 70%);pointer-events:none;"></div>
+
+      {# Badge #}
+      <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(250,199,117,.1);border:1px solid rgba(250,199,117,.3);border-radius:20px;padding:4px 14px;font-size:0.72rem;font-weight:700;color:#FAC775;margin-bottom:22px;">
+        🔥 Limited — 50% off regular price
+      </div>
+
+      {# Price display #}
+      <div style="margin-bottom:4px;">
+        <span style="font-size:0.82rem;color:#64748b;text-decoration:line-through;font-weight:600;">$19.99/mo</span>
+      </div>
+      <div style="display:flex;align-items:baseline;justify-content:center;gap:2px;margin-bottom:6px;">
+        <span style="font-size:4.5rem;font-weight:900;color:#F0F4FF;line-height:1;letter-spacing:-2px;">$10</span>
+        <span style="font-size:1.1rem;color:#64748b;font-weight:600;margin-left:4px;">/month</span>
+      </div>
+      <div style="font-size:0.78rem;color:#64748b;margin-bottom:32px;">7-day free trial · Cancel anytime</div>
+
+      {# Feature list #}
+      <div style="text-align:left;margin-bottom:30px;display:flex;flex-direction:column;gap:11px;">
+        <div style="display:flex;align-items:center;gap:10px;font-size:0.9rem;color:#c8d8e8;">
+          <span style="color:#00D68F;font-weight:800;flex-shrink:0;font-size:1rem;">✓</span>
+          50+ +EV picks daily across all 8 leagues
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:0.9rem;color:#c8d8e8;">
+          <span style="color:#00D68F;font-weight:800;flex-shrink:0;font-size:1rem;">✓</span>
+          AI verdict &amp; full analysis on every card
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:0.9rem;color:#c8d8e8;">
+          <span style="color:#00D68F;font-weight:800;flex-shrink:0;font-size:1rem;">✓</span>
+          Sharp grade, steam, RLM &amp; market signals
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:0.9rem;color:#c8d8e8;">
+          <span style="color:#00D68F;font-weight:800;flex-shrink:0;font-size:1rem;">✓</span>
+          Kelly stake sizing per bet
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:0.9rem;color:#c8d8e8;">
+          <span style="color:#00D68F;font-weight:800;flex-shrink:0;font-size:1rem;">✓</span>
+          Props · Prediction markets · Exchanges
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:0.9rem;color:#c8d8e8;">
+          <span style="color:#00D68F;font-weight:800;flex-shrink:0;font-size:1rem;">✓</span>
+          Live injury alerts on affected bets
+        </div>
+      </div>
+
+      {# CTA button #}
+      <a href="/register" style="display:block;background:linear-gradient(135deg,#7C3AED 0%,#a78bfa 100%);color:#fff;font-weight:800;font-size:1.05rem;padding:16px 24px;border-radius:12px;text-decoration:none;box-shadow:0 4px 24px rgba(124,58,237,.45);transition:opacity .15s;letter-spacing:0.01em;">
+        Start 7-Day Free Trial →
+      </a>
+      <div style="margin-top:12px;font-size:0.72rem;color:#64748b;">No card required to start · Stripe-secured</div>
+    </div>
+
+    {# Trust strip #}
+    <div style="display:flex;gap:24px;justify-content:center;flex-wrap:wrap;font-size:0.78rem;color:rgba(255,255,255,.38);">
+      <span>🔒 Stripe-secured checkout</span>
+      <span>✓ Cancel anytime</span>
+      <span>📬 Free pick available — no card needed</span>
     </div>
   </div>
 </section>
