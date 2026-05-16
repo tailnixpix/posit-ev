@@ -89,8 +89,8 @@ nav {
   display: flex;
   align-items: center;
   padding: var(--space-3) var(--space-6);
-  background: #ffffff;
-  border-bottom: 1px solid var(--brand-border);
+  background: #060A14;
+  border-bottom: 1px solid rgba(255,255,255,.08);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -111,14 +111,14 @@ nav {
 nav a {
   font-size: 0.9rem;
   font-weight: 500;
-  color: var(--text-secondary);
+  color: rgba(255,255,255,.65);
   padding: var(--space-2) var(--space-1);
   border-radius: var(--radius-sm);
   transition: color 0.15s;
 }
 
 nav a:hover {
-  color: var(--brand-primary);
+  color: #e2e8f0;
   text-decoration: none;
 }
 
@@ -245,23 +245,23 @@ button.nav-btn-outline:hover,
 /* Soft variant — Pricing / Support / Dashboard (subtle, low-contrast) */
 button.nav-btn-soft,
 .nav-btn-soft {
-  background: var(--brand-light) !important;
-  color: var(--brand-primary) !important;
-  border: 1.5px solid var(--brand-border) !important;
-  padding: 7px 14px !important;   /* slightly tighter than the default 8px 18px */
+  background: rgba(255,255,255,.07) !important;
+  color: rgba(255,255,255,.75) !important;
+  border: 1.5px solid rgba(255,255,255,.12) !important;
+  padding: 7px 14px !important;
 }
 button.nav-btn-soft:hover,
 .nav-btn-soft:hover {
-  background: #ddd8f8 !important;
-  color: var(--brand-dark) !important;
-  border-color: var(--brand-primary) !important;
+  background: rgba(255,255,255,.12) !important;
+  color: #e2e8f0 !important;
+  border-color: rgba(255,255,255,.22) !important;
 }
 
 /* Vertical divider between text links and action buttons */
 .nav-divider {
   width: 1px;
   height: 20px;
-  background: var(--brand-border);
+  background: rgba(255,255,255,.12);
   flex-shrink: 0;
 }
 
