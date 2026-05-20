@@ -267,27 +267,84 @@ def _decode_unsub_token(token: str) -> Optional[str]:
 # EVBetCache query
 # ---------------------------------------------------------------------------
 
+def _composite_pick_score(bet: EVBetCache) -> float:
+    """
+    Composite score for free daily pick selection.
+
+    Balances positive expected value with win probability so the pick
+    isn't just the highest-EV longshot.  A +350 dog at 25% true prob
+    can have 14% EV but will lose 75% of the time — bad for trust.
+
+    Component weights (all additive):
+      ev_pts   — EV% contribution, capped at 12% so longshots don't dominate
+      tp_pts   — win probability, the dominant term above 50%
+      sharp_pts — sharp money signal when available (0 if null, not penalised)
+      clv_pts  — line movement direction: +5 if steaming our way, -3 if adverse
+      market_pts — spread/total bets get a small bonus (calibrated ~50% win rate)
+      proj_pts — model projection available → higher confidence
+
+    Higher score = better daily pick.
+    """
+    ev      = float(bet.ev_percent or 0)
+    tp      = float(bet.true_prob or 0.5)
+    sharp   = float(bet.sharp_score or 0)
+    opening = bet.opening_odds
+    odds    = bet.odds or -110
+    market  = (bet.market or "").lower()
+
+    # 1. EV contribution — cap at 12% so a 20%+ EV longshot can't override
+    #    everything else.  Range: 0–24 pts.
+    ev_pts = min(ev, 12.0) * 2.0
+
+    # 2. Win probability — the heaviest term.
+    #    Below 40% true prob this contributes 0 (longshots get no boost).
+    #    48% → 8 pts | 52% → 12 pts | 60% → 20 pts | 65% → 25 pts
+    tp_pts = max(0.0, (tp - 0.40) * 100.0)
+
+    # 3. Sharp money signal (0–8 pts when sharp_score is populated).
+    #    Null sharp_score adds nothing rather than penalising the pick.
+    sharp_pts = (sharp / 100.0) * 8.0 if bet.sharp_score is not None else 0.0
+
+    # 4. CLV direction: line steaming toward us (+5) vs. drifting away (-3).
+    #    Neutral (no opening odds recorded) → 0.
+    clv_pts = 0.0
+    if opening and opening != odds:
+        clv_pts = 5.0 if opening > odds else -3.0
+
+    # 5. Market type: spread/total bets have structurally calibrated ~50% win
+    #    rates; moneylines vary wildly.  Small bonus to tilt toward these when
+    #    scores are otherwise close.
+    market_pts = 2.0 if market in ("spreads", "totals") else 0.0
+
+    # 6. Model projection available: indicates model has a score prediction,
+    #    giving higher overall confidence in the edge.
+    proj_pts = 3.0 if bet.proj_home_score is not None else 0.0
+
+    return ev_pts + tp_pts + sharp_pts + clv_pts + market_pts + proj_pts
+
+
 def get_top_ev_bet() -> Optional[EVBetCache]:
     """
-    Return the best model-confirmed +EV bet for today's newsletter pick.
+    Return the best +EV bet for today's newsletter pick, optimised for
+    both edge (EV%) and win probability.
 
-    Selection priority (all tiers require commence_time > now):
-    1. Model-confirmed non-prop bet for a game playing TODAY (CT calendar day).
-    2. Any non-prop +EV bet for a game playing TODAY.
-    3. Model-confirmed non-prop bet for any future game (next 7 days).
-    4. Any non-prop +EV bet for any future game.
-    5. Any bet in the cache for any future game (last resort).
+    Candidates are fetched in the same 5-tier priority order as before
+    (model-confirmed today → any today → model future → any future →
+    last resort), but the single winner in each tier is chosen by
+    _composite_pick_score() rather than raw EV%.
 
-    Tiers 1-2 ("today only") are strongly preferred so the newsletter always
-    features a game the reader can act on the same day.  Tiers 3-5 are safety
-    nets for days with no same-day coverage (e.g. early morning before books
-    post lines).
+    The composite score weights win probability heavily so the daily pick
+    isn't just the highest-EV longshot.  Within each tier the top 25
+    candidates by EV% are fetched and re-ranked in Python.
+
+    Hard floor: tiers 1–4 require true_prob ≥ 0.44 (odds ≤ roughly +127)
+    so a 25%-true-prob underdog is never the daily pick when better
+    options exist.  Tier 5 (last resort) lifts this floor.
     """
     from zoneinfo import ZoneInfo
     _CT = ZoneInfo("America/Chicago")
     now_utc = datetime.now(timezone.utc)
 
-    # Compute CT midnight boundaries for "today"
     now_ct = datetime.now(_CT)
     today_ct = now_ct.date()
     today_start = datetime(today_ct.year, today_ct.month, today_ct.day, tzinfo=_CT)
@@ -295,58 +352,74 @@ def get_top_ev_bet() -> Optional[EVBetCache]:
 
     db = SessionLocal()
     try:
-        def _query(extra_filters: list, label: str):
-            base = [
-                EVBetCache.commence_time > now_utc,
-            ] + extra_filters
-            result = (
+        # Minimum win-probability floor for tiers 1–4.
+        # Lifts the hard exclusion of longshots while still allowing the
+        # composite score to further prefer higher-probability outcomes.
+        _MIN_TRUE_PROB = 0.44   # ≈ odds of +127 or better
+
+        def _best(extra_filters: list, label: str, prob_floor: bool = True) -> Optional[EVBetCache]:
+            """
+            Fetch the top 25 candidates by EV%, then pick the one with the
+            highest composite score.  Returns None if no candidates qualify.
+            """
+            base = [EVBetCache.commence_time > now_utc] + extra_filters
+            if prob_floor:
+                base.append(EVBetCache.true_prob >= _MIN_TRUE_PROB)
+
+            candidates = (
                 db.query(EVBetCache)
                 .filter(*base)
                 .order_by(EVBetCache.ev_percent.desc())
-                .first()
+                .limit(25)
+                .all()
             )
-            if result:
-                log.info(
-                    "get_top_ev_bet [%s]: %s %s %.1f%% EV @ commence=%s",
-                    label, result.game, result.team, result.ev_percent,
-                    result.commence_time,
-                )
-            return result
+            if not candidates:
+                return None
+
+            best = max(candidates, key=_composite_pick_score)
+            score = _composite_pick_score(best)
+            log.info(
+                "get_top_ev_bet [%s]: selected '%s' %s | ev=%.1f%% true_prob=%.1%% "
+                "odds=%+d composite=%.1f (from %d candidates)",
+                label, best.game, best.team, best.ev_percent,
+                best.true_prob, best.odds, score, len(candidates),
+            )
+            return best
 
         today_filters = [
             EVBetCache.commence_time >= today_start,
             EVBetCache.commence_time < tomorrow_start,
         ]
-        non_prop      = [EVBetCache.is_prop == False]                # noqa: E712
-        model_conf    = non_prop + [EVBetCache.proj_home_score != None]  # noqa: E711
-        ev_pos        = [EVBetCache.ev_percent > 0]
+        non_prop   = [EVBetCache.is_prop == False]                 # noqa: E712
+        model_conf = non_prop + [EVBetCache.proj_home_score != None]  # noqa: E711
+        ev_pos     = [EVBetCache.ev_percent > 0]
 
-        # Tier 1: model-confirmed, today
-        bet = _query(model_conf + ev_pos + today_filters, "model+today")
+        # Tier 1: model-confirmed, today, true_prob floor applied
+        bet = _best(model_conf + ev_pos + today_filters, "model+today")
         if bet:
             return bet
 
-        # Tier 2: any non-prop EV+, today
+        # Tier 2: any non-prop EV+, today, true_prob floor applied
         log.warning("get_top_ev_bet: no model-confirmed today bet — falling back to any non-prop today.")
-        bet = _query(non_prop + ev_pos + today_filters, "non-prop+today")
+        bet = _best(non_prop + ev_pos + today_filters, "non-prop+today")
         if bet:
             return bet
 
-        # Tier 3: model-confirmed, any future game
+        # Tier 3: model-confirmed, any future game, true_prob floor applied
         log.warning("get_top_ev_bet: no today bets — widening to future model-confirmed bets.")
-        bet = _query(model_conf + ev_pos, "model+future")
+        bet = _best(model_conf + ev_pos, "model+future")
         if bet:
             return bet
 
-        # Tier 4: any non-prop EV+, any future game
+        # Tier 4: any non-prop EV+, any future game, true_prob floor applied
         log.warning("get_top_ev_bet: no model-confirmed future bets — any non-prop future bet.")
-        bet = _query(non_prop + ev_pos, "non-prop+future")
+        bet = _best(non_prop + ev_pos, "non-prop+future")
         if bet:
             return bet
 
-        # Tier 5: anything that hasn't started
+        # Tier 5: last resort — drop true_prob floor entirely
         log.warning("get_top_ev_bet: last resort — returning top future bet regardless of type.")
-        return _query([], "any+future")
+        return _best([], "any+future", prob_floor=False)
 
     finally:
         db.close()
