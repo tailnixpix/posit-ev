@@ -989,6 +989,49 @@ def _sanitize_context_text(text: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Gemini fallback helper
+# ---------------------------------------------------------------------------
+
+def _call_gemini(system_prompt: str, user_prompt: str) -> Optional[str]:
+    """
+    Call Gemini 2.0 Flash as a free AI fallback when Claude is unavailable.
+
+    Uses google-generativeai with GEMINI_API_KEY env var.
+    Free tier: 1,500 requests/day — more than enough for on-demand analysis.
+    Returns the raw text response, or None if the key is missing or the call fails.
+    """
+    api_key = os.getenv("GEMINI_API_KEY", "")
+    if not api_key:
+        log.debug("_call_gemini: GEMINI_API_KEY not set — skipping Gemini fallback")
+        return None
+
+    try:
+        import google.generativeai as genai
+
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel(
+            model_name="gemini-2.0-flash",
+            system_instruction=system_prompt,
+        )
+        response = model.generate_content(
+            user_prompt,
+            generation_config=genai.types.GenerationConfig(
+                max_output_tokens=2048,
+                temperature=0.3,
+            ),
+        )
+        text = (response.text or "").strip()
+        if text:
+            log.info("_call_gemini: Gemini 2.0 Flash responded successfully")
+            return text
+        log.warning("_call_gemini: Gemini returned empty text")
+        return None
+    except Exception as exc:
+        log.warning("_call_gemini: Gemini API call failed: %s", exc)
+        return None
+
+
+# ---------------------------------------------------------------------------
 # Main public function
 # ---------------------------------------------------------------------------
 
@@ -1046,34 +1089,44 @@ def analyze_bet(bet: dict, optimal_client: Optional[OptimalClient] = None) -> Op
 
     system_prompt, user_prompt = _build_prompt(bet, ctx)
 
-    # Call Claude — no extended thinking, keeps latency predictable on Railway
+    # ── 1. Try Claude ─────────────────────────────────────────────────────
+    # No extended thinking — keeps latency predictable on Railway.
+    response_text = ""
     try:
-        client = anthropic.Anthropic(
+        claude_client = anthropic.Anthropic(
             api_key=os.getenv("ANTHROPIC_API_KEY"),
             timeout=30.0,   # hard 30-second cap so Railway never times out
         )
-        message = client.messages.create(
+        message = claude_client.messages.create(
             model=_MODEL,
             max_tokens=2048,
             system=system_prompt,
             messages=[{"role": "user", "content": user_prompt}],
         )
+        for block in message.content:
+            if getattr(block, "type", None) == "text" and hasattr(block, "text"):
+                response_text = block.text.strip()
+                break
+            elif isinstance(block, str):
+                response_text = block.strip()
+                break
+        if not response_text:
+            log.warning("analyze_bet: Claude returned no text for bet id=%s", bet.get("id"))
     except Exception as exc:
-        log.error("analyze_bet: Claude API call failed: %s", exc)
-        return None
+        log.warning("analyze_bet: Claude API call failed (will try Gemini): %s", exc)
 
-    # Extract text response
-    response_text = ""
-    for block in message.content:
-        if getattr(block, "type", None) == "text" and hasattr(block, "text"):
-            response_text = block.text.strip()
-            break
-        elif isinstance(block, str):
-            response_text = block.strip()
-            break
+    # ── 2. Gemini 2.0 Flash fallback ──────────────────────────────────────
+    # Same system + user prompt — the already-fetched live context is reused,
+    # so real-world facts (team form, pitchers, injuries) still reach the model.
+    if not response_text:
+        log.info("analyze_bet: trying Gemini 2.0 Flash fallback for bet id=%s", bet.get("id"))
+        response_text = _call_gemini(system_prompt, user_prompt) or ""
 
     if not response_text:
-        log.warning("analyze_bet: Claude returned no text for bet id=%s", bet.get("id"))
+        log.error(
+            "analyze_bet: both Claude and Gemini failed for bet id=%s — no analysis available",
+            bet.get("id"),
+        )
         return None
 
     # Parse JSON
