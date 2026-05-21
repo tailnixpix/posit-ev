@@ -426,6 +426,112 @@ def get_top_ev_bet() -> Optional[EVBetCache]:
 
 
 # ---------------------------------------------------------------------------
+# Data-driven synopsis (no API call — runs when Anthropic is unavailable)
+# ---------------------------------------------------------------------------
+
+def _build_data_synopsis(bet: EVBetCache) -> str:
+    """
+    Build a plain-English synopsis from the pipeline signals already stored
+    on the EVBetCache row.  No external API call — works when Anthropic
+    credits are exhausted or the key is missing.
+
+    Covers: EV edge, win probability gap, sharp money, line movement,
+    team recent form, and model projections.
+    """
+    ev_pct    = float(getattr(bet, "ev_percent", 0) or 0)
+    true_prob = float(getattr(bet, "true_prob", 0) or 0)
+    implied   = float(getattr(bet, "implied_prob", 0) or 0)
+    odds      = int(getattr(bet, "odds", 0) or 0)
+    opening   = getattr(bet, "opening_odds", None)
+    sharp     = getattr(bet, "sharp_score", None)
+    bet_pct   = getattr(bet, "bet_pct", None)
+    money_pct = getattr(bet, "money_pct", None)
+    home_tr   = (getattr(bet, "home_trend", "") or "").strip()
+    away_tr   = (getattr(bet, "away_trend", "") or "").strip()
+    game      = (getattr(bet, "game", "") or "").strip()
+    team      = (getattr(bet, "team", "") or "").strip()
+    market    = (getattr(bet, "market", "") or "").lower()
+    proj_home = getattr(bet, "proj_home_score", None)
+    proj_away = getattr(bet, "proj_away_score", None)
+    proj_total= getattr(bet, "proj_total", None)
+    proj_wp   = getattr(bet, "proj_home_win_prob", None)
+
+    odds_str = f"+{odds}" if odds > 0 else str(odds)
+    tp_pct   = round(true_prob * 100, 1)
+    if not implied and odds:
+        implied = (100 / (odds + 100)) if odds > 0 else (abs(odds) / (abs(odds) + 100))
+    impl_pct = round(implied * 100, 1)
+    edge_pp  = round(tp_pct - impl_pct, 1)
+
+    sentences: list[str] = []
+
+    # 1. Core edge sentence
+    market_label = {"h2h": "moneyline", "spreads": "spread", "totals": "total"}.get(market, market)
+    if game and " @ " in game:
+        away_t, home_t = [s.strip() for s in game.split(" @ ", 1)]
+        sentences.append(
+            f"Today's pick is {team} ({market_label}, {odds_str}) in {away_t} @ {home_t} — "
+            f"our model gives this a {tp_pct}% chance of winning versus the {impl_pct}% "
+            f"the book implies, a {edge_pp:+.1f} percentage-point edge worth {ev_pct:.1f}% EV."
+        )
+    else:
+        sentences.append(
+            f"Today's pick is {team} ({market_label}, {odds_str}) — "
+            f"our model assigns {tp_pct}% true probability versus {impl_pct}% book-implied, "
+            f"a {edge_pp:+.1f}pp gap generating {ev_pct:.1f}% expected value."
+        )
+
+    # 2. Projection sentence (when available)
+    if proj_home is not None and proj_away is not None and " @ " in game:
+        away_t, home_t = [s.strip() for s in game.split(" @ ", 1)]
+        proj_line = f"The model projects {away_t} {proj_away:.1f} – {home_t} {proj_home:.1f}"
+        if proj_total:
+            proj_line += f" (total {proj_total:.1f})"
+        if proj_wp is not None:
+            proj_line += f", with a {proj_wp*100:.0f}% home-win probability"
+        sentences.append(proj_line + ".")
+
+    # 3. Sharp money or line movement sentence
+    if sharp is not None and sharp >= 55:
+        level = "strong" if sharp >= 70 else "moderate"
+        sentences.append(
+            f"Sharp money indicators are elevated ({sharp:.0f}/100), suggesting "
+            f"{level} professional interest on this side."
+        )
+    elif opening and opening != odds:
+        open_str = f"+{opening}" if opening > 0 else str(opening)
+        if opening > odds:
+            sentences.append(
+                f"The line has already steamed from {open_str} to {odds_str} — "
+                f"smart money has been moving in this direction since open."
+            )
+        else:
+            sentences.append(
+                f"The line has drifted from {open_str} to {odds_str}; "
+                f"the model still shows edge despite the move, but act before further drift."
+            )
+    elif bet_pct is not None and money_pct is not None and money_pct > bet_pct + 8:
+        sentences.append(
+            f"Only {bet_pct:.0f}% of bets but {money_pct:.0f}% of the money is on this side — "
+            f"a classic reverse-line-movement signal from sharp bettors."
+        )
+
+    # 4. Recent form sentence
+    if home_tr and away_tr and " @ " in game:
+        away_t, home_t = [s.strip() for s in game.split(" @ ", 1)]
+        sentences.append(
+            f"Recent form: {away_t} {away_tr} · {home_t} {home_tr} over their last 10 games."
+        )
+    elif home_tr or away_tr:
+        form_team = home_t if home_tr else away_t if " @ " in game else ""
+        trend = home_tr or away_tr
+        if form_team:
+            sentences.append(f"{form_team} is {trend} over their last 10 games.")
+
+    return " ".join(sentences)
+
+
+# ---------------------------------------------------------------------------
 # Anthropic synopsis
 # ---------------------------------------------------------------------------
 
@@ -440,13 +546,8 @@ def _generate_synopsis(bet: EVBetCache) -> str:
     """
     api_key = os.getenv("ANTHROPIC_API_KEY", "")
     if not api_key or api_key.startswith("your_"):
-        log.warning("ANTHROPIC_API_KEY not configured — skipping synopsis.")
-        return (
-            "Our model identified an edge in the current market pricing. "
-            "The true probability implied by sharp-market consensus differs "
-            "meaningfully from this book's line, creating a positive expected "
-            "value opportunity worth tracking today."
-        )
+        log.warning("ANTHROPIC_API_KEY not configured — using data-driven synopsis.")
+        return _build_data_synopsis(bet)
 
     try:
         import anthropic  # lazy import
@@ -506,13 +607,8 @@ def _generate_synopsis(bet: EVBetCache) -> str:
         return synopsis
 
     except Exception as exc:
-        log.error("Anthropic synopsis failed: %s", exc)
-        return (
-            "Our model identified a meaningful edge in today's market pricing. "
-            "The consensus sharp-money probability on this outcome differs from "
-            "the posted line, creating a positive expected value opportunity. "
-            "Act before the market corrects."
-        )
+        log.error("Anthropic synopsis failed: %s — falling back to data-driven synopsis.", exc)
+        return _build_data_synopsis(bet)
 
 
 # ---------------------------------------------------------------------------
