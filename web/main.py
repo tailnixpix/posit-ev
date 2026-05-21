@@ -3293,6 +3293,65 @@ async def admin_send_correction_newsletter(
 
 
 # ---------------------------------------------------------------------------
+# Admin: manually trigger the daily newsletter (missed / outage recovery)
+# ---------------------------------------------------------------------------
+
+@app.post("/admin/trigger-daily-newsletter")
+async def admin_trigger_daily_newsletter(
+    request: Request,
+    pin: str = Form(default=""),
+):
+    """
+    Manually fire the 8 AM daily newsletter send outside its scheduled window.
+
+    Use when the scheduled job was missed (e.g. Railway outage, server restart
+    after 8 AM CT, or Anthropic credits just topped up after a failure).
+
+    Auth (same as other admin endpoints):
+      • Form field:  pin=<ADMIN_PIN>
+      • HTTP header: Authorization: Bearer <valid-JWT>
+
+    Example:
+        curl -X POST https://www.posit-ev.com/admin/trigger-daily-newsletter \\
+             -d "pin=YOUR_PIN"
+    """
+    from web.auth import decode_access_token
+
+    authorized = False
+
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        token = auth_header[7:].strip()
+        payload = decode_access_token(token)
+        if payload and payload.get("email"):
+            authorized = True
+            log.info("trigger-daily-newsletter: authorized via Bearer JWT for %s", payload.get("email"))
+
+    if not authorized and pin:
+        admin_pin = os.getenv("ADMIN_PIN", "")
+        if admin_pin and secrets.compare_digest(pin.strip(), admin_pin.strip()):
+            authorized = True
+            log.info("trigger-daily-newsletter: authorized via ADMIN_PIN")
+        else:
+            log.warning(
+                "trigger-daily-newsletter: rejected bad PIN from %s",
+                request.client.host if request.client else "unknown",
+            )
+
+    if not authorized:
+        return JSONResponse(
+            {"status": "error", "detail": "Unauthorized — provide a valid Bearer token or ADMIN_PIN."},
+            status_code=403,
+        )
+
+    import asyncio
+    loop = asyncio.get_event_loop()
+    result = await loop.run_in_executor(None, send_daily_newsletter)
+    log.info("Daily newsletter manually triggered by admin: %s", result)
+    return JSONResponse({"status": "triggered", "result": str(result)})
+
+
+# ---------------------------------------------------------------------------
 # Admin: props pipeline diagnostic endpoint
 # ---------------------------------------------------------------------------
 
