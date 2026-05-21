@@ -267,6 +267,107 @@ def _decode_unsub_token(token: str) -> Optional[str]:
 # EVBetCache query
 # ---------------------------------------------------------------------------
 
+def _model_aligned(bet: EVBetCache) -> bool:
+    """
+    Return True when the model's score projections support the bet direction,
+    or when no relevant projections are available (can't check → allow).
+    Return False when projections directly contradict the bet.
+
+    Examples of contradictions this catches:
+      • Moneyline on Blue Jays (away) when proj_home_win_prob = 0.545 (Yankees favoured)
+      • Over 9.0 when proj_total = 8.32
+      • Spread: home team -1.5 when model projects away team wins outright
+
+    Only applied when projections are present — never penalises bets for
+    missing data.
+    """
+    market = (bet.market or "").lower()
+    game   = (bet.game   or "")
+    team   = (bet.team   or "").strip()
+    point  = bet.point
+
+    proj_home_wp = bet.proj_home_win_prob   # None or float [0,1]
+    proj_total   = bet.proj_total            # None or float
+    proj_home    = bet.proj_home_score       # None or float
+    proj_away    = bet.proj_away_score       # None or float
+
+    # ── Moneyline ─────────────────────────────────────────────────────────
+    if market == "h2h" and proj_home_wp is not None and " @ " in game:
+        away_t, home_t = [s.strip() for s in game.split(" @ ", 1)]
+        team_lower = team.lower()
+
+        # Match bet team to home or away using last-word abbreviation
+        home_words = home_t.lower().split()
+        away_words = away_t.lower().split()
+        is_home = any(w in team_lower for w in home_words if len(w) > 2)
+        is_away = any(w in team_lower for w in away_words if len(w) > 2)
+
+        if is_home and not is_away:
+            if proj_home_wp < 0.50:
+                log.info(
+                    "_model_aligned: REJECT %s ML — proj home_win=%.1f%% favours %s",
+                    team, proj_home_wp * 100, away_t,
+                )
+                return False
+        elif is_away and not is_home:
+            if proj_home_wp >= 0.50:
+                log.info(
+                    "_model_aligned: REJECT %s ML — proj home_win=%.1f%% favours %s",
+                    team, proj_home_wp * 100, home_t,
+                )
+                return False
+
+    # ── Totals ────────────────────────────────────────────────────────────
+    if market == "totals" and proj_total is not None and point is not None:
+        is_over = team.lower().startswith("over")
+        if is_over and proj_total < point:
+            log.info(
+                "_model_aligned: REJECT Over %.1f — proj total=%.2f (under the line)",
+                point, proj_total,
+            )
+            return False
+        if not is_over and proj_total > point:
+            log.info(
+                "_model_aligned: REJECT Under %.1f — proj total=%.2f (over the line)",
+                point, proj_total,
+            )
+            return False
+
+    # ── Spreads ───────────────────────────────────────────────────────────
+    if market == "spreads" and proj_home is not None and proj_away is not None \
+            and point is not None and " @ " in game:
+        away_t, home_t = [s.strip() for s in game.split(" @ ", 1)]
+        team_lower = team.lower()
+        home_words = home_t.lower().split()
+        away_words = away_t.lower().split()
+        is_home = any(w in team_lower for w in home_words if len(w) > 2)
+        is_away = any(w in team_lower for w in away_words if len(w) > 2)
+
+        proj_margin = proj_home - proj_away  # +ve = home leads
+
+        if is_home and not is_away:
+            # Home team at `point` (e.g. -3.5 → must win by 3.5+)
+            # Model must project home to cover: proj_margin > -point when point < 0
+            needed = -point  # e.g. point=-3.5 → needed=3.5
+            if proj_margin < needed:
+                log.info(
+                    "_model_aligned: REJECT %s %+.1f spread — proj margin=%.2f (doesn't cover)",
+                    team, point, proj_margin,
+                )
+                return False
+        elif is_away and not is_home:
+            # Away team at `point` (e.g. +3.5 → can lose by up to 3.5)
+            # Model must project away to cover: proj_margin < point
+            if proj_margin > point:
+                log.info(
+                    "_model_aligned: REJECT %s %+.1f spread — proj margin=%.2f (away doesn't cover)",
+                    team, point, proj_margin,
+                )
+                return False
+
+    return True
+
+
 def _composite_pick_score(bet: EVBetCache) -> float:
     """
     Composite score for free daily pick selection.
@@ -376,13 +477,26 @@ def get_top_ev_bet() -> Optional[EVBetCache]:
             if not candidates:
                 return None
 
-            best = max(candidates, key=_composite_pick_score)
+            # Drop any bet whose model projection contradicts the bet direction
+            # (e.g. Blue Jays ML when the model projects the Yankees to win).
+            # Only filters when projections are present — never penalises missing data.
+            aligned = [b for b in candidates if _model_aligned(b)]
+            if not aligned:
+                log.warning(
+                    "get_top_ev_bet [%s]: all %d candidates contradicted by model "
+                    "projections — using unfiltered pool as fallback.",
+                    label, len(candidates),
+                )
+                aligned = candidates  # last-resort: allow contradictions rather than return None
+
+            best = max(aligned, key=_composite_pick_score)
             score = _composite_pick_score(best)
+            n_rejected = len(candidates) - len(aligned)
             log.info(
-                "get_top_ev_bet [%s]: selected '%s' %s | ev=%.1f%% true_prob=%.1%% "
-                "odds=%+d composite=%.1f (from %d candidates)",
+                "get_top_ev_bet [%s]: selected '%s' %s | ev=%.1f%% true_prob=%.1f%% "
+                "odds=%+d composite=%.1f (%d candidates, %d projection-contradicted rejected)",
                 label, best.game, best.team, best.ev_percent,
-                best.true_prob, best.odds, score, len(candidates),
+                best.true_prob * 100, best.odds, score, len(candidates), n_rejected,
             )
             return best
 
