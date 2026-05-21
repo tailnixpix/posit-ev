@@ -209,6 +209,7 @@ def create_post(
             f"{_BASE}/publications/{_pub_id()}/posts",
             headers=_headers(),
             json={
+                "title":            subject,     # required by Beehiiv API v2
                 "subject":          subject,
                 "subtitle":         subtitle,
                 "content_html":     body_html,   # Beehiiv wraps this in their email template
