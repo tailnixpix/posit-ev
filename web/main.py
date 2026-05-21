@@ -1786,10 +1786,12 @@ async def get_analysis(bet_id: int, request: Request, db: Session = Depends(get_
     if not bet_row:
         raise HTTPException(status_code=404, detail="Bet not found")
 
-    # Return cached analysis if fresh (< 90 min old) and not force-busted
+    # Return cached analysis if fresh (< 6 hours old) and not force-busted.
+    # Both Claude and Gemini results are cached — the 6h window prevents
+    # redundant AI calls on bets that sit on the dashboard all day.
     import re as _re
     bust = request.query_params.get("bust") == "1"
-    cache_cutoff = datetime.now(timezone.utc) - timedelta(minutes=90)
+    cache_cutoff = datetime.now(timezone.utc) - timedelta(hours=6)
     if (
         not bust
         and bet_row.analysis
@@ -1877,8 +1879,9 @@ async def get_analysis(bet_id: int, request: Request, db: Session = Depends(get_
         rule_based = True
         log.info("get_analysis: using rule-based fallback for bet_id=%d", bet_id)
 
-    # Persist to DB only for real Claude analyses (rule-based is trivially fast
-    # to regenerate and we don't want it poisoning the cache).
+    # Persist Claude and Gemini results to DB so the 6h cache window is honoured.
+    # Rule-based results are excluded — they're instant to regenerate and we don't
+    # want a no-context fallback blocking a real AI result later.
     if not rule_based:
         try:
             bet_row.analysis               = result["analysis"]
