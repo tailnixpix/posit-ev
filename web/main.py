@@ -712,6 +712,15 @@ def refresh_ev_cache() -> int:
             "running": False, "last_count": count, "last_error": None,
             "last_run": datetime.now(timezone.utc),
         })
+
+        # Score HR props immediately so the HR Model tab is never empty.
+        # Wind data isn't enriched yet (that runs 1 min later), so the first
+        # pass uses wind_factor=1.0; the scheduled job at +4 min refines it.
+        try:
+            _score_hr_props()
+        except Exception as _hr_exc:
+            log.warning("EV cache refresh: inline HR scoring failed: %s", _hr_exc)
+
         return count
 
     except Exception as exc:
