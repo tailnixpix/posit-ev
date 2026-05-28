@@ -738,74 +738,6 @@ main { max-width: none !important; padding: 0 !important; }
 }
 
 /* ── Probability bars on card face ── */
-.prob-vis {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  margin-bottom: 10px;
-  background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 8px;
-  padding: 9px 10px 7px;
-}
-.pv-hdr {
-  font-size: 0.55rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  color: var(--d-muted);
-  margin-bottom: 3px;
-}
-.pv-row {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-.pv-lbl {
-  font-size: 0.6rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  width: 38px;
-  flex-shrink: 0;
-}
-.pv-lbl-model { color: #4F9EFF; }
-.pv-lbl-book  { color: var(--d-muted); }
-.pv-track {
-  flex: 1;
-  height: 6px;
-  background: rgba(255,255,255,0.06);
-  border-radius: 3px;
-  overflow: hidden;
-  position: relative;
-}
-.pv-fill {
-  height: 100%;
-  border-radius: 3px;
-  transition: width 0.7s cubic-bezier(0.4,0,0.2,1);
-}
-.pv-fill-model { background: linear-gradient(90deg, #4F9EFF, #9B79FA); }
-.pv-fill-book  { background: rgba(255,255,255,0.18); }
-.pv-pct {
-  font-size: 0.68rem;
-  font-weight: 700;
-  width: 34px;
-  text-align: right;
-  flex-shrink: 0;
-  font-variant-numeric: tabular-nums;
-}
-.pv-pct-model { color: #4F9EFF; }
-.pv-pct-book  { color: var(--d-muted); }
-.pv-edge {
-  font-size: 0.6rem;
-  font-weight: 700;
-  color: var(--d-green);
-  text-align: right;
-  margin-top: 2px;
-  padding-top: 4px;
-  border-top: 1px solid rgba(255,255,255,0.05);
-}
-
 /* ── Card summary new position ── */
 .card-summary-inline {
   font-size: 0.78rem;
@@ -2626,7 +2558,6 @@ main { max-width: none !important; padding: 0 !important; }
 .cards-grid.compact-mode .analysis-wrap,
 .cards-grid.compact-mode .track-panel,
 .cards-grid.compact-mode .card-context,
-.cards-grid.compact-mode .prob-vis,
 .cards-grid.compact-mode .odds-compare-wrap,
 .cards-grid.compact-mode .card-summary-inline { display: none !important; }
 .cards-grid.compact-mode .card-story,
@@ -3336,22 +3267,6 @@ main { max-width: none !important; padding: 0 !important; }
                   <div class="kelly-dollar" style="display:none;font-size:0.56rem;color:var(--d-green);font-weight:700;margin:1px 0;"></div>
                   <div class="mc-lbl kelly-size-label">¼ Kelly</div>
                 </div>
-              </div>
-
-              {# — Probability bars: Model vs Book visual edge — #}
-              {% set _edge_pp = (_true_pct - _implied_pct) | round(1) %}
-              <div class="prob-vis">
-                <div class="pv-row">
-                  <span class="pv-lbl pv-lbl-model">Model</span>
-                  <div class="pv-track"><div class="pv-fill pv-fill-model" style="width:{{ [_true_pct, 100] | min }}%"></div></div>
-                  <span class="pv-pct pv-pct-model">{{ "%.0f"|format(_true_pct) }}%</span>
-                </div>
-                <div class="pv-row">
-                  <span class="pv-lbl pv-lbl-book">Book</span>
-                  <div class="pv-track"><div class="pv-fill pv-fill-book" style="width:{{ [_implied_pct, 100] | min }}%"></div></div>
-                  <span class="pv-pct pv-pct-book">{{ "%.0f"|format(_implied_pct) }}%</span>
-                </div>
-                <div class="pv-edge">+{{ "%.1f"|format(_edge_pp) }}pp edge ({{ "%.1f"|format(bet.ev_percent) }}% EV)</div>
               </div>
 
               {# — Cross-book price comparison (populated by JS) — #}
