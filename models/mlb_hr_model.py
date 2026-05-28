@@ -399,6 +399,91 @@ def score_hr_prop(bet_dict: dict, pitcher_map: Optional[dict] = None) -> Optiona
 
 
 # ---------------------------------------------------------------------------
+# AI analysis generator
+# ---------------------------------------------------------------------------
+
+def _generate_hr_analysis(
+    player_name: str,
+    game: str,
+    odds: int,
+    imp_pct: float,
+    mod_pct: float,
+    edge_pp: float,
+    pitcher_name: str,
+    pitcher_hr9: float,
+    park_label: str,
+    wind_label: str,
+    batter_hr_ppa: float,
+    batter_pa: int,
+) -> Optional[str]:
+    """
+    Call Gemini to generate a concise 2-3 sentence betting rationale for an HR prop.
+    Returns the analysis string or None on failure.
+    """
+    import os
+    api_key = os.getenv("GEMINI_API_KEY", "")
+    if not api_key:
+        return None
+
+    hr_ppa_pct = round(batter_hr_ppa * 100, 2)
+    odds_str   = f"+{odds}" if odds > 0 else str(odds)
+
+    if pitcher_name and pitcher_name != "TBA":
+        pct_vs_avg = round(abs(pitcher_hr9 / LEAGUE_AVG_HR9 - 1.0) * 100)
+        direction  = "above" if pitcher_hr9 > LEAGUE_AVG_HR9 else "below"
+        pitcher_ctx = (
+            f"{pitcher_name} is starting — {pitcher_hr9} HR/9 "
+            f"({pct_vs_avg}% {direction} league avg of {LEAGUE_AVG_HR9})"
+        )
+    else:
+        pitcher_ctx = f"Starting pitcher TBA — using league-average HR/9 ({LEAGUE_AVG_HR9})"
+
+    wind_ctx = "" if wind_label in ("Wind N/A", "Indoor", "") else f"\n- Wind: {wind_label}"
+
+    system_prompt = (
+        "You are a sharp MLB betting analyst. Write a confident, concise 2-3 sentence "
+        "rationale for a home run prop bet. Be specific about the key factors driving the "
+        "edge — the pitcher matchup, park, and batter's rate. No bullet points, no headers, "
+        "no em-dashes to open sentences. Write in direct prose. Don't start with the player's name."
+    )
+
+    user_prompt = (
+        f"HR Prop: {player_name} to hit a home run\n"
+        f"Game: {game}\n"
+        f"Odds: {odds_str} — book-implied {imp_pct:.1f}%, model {mod_pct:.1f}% (+{edge_pp:.1f}pp edge)\n\n"
+        f"Context:\n"
+        f"- {pitcher_ctx}\n"
+        f"- Park: {park_label}"
+        f"{wind_ctx}\n"
+        f"- {player_name}: {hr_ppa_pct}% HR/PA this season ({batter_pa} PA)\n\n"
+        f"Write 2-3 sentences explaining why this bet has value. Be direct and specific."
+    )
+
+    try:
+        import google.generativeai as genai
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel(
+            model_name="gemini-2.0-flash",
+            system_instruction=system_prompt,
+        )
+        response = model.generate_content(
+            user_prompt,
+            generation_config=genai.types.GenerationConfig(
+                max_output_tokens=200, temperature=0.45
+            ),
+        )
+        text = (response.text or "").strip()
+        if text:
+            log.info("_generate_hr_analysis: wrote analysis for %s", player_name)
+            return text
+        log.warning("_generate_hr_analysis: empty response for %s", player_name)
+    except Exception as exc:
+        log.warning("_generate_hr_analysis: failed for %s: %s", player_name, exc)
+
+    return None
+
+
+# ---------------------------------------------------------------------------
 # Bulk enrichment (called from pipeline)
 # ---------------------------------------------------------------------------
 
@@ -456,9 +541,43 @@ def enrich_hr_props(db) -> int:
             )
             if result is None:
                 continue
+
+            meta_dict = json.loads(result["hr_model_meta"])
+
+            # Preserve cached analysis so we don't burn Gemini credits every run
+            existing_analysis = None
+            if row.hr_model_meta:
+                try:
+                    existing_analysis = json.loads(row.hr_model_meta).get("analysis")
+                except Exception:
+                    pass
+
+            if existing_analysis:
+                meta_dict["analysis"] = existing_analysis
+            else:
+                imp = float(row.implied_prob or 0)
+                if imp > 1.0:
+                    imp /= 100.0
+                analysis = _generate_hr_analysis(
+                    player_name  = row.player_name or "",
+                    game         = row.game or "",
+                    odds         = int(row.odds or 300),
+                    imp_pct      = imp * 100,
+                    mod_pct      = result["hr_model_prob"] * 100,
+                    edge_pp      = result["edge_pp"],
+                    pitcher_name = meta_dict.get("pitcher_name", "TBA"),
+                    pitcher_hr9  = meta_dict.get("pitcher_hr9", LEAGUE_AVG_HR9),
+                    park_label   = meta_dict.get("park_label", "Neutral park"),
+                    wind_label   = meta_dict.get("wind_label", "Wind N/A"),
+                    batter_hr_ppa = meta_dict.get("batter_hr_ppa", 0.035),
+                    batter_pa    = meta_dict.get("batter_pa", 0),
+                )
+                if analysis:
+                    meta_dict["analysis"] = analysis
+
             row.hr_model_prob  = result["hr_model_prob"]
             row.hr_model_score = result["hr_model_score"]
-            row.hr_model_meta  = result["hr_model_meta"]
+            row.hr_model_meta  = json.dumps(meta_dict)
             scored += 1
         except Exception as exc:
             log.warning("enrich_hr_props: failed %s: %s", row.player_name, exc)

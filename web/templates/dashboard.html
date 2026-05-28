@@ -933,6 +933,7 @@ main { max-width: none !important; padding: 0 !important; }
 .hr-badge-pitcher { background: rgba(240,180,41,0.12); color: #f0b429; }
 .hr-badge-wind    { background: rgba(100,200,255,0.10); color: #87ceeb; }
 .hr-empty { text-align: center; padding: 48px 0; color: var(--d-text-muted); font-size: 0.88rem; }
+.hr-analysis { font-size: 0.82rem; color: var(--d-text-muted); line-height: 1.6; padding-top: 2px; }
 @media (max-width: 600px) { .hr-picks-grid { grid-template-columns: 1fr; } }
 /* Countdown badge */
 .cdwn-badge {
@@ -3414,6 +3415,9 @@ main { max-width: none !important; padding: 0 !important; }
               </span>
             </div>
 
+            {% if p.analysis %}
+            <div class="hr-analysis">{{ p.analysis }}</div>
+            {% else %}
             <div class="hr-badges">
               <span class="hr-badge {{ _park_cls }}">🏟 {{ p.park_label }}</span>
               <span class="hr-badge hr-badge-pitcher">
@@ -3426,6 +3430,7 @@ main { max-width: none !important; padding: 0 !important; }
               <span class="hr-badge hr-badge-park-neutral" title="Sample size">{{ p.batter_pa }} PA</span>
               {% endif %}
             </div>
+            {% endif %}
           </div>
         {% endfor %}
       </div>

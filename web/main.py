@@ -2512,6 +2512,7 @@ async def dashboard(
                 "wind_label":   meta.get("wind_label", "Wind N/A"),
                 "batter_hr_ppa": meta.get("batter_hr_ppa", 0.035),
                 "batter_pa":    meta.get("batter_pa", 0),
+                "analysis":     meta.get("analysis", ""),
                 "commence_time": b.commence_time,
                 "book":         b.book,
                 "opening_odds": b.opening_odds,
