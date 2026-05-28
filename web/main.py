@@ -835,6 +835,29 @@ def _enrich_game_contexts() -> None:
         db.close()
 
 
+def _score_hr_props() -> None:
+    """
+    Run the MLB home run model against all upcoming batter_home_runs props.
+    Scheduled 4 minutes after each cache refresh so game_context (weather) is
+    already populated when the HR model runs.
+    """
+    from db.database import get_db as _get_db
+    try:
+        from models.mlb_hr_model import enrich_hr_props
+    except Exception as exc:
+        log.warning("_score_hr_props: import failed: %s", exc)
+        return
+
+    _db = next(_get_db())
+    try:
+        n = enrich_hr_props(_db)
+        log.info("_score_hr_props: scored %d HR props", n)
+    except Exception as exc:
+        log.error("_score_hr_props: error: %s", exc, exc_info=True)
+    finally:
+        _db.close()
+
+
 # ---------------------------------------------------------------------------
 # Card summary generation — runs in background after each cache refresh
 # ---------------------------------------------------------------------------
@@ -1109,6 +1132,16 @@ async def on_startup() -> None:
         id="card_summary_gen",
         name="Generate card summaries for new picks (every 30 min)",
         next_run_time=datetime.now(timezone.utc) + timedelta(minutes=2),
+        misfire_grace_time=120,
+        replace_existing=True,
+    )
+    # Score HR props — runs 4 min after cache refresh so weather/context is ready
+    scheduler.add_job(
+        _score_hr_props,
+        trigger=IntervalTrigger(minutes=30),
+        id="hr_prop_scoring",
+        name="Score HR props with MLB HR model (every 30 min)",
+        next_run_time=datetime.now(timezone.utc) + timedelta(minutes=4),
         misfire_grace_time=120,
         replace_existing=True,
     )
@@ -2439,6 +2472,52 @@ async def dashboard(
             trial_ends_at        = current_user.trial_ends_at
             trial_days_remaining = max(1, delta.days + (1 if delta.seconds > 0 else 0))
 
+    # HR model picks — top scored batter_home_runs props for the HR Model tab
+    import json as _json
+    hr_picks = []
+    try:
+        hr_bets = (
+            db.query(EVBetCache)
+            .filter(
+                EVBetCache.market == "batter_home_runs",
+                EVBetCache.hr_model_score != None,  # noqa: E711
+                EVBetCache.hr_model_score > 0,
+                (EVBetCache.commence_time == None) |  # noqa: E711
+                (EVBetCache.commence_time > _now_utc),
+            )
+            .order_by(EVBetCache.hr_model_score.desc())
+            .limit(10)
+            .all()
+        )
+        for b in hr_bets:
+            meta = _json.loads(b.hr_model_meta) if b.hr_model_meta else {}
+            imp  = float(b.implied_prob or 0)
+            if imp > 1.0:
+                imp /= 100.0
+            hr_picks.append({
+                "id":           b.id,
+                "player_name":  b.player_name or "",
+                "game":         b.game or "",
+                "odds":         b.odds,
+                "ev_percent":   round(float(b.ev_percent or 0), 1),
+                "hr_model_prob": round(float(b.hr_model_prob or 0), 4),
+                "implied_prob": round(imp, 4),
+                "hr_model_score": round(float(b.hr_model_score or 0), 1),
+                "edge_pp":      round((float(b.hr_model_prob or 0) - imp) * 100, 1),
+                "pitcher_name": meta.get("pitcher_name", "TBA"),
+                "pitcher_hr9":  meta.get("pitcher_hr9", 1.3),
+                "park_label":   meta.get("park_label", "Neutral park"),
+                "park_factor":  meta.get("park_factor", 1.0),
+                "wind_label":   meta.get("wind_label", "Wind N/A"),
+                "batter_hr_ppa": meta.get("batter_hr_ppa", 0.035),
+                "batter_pa":    meta.get("batter_pa", 0),
+                "commence_time": b.commence_time,
+                "book":         b.book,
+                "opening_odds": b.opening_odds,
+            })
+    except Exception as _exc:
+        log.warning("dashboard: hr_picks fetch failed: %s", _exc)
+
     return templates.TemplateResponse(
         request,
         "dashboard.html",
@@ -2453,6 +2532,7 @@ async def dashboard(
             "pick_still_live":      pick_still_live,
             "trial_days_remaining": trial_days_remaining,
             "trial_ends_at":        trial_ends_at,
+            "hr_picks":             hr_picks,
         },
     )
 

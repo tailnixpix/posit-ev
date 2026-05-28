@@ -901,6 +901,39 @@ main { max-width: none !important; padding: 0 !important; }
 /* Props pill count badge */
 .pill-count { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 16px; padding: 0 4px; background: rgba(167,139,250,0.2); color: var(--d-purple); border-radius: 8px; font-size: 0.6rem; font-weight: 700; margin-left: 3px; vertical-align: middle; }
 .sport-pill.active .pill-count { background: rgba(167,139,250,0.4); }
+/* ── HR Model section ───────────────────────────────────────────────────── */
+#hrModelSection { display: none; padding: 0 0 32px; }
+.hr-section-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; padding: 0 2px; }
+.hr-section-title { font-size: 1.05rem; font-weight: 800; color: var(--d-text); }
+.hr-section-sub { font-size: 0.78rem; color: var(--d-text-muted); }
+.hr-picks-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 12px; }
+.hr-pick-card { background: var(--d-card); border: 1px solid var(--d-border); border-left: 3px solid #f0b429; border-radius: 12px; padding: 14px 16px; transition: border-color 0.15s, transform 0.1s; cursor: default; }
+.hr-pick-card:hover { border-color: #f0b429; transform: translateY(-1px); }
+.hr-card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+.hr-card-player { font-size: 1rem; font-weight: 800; color: var(--d-text); }
+.hr-card-game { font-size: 0.72rem; color: var(--d-text-muted); margin-top: 2px; }
+.hr-card-odds-wrap { text-align: right; }
+.hr-card-odds { font-size: 1.05rem; font-weight: 800; color: var(--d-green); }
+.hr-card-ev { font-size: 0.68rem; color: var(--d-text-muted); margin-top: 1px; }
+.hr-prob-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; background: rgba(255,255,255,0.03); border-radius: 8px; padding: 8px 10px; }
+.hr-prob-block { flex: 1; text-align: center; }
+.hr-prob-label { font-size: 0.62rem; color: var(--d-text-muted); text-transform: uppercase; letter-spacing: 0.04em; display: block; margin-bottom: 2px; }
+.hr-prob-val { font-size: 1.1rem; font-weight: 800; }
+.hr-prob-val.model-val { color: #f0b429; }
+.hr-prob-val.implied-val { color: var(--d-text-muted); }
+.hr-prob-divider { color: var(--d-text-muted); font-size: 0.75rem; flex-shrink: 0; }
+.hr-edge-chip { font-size: 0.72rem; font-weight: 700; padding: 3px 9px; border-radius: 20px; white-space: nowrap; }
+.hr-edge-pos { background: rgba(0,214,143,0.15); color: var(--d-green); }
+.hr-edge-neg { background: rgba(255,90,90,0.12); color: #ff6b6b; }
+.hr-badges { display: flex; flex-wrap: wrap; gap: 5px; }
+.hr-badge { font-size: 0.68rem; font-weight: 600; padding: 3px 8px; border-radius: 8px; white-space: nowrap; }
+.hr-badge-park-pos     { background: rgba(0,214,143,0.12); color: var(--d-green); }
+.hr-badge-park-neutral { background: rgba(255,255,255,0.06); color: var(--d-text-muted); }
+.hr-badge-park-neg     { background: rgba(255,90,90,0.10); color: #ff6b6b; }
+.hr-badge-pitcher { background: rgba(240,180,41,0.12); color: #f0b429; }
+.hr-badge-wind    { background: rgba(100,200,255,0.10); color: #87ceeb; }
+.hr-empty { text-align: center; padding: 48px 0; color: var(--d-text-muted); font-size: 0.88rem; }
+@media (max-width: 600px) { .hr-picks-grid { grid-template-columns: 1fr; } }
 /* Countdown badge */
 .cdwn-badge {
   display: none;
@@ -2843,6 +2876,7 @@ main { max-width: none !important; padding: 0 !important; }
   <button class="sport-pill" data-filter="league" data-value="baseball_mlb">⚾ MLB</button>
   <button class="sport-pill" data-filter="league" data-value="soccer">⚽ Soccer</button>
   <button class="sport-pill" data-filter="is_prop" data-value="true">🎯 Props{% if _prop_count.v > 0 %}<span class="pill-count" id="propPillCount">{{ _prop_count.v }}</span>{% endif %}</button>
+  <button class="sport-pill" id="hrModelPill" data-filter="hr_model" data-value="true">⚾ HR Model{% if hr_picks|length > 0 %}<span class="pill-count" style="background:rgba(240,180,41,0.2);color:#f0b429;">{{ hr_picks|length }}</span>{% endif %}</button>
   <div class="search-wrap">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--d-muted);flex-shrink:0;"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
     <input type="text" id="globalSearch" placeholder="Search team, player…" autocomplete="off" />
@@ -3338,6 +3372,71 @@ main { max-width: none !important; padding: 0 !important; }
         <button onclick="clearFilters()" style="margin-top:12px;background:var(--d-green-dim);border:1px solid rgba(0,214,143,0.25);color:var(--d-green);border-radius:8px;padding:8px 18px;font-family:inherit;font-size:0.82rem;font-weight:600;cursor:pointer;">Clear Filters</button>
       </div>
     </div>{# /cardsGrid #}
+
+    {# ── HR MODEL SECTION ── #}
+    <div id="hrModelSection">
+      <div class="hr-section-header">
+        <span class="hr-section-title">⚾ HR Model — Today's Top Picks</span>
+        <span class="hr-section-sub">Ranked by model edge · batter HR% vs book-implied</span>
+      </div>
+      {% if hr_picks %}
+      <div class="hr-picks-grid">
+        {% for p in hr_picks %}
+          {% set _odds_str = ('+' if p.odds > 0 else '') + (p.odds|string) %}
+          {% set _imp_pct  = (p.implied_prob * 100) | round(1) %}
+          {% set _mod_pct  = (p.hr_model_prob * 100) | round(1) %}
+          {% set _edge_pos = p.edge_pp > 0 %}
+          {% set _park_cls = 'hr-badge-park-pos' if p.park_factor >= 1.06 else ('hr-badge-park-neg' if p.park_factor <= 0.92 else 'hr-badge-park-neutral') %}
+          <div class="hr-pick-card">
+            <div class="hr-card-top">
+              <div>
+                <div class="hr-card-player">{{ p.player_name }}</div>
+                <div class="hr-card-game">{{ p.game }}</div>
+              </div>
+              <div class="hr-card-odds-wrap">
+                <div class="hr-card-odds">{{ _odds_str }}</div>
+                <div class="hr-card-ev">+{{ p.ev_percent }}% EV</div>
+              </div>
+            </div>
+
+            <div class="hr-prob-row">
+              <div class="hr-prob-block">
+                <span class="hr-prob-label">Model HR%</span>
+                <span class="hr-prob-val model-val">{{ _mod_pct }}%</span>
+              </div>
+              <span class="hr-prob-divider">vs</span>
+              <div class="hr-prob-block">
+                <span class="hr-prob-label">Book Implied</span>
+                <span class="hr-prob-val implied-val">{{ _imp_pct }}%</span>
+              </div>
+              <span class="hr-edge-chip {{ 'hr-edge-pos' if _edge_pos else 'hr-edge-neg' }}">
+                {{ '+' if _edge_pos else '' }}{{ p.edge_pp }}pp
+              </span>
+            </div>
+
+            <div class="hr-badges">
+              <span class="hr-badge {{ _park_cls }}">🏟 {{ p.park_label }}</span>
+              <span class="hr-badge hr-badge-pitcher">
+                ⚾ {{ p.pitcher_hr9 }} HR/9{% if p.pitcher_name and p.pitcher_name != 'TBA' %} · {{ p.pitcher_name.split()[-1] }}{% endif %}
+              </span>
+              {% if p.wind_label and p.wind_label not in ('Wind N/A', 'Indoor') %}
+              <span class="hr-badge hr-badge-wind">💨 {{ p.wind_label }}</span>
+              {% endif %}
+              {% if p.batter_pa %}
+              <span class="hr-badge hr-badge-park-neutral" title="Sample size">{{ p.batter_pa }} PA</span>
+              {% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="hr-empty">
+        <div style="font-size:2rem;margin-bottom:8px;">⚾</div>
+        <div>No HR model picks available yet.</div>
+        <div style="margin-top:6px;font-size:0.75rem;">The model scores HR props ~4 minutes after each cache refresh.</div>
+      </div>
+      {% endif %}
+    </div>{# /hrModelSection #}
 
     {# ── TABLE VIEW ── #}
     <div class="table-view" id="tableView">
@@ -4533,10 +4632,53 @@ function applyFilters() {
   _updateTopPickRibbon();
 }
 
+// ── HR Model section toggle ────────────────────────────────────────────────
+let _hrModelActive = false;
+
+function _setHrModel(active) {
+  _hrModelActive = active;
+  const hrSection  = document.getElementById('hrModelSection');
+  const cardsGrid  = document.getElementById('cardsGrid');
+  const tableView  = document.getElementById('tableView');
+  const hrPill     = document.getElementById('hrModelPill');
+
+  if (active) {
+    if (hrSection)  hrSection.style.display  = '';
+    if (cardsGrid)  cardsGrid.style.display  = 'none';
+    if (tableView)  tableView.style.display  = 'none';
+    document.querySelectorAll('.sport-pill').forEach(b => b.classList.remove('active'));
+    if (hrPill) hrPill.classList.add('active');
+    // Hide filter bar sub-controls that don't apply to HR section
+    const qfilterRow = document.querySelector('.qfilter-row');
+    if (qfilterRow) qfilterRow.style.display = 'none';
+  } else {
+    if (hrSection) hrSection.style.display = 'none';
+    if (cardsGrid) { cardsGrid.style.display = ''; cardsGrid.style.visibility = ''; }
+    const qfilterRow = document.querySelector('.qfilter-row');
+    if (qfilterRow) qfilterRow.style.display = '';
+    if (_viewMode === 'table' && tableView) tableView.style.display = '';
+    if (hrPill) hrPill.classList.remove('active');
+  }
+}
+
 // ── Sport pills ────────────────────────────────────────────────────────────
 document.querySelectorAll('.sport-pill').forEach(btn => {
   btn.addEventListener('click', () => {
     const ft = btn.dataset.filter, val = btn.dataset.value;
+    if (ft === 'hr_model') {
+      // Toggle HR model section
+      if (_hrModelActive) {
+        _setHrModel(false);
+        document.querySelector('.sport-pill[data-filter="league"][data-value="all"]').classList.add('active');
+        activeLeague = 'all';
+        applyFilters();
+      } else {
+        _setHrModel(true);
+      }
+      return;
+    }
+    // Any other pill: exit HR model mode first
+    if (_hrModelActive) _setHrModel(false);
     if (ft === 'is_prop') {
       // Toggle: if already filtering props-only → back to all; else → props-only
       _setIsProp(activeIsProp === 'true' ? 'all' : 'true');

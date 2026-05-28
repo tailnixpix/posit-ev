@@ -156,6 +156,9 @@ class EVBetCache(Base):
     pred_mkt_note    = Column(String, nullable=True)    # e.g. "Kalshi: 62% · Polymarket: 64%"
     pred_mkt_aligned = Column(Boolean, nullable=True, default=False)  # prediction markets agree with model
     injury_alert     = Column(Text, nullable=True)      # e.g. "Jaylen Brown (SG) Out — Knee"
+    hr_model_prob   = Column(Float, nullable=True)   # HR model: true P(HR in game)
+    hr_model_score  = Column(Float, nullable=True)   # HR model: composite ranking score
+    hr_model_meta   = Column(Text, nullable=True)    # HR model: JSON {pitcher_name, pitcher_hr9, park_label, wind_label, batter_hr_ppa, batter_pa}
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True, nullable=False)
 
     def __repr__(self) -> str:
