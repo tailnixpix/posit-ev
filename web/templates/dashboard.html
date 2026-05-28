@@ -4643,7 +4643,7 @@ function _setHrModel(active) {
   const hrPill     = document.getElementById('hrModelPill');
 
   if (active) {
-    if (hrSection)  hrSection.style.display  = '';
+    if (hrSection)  hrSection.style.display  = 'block';
     if (cardsGrid)  cardsGrid.style.display  = 'none';
     if (tableView)  tableView.style.display  = 'none';
     document.querySelectorAll('.sport-pill').forEach(b => b.classList.remove('active'));
