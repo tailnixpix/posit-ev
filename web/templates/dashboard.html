@@ -820,6 +820,61 @@ main { max-width: none !important; padding: 0 !important; }
 /* hide old card-summary class (now replaced by card-summary-inline) */
 .card-summary { display: none !important; }
 
+/* ── Pillar 1: Context block ─────────────────────────────────── */
+.card-story {
+  background: rgba(79,158,255,0.06);
+  border-left: 2px solid rgba(79,158,255,0.35);
+  border-radius: 0 8px 8px 0;
+  padding: 7px 11px;
+  margin: 4px 0 8px;
+}
+.card-story-label {
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: rgba(79,158,255,0.65);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 3px;
+}
+.card-story-text {
+  font-size: 0.81rem;
+  line-height: 1.55;
+  color: var(--d-text);
+}
+
+/* ── Pillar 2: Sharp money signal bars ──────────────────────── */
+.sharp-money-row {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 8px;
+  padding: 7px 10px;
+  margin: 6px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.money-bar-line {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.money-bar-icon { font-size: 0.68rem; width: 14px; flex-shrink: 0; }
+.money-bar-lbl  { font-size: 0.63rem; color: var(--d-text-muted); width: 44px; flex-shrink: 0; }
+.money-bar-track { flex: 1; height: 4px; background: rgba(255,255,255,0.07); border-radius: 2px; overflow: hidden; }
+.money-bar-fill-public { height: 100%; background: rgba(148,163,184,0.45); border-radius: 2px; }
+.money-bar-fill-money  { height: 100%; background: #00D68F; border-radius: 2px; }
+.money-bar-pct { font-size: 0.68rem; font-weight: 700; color: var(--d-text); width: 26px; text-align: right; flex-shrink: 0; }
+.money-bar-pct.heavy { color: #00D68F; }
+.sharp-split-note {
+  font-size: 0.63rem;
+  font-weight: 700;
+  color: #f0b429;
+  margin-top: 1px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 /* Top ribbon */
 .card-ribbon {
   display: flex;
@@ -2574,6 +2629,8 @@ main { max-width: none !important; padding: 0 !important; }
 .cards-grid.compact-mode .prob-vis,
 .cards-grid.compact-mode .odds-compare-wrap,
 .cards-grid.compact-mode .card-summary-inline { display: none !important; }
+.cards-grid.compact-mode .card-story,
+.cards-grid.compact-mode .sharp-money-row { display: none !important; }
 
 /* ═══════════════════════════════════════════════════════════════
    PARLAY BUILDER
@@ -2877,6 +2934,7 @@ main { max-width: none !important; padding: 0 !important; }
   <button class="sport-pill" data-filter="league" data-value="baseball_mlb">⚾ MLB</button>
   <button class="sport-pill" data-filter="league" data-value="soccer">⚽ Soccer</button>
   <button class="sport-pill" data-filter="is_prop" data-value="true">🎯 Props{% if _prop_count.v > 0 %}<span class="pill-count" id="propPillCount">{{ _prop_count.v }}</span>{% endif %}</button>
+  <button class="sport-pill" id="sharpFlowPill" data-filter="sharp_flow" data-value="true">⚡ Sharp Flow</button>
   <button class="sport-pill" id="hrModelPill" data-filter="hr_model" data-value="true">⚾ HR Model{% if hr_picks|length > 0 %}<span class="pill-count" style="background:rgba(240,180,41,0.2);color:#f0b429;">{{ hr_picks|length }}</span>{% endif %}</button>
   <div class="search-wrap">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--d-muted);flex-shrink:0;"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
@@ -3204,6 +3262,13 @@ main { max-width: none !important; padding: 0 !important; }
                 {% endif %}
               {% endif %}
 
+              {# — Pillar 1: Real-world context (AI summary) — #}
+              {% if bet.card_summary %}
+              <div class="card-story">
+                <div class="card-story-label">Why this bet</div>
+                <div class="card-story-text">{{ bet.card_summary }}</div>
+              </div>
+              {% endif %}
 
               {# — Game + Time context — #}
               <div class="card-context">
@@ -3226,9 +3291,30 @@ main { max-width: none !important; padding: 0 !important; }
                 {% endif %}
               </div>
 
-              {# — Inline AI summary (shown right before metrics for quick context) — #}
-              {% if bet.card_summary %}
-              <div class="card-summary-inline">{{ bet.card_summary }}</div>
+              {# — Pillar 2: Sharp money signal — #}
+              {% if bet.bet_pct is not none or bet.money_pct is not none %}
+              {% set _sharp_split = (bet.money_pct is not none and bet.bet_pct is not none and (bet.money_pct - bet.bet_pct) >= 15) %}
+              <div class="sharp-money-row">
+                {% if bet.bet_pct is not none %}
+                <div class="money-bar-line">
+                  <span class="money-bar-icon">🎟</span>
+                  <span class="money-bar-lbl">Tickets</span>
+                  <div class="money-bar-track"><div class="money-bar-fill-public" style="width:{{ bet.bet_pct | int }}%"></div></div>
+                  <span class="money-bar-pct">{{ bet.bet_pct | int }}%</span>
+                </div>
+                {% endif %}
+                {% if bet.money_pct is not none %}
+                <div class="money-bar-line">
+                  <span class="money-bar-icon">💰</span>
+                  <span class="money-bar-lbl">Money</span>
+                  <div class="money-bar-track"><div class="money-bar-fill-money" style="width:{{ bet.money_pct | int }}%"></div></div>
+                  <span class="money-bar-pct {{ 'heavy' if bet.money_pct >= 60 else '' }}">{{ bet.money_pct | int }}%</span>
+                </div>
+                {% endif %}
+                {% if _sharp_split %}
+                <div class="sharp-split-note">⚡ Smart money {{ (bet.money_pct - bet.bet_pct) | int }}pp above public tickets</div>
+                {% endif %}
+              </div>
               {% endif %}
 
               {# — 4-Cell Metrics Strip — #}
@@ -4566,6 +4652,8 @@ function applyFilters() {
     const edgeOk       = parseFloat(card.dataset.edge || '0') >= activeMinEdge;
     const multiBookOk  = !activeMultiBook || card.dataset.hasCompare === '1';
     const notHrProp    = card.dataset.propMarket !== 'batter_home_runs';
+    const sharpFlowOk  = !_sharpFlowActive ||
+      (parseFloat(card.dataset.moneyPct || '0') - parseFloat(card.dataset.betPct || '0') >= 15);
     const searchOk = !activeSearch ||
       (card.dataset.team || '').toLowerCase().includes(activeSearch) ||
       (card.dataset.game || '').toLowerCase().includes(activeSearch) ||
@@ -4584,7 +4672,7 @@ function applyFilters() {
       else if (activeDay === 'all')      { dayOk = _dnum(cd) >= _dnum(todayStr); }
     }
 
-    const passOther = leagueOk && marketOk && bookOk && clvDirOk && propOk && propMarketOk && evOk && edgeOk && multiBookOk && searchOk && notHrProp;
+    const passOther = leagueOk && marketOk && bookOk && clvDirOk && propOk && propMarketOk && evOk && edgeOk && multiBookOk && searchOk && notHrProp && sharpFlowOk;
     const show = passOther && dayOk;
     card.style.display = show ? '' : 'none';
     if (show) visible++;
@@ -4640,6 +4728,7 @@ function applyFilters() {
 
 // ── HR Model section toggle ────────────────────────────────────────────────
 let _hrModelActive = false;
+let _sharpFlowActive = false;
 
 function _setHrModel(active) {
   _hrModelActive = active;
@@ -4671,6 +4760,13 @@ function _setHrModel(active) {
 document.querySelectorAll('.sport-pill').forEach(btn => {
   btn.addEventListener('click', () => {
     const ft = btn.dataset.filter, val = btn.dataset.value;
+    if (ft === 'sharp_flow') {
+      _sharpFlowActive = !_sharpFlowActive;
+      document.getElementById('sharpFlowPill').classList.toggle('active', _sharpFlowActive);
+      applyFilters();
+      return;
+    }
+    if (_sharpFlowActive) { _sharpFlowActive = false; document.getElementById('sharpFlowPill').classList.remove('active'); }
     if (ft === 'hr_model') {
       // Toggle HR model section
       if (_hrModelActive) {
