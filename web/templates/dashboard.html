@@ -6771,11 +6771,37 @@ _buildPropTypeChips();
       </div>
 
       <div class="help-section">
+        <p class="help-section-title">🏆 Sharp Grade (S → D)</p>
+        <p>Every bet card carries a <strong>Sharp Grade</strong> — a single letter that blends all seven conviction signals into one rating so you know at a glance where to focus.</p>
+        <p><strong>S</strong> — All signals firing: strong EV, CLV confirmed, sharp money aligned, and market consensus. Highest conviction picks on the board.</p>
+        <p><strong>A</strong> — Most signals positive with at least one strong conviction indicator. Solid edge worth acting on.</p>
+        <p><strong>B</strong> — Decent edge with partial signal confirmation. Good value, less certainty.</p>
+        <p><strong>C / D</strong> — Weaker signal stack. The math still shows edge, but fewer signals confirm it. Size down.</p>
+        <div class="help-ex">
+          Quality filter: <strong>S-grade picks where the line has moved against the position are automatically hidden.</strong> If the model says S but the market is pricing it the other way, that contradiction disqualifies the pick from showing.
+        </div>
+      </div>
+
+      <div class="help-section">
         <p class="help-section-title">🤖 +EV Insight (AI Analysis)</p>
-        <p>Click <strong>Analyze</strong> on any bet card to generate a full AI breakdown powered by Claude. It takes 10–20 seconds the first time; results are cached for 6 hours.</p>
+        <p>Click <strong>Analyze</strong> on any bet card to generate a full AI breakdown. It takes 10–20 seconds the first time; results are cached for 6 hours.</p>
         <p><strong>Confidence Score (0–100)</strong> — aggregates edge strength, sharp money confirmation, line movement, and real-world context into a single conviction rating. 75+ is high conviction; below 50 means proceed cautiously.</p>
-        <p><strong>Kelly sizing</strong> — Claude's own stake recommendation, calibrated to the specific confidence of this bet rather than a flat formula.</p>
-        <p>The analysis also includes team form, injury signals, game-log context for props, and a plain-English explanation of why the edge exists.</p>
+        <p><strong>Kelly sizing</strong> — AI-calibrated stake recommendation for this specific bet, not a flat formula.</p>
+        <p>The analysis includes team form, injury signals, game-log context for props, and a plain-English explanation of why the edge exists. Analysis is powered by Claude when credits are available, with Gemini 2.0 Flash as a seamless fallback.</p>
+      </div>
+
+      <div class="help-section">
+        <p class="help-section-title">⚾ HR Model</p>
+        <p>The <strong>⚾ HR Model</strong> tab gives you dedicated home run prop picks scored by a purpose-built MLB probability engine — separate from the main props feed. Home run props only appear here, not in the Props tab.</p>
+        <p>Each pick is scored using four independent factors:</p>
+        <p><strong>Batter HR rate</strong> — season HR per plate appearance, blended with recent 15-game form (70/30 split) to balance sample size with current hot/cold streaks.</p>
+        <p><strong>Pitcher HR/9</strong> — how many home runs the opposing pitcher allows per 9 innings vs. the league average (1.30). A pitcher at 1.70 HR/9 is 31% more homer-prone than average — that directly lifts the model probability.</p>
+        <p><strong>Park factor</strong> — each stadium has a multi-year HR park factor. Coors Field (+18%) and Great American Ball Park (+13%) are extreme hitter-friendly; AT&amp;T Park (-16%) suppresses homers significantly.</p>
+        <p><strong>Wind</strong> — live wind speed and direction from game-day weather. Strong winds blowing out add up to +6% to the model probability; indoor parks are unaffected.</p>
+        <p>Picks are ranked by composite edge score and each card shows an AI-written rationale explaining the key factors driving the value.</p>
+        <div class="help-ex">
+          Example: Aaron Judge vs. a 1.65 HR/9 pitcher at +185 (+18% edge). Model: 44% · Book: 35.1% · +8.9pp edge. Scores are refreshed every 30 minutes, immediately after each cache update.
+        </div>
       </div>
 
       <div class="help-section">
@@ -6817,6 +6843,7 @@ _buildPropTypeChips();
       <div class="help-section">
         <p class="help-section-title">🔍 Filters &amp; sorting</p>
         <p>Use the <strong>league chips</strong> (NHL, NBA, MLB, etc.) to filter by sport. Use the <strong>market chips</strong> (Moneyline, Spread, Props, etc.) to filter by bet type. Use the <strong>book filter</strong> to show only bets available at specific sportsbooks you have accounts with.</p>
+        <p>The <strong>🎯 Props</strong> pill shows all player props except home runs. The <strong>⚾ HR Model</strong> pill switches to the dedicated home run model view — click it again to return to the main feed.</p>
         <p>Sort by <strong>EV% High→Low</strong> to see your best mathematical edges first. Sort by <strong>Game Time</strong> to see bets starting soonest. The <strong>EV% slider</strong> in the sidebar lets you raise the minimum threshold to see only higher-confidence edges.</p>
         <p>The dashboard refreshes automatically every 30 minutes. If you see <em>"Picks refreshed — reload the page"</em> when trying to analyze a bet, just reload to get the latest picks.</p>
       </div>
