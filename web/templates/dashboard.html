@@ -2866,7 +2866,7 @@ main { max-width: none !important; padding: 0 !important; }
 {% block content %}
 
 {# Prop count for pill badge #}
-{% set _prop_count = namespace(v=0) %}{% for _b in bets %}{% if _b.is_prop %}{% set _prop_count.v = _prop_count.v + 1 %}{% endif %}{% endfor %}
+{% set _prop_count = namespace(v=0) %}{% for _b in bets %}{% if _b.is_prop and _b.market != 'batter_home_runs' %}{% set _prop_count.v = _prop_count.v + 1 %}{% endif %}{% endfor %}
 
 {# ── Sport bar ── #}
 <div class="sport-bar" id="sportBar">
@@ -4560,6 +4560,7 @@ function applyFilters() {
     const evOk         = parseFloat(card.dataset.ev) >= activeMinEv;
     const edgeOk       = parseFloat(card.dataset.edge || '0') >= activeMinEdge;
     const multiBookOk  = !activeMultiBook || card.dataset.hasCompare === '1';
+    const notHrProp    = card.dataset.propMarket !== 'batter_home_runs';
     const searchOk = !activeSearch ||
       (card.dataset.team || '').toLowerCase().includes(activeSearch) ||
       (card.dataset.game || '').toLowerCase().includes(activeSearch) ||
@@ -4578,7 +4579,7 @@ function applyFilters() {
       else if (activeDay === 'all')      { dayOk = _dnum(cd) >= _dnum(todayStr); }
     }
 
-    const passOther = leagueOk && marketOk && bookOk && clvDirOk && propOk && propMarketOk && evOk && edgeOk && multiBookOk && searchOk;
+    const passOther = leagueOk && marketOk && bookOk && clvDirOk && propOk && propMarketOk && evOk && edgeOk && multiBookOk && searchOk && notHrProp;
     const show = passOther && dayOk;
     card.style.display = show ? '' : 'none';
     if (show) visible++;
