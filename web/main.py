@@ -60,7 +60,7 @@ _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
-from db.database import DailyPick, EVBetCache, NewsletterSubscriber, OddsHistory, SessionLocal, User, create_tables  # noqa: E402
+from db.database import DailyPick, EVBetCache, NewsletterSubscriber, OddsHistory, SessionLocal, User, create_tables, ensure_columns  # noqa: E402
 from web.auth import (                                                   # noqa: E402
     router as auth_router,
     create_access_token,
@@ -933,6 +933,7 @@ def _generate_pending_summaries() -> None:
 @app.on_event("startup")
 async def on_startup() -> None:
     create_tables()
+    ensure_columns()  # Add any new columns missing from production DB
     # Migrate: add game and point columns if they don't exist yet
     from sqlalchemy import text
     with SessionLocal() as _db:
