@@ -213,6 +213,8 @@ main { max-width: none; padding: 0; }
 }
 .hcov-pill.props { background: rgba(109,40,217,0.3); border-color: rgba(167,139,250,0.4); color: #C4B5FD; }
 .hcov-pill.pm    { background: rgba(6,182,212,0.2);  border-color: rgba(103,232,249,0.3); color: #67E8F9; }
+.hcov-pill.new   { background: rgba(250,199,117,0.18); border-color: rgba(250,199,117,0.5); color: #FAC775; }
+.hcov-pill.soon  { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.1); color: rgba(255,255,255,0.35); }
 .btn-hero-primary {
   background: #FAC775;
   color: #1A1450;
@@ -581,6 +583,89 @@ main { max-width: none; padding: 0; }
 @media (max-width: 640px) {
   .announce-band { height: auto; padding: 12px var(--space-5); }
   .announce-band-inner { white-space: normal; font-size: 0.78rem; }
+}
+
+/* ── What's New strip ── */
+.whats-new-strip {
+  background: #060A14;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  padding: 0 var(--space-5);
+}
+.whats-new-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 20px 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+}
+.whats-new-label {
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: #FAC775;
+  white-space: nowrap;
+  padding-top: 3px;
+  flex-shrink: 0;
+}
+.whats-new-items {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0;
+  flex: 1;
+}
+.wn-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 20px;
+}
+.wn-item:first-child { padding-left: 0; }
+.wn-divider {
+  width: 1px;
+  height: 32px;
+  background: rgba(255,255,255,0.08);
+  flex-shrink: 0;
+}
+.wn-icon {
+  font-size: 1.3rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.wn-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.9);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  line-height: 1.3;
+}
+.wn-sub {
+  font-size: 0.67rem;
+  color: rgba(255,255,255,0.4);
+  margin-top: 2px;
+  line-height: 1.3;
+}
+.wn-soon-badge {
+  font-size: 0.6rem;
+  font-weight: 700;
+  background: rgba(250,199,117,0.15);
+  border: 1px solid rgba(250,199,117,0.35);
+  color: #FAC775;
+  padding: 1px 7px;
+  border-radius: 20px;
+  letter-spacing: 0.3px;
+}
+.wn-item-soon .wn-title { color: rgba(255,255,255,0.45); }
+.wn-item-soon .wn-sub   { color: rgba(255,255,255,0.25); }
+@media (max-width: 768px) {
+  .whats-new-inner { flex-direction: column; gap: 14px; padding: 16px 0; }
+  .whats-new-items { gap: 12px; }
+  .wn-item { padding: 0; }
+  .wn-divider { display: none; }
 }
 
 /* ── Newsletter ───────────────────────────────────────────────────── */
@@ -1478,8 +1563,9 @@ html { background: #060A14; }
           <span class="hcov-pill">🏒 NHL</span>
           <span class="hcov-pill">🏀 NBA</span>
           <span class="hcov-pill">⚾ MLB</span>
-          <span class="hcov-pill">🏈 NFL</span>
+          <span class="hcov-pill new">🏆 FIFA World Cup 2026 — Live Now</span>
           <span class="hcov-pill">⚽ EPL · La Liga · Bundesliga · MLS · UCL</span>
+          <span class="hcov-pill soon">🏈 NFL — Coming Fall 2026</span>
         </div>
         <div class="hcov-row">
           <span class="hcov-pill props">🎯 Props — NBA, MLB, NHL &nbsp;·&nbsp; Team Totals &nbsp;·&nbsp; NRFI/YRFI</span>
@@ -1517,6 +1603,7 @@ html { background: #060A14; }
               <span class="mock-chip">🏒 NHL</span>
               <span class="mock-chip">🏀 NBA</span>
               <span class="mock-chip">⚾ MLB</span>
+              <span class="mock-chip">🏆 World Cup</span>
               <span class="mock-chip">⚽ Soccer</span>
               <span class="mock-chip">🎯 Props</span>
             </div>
@@ -1693,11 +1780,51 @@ html { background: #060A14; }
 {# ── Announcement band ──────────────────────────────────────────────────── #}
 <div class="announce-band">
   <div class="announce-band-inner">
-    📬 Get today's best +EV pick free — no card required
+    🏆 FIFA World Cup 2026 picks are live
     &nbsp;&nbsp;·&nbsp;&nbsp;
-    One mathematically-backed bet delivered every morning at 8 AM CT
+    📬 Get today's best pick free — no card required
     &nbsp;&nbsp;·&nbsp;&nbsp;
     <a href="#free-pick">Sign up free &rarr;</a>
+  </div>
+</div>
+
+{# ── What's New strip ───────────────────────────────────────────────────── #}
+<div class="whats-new-strip">
+  <div class="whats-new-inner">
+    <span class="whats-new-label">What's New</span>
+    <div class="whats-new-items">
+      <div class="wn-item">
+        <span class="wn-icon">🏆</span>
+        <div>
+          <div class="wn-title">FIFA World Cup 2026</div>
+          <div class="wn-sub">Full tournament coverage — Group Stage through Final</div>
+        </div>
+      </div>
+      <div class="wn-divider"></div>
+      <div class="wn-item">
+        <span class="wn-icon">💰</span>
+        <div>
+          <div class="wn-title">Real Money % Tracking</div>
+          <div class="wn-sub">See where sharp dollar handle flows, not just ticket count</div>
+        </div>
+      </div>
+      <div class="wn-divider"></div>
+      <div class="wn-item">
+        <span class="wn-icon">🤖</span>
+        <div>
+          <div class="wn-title">AI Analysis on Every Pick</div>
+          <div class="wn-sub">Plain-English rationale explaining why each bet has edge</div>
+        </div>
+      </div>
+      <div class="wn-divider"></div>
+      <div class="wn-item wn-item-soon">
+        <span class="wn-icon">🏈</span>
+        <div>
+          <div class="wn-title">NFL <span class="wn-soon-badge">Coming Fall 2026</span></div>
+          <div class="wn-sub">Full season coverage launching with Week 1</div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 

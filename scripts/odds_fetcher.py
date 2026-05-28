@@ -37,6 +37,7 @@ SPORT_KEYS = [
     "soccer_germany_bundesliga",
     "soccer_usa_mls",
     "soccer_uefa_champs_league",
+    "soccer_fifa_world_cup",
 ]
 
 # Championship / outright futures — separate Odds API sport keys.
@@ -144,6 +145,7 @@ _SOCCER_KEYS = [
     "soccer_germany_bundesliga",
     "soccer_usa_mls",
     "soccer_uefa_champs_league",
+    "soccer_fifa_world_cup",
 ]
 # Soccer-specific markets:
 #   h2h_3_way  — 3-way moneyline (Home / Draw / Away), standard for soccer

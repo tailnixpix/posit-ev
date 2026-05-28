@@ -35,6 +35,7 @@ LEAGUES = {
     "NHL": "icehockey_nhl",
 
     # Soccer
+    "FIFA World Cup": "soccer_fifa_world_cup",
     "EPL": "soccer_epl",
     "MLS": "soccer_usa_mls",
     "La Liga": "soccer_spain_la_liga",

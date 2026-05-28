@@ -714,6 +714,7 @@ SOCCER_SPORT_KEYS = {
     "soccer_usa_mls",
     "soccer_uefa_champs_league",
     "soccer_uefa_europa_league",
+    "soccer_fifa_world_cup",
 }
 
 

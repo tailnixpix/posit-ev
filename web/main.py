@@ -1546,7 +1546,7 @@ async def get_projection(bet_id: int, request: Request, db: Session = Depends(ge
     # than making a live call that will always fail (and look "slow" to users).
     _SOCCER_LEAGUES = {
         "soccer_epl", "soccer_spain_la_liga", "soccer_germany_bundesliga",
-        "soccer_usa_mls", "soccer_uefa_champs_league",
+        "soccer_usa_mls", "soccer_uefa_champs_league", "soccer_fifa_world_cup",
     }
     if (bet_row.league or "") in _SOCCER_LEAGUES:
         raise HTTPException(status_code=422, detail="No model projection available for soccer")
@@ -2771,6 +2771,7 @@ async def admin_dashboard(
         "basketball_nba": "NBA", "icehockey_nhl": "NHL", "baseball_mlb": "MLB",
         "soccer_epl": "EPL", "soccer_spain_la_liga": "La Liga",
         "soccer_germany_bundesliga": "Bundesliga", "soccer_usa_mls": "MLS",
+        "soccer_fifa_world_cup": "World Cup",
         "americanfootball_nfl": "NFL",
     }
     total_won_count    = sum(1 for p in settled if p.result == "won")

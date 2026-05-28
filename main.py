@@ -23,6 +23,9 @@ LEAGUE_ALIASES: dict = {
     "laliga":     "soccer_spain_la_liga",
     "bundesliga": "soccer_germany_bundesliga",
     "mls":        "soccer_usa_mls",
+    "worldcup":   "soccer_fifa_world_cup",
+    "world_cup":  "soccer_fifa_world_cup",
+    "fifa":       "soccer_fifa_world_cup",
 }
 
 MARKET_ALIASES: dict = {
