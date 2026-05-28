@@ -2425,6 +2425,21 @@ async def dashboard(
         .all()
     )
 
+    # Remove S-grade picks where the line has moved against the position.
+    # opening_odds < odds  →  CLV is negative  →  S grade is contradicted.
+    _before = len(bets)
+    bets = [
+        b for b in bets
+        if not (
+            b.sharp_grade == "S"
+            and b.opening_odds
+            and b.opening_odds != b.odds
+            and b.opening_odds < b.odds
+        )
+    ]
+    if len(bets) < _before:
+        log.info("dashboard: dropped %d S-grade / neg-CLV bets", _before - len(bets))
+
     # If the cache is empty and no refresh is in flight, kick one off now.
     # This handles the case where: (a) a deploy wiped stale rows before new data
     # was written, or (b) the scheduler hasn't fired yet after startup.
