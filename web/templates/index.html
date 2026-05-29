@@ -614,21 +614,17 @@ main { max-width: none; padding: 0; }
   align-items: center;
   justify-content: center;
   flex-wrap: wrap;
-  gap: 0;
+  gap: 6px 0;
 }
 .wn-item {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 0 20px;
+  padding: 8px 20px;
+  border-right: 1px solid rgba(255,255,255,0.08);
 }
-.wn-item:first-child { padding-left: 0; }
-.wn-divider {
-  width: 1px;
-  height: 32px;
-  background: rgba(255,255,255,0.08);
-  flex-shrink: 0;
-}
+.wn-item:last-child { border-right: none; }
+.wn-divider { display: none; }
 .wn-icon {
   font-size: 1.3rem;
   flex-shrink: 0;
@@ -663,9 +659,8 @@ main { max-width: none; padding: 0; }
 .wn-item-soon .wn-sub   { color: rgba(255,255,255,0.25); }
 @media (max-width: 768px) {
   .whats-new-inner { flex-direction: column; gap: 14px; padding: 16px 0; }
-  .whats-new-items { gap: 12px; }
-  .wn-item { padding: 0; }
-  .wn-divider { display: none; }
+  .whats-new-items { gap: 8px 0; flex-direction: column; align-items: flex-start; }
+  .wn-item { padding: 4px 0; border-right: none; }
 }
 
 /* ── Newsletter ───────────────────────────────────────────────────── */
