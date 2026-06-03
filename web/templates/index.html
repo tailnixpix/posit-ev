@@ -65,6 +65,25 @@ main { max-width: none; padding: 0; }
   color:var(--brand-primary); font-size:0.82rem; font-weight:700;
   cursor:pointer; font-family:inherit; transition:background 0.15s, border-color 0.15s;
 }
+/* ── Track record sport filter pills ── */
+.tr-filter-wrap {
+  display: flex; align-items: center; flex-wrap: wrap;
+  gap: 6px; justify-content: center; margin-bottom: 14px;
+}
+.tr-filter-pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 5px 14px; border-radius: 20px;
+  border: 1px solid var(--brand-border); background: #fff;
+  color: var(--text-muted); font-size: 0.75rem; font-weight: 600;
+  cursor: pointer; font-family: inherit;
+  transition: background 0.13s, border-color 0.13s, color 0.13s;
+  white-space: nowrap;
+}
+.tr-filter-pill:hover { border-color: var(--brand-primary); color: var(--brand-primary); }
+.tr-filter-pill.active {
+  background: rgba(83,74,183,0.08); border-color: var(--brand-primary);
+  color: var(--brand-primary);
+}
 .tr-toggle-btn:hover { background:rgba(83,74,183,0.06); border-color:var(--brand-primary); }
 
 /* ── Announcement pill (hero, above eyebrow) ──────────────────────── */
@@ -2729,28 +2748,28 @@ html { background: #060A14; }
     {% if track_total > 0 %}
     <div class="tr-stats">
       <div class="tr-stat">
-        <div class="tr-stat-val">{{ track_total }}</div>
-        <div class="tr-stat-lbl">Settled picks</div>
+        <div class="tr-stat-val" id="trStatTotal">{{ track_total }}</div>
+        <div class="tr-stat-lbl" id="trStatTotalLbl">Settled picks</div>
       </div>
       <div class="tr-stat">
         {% if track_roi is not none %}
-        <div class="tr-stat-val" style="color:{% if track_roi >= 0 %}#16A34A{% else %}#DC2626{% endif %};">
+        <div class="tr-stat-val" id="trStatROI" style="color:{% if track_roi >= 0 %}#16A34A{% else %}#DC2626{% endif %};">
           {% if track_roi >= 0 %}+{{ '%.1f'|format(track_roi) }}%{% else %}{{ '%.1f'|format(track_roi) }}%{% endif %}
         </div>
-        <div class="tr-stat-lbl">ROI · {{ track_won }}W – {{ track_lost }}L</div>
+        <div class="tr-stat-lbl" id="trStatRecord">ROI · {{ track_won }}W – {{ track_lost }}L</div>
         {% else %}
-        <div class="tr-stat-val" style="color:#16A34A;">{{ track_won }}W – {{ track_lost }}L</div>
-        <div class="tr-stat-lbl">Record</div>
+        <div class="tr-stat-val" id="trStatROI" style="color:#16A34A;">{{ track_won }}W – {{ track_lost }}L</div>
+        <div class="tr-stat-lbl" id="trStatRecord">Record</div>
         {% endif %}
       </div>
       <div class="tr-stat">
-        <div class="tr-stat-val" style="color:{% if track_pl >= 0 %}#16A34A{% else %}#DC2626{% endif %};">
+        <div class="tr-stat-val" id="trStatPL" style="color:{% if track_pl >= 0 %}#16A34A{% else %}#DC2626{% endif %};">
           {% if track_pl >= 0 %}+${{ '%.2f'|format(track_pl) }}{% else %}-${{ '%.2f'|format(-track_pl) }}{% endif %}
         </div>
         <div class="tr-stat-lbl">P&amp;L</div>
       </div>
       <div class="tr-stat">
-        <div class="tr-stat-val" style="color:{% if track_units >= 0 %}#16A34A{% else %}#DC2626{% endif %};">
+        <div class="tr-stat-val" id="trStatUnits" style="color:{% if track_units >= 0 %}#16A34A{% else %}#DC2626{% endif %};">
           {% if track_units >= 0 %}+{{ '%.1f'|format(track_units) }}{% else %}{{ '%.1f'|format(track_units) }}{% endif %} u
         </div>
         <div class="tr-stat-lbl">Units</div>
@@ -2768,6 +2787,25 @@ html { background: #060A14; }
       </button>
     </div>
     <div id="trPicksWrap" style="display:none;">
+
+      {# ── Sport filter pills — built from unique leagues in the data ── #}
+      {% set _lm = {"icehockey_nhl":"NHL","basketball_nba":"NBA","baseball_mlb":"MLB","soccer_epl":"EPL","soccer_spain_la_liga":"La Liga","soccer_germany_bundesliga":"Bundesliga","soccer_usa_mls":"MLS","soccer_uefa_champs_league":"UCL","soccer_fifa_world_cup":"World Cup","americanfootball_nfl":"NFL"} %}
+      {% set _lm_emoji = {"icehockey_nhl":"🏒","basketball_nba":"🏀","baseball_mlb":"⚾","soccer_epl":"⚽","soccer_spain_la_liga":"⚽","soccer_germany_bundesliga":"⚽","soccer_usa_mls":"⚽","soccer_uefa_champs_league":"⚽","soccer_fifa_world_cup":"🏆","americanfootball_nfl":"🏈"} %}
+      {% set _unique_leagues = namespace(v=[]) %}
+      {% for pick in track_picks %}
+        {% if pick.league and pick.league not in _unique_leagues.v %}
+          {% set _unique_leagues.v = _unique_leagues.v + [pick.league] %}
+        {% endif %}
+      {% endfor %}
+      {% if _unique_leagues.v | length > 1 %}
+      <div class="tr-filter-wrap" id="trFilterWrap">
+        <button class="tr-filter-pill active" data-league="all" onclick="filterTrackBySport(this)">All Sports</button>
+        {% for lg in _unique_leagues.v %}
+        <button class="tr-filter-pill" data-league="{{ lg }}" onclick="filterTrackBySport(this)">{{ _lm_emoji.get(lg, '🏅') }} {{ _lm.get(lg, lg | upper) }}</button>
+        {% endfor %}
+      </div>
+      {% endif %}
+
       <div class="tr-table-wrap" style="margin-top:var(--space-3);">
         <table class="tr-table">
           <thead>
@@ -2782,9 +2820,18 @@ html { background: #060A14; }
             </tr>
           </thead>
           <tbody>
-            {% set _lm = {"icehockey_nhl":"NHL","basketball_nba":"NBA","baseball_mlb":"MLB","soccer_epl":"EPL","soccer_spain_la_liga":"La Liga","soccer_germany_bundesliga":"Bundesliga","soccer_usa_mls":"MLS","soccer_uefa_champs_league":"UCL"} %}
             {% for pick in track_picks %}
-            <tr>
+            {% if pick.result in ('won','lost','push') %}
+              {% if pick.result == 'won' and pick.odds %}
+                {% if pick.odds > 0 %}{% set _row_pl = (20 * pick.odds / 100) | round(2) %}
+                {% else %}{% set _row_pl = (20 * 100 / (-pick.odds)) | round(2) %}{% endif %}
+              {% elif pick.result == 'lost' %}{% set _row_pl = -20.0 %}
+              {% else %}{% set _row_pl = 0.0 %}{% endif %}
+            {% else %}{% set _row_pl = 0.0 %}{% endif %}
+            <tr data-league="{{ pick.league or '' }}"
+                data-result="{{ pick.result or 'pending' }}"
+                data-pl="{{ _row_pl }}"
+                data-odds="{{ pick.odds or '' }}">
               <td class="tr-date">{{ pick.pick_date.strftime('%b %-d') }}</td>
               <td><span class="tr-badge">{{ _lm.get(pick.league, pick.league or '—') }}</span></td>
               <td class="tr-team">{{ pick.team or '—' }}{% if pick.point %} {% if pick.point > 0 %}+{{ pick.point }}{% else %}{{ pick.point }}{% endif %}{% endif %}</td>
@@ -3062,6 +3109,55 @@ html { background: #060A14; }
     btn.innerHTML = hidden
       ? 'Hide picks &#9650;'
       : 'Show all picks (' + count + ') &#9660;';
+  };
+
+  window.filterTrackBySport = function (pill) {
+    var league = pill.dataset.league;
+
+    // Update active pill
+    document.querySelectorAll('.tr-filter-pill').forEach(function (p) {
+      p.classList.toggle('active', p === pill);
+    });
+
+    // Show/hide rows
+    var rows = document.querySelectorAll('#trPicksWrap .tr-table tbody tr');
+    var won = 0, lost = 0, push = 0, pl = 0;
+    rows.forEach(function (row) {
+      var show = league === 'all' || row.dataset.league === league;
+      row.style.display = show ? '' : 'none';
+      if (!show) return;
+      var result = row.dataset.result;
+      var rowPl  = parseFloat(row.dataset.pl) || 0;
+      if (result === 'won')  { won++;  pl += rowPl; }
+      if (result === 'lost') { lost++; pl += rowPl; }
+      if (result === 'push') { push++;              }
+    });
+
+    // Recompute stats
+    var settled = won + lost + push;
+    var units   = pl / 20;
+    var roi     = settled > 0 ? (pl / (settled * 20)) * 100 : 0;
+
+    var elTotal  = document.getElementById('trStatTotal');
+    var elROI    = document.getElementById('trStatROI');
+    var elRecord = document.getElementById('trStatRecord');
+    var elPL     = document.getElementById('trStatPL');
+    var elUnits  = document.getElementById('trStatUnits');
+
+    if (elTotal)  elTotal.textContent  = settled;
+    if (elROI) {
+      elROI.textContent  = (roi >= 0 ? '+' : '') + roi.toFixed(1) + '%';
+      elROI.style.color  = roi >= 0 ? '#16A34A' : '#DC2626';
+    }
+    if (elRecord) elRecord.textContent = 'ROI · ' + won + 'W – ' + lost + 'L';
+    if (elPL) {
+      elPL.textContent = (pl >= 0 ? '+$' : '-$') + Math.abs(pl).toFixed(2);
+      elPL.style.color = pl >= 0 ? '#16A34A' : '#DC2626';
+    }
+    if (elUnits) {
+      elUnits.textContent = (units >= 0 ? '+' : '') + units.toFixed(1) + ' u';
+      elUnits.style.color = units >= 0 ? '#16A34A' : '#DC2626';
+    }
   };
 })();
 </script>
