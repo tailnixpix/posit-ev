@@ -759,6 +759,7 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
                       <option value="soccer_spain_la_liga"      {% if pick.league == 'soccer_spain_la_liga' %}selected{% endif %}>La Liga</option>
                       <option value="soccer_germany_bundesliga" {% if pick.league == 'soccer_germany_bundesliga' %}selected{% endif %}>Bundesliga</option>
                       <option value="soccer_uefa_champs_league" {% if pick.league == 'soccer_uefa_champs_league' %}selected{% endif %}>UCL</option>
+                      <option value="soccer_fifa_world_cup"    {% if pick.league == 'soccer_fifa_world_cup' %}selected{% endif %}>World Cup</option>
                     </select>
                     <select name="result" class="result-select">
                       <option value="pending" {% if not pick.result or pick.result == 'pending' %}selected{% endif %}>Pending</option>
@@ -808,6 +809,7 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
                     <option value="soccer_spain_la_liga">La Liga</option>
                     <option value="soccer_germany_bundesliga">Bundesliga</option>
                     <option value="soccer_uefa_champs_league">UCL</option>
+                    <option value="soccer_fifa_world_cup">World Cup</option>
                   </select>
                 </div>
                 <div class="pick-add-field">

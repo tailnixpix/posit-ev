@@ -48,6 +48,7 @@ main { max-width: none; padding: 0; }
 .tr-table tbody tr:hover { background:#F9FAFB; }
 .tr-date { white-space:nowrap; color:var(--text-muted); font-size:0.8rem; }
 .tr-team { font-weight:600; color:var(--text-primary); }
+.tr-game { font-size:0.7rem; font-weight:400; color:var(--text-muted); margin-top:2px; }
 .tr-odds { font-variant-numeric:tabular-nums; font-weight:600; }
 .tr-ev   { color:#16A34A; font-weight:700; }
 .tr-badge { display:inline-block; padding:2px 8px; border-radius:20px; font-size:0.7rem; font-weight:700; background:rgba(83,74,183,0.1); color:var(--brand-primary); }
@@ -2828,13 +2829,16 @@ html { background: #060A14; }
               {% elif pick.result == 'lost' %}{% set _row_pl = -20.0 %}
               {% else %}{% set _row_pl = 0.0 %}{% endif %}
             {% else %}{% set _row_pl = 0.0 %}{% endif %}
-            <tr data-league="{{ pick.league or '' }}"
+            <tr data-league="{{ (pick.league or '') | trim }}"
                 data-result="{{ pick.result or 'pending' }}"
                 data-pl="{{ _row_pl }}"
                 data-odds="{{ pick.odds or '' }}">
               <td class="tr-date">{{ pick.pick_date.strftime('%b %-d') }}</td>
               <td><span class="tr-badge">{{ _lm.get(pick.league, pick.league or '—') }}</span></td>
-              <td class="tr-team">{{ pick.team or '—' }}{% if pick.point %} {% if pick.point > 0 %}+{{ pick.point }}{% else %}{{ pick.point }}{% endif %}{% endif %}</td>
+              <td class="tr-team">
+                {{ pick.team or '—' }}{% if pick.point %} {% if pick.point > 0 %}+{{ pick.point }}{% else %}{{ pick.point }}{% endif %}{% endif %}
+                {% if pick.game %}<div class="tr-game">{{ pick.game }}</div>{% endif %}
+              </td>
               <td class="tr-odds">{% if pick.odds %}{% if pick.odds > 0 %}+{{ pick.odds }}{% else %}{{ pick.odds }}{% endif %}{% else %}—{% endif %}</td>
               <td class="tr-ev">{% if pick.ev_percent %}+{{ '%.1f'|format(pick.ev_percent) }}%{% else %}—{% endif %}</td>
               <td>
@@ -3123,7 +3127,8 @@ html { background: #060A14; }
     var rows = document.querySelectorAll('#trPicksWrap .tr-table tbody tr');
     var won = 0, lost = 0, push = 0, pl = 0;
     rows.forEach(function (row) {
-      var show = league === 'all' || row.dataset.league === league;
+      var rowLeague = (row.dataset.league || '').trim();
+      var show = league === 'all' || rowLeague === league.trim();
       row.style.display = show ? '' : 'none';
       if (!show) return;
       var result = row.dataset.result;
