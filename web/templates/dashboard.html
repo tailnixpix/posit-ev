@@ -4524,24 +4524,24 @@ function updateChipCounts() {
   });
 }
 
-// ── Top Pick ribbon — always tracks the first two VISIBLE cards ───────────
+// ── Top Pick ribbon — tracks the first two VISIBLE cards with CLV+ or no CLV ─
 function _updateTopPickRibbon() {
   // Remove any existing ribbon divs
   document.querySelectorAll('.card-ribbon').forEach(r => r.remove());
-  // Find the first two visible bet-cards (after sort + filter)
-  const visible = Array.from(document.querySelectorAll('.bet-card'))
-    .filter(c => c.style.display !== 'none');
-  if (visible[0]) {
+  // Eligible: visible cards that do NOT have confirmed negative CLV
+  const eligible = Array.from(document.querySelectorAll('.bet-card'))
+    .filter(c => c.style.display !== 'none' && c.dataset.clvDir !== 'neg');
+  if (eligible[0]) {
     const r1 = document.createElement('div');
     r1.className = 'card-ribbon ribbon-top1';
     r1.textContent = '🏆 Top Pick — Highest Model Edge';
-    visible[0].insertBefore(r1, visible[0].firstChild);
+    eligible[0].insertBefore(r1, eligible[0].firstChild);
   }
-  if (visible[1]) {
+  if (eligible[1]) {
     const r2 = document.createElement('div');
     r2.className = 'card-ribbon ribbon-top2';
     r2.textContent = '✅ Strong Pick — High Model Edge';
-    visible[1].insertBefore(r2, visible[1].firstChild);
+    eligible[1].insertBefore(r2, eligible[1].firstChild);
   }
 }
 
