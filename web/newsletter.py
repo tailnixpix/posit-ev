@@ -790,6 +790,7 @@ def _build_daily_email(
     date_str: str,
     to_email: str,
     analysis: Optional[dict] = None,
+    streak_count: int = 0,
 ) -> str:
     """
     Render newsletter_template.html for a single recipient.
@@ -858,6 +859,7 @@ def _build_daily_email(
         "synopsis":        synopsis,
         "base_url":        _base_url,
         "unsubscribe_url": unsub_url,
+        "streak_count":    streak_count,
     }
 
     # ── Analysis fields (quality-gated — only set when live data was fetched) ──
@@ -961,6 +963,25 @@ def send_daily_newsletter() -> dict:
     finally:
         _pick_db.close()
 
+    # 2d. Compute current win streak for streak banner in email
+    _streak_db = SessionLocal()
+    try:
+        _recent_picks = (
+            _streak_db.query(DailyPick)
+            .filter(DailyPick.result.in_(["won", "lost", "push"]))
+            .order_by(DailyPick.pick_date.desc())
+            .limit(30)
+            .all()
+        )
+        _streak_count = 0
+        for _p in _recent_picks:
+            if _p.result == "won":
+                _streak_count += 1
+            else:
+                break
+    finally:
+        _streak_db.close()
+
     # 3. Active subscribers
     db = SessionLocal()
     try:
@@ -1056,8 +1077,36 @@ def send_daily_newsletter() -> dict:
 {_bh_risk_html}
 """
 
+        _bh_streak_html = ""
+        if _streak_count >= 2:
+            _bh_streak_html = f"""
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+       style="margin-bottom:20px;">
+  <tr>
+    <td style="background:linear-gradient(90deg,#1E1A47 0%,#2D2860 100%);
+                border:1px solid #3D3890; border-radius:10px; padding:12px 20px;">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td style="font-size:22px; line-height:1; padding-right:12px; vertical-align:middle;">🔥</td>
+          <td style="vertical-align:middle;">
+            <span style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+                         font-size:15px; font-weight:700; color:#FAC775;">
+              {_streak_count}-Day Winning Streak
+            </span>
+            <span style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+                         font-size:12px; color:#AFA9EC; margin-left:8px;">
+              &middot; Free pick has hit {_streak_count} in a row
+            </span>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+"""
+
         body_html = f"""
-<h2 style="color:#1A1450; font-size:20px; font-weight:700; margin:0 0 16px;">
+{_bh_streak_html}<h2 style="color:#1A1450; font-size:20px; font-weight:700; margin:0 0 16px;">
   Today&rsquo;s Free +EV Pick &mdash; {date_str}
 </h2>
 
@@ -1109,7 +1158,7 @@ def send_daily_newsletter() -> dict:
     # Resend fallback (or primary if Beehiiv not configured)
     sent = failed = 0
     for email in emails:
-        html = _build_daily_email(bet, synopsis, date_str, email, analysis=analysis)
+        html = _build_daily_email(bet, synopsis, date_str, email, analysis=analysis, streak_count=_streak_count)
         ok   = _send(email, subject, html)
         if ok:
             sent += 1

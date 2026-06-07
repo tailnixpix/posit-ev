@@ -1948,6 +1948,22 @@ async def get_analysis(bet_id: int, request: Request, db: Session = Depends(get_
     })
 
 
+def _compute_pick_streak(settled_picks) -> int:
+    """
+    Count consecutive wins from the most recent settled pick.
+
+    `settled_picks` must be ordered descending by pick_date (most recent first).
+    Returns the length of the current win streak; 0 if the latest pick was not a win.
+    """
+    streak = 0
+    for pick in settled_picks:
+        if pick.result == "won":
+            streak += 1
+        else:
+            break
+    return streak
+
+
 @app.get("/", response_class=HTMLResponse)
 async def landing(request: Request, db: Session = Depends(get_db)):
     all_picks = (
@@ -1977,6 +1993,9 @@ async def landing(request: Request, db: Session = Depends(get_db)):
     # ROI: profit relative to starting bankroll (same as admin dashboard)
     track_roi = round(total_pl / BANKROLL * 100, 1) if len(settled) > 0 else None
 
+    # Current win streak (consecutive wins from most recent pick)
+    streak_count = _compute_pick_streak(settled)
+
     return templates.TemplateResponse(request, "index.html", {
         "track_picks":    settled,   # pending picks excluded — only show settled results
         "track_won":      won,
@@ -1985,6 +2004,7 @@ async def landing(request: Request, db: Session = Depends(get_db)):
         "track_roi":      track_roi,
         "track_pl":       total_pl,
         "track_units":    total_units,
+        "streak_count":   streak_count,
     })
 
 

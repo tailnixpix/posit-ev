@@ -3113,8 +3113,9 @@ main { max-width: none !important; padding: 0 !important; }
                {% if bet.all_book_odds %}data-all-book-odds="{{ bet.all_book_odds | e }}"{% endif %}
                onclick="_onBetCardClick(event, this)">
 
-            {# ── Elite tier accent ribbon ── #}
-            {% if 'tier-elite' in tier %}
+            {# ── Elite tier accent ribbon — suppressed when CLV is moving against the position ── #}
+            {% set _clv_neg = bet.opening_odds and bet.opening_odds != bet.odds and bet.opening_odds < bet.odds %}
+            {% if 'tier-elite' in tier and not _clv_neg %}
             <div class="elite-ribbon"><span class="elite-ribbon-dot"></span> Elite Pick — Top Conviction</div>
             {% endif %}
 

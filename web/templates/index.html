@@ -86,6 +86,16 @@ main { max-width: none; padding: 0; }
   color: var(--brand-primary);
 }
 .tr-toggle-btn:hover { background:rgba(83,74,183,0.06); border-color:var(--brand-primary); }
+/* ── Streak banner ─────────────────────────────────────────────────── */
+.tr-streak-banner {
+  display: flex; align-items: center; gap: 12px;
+  background: linear-gradient(90deg, #1E1A47 0%, #2D2860 100%);
+  border: 1px solid #3D3890; border-radius: 10px;
+  padding: 12px 20px; margin: 0 0 var(--space-3);
+}
+.tr-streak-fire { font-size: 1.35rem; line-height: 1; flex-shrink: 0; }
+.tr-streak-label { font-size: 0.93rem; font-weight: 700; color: #FAC775; }
+.tr-streak-sub { font-size: 0.8rem; color: #AFA9EC; margin-left: 6px; }
 
 /* ── Announcement pill (hero, above eyebrow) ──────────────────────── */
 .announce-pill {
@@ -1500,6 +1510,7 @@ html { background: #060A14; }
 }
 .tr-toggle-btn:hover { background: #131D2E; border-color: rgba(124,58,237,.4); }
 .tr-assumption { color: #64748b; }
+.tr-streak-banner { background: linear-gradient(90deg, #0D0B1E 0%, #141028 100%); border-color: #2A2650; }
 
 /* FAQ */
 .faq-section { background: #060A14 !important; }
@@ -2787,6 +2798,18 @@ html { background: #060A14; }
         Show all picks ({{ track_picks|length }}) ▾
       </button>
     </div>
+
+    {# ── Win streak banner — only shown when 2+ consecutive wins ── #}
+    {% if streak_count is defined and streak_count >= 2 %}
+    <div class="tr-streak-banner">
+      <span class="tr-streak-fire">🔥</span>
+      <div>
+        <span class="tr-streak-label">{{ streak_count }}-Day Winning Streak</span>
+        <span class="tr-streak-sub">· Free pick has hit {{ streak_count }} in a row</span>
+      </div>
+    </div>
+    {% endif %}
+
     <div id="trPicksWrap" style="display:none;">
 
       {# ── Sport filter pills — built from unique leagues in the data ── #}
