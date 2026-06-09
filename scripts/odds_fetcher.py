@@ -148,11 +148,15 @@ _SOCCER_KEYS = [
     "soccer_fifa_world_cup",
 ]
 # Soccer-specific markets:
-#   h2h_3_way  — 3-way moneyline (Home / Draw / Away), standard for soccer
+#   h2h_3_way  — 3-way moneyline (Home / Draw / Away), standard for league soccer
 #   btts       — Both Teams to Score (Yes / No)
+# NOTE: soccer_fifa_world_cup does NOT support h2h_3_way or btts via the Odds API
+# (returns 422 INVALID_MARKET, blocking the entire fetch). It only supports the
+# base h2h/spreads/totals markets, so it is excluded from the extras dict.
+_SOCCER_KEYS_WITH_EXTRAS = [k for k in _SOCCER_KEYS if k != "soccer_fifa_world_cup"]
 SPORT_MARKETS_EXTRA: dict = {
     sport: ["h2h_3_way", "btts"]
-    for sport in _SOCCER_KEYS
+    for sport in _SOCCER_KEYS_WITH_EXTRAS
 }
 
 # Sports that support player prop fetching via event-level endpoint
