@@ -472,6 +472,21 @@ def get_odds_df(
     if far_dropped:
         log.info("Filtered out %d rows for games >7 days away.", far_dropped)
 
+    # Drop quarter-point spread lines (x.25 / x.75) for soccer — only whole
+    # and half-number lines are standard in soccer betting markets.
+    # Asian handicap quarter-lines are not offered by US sportsbooks and
+    # produce phantom EV signals against books that don't price them.
+    soccer_spread_mask = (
+        df["sport_key"].str.startswith("soccer_", na=False) &
+        (df["market"] == "spreads") &
+        df["point"].notna() &
+        (df["point"] % 0.5 != 0)
+    )
+    qtr_dropped = soccer_spread_mask.sum()
+    if qtr_dropped:
+        df = df[~soccer_spread_mask]
+        log.info("Filtered out %d quarter-point soccer spread rows.", qtr_dropped)
+
     return df
 
 
