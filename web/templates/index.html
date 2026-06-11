@@ -2820,11 +2820,10 @@ html { background: #060A14; }
           <div class="tr-chart-label">Cumulative Performance</div>
           <div class="tr-chart-kpis">
             {% if track_roi is not none %}
-            <span class="tr-chart-roi" style="color:{{ _roi_color }};">{% if track_roi >= 0 %}+{% endif %}{{ '%.1f'|format(track_roi) }}%</span>
+            <span class="tr-chart-roi" style="color:{{ _roi_color }};">{% if track_roi >= 0 %}+{% endif %}{{ '%.1f'|format(track_roi) }}% <span style="font-size:0.9rem; font-weight:700;">ROI</span></span>
             <span class="tr-chart-pl"  style="color:{{ _roi_color }};">{% if track_pl >= 0 %}+${{ '%.2f'|format(track_pl) }}{% else %}-${{ '%.2f'|format(-track_pl) }}{% endif %}</span>
             {% endif %}
           </div>
-          <div class="tr-chart-since">ROI &amp; P&amp;L since tracking began</div>
         </div>
       </div>
       <canvas id="trRoiChart" height="140"></canvas>
