@@ -596,15 +596,15 @@ def refresh_ev_cache() -> int:
             except (ValueError, TypeError):
                 point_val = None
 
-            # Second-pass guard: skip quarter-point soccer spread lines (x.25 / x.75).
-            # These are Asian handicap lines that are not standard in US markets.
+            # Second-pass guard: skip quarter-point soccer spread/total lines (x.25 / x.75).
+            # Asian handicap and goal-line quarter-lines are not standard in US markets.
             # get_odds_df() already filters these upstream; this ensures they can never
             # reach EVBetCache even if a pipeline run straddles a deployment window.
             _row_sport = str(row.get("sport_key", "") or "")
             _row_market = str(row.get("market", "") or "")
             if (
                 _row_sport.startswith("soccer_")
-                and _row_market == "spreads"
+                and _row_market in ("spreads", "totals")
                 and point_val is not None
                 and point_val % 0.5 != 0
             ):
