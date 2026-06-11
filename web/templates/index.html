@@ -61,9 +61,21 @@ main { max-width: none; padding: 0; }
 /* ── ROI chart ─────────────────────────────────────────────────────── */
 .tr-chart-wrap {
   position:relative; max-width:680px; margin:var(--space-5) auto var(--space-2);
-  background:#fff; border:1px solid var(--brand-border); border-radius:14px;
-  padding:20px 20px 12px;
+  background:var(--bg-card, #fff); border:1px solid var(--brand-border);
+  border-radius:14px; padding:20px 20px 14px; overflow:hidden;
 }
+.tr-chart-header {
+  display:flex; align-items:flex-start; justify-content:space-between;
+  margin-bottom:16px; gap:8px;
+}
+.tr-chart-label {
+  font-size:0.7rem; font-weight:700; letter-spacing:0.07em;
+  text-transform:uppercase; color:var(--text-muted); margin-bottom:3px;
+}
+.tr-chart-kpis { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
+.tr-chart-roi  { font-size:1.55rem; font-weight:800; line-height:1; }
+.tr-chart-pl   { font-size:1rem; font-weight:700; line-height:1; opacity:0.85; }
+.tr-chart-since { font-size:0.72rem; color:var(--text-muted); margin-top:2px; }
 .tr-chart-wrap canvas { display:block; width:100% !important; }
 .tr-toggle-wrap { text-align:center; margin:var(--space-4) 0 var(--space-2); }
 .tr-toggle-btn {
@@ -1518,6 +1530,9 @@ html { background: #060A14; }
 .tr-toggle-btn:hover { background: #131D2E; border-color: rgba(124,58,237,.4); }
 .tr-assumption { color: #64748b; }
 .tr-streak-banner { background: linear-gradient(90deg, #0D0B1E 0%, #141028 100%); border-color: #2A2650; }
+.tr-chart-wrap { background: #0F1923 !important; border-color: rgba(124,58,237,0.22) !important; }
+.tr-chart-label { color: #64748b !important; }
+.tr-chart-since { color: #64748b !important; }
 
 /* FAQ */
 .faq-section { background: #060A14 !important; }
@@ -2798,8 +2813,21 @@ html { background: #060A14; }
 
     {# ── ROI over time chart ── #}
     {% if track_chart_data is defined and track_total >= 2 %}
+    {% set _roi_color = '#00D68F' if (track_roi is not none and track_roi >= 0) else '#f87171' %}
     <div class="tr-chart-wrap">
-      <canvas id="trRoiChart" height="160"></canvas>
+      <div class="tr-chart-header">
+        <div>
+          <div class="tr-chart-label">Cumulative Performance</div>
+          <div class="tr-chart-kpis">
+            {% if track_roi is not none %}
+            <span class="tr-chart-roi" style="color:{{ _roi_color }};">{% if track_roi >= 0 %}+{% endif %}{{ '%.1f'|format(track_roi) }}%</span>
+            <span class="tr-chart-pl"  style="color:{{ _roi_color }};">{% if track_pl >= 0 %}+${{ '%.2f'|format(track_pl) }}{% else %}-${{ '%.2f'|format(-track_pl) }}{% endif %}</span>
+            {% endif %}
+          </div>
+          <div class="tr-chart-since">ROI &amp; P&amp;L since tracking began</div>
+        </div>
+      </div>
+      <canvas id="trRoiChart" height="140"></canvas>
     </div>
     {% endif %}
     {% endif %}
@@ -3212,58 +3240,69 @@ html { background: #060A14; }
   var canvas = document.getElementById('trRoiChart');
   if (!canvas) return;
 
-  var raw   = {{ track_chart_data | safe }};
+  var raw    = {{ track_chart_data | safe }};
   var labels = raw.map(function(d){ return d.date; });
   var values = raw.map(function(d){ return d.roi; });
+  var plVals = raw.map(function(d){ return d.pl; });
 
-  var finalRoi = values[values.length - 1];
-  var lineColor = finalRoi >= 0 ? '#16A34A' : '#DC2626';
+  var finalRoi  = values[values.length - 1];
+  var isPos     = finalRoi >= 0;
+  var lineColor = isPos ? '#00D68F' : '#f87171';
+  var glowColor = isPos ? 'rgba(0,214,143,0.15)' : 'rgba(248,113,113,0.12)';
+
+  /* detect dark background */
+  var isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  var chartBg = isDark ? '#0F1923' : '#ffffff';
+  var gridCol = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)';
+  var tickCol = '#64748b';
 
   var ctx = canvas.getContext('2d');
 
-  /* gradient fill — fades from line color to transparent */
-  var grad = ctx.createLinearGradient(0, 0, 0, 240);
-  if (finalRoi >= 0) {
-    grad.addColorStop(0,   'rgba(22,163,74,0.22)');
-    grad.addColorStop(1,   'rgba(22,163,74,0)');
-  } else {
-    grad.addColorStop(0,   'rgba(220,38,38,0.18)');
-    grad.addColorStop(1,   'rgba(220,38,38,0)');
-  }
+  var grad = ctx.createLinearGradient(0, 0, 0, 200);
+  grad.addColorStop(0,   isPos ? 'rgba(0,214,143,0.25)' : 'rgba(248,113,113,0.20)');
+  grad.addColorStop(0.6, isPos ? 'rgba(0,214,143,0.06)' : 'rgba(248,113,113,0.04)');
+  grad.addColorStop(1,   'rgba(0,0,0,0)');
 
   new Chart(ctx, {
     type: 'line',
     data: {
       labels: labels,
       datasets: [{
-        data:            values,
-        borderColor:     lineColor,
-        borderWidth:     2.5,
-        pointRadius:     0,
-        pointHoverRadius: 5,
+        data:                    values,
+        borderColor:             lineColor,
+        borderWidth:             2,
+        pointRadius:             0,
+        pointHoverRadius:        5,
         pointHoverBackgroundColor: lineColor,
-        fill:            true,
-        backgroundColor: grad,
-        tension:         0.35,
+        pointHoverBorderColor:   '#0F1923',
+        pointHoverBorderWidth:   2,
+        fill:                    true,
+        backgroundColor:         grad,
+        tension:                 0.4,
       }]
     },
     options: {
-      responsive: true,
+      responsive:          true,
+      maintainAspectRatio: true,
       interaction: { mode: 'index', intersect: false },
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: '#1e1b4b',
-          titleColor:      '#c4b5fd',
+          backgroundColor: '#0F1923',
+          titleColor:      '#a78bfa',
           bodyColor:       '#e2e8f0',
-          borderColor:     '#4c1d95',
+          borderColor:     'rgba(124,58,237,0.4)',
           borderWidth:     1,
-          padding:         10,
+          padding:         12,
+          caretSize:       5,
           callbacks: {
             title: function(items){ return items[0].label; },
             label: function(item){
-              var v = item.raw;
-              return ' ROI: ' + (v >= 0 ? '+' : '') + v.toFixed(1) + '%';
+              var roi = item.raw;
+              var pl  = plVals[item.dataIndex];
+              var roiStr = (roi >= 0 ? '+' : '') + roi.toFixed(1) + '% ROI';
+              var plStr  = (pl  >= 0 ? '+$' : '-$') + Math.abs(pl).toFixed(2) + ' P&L';
+              return ['  ' + roiStr, '  ' + plStr];
             }
           }
         }
@@ -3271,13 +3310,13 @@ html { background: #060A14; }
       scales: {
         x: {
           grid:   { display: false },
-          ticks:  { color: '#94a3b8', font: { size: 11 }, maxTicksLimit: 8, maxRotation: 0 },
+          ticks:  { color: tickCol, font: { size: 11 }, maxTicksLimit: 8, maxRotation: 0 },
           border: { display: false },
         },
         y: {
-          grid:   { color: 'rgba(0,0,0,0.05)' },
+          grid:   { color: gridCol, lineWidth: 1 },
           ticks:  {
-            color: '#94a3b8', font: { size: 11 },
+            color: tickCol, font: { size: 11 }, maxTicksLimit: 5,
             callback: function(v){ return (v >= 0 ? '+' : '') + v.toFixed(0) + '%'; }
           },
           border: { display: false },

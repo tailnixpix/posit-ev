@@ -2015,7 +2015,7 @@ async def landing(request: Request, db: Session = Depends(get_db)):
     import json as _json
     _chart_picks = sorted(settled, key=lambda p: p.pick_date)
     _cum_pl = 0.0
-    _chart_points = [{"date": "Start", "roi": 0.0}]
+    _chart_points = [{"date": "Start", "roi": 0.0, "pl": 0.0}]
     for _p in _chart_picks:
         if _p.result == "won" and _p.odds:
             _cum_pl += UNIT * _p.odds / 100 if _p.odds > 0 else UNIT * 100 / abs(_p.odds)
@@ -2024,6 +2024,7 @@ async def landing(request: Request, db: Session = Depends(get_db)):
         _chart_points.append({
             "date": _p.pick_date.strftime("%-m/%-d"),
             "roi":  round(_cum_pl / BANKROLL * 100, 2),
+            "pl":   round(_cum_pl, 2),
         })
     track_chart_data = _json.dumps(_chart_points)
 
