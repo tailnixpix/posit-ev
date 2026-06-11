@@ -58,6 +58,13 @@ main { max-width: none; padding: 0; }
 .tr-push    { background:rgba(161,161,170,0.15); color:#71717A; }
 .tr-pending { background:rgba(234,179,8,0.12);  color:#92400E; }
 .tr-assumption { font-size:0.75rem; color:var(--text-muted); text-align:center; margin-top:6px; }
+/* ── ROI chart ─────────────────────────────────────────────────────── */
+.tr-chart-wrap {
+  position:relative; max-width:680px; margin:var(--space-5) auto var(--space-2);
+  background:#fff; border:1px solid var(--brand-border); border-radius:14px;
+  padding:20px 20px 12px;
+}
+.tr-chart-wrap canvas { display:block; width:100% !important; }
 .tr-toggle-wrap { text-align:center; margin:var(--space-4) 0 var(--space-2); }
 .tr-toggle-btn {
   display:inline-flex; align-items:center; gap:6px;
@@ -2788,6 +2795,13 @@ html { background: #060A14; }
       </div>
     </div>
     <p class="tr-assumption">Based on $1,000 bankroll · $20 flat unit size per pick</p>
+
+    {# ── ROI over time chart ── #}
+    {% if track_chart_data is defined and track_total >= 2 %}
+    <div class="tr-chart-wrap">
+      <canvas id="trRoiChart" height="160"></canvas>
+    </div>
+    {% endif %}
     {% endif %}
 
     {% if track_picks %}
@@ -3189,5 +3203,90 @@ html { background: #060A14; }
   };
 })();
 </script>
+
+{# ── ROI chart (Chart.js) ─────────────────────────────────────────────── #}
+{% if track_chart_data is defined and track_total >= 2 %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+  var canvas = document.getElementById('trRoiChart');
+  if (!canvas) return;
+
+  var raw   = {{ track_chart_data | safe }};
+  var labels = raw.map(function(d){ return d.date; });
+  var values = raw.map(function(d){ return d.roi; });
+
+  var finalRoi = values[values.length - 1];
+  var lineColor = finalRoi >= 0 ? '#16A34A' : '#DC2626';
+
+  var ctx = canvas.getContext('2d');
+
+  /* gradient fill — fades from line color to transparent */
+  var grad = ctx.createLinearGradient(0, 0, 0, 240);
+  if (finalRoi >= 0) {
+    grad.addColorStop(0,   'rgba(22,163,74,0.22)');
+    grad.addColorStop(1,   'rgba(22,163,74,0)');
+  } else {
+    grad.addColorStop(0,   'rgba(220,38,38,0.18)');
+    grad.addColorStop(1,   'rgba(220,38,38,0)');
+  }
+
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        data:            values,
+        borderColor:     lineColor,
+        borderWidth:     2.5,
+        pointRadius:     0,
+        pointHoverRadius: 5,
+        pointHoverBackgroundColor: lineColor,
+        fill:            true,
+        backgroundColor: grad,
+        tension:         0.35,
+      }]
+    },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1e1b4b',
+          titleColor:      '#c4b5fd',
+          bodyColor:       '#e2e8f0',
+          borderColor:     '#4c1d95',
+          borderWidth:     1,
+          padding:         10,
+          callbacks: {
+            title: function(items){ return items[0].label; },
+            label: function(item){
+              var v = item.raw;
+              return ' ROI: ' + (v >= 0 ? '+' : '') + v.toFixed(1) + '%';
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid:   { display: false },
+          ticks:  { color: '#94a3b8', font: { size: 11 }, maxTicksLimit: 8, maxRotation: 0 },
+          border: { display: false },
+        },
+        y: {
+          grid:   { color: 'rgba(0,0,0,0.05)' },
+          ticks:  {
+            color: '#94a3b8', font: { size: 11 },
+            callback: function(v){ return (v >= 0 ? '+' : '') + v.toFixed(0) + '%'; }
+          },
+          border: { display: false },
+        }
+      }
+    }
+  });
+})();
+</script>
+{% endif %}
 
 {% endblock %}

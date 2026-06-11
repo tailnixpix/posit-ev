@@ -2010,15 +2010,33 @@ async def landing(request: Request, db: Session = Depends(get_db)):
     # Current win streak (consecutive wins from most recent pick)
     streak_count = _compute_pick_streak(settled)
 
+    # Chart data: cumulative ROI over time (ascending by date), for the stock graph.
+    # Start at 0.0 before the first pick so the curve visibly "launches" from zero.
+    import json as _json
+    _chart_picks = sorted(settled, key=lambda p: p.pick_date)
+    _cum_pl = 0.0
+    _chart_points = [{"date": "Start", "roi": 0.0}]
+    for _p in _chart_picks:
+        if _p.result == "won" and _p.odds:
+            _cum_pl += UNIT * _p.odds / 100 if _p.odds > 0 else UNIT * 100 / abs(_p.odds)
+        elif _p.result == "lost":
+            _cum_pl -= UNIT
+        _chart_points.append({
+            "date": _p.pick_date.strftime("%-m/%-d"),
+            "roi":  round(_cum_pl / BANKROLL * 100, 2),
+        })
+    track_chart_data = _json.dumps(_chart_points)
+
     return templates.TemplateResponse(request, "index.html", {
-        "track_picks":    settled,   # pending picks excluded — only show settled results
-        "track_won":      won,
-        "track_lost":     lost,
-        "track_total":    len(settled),
-        "track_roi":      track_roi,
-        "track_pl":       total_pl,
-        "track_units":    total_units,
-        "streak_count":   streak_count,
+        "track_picks":      settled,   # pending picks excluded — only show settled results
+        "track_won":        won,
+        "track_lost":       lost,
+        "track_total":      len(settled),
+        "track_roi":        track_roi,
+        "track_pl":         total_pl,
+        "track_units":      total_units,
+        "streak_count":     streak_count,
+        "track_chart_data": track_chart_data,
     })
 
 
