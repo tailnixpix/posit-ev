@@ -1491,8 +1491,8 @@ main { max-width: none !important; padding: 0 !important; }
 .btn-track:hover { background: rgba(100,149,237,0.15); }
 .btn-track.tracked { background: rgba(0,214,143,0.1); border-color: rgba(0,214,143,0.3); color: var(--d-green); }
 
-/* ── Analyze button ── */
-.btn-analyze {
+/* ── EV Insight button ── */
+.btn-ev-insight {
   flex: 0 0 auto;
   background: rgba(155,121,250,0.08);
   border: 1px solid rgba(155,121,250,0.25);
@@ -1505,8 +1505,8 @@ main { max-width: none !important; padding: 0 !important; }
   font-family: inherit;
   transition: background 0.15s, color 0.15s;
 }
-.btn-analyze:hover { background: rgba(155,121,250,0.18); }
-.btn-analyze.ai-open { background: rgba(155,121,250,0.15); border-color: rgba(155,121,250,0.45); }
+.btn-ev-insight:hover { background: rgba(155,121,250,0.18); }
+.btn-ev-insight.open { background: rgba(155,121,250,0.15); border-color: rgba(155,121,250,0.45); }
 
 /* ── Top Pick featured banner ── */
 .featured-pick-wrap {
@@ -3562,7 +3562,7 @@ main { max-width: none !important; padding: 0 !important; }
                 </button>
                 {% endif %}
                 <button class="btn-track" id="track-btn-{{ bet.id }}" onclick="toggleTrackPanel({{ bet.id }}, this)">📌 Track</button>
-                <button class="btn-analyze" id="analyze-btn-{{ bet.id }}" data-bet-id="{{ bet.id }}" onclick="toggleAiPanel(this)">🤖 +EV Insight</button>
+                <button class="btn-ev-insight" id="analyze-btn-{{ bet.id }}" data-bet-id="{{ bet.id }}" onclick="toggleAnalysisPanel({{ bet.id }}, this)">🤖 +EV Insight</button>
               </div>
 
               {# — Track Panel — #}
@@ -6024,10 +6024,10 @@ const _aiCache = {};
 
 function _loadAnalysis(betId) {
   delete _aiCache[betId];
-  const btn   = document.getElementById('analyze-btn-' + betId);
-  const panel = document.getElementById('ai-panel-'   + betId);
-  if (panel && panel.classList.contains('open')) panel.classList.remove('open');
-  if (btn) { btn.classList.remove('ai-open'); btn.textContent = '🤖 +EV Insight'; toggleAiPanel(btn); }
+  const btn  = document.getElementById('analyze-btn-' + betId);
+  const wrap = document.getElementById('analysis-wrap-' + betId);
+  if (wrap && wrap.classList.contains('open')) wrap.classList.remove('open');
+  if (btn) { btn.classList.remove('open'); btn.textContent = '🤖 +EV Insight'; toggleAnalysisPanel(betId, btn); }
 }
 
 function scrollAndAnalyze(betId) {
@@ -6035,7 +6035,7 @@ function scrollAndAnalyze(betId) {
   if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
   setTimeout(() => {
     const btn = document.getElementById('analyze-btn-' + betId);
-    if (btn && !btn.classList.contains('ai-open')) toggleAiPanel(btn);
+    if (btn && !btn.classList.contains('open')) toggleAnalysisPanel(betId, btn);
   }, card ? 450 : 0);
 }
 
