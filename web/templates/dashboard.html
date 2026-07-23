@@ -6377,6 +6377,8 @@ function toggleAnalysisPanel(betId, btn) {
   btn.classList.add('open');
   { const t = btn.querySelector('.btn-analyze-top'); if (t) t.textContent = '✕ Close Analysis'; }
   { const s = btn.querySelector('.btn-analyze-sub'); if (s) s.style.display = 'none'; }
+  // Bring the panel into view so the user can see it
+  setTimeout(() => wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 60);
 
   // Load projection data if not already loaded (game bets)
   const projPanel = document.getElementById('proj-panel-' + betId);
