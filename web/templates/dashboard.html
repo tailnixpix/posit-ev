@@ -1109,7 +1109,7 @@ main { max-width: none !important; padding: 0 !important; }
   gap: 1px;
   background: linear-gradient(135deg, rgba(99,179,237,0.08) 0%, rgba(154,117,250,0.1) 100%);
   border: 1px solid rgba(99,179,237,0.25);
-  border-radius: 9px;
+  border-radius: 8px;
   padding: 8px 12px;
   cursor: pointer;
   transition: background 0.2s, border-color 0.2s;
@@ -1468,37 +1468,19 @@ main { max-width: none !important; padding: 0 !important; }
 /* ── Compact mode ── */
 .cards-grid.compact-mode .proj-band,
 .cards-grid.compact-mode .ai-panel,
-.cards-grid.compact-mode .proj-panel,
-.cards-grid.compact-mode .track-panel { display: none !important; }
+.cards-grid.compact-mode .proj-panel { display: none !important; }
 @media (min-width: 1024px) {
   .cards-grid.compact-mode { grid-template-columns: repeat(4, 1fr); }
 }
 
-/* ── Bet Tracker ── */
-.btn-track {
-  flex: 0 0 auto;
-  background: rgba(100,149,237,0.08);
-  border: 1px solid rgba(100,149,237,0.25);
-  color: #6495ED;
-  border-radius: 8px;
-  padding: 6px 12px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  cursor: pointer;
-  font-family: inherit;
-  transition: background 0.15s, color 0.15s;
-}
-.btn-track:hover { background: rgba(100,149,237,0.15); }
-.btn-track.tracked { background: rgba(0,214,143,0.1); border-color: rgba(0,214,143,0.3); color: var(--d-green); }
-
 /* ── EV Insight button ── */
 .btn-ev-insight {
-  flex: 0 0 auto;
+  flex: 1 1 0;
   background: rgba(155,121,250,0.08);
   border: 1px solid rgba(155,121,250,0.25);
   color: var(--d-purple, #a78bfa);
   border-radius: 8px;
-  padding: 6px 12px;
+  padding: 8px 12px;
   font-size: 0.75rem;
   font-weight: 600;
   cursor: pointer;
@@ -1567,265 +1549,6 @@ main { max-width: none !important; padding: 0 !important; }
   white-space: nowrap;
 }
 .featured-pick-cta:hover { opacity: 0.85; }
-
-.track-panel {
-  display: none;
-  margin: 8px 0 0;
-  background: rgba(100,149,237,0.05);
-  border: 1px solid rgba(100,149,237,0.2);
-  border-radius: 10px;
-  padding: 10px 14px;
-}
-.track-panel.open { display: block; }
-.track-panel-label {
-  font-size: 0.7rem;
-  font-weight: 700;
-  color: var(--d-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 6px;
-}
-.track-panel-row { display: flex; gap: 8px; align-items: flex-end; }
-.track-adj-row {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-.track-field {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  flex: 1;
-  min-width: 0;
-}
-.track-field-lbl {
-  font-size: 0.6rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--d-muted);
-  font-weight: 700;
-}
-.track-stake-input {
-  flex: 1;
-  background: var(--d-bg);
-  border: 1px solid var(--d-border);
-  border-radius: 8px;
-  color: var(--d-text);
-  font-family: inherit;
-  font-size: 0.85rem;
-  padding: 7px 10px;
-  min-width: 0;
-}
-.track-stake-input:focus { outline: none; border-color: rgba(100,149,237,0.5); }
-.btn-track-confirm {
-  background: rgba(100,149,237,0.15);
-  border: 1px solid rgba(100,149,237,0.35);
-  color: #6495ED;
-  border-radius: 8px;
-  padding: 7px 14px;
-  font-size: 0.8rem;
-  font-weight: 700;
-  cursor: pointer;
-  font-family: inherit;
-  white-space: nowrap;
-  transition: background 0.15s;
-}
-.btn-track-confirm:hover { background: rgba(100,149,237,0.25); }
-.track-kelly-hint { margin-top: 5px; font-size: 0.68rem; color: var(--d-muted); }
-
-/* Tracker badge on toolbar button */
-.tracker-badge {
-  position: absolute;
-  top: -5px; right: -5px;
-  background: var(--d-green);
-  color: #0a0f1a;
-  border-radius: 999px;
-  font-size: 0.6rem;
-  font-weight: 800;
-  min-width: 16px; height: 16px;
-  display: flex; align-items: center; justify-content: center;
-  padding: 0 4px;
-  line-height: 1;
-}
-
-/* Tracker overlay */
-.tracker-overlay {
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,0.45);
-  z-index: 599; display: none;
-}
-.tracker-overlay.open { display: block; }
-
-/* Tracker drawer */
-.tracker-drawer {
-  position: fixed; top: 0; right: -480px;
-  width: min(460px, 100vw); height: 100vh;
-  background: var(--d-surface);
-  border-left: 1px solid var(--d-border);
-  z-index: 600;
-  display: flex; flex-direction: column;
-  transition: right 0.3s cubic-bezier(0.4,0,0.2,1);
-  overflow: hidden;
-}
-.tracker-drawer.open { right: 0; }
-.tracker-hdr {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 18px 20px 14px;
-  border-bottom: 1px solid var(--d-border);
-  flex-shrink: 0;
-}
-.tracker-title { font-size: 1.05rem; font-weight: 700; color: var(--d-text); }
-.tracker-close { background: none; border: none; color: var(--d-sub); font-size: 1.1rem; cursor: pointer; padding: 4px 8px; border-radius: 6px; }
-.tracker-close:hover { background: rgba(255,255,255,0.06); }
-
-.tracker-summary {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--d-border);
-  flex-shrink: 0;
-}
-.tracker-stat {
-  background: var(--d-bg);
-  border: 1px solid var(--d-border);
-  border-radius: 10px;
-  padding: 10px 8px;
-  text-align: center;
-  min-width: 0;
-}
-.tracker-stat-val {
-  font-size: 0.95rem;
-  font-weight: 800;
-  color: var(--d-text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.tracker-stat-val.positive { color: var(--d-green); }
-.tracker-stat-val.negative { color: var(--d-red); }
-.tracker-stat-lbl {
-  font-size: 0.58rem;
-  color: var(--d-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-top: 3px;
-  font-weight: 600;
-}
-
-.tracker-list {
-  flex: 1; overflow-y: auto;
-  padding: 12px 16px;
-  display: flex; flex-direction: column; gap: 10px;
-}
-.tracker-item {
-  background: var(--d-bg);
-  border: 1px solid var(--d-border);
-  border-radius: 10px; padding: 12px 14px;
-}
-.tracker-item.result-won  { border-color: rgba(0,214,143,0.35); }
-.tracker-item.result-lost { border-color: rgba(255,91,91,0.35); }
-.tracker-item.result-push { border-color: rgba(255,193,7,0.35); }
-.tracker-item-top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 6px;
-}
-.tracker-item-info { flex: 1; min-width: 0; }
-.tracker-item-team {
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: var(--d-text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.tracker-item-ctx {
-  font-size: 0.72rem;
-  color: var(--d-sub);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin-bottom: 3px;
-}
-.tracker-item-meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.67rem;
-  color: var(--d-muted);
-  margin-top: 3px;
-}
-.tracker-item-meta-right { white-space: nowrap; }
-.tracker-item-right {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 4px;
-  flex-shrink: 0;
-}
-.tracker-item-pl {
-  font-size: 0.88rem;
-  font-weight: 800;
-  white-space: nowrap;
-  line-height: 1;
-}
-.tracker-item-pl.positive { color: var(--d-green); }
-.tracker-item-pl.negative { color: var(--d-red); }
-.tracker-item-pl.neutral  { color: var(--d-sub); }
-.tracker-item-settle { display: flex; gap: 6px; margin-top: 8px; }
-.btn-settle {
-  flex: 1; min-width: 0;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid var(--d-border);
-  border-radius: 8px;
-  color: var(--d-sub);
-  font-size: 0.72rem; font-weight: 700;
-  padding: 5px 8px;
-  cursor: pointer; font-family: inherit;
-  transition: background 0.12s, color 0.12s, border-color 0.12s;
-}
-.btn-settle:hover { background: rgba(255,255,255,0.08); }
-.btn-settle.settle-won  { background: rgba(0,214,143,0.12); border-color: rgba(0,214,143,0.35); color: var(--d-green); }
-.btn-settle.settle-lost { background: rgba(255,91,91,0.12); border-color: rgba(255,91,91,0.35); color: var(--d-red); }
-.btn-settle.settle-push { background: rgba(255,193,7,0.12); border-color: rgba(255,193,7,0.35); color: #FFC107; }
-.btn-settle-remove { background: none; border: none; color: var(--d-muted); font-size: 0.8rem; cursor: pointer; padding: 4px 6px; border-radius: 6px; line-height: 1; }
-.btn-settle-remove:hover { color: var(--d-red); }
-.tracker-empty { text-align: center; padding: 40px 20px; color: var(--d-muted); font-size: 0.82rem; line-height: 1.7; }
-.tracker-footer {
-  padding: 12px 20px;
-  border-top: 1px solid var(--d-border);
-  display: flex; align-items: center; justify-content: space-between;
-  flex-shrink: 0;
-}
-.tracker-clear-btn {
-  background: none; border: 1px solid var(--d-border);
-  color: var(--d-sub); border-radius: 8px;
-  padding: 6px 14px; font-size: 0.75rem; font-weight: 600;
-  cursor: pointer; font-family: inherit;
-  transition: color 0.12s, border-color 0.12s;
-}
-.tracker-clear-btn:hover { color: var(--d-red); border-color: rgba(255,91,91,0.4); }
-.tracker-cap-warn {
-  display: block; width: 100%;
-  background: rgba(255,193,7,0.07);
-  border: 1px solid rgba(255,193,7,0.35);
-  border-left: 3px solid #FFC107;
-  border-radius: 0;
-  color: var(--d-text);
-  font-family: inherit;
-  font-size: 0.78rem;
-  line-height: 1.5;
-  padding: 10px 16px;
-  text-align: left;
-  cursor: pointer;
-  transition: background 0.15s;
-  flex-shrink: 0;
-}
-.tracker-cap-warn:hover { background: rgba(255,193,7,0.13); }
 
 /* ── Empty state ── */
 .empty-state {
@@ -1947,12 +1670,8 @@ main { max-width: none !important; padding: 0 !important; }
   .clv-pill   { padding: 3px 7px; }
   .clv-pill-val { font-size: 0.68rem; }
   .clv-pill-lbl { font-size: 0.5rem; }
-  .btn-track { flex: 1; font-size: 0.68rem; padding: 8px 8px; }
   /* Projection panel scoreline: reduce font on tiny screens */
   .proj-score { font-size: 1.2rem; }
-  /* Track panel inputs */
-  .track-stake-input { font-size: 0.78rem; }
-  .btn-track-confirm { font-size: 0.72rem; padding: 8px 10px; }
   /* Countdown badge: slightly smaller */
   .cdwn-badge { font-size: 0.56rem; }
 
@@ -1990,12 +1709,6 @@ main { max-width: none !important; padding: 0 !important; }
   }
   /* Hide compact toggle on mobile — single column already */
   #compactToggle { display: none !important; }
-  /* Keep tracker button compact */
-  #trackerToggle {
-    flex-shrink: 0;
-    font-size: 0.75rem;
-    padding: 7px 10px !important;
-  }
   .view-toggle-btn { font-size: 0.75rem; padding: 7px 10px; }
 
   /* bottom nav — must override nav{position:sticky;top:0} from styles.css */
@@ -2161,211 +1874,6 @@ main { max-width: none !important; padding: 0 !important; }
   height: 1px;
   background: rgba(167,139,250,0.2);
 }
-.prop-group-track-btn {
-  flex-shrink: 0;
-  background: rgba(167,139,250,0.12);
-  border: 1px solid rgba(167,139,250,0.3);
-  border-radius: 6px;
-  padding: 2px 9px;
-  font-size: 0.62rem;
-  font-weight: 700;
-  color: var(--d-purple);
-  cursor: pointer;
-  font-family: inherit;
-  transition: all 0.12s;
-  white-space: nowrap;
-}
-.prop-group-track-btn:hover {
-  background: rgba(167,139,250,0.22);
-  border-color: rgba(167,139,250,0.55);
-}
-
-/* ── Group Track Modal ── */
-.group-track-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0,0,0,0.55);
-  backdrop-filter: blur(4px);
-  padding: 16px;
-}
-.group-track-modal {
-  background: var(--d-card);
-  border: 1px solid rgba(100,149,237,0.35);
-  border-radius: 16px;
-  width: min(520px, 100%);
-  max-height: 82vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  box-shadow: 0 8px 40px rgba(0,0,0,0.65);
-  animation: slideUp 0.2s ease-out;
-}
-.gtm-hdr {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 16px 12px;
-  border-bottom: 1px solid rgba(255,255,255,0.07);
-  flex-shrink: 0;
-}
-.gtm-title {
-  font-size: 0.88rem;
-  font-weight: 700;
-  color: var(--d-text);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.gtm-close {
-  background: none;
-  border: none;
-  color: var(--d-sub);
-  font-size: 1rem;
-  cursor: pointer;
-  padding: 2px 6px;
-  border-radius: 6px;
-  transition: color 0.12s;
-}
-.gtm-close:hover { color: var(--d-text); }
-.gtm-legs {
-  overflow-y: auto;
-  flex: 1;
-  padding: 8px 0;
-}
-.gtm-leg {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 16px;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
-}
-.gtm-leg:last-child { border-bottom: none; }
-.gtm-leg-num {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: rgba(100,149,237,0.15);
-  border: 1px solid rgba(100,149,237,0.3);
-  font-size: 0.65rem;
-  font-weight: 700;
-  color: var(--d-blue);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.gtm-leg-info {
-  flex: 1;
-  min-width: 0;
-}
-.gtm-leg-name {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--d-text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.gtm-leg-sub {
-  font-size: 0.68rem;
-  color: var(--d-sub);
-  margin-top: 1px;
-}
-.gtm-odds-wrap {
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
-}
-.gtm-odds-lbl {
-  font-size: 0.6rem;
-  color: var(--d-sub);
-  text-align: right;
-}
-.gtm-odds-input {
-  width: 72px;
-  background: var(--d-surface);
-  border: 1px solid var(--d-border);
-  border-radius: 6px;
-  padding: 4px 8px;
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: var(--d-text);
-  text-align: center;
-  font-family: inherit;
-}
-.gtm-odds-input:focus {
-  outline: none;
-  border-color: rgba(100,149,237,0.5);
-}
-.gtm-footer {
-  flex-shrink: 0;
-  border-top: 1px solid rgba(255,255,255,0.07);
-  padding: 12px 16px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.gtm-shared-row {
-  display: flex;
-  gap: 10px;
-}
-.gtm-field {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.gtm-field-lbl {
-  font-size: 0.65rem;
-  font-weight: 600;
-  color: var(--d-sub);
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-}
-.gtm-input {
-  width: 100%;
-  background: var(--d-surface);
-  border: 1px solid var(--d-border);
-  border-radius: 8px;
-  padding: 7px 10px;
-  font-size: 0.82rem;
-  color: var(--d-text);
-  font-family: inherit;
-  box-sizing: border-box;
-}
-.gtm-input:focus {
-  outline: none;
-  border-color: rgba(100,149,237,0.5);
-}
-.gtm-kelly-hint {
-  font-size: 0.67rem;
-  color: var(--d-sub);
-  min-height: 16px;
-}
-.btn-gtm-confirm {
-  background: linear-gradient(135deg, rgba(0,214,143,0.18), rgba(0,214,143,0.08));
-  border: 1px solid rgba(0,214,143,0.4);
-  border-radius: 10px;
-  padding: 10px 16px;
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: var(--d-green);
-  cursor: pointer;
-  font-family: inherit;
-  transition: all 0.15s;
-  width: 100%;
-}
-.btn-gtm-confirm:hover {
-  background: linear-gradient(135deg, rgba(0,214,143,0.28), rgba(0,214,143,0.14));
-  border-color: rgba(0,214,143,0.65);
-}
-
 /* Group-by toggle */
 .props-group-toggle,
 .games-group-toggle {
@@ -2404,24 +1912,6 @@ main { max-width: none !important; padding: 0 !important; }
   flex: 1;
   height: 1px;
   background: rgba(100,149,237,0.2);
-}
-.game-group-track-btn {
-  flex-shrink: 0;
-  background: rgba(100,149,237,0.1);
-  border: 1px solid rgba(100,149,237,0.28);
-  border-radius: 6px;
-  padding: 2px 9px;
-  font-size: 0.62rem;
-  font-weight: 700;
-  color: var(--d-blue);
-  cursor: pointer;
-  font-family: inherit;
-  transition: all 0.12s;
-  white-space: nowrap;
-}
-.game-group-track-btn:hover {
-  background: rgba(100,149,237,0.2);
-  border-color: rgba(100,149,237,0.5);
 }
 /* Prop line prominence in props mode */
 .cards-grid.props-mode .prop-line-val { font-size: 1.05rem; }
@@ -2797,7 +2287,6 @@ main { max-width: none !important; padding: 0 !important; }
 .cards-grid.compact-mode .card-book-strip,
 .cards-grid.compact-mode .card-actions-row,
 .cards-grid.compact-mode .analysis-wrap,
-.cards-grid.compact-mode .track-panel,
 .cards-grid.compact-mode .card-context,
 .cards-grid.compact-mode .odds-compare-wrap,
 .cards-grid.compact-mode .card-summary-inline { display: none !important; }
@@ -3082,7 +2571,6 @@ main { max-width: none !important; padding: 0 !important; }
   .btn-bet-now { padding: 8px 12px; font-size: 0.74rem; }
   .card-actions-row { gap: 6px; }
   .btn-analyze { font-size: 0.72rem; padding: 9px 10px; }
-  .btn-track   { font-size: 0.7rem;  padding: 8px 8px; }
   .card-context { margin-bottom: 10px; font-size: 0.64rem; }
   .card-trend { margin-bottom: 5px; }
   .ev-badge { font-size: 0.76rem; padding: 3px 7px; }
@@ -3290,7 +2778,6 @@ main { max-width: none !important; padding: 0 !important; }
           <button class="view-toggle-btn active" id="viewCard" onclick="setView('card')">⊞ Cards</button>
           <button class="view-toggle-btn" id="viewTable" onclick="setView('table')">≡ Table</button>
         </div>
-        <button class="view-toggle-btn" id="trackerToggle" onclick="openTrackerDrawer()" style="border:1px solid var(--d-border);border-radius:8px;padding:7px 11px;position:relative;" title="Bet Tracker">📊 Tracker<span class="tracker-badge" id="trackerBadge" style="display:none;"></span></button>
         <button class="btn-parlay-mode" id="parlayModeBtn" onclick="toggleParlayMode()" title="Build a 2–5 leg parlay and check combined EV + Kelly sizing">🎰 Parlay</button>
         <button class="btn-help" onclick="openHelpModal()" title="How to use this dashboard">❓ Help</button>
       </div>
@@ -3561,35 +3048,7 @@ main { max-width: none !important; padding: 0 !important; }
                   <span class="btn-sim-sub">AI narrative · score dist · over/under</span>
                 </button>
                 {% endif %}
-                <button class="btn-track" id="track-btn-{{ bet.id }}" onclick="toggleTrackPanel({{ bet.id }}, this)">📌 Track</button>
                 <button class="btn-ev-insight" id="analyze-btn-{{ bet.id }}" data-bet-id="{{ bet.id }}" onclick="toggleAnalysisPanel({{ bet.id }}, this)">🤖 +EV Insight</button>
-              </div>
-
-              {# — Track Panel — #}
-              <div class="track-panel" id="track-panel-{{ bet.id }}">
-                <div class="track-adj-row">
-                  <div class="track-field" style="flex:0 0 80px;">
-                    <span class="track-field-lbl">Odds</span>
-                    <input type="number" class="track-stake-input" id="track-odds-{{ bet.id }}"
-                           step="1" placeholder="{{ bet.odds }}">
-                  </div>
-                  <div class="track-field">
-                    <span class="track-field-lbl">Book</span>
-                    <input type="text" class="track-stake-input" id="track-book-{{ bet.id }}"
-                           placeholder="e.g. DraftKings" autocomplete="off" style="text-transform:capitalize;">
-                  </div>
-                </div>
-                <div class="track-panel-row">
-                  <div class="track-field">
-                    <span class="track-field-lbl">Stake ($)</span>
-                    <input type="number" class="track-stake-input" id="track-stake-{{ bet.id }}"
-                           placeholder="0" min="1" step="1"
-                           data-true-prob="{{ '%.4f'|format(bet.true_prob) }}"
-                           data-odds="{{ bet.odds }}">
-                  </div>
-                  <button class="btn-track-confirm" onclick="confirmTrackBet({{ bet.id }})">Track It ✓</button>
-                </div>
-                <div class="track-kelly-hint" id="track-kelly-{{ bet.id }}"></div>
               </div>
 
               {# — Simulation Detail Panel (lazy-loaded, MLB + soccer only) — #}
@@ -3761,24 +3220,6 @@ main { max-width: none !important; padding: 0 !important; }
     <button class="clv-pop-close" onclick="hideSharpPopover()">✕</button>
   </div>
   <div class="clv-pop-body" id="sharpPopBody"></div>
-</div>
-
-{# Tracker Drawer #}
-<div class="tracker-overlay" id="trackerOverlay" onclick="closeTrackerDrawer()"></div>
-<div class="tracker-drawer" id="trackerDrawer">
-  <div class="tracker-hdr">
-    <div class="tracker-title">📊 Bet Tracker</div>
-    <button class="tracker-close" onclick="closeTrackerDrawer()">✕</button>
-  </div>
-  <div class="tracker-summary" id="trackerSummary"></div>
-  <button class="tracker-cap-warn" id="trackerCapWarn" onclick="exportTrackerCSV()" style="display:none;"></button>
-  <div class="tracker-list" id="trackerList"></div>
-  <div class="tracker-empty" id="trackerEmpty">No bets tracked yet.<br>Click 📌 Track on any card to get started.</div>
-  <div class="tracker-footer">
-    <button class="tracker-clear-btn" onclick="clearAllTracked()">Clear All</button>
-    <button class="tracker-clear-btn" onclick="exportTrackerCSV()" style="color:var(--d-green);border-color:rgba(0,214,143,0.3);">↓ Export CSV</button>
-    <span style="font-size:0.68rem;color:var(--d-muted);">Local only · up to 1,000 bets</span>
-  </div>
 </div>
 
 {# EV Modal #}
@@ -3991,31 +3432,6 @@ main { max-width: none !important; padding: 0 !important; }
   </div>
 </div>
 
-{# ── Group Track Modal ── #}
-<div class="group-track-overlay" id="groupTrackOverlay" style="display:none;" onclick="_gtmOverlayClick(event)">
-  <div class="group-track-modal" onclick="event.stopPropagation()">
-    <div class="gtm-hdr">
-      <div class="gtm-title">📌 <span id="gtmTitle">Track Bets</span></div>
-      <button class="gtm-close" onclick="closeGroupTrackModal()">✕</button>
-    </div>
-    <div class="gtm-legs" id="gtmLegs"></div>
-    <div class="gtm-footer">
-      <div class="gtm-shared-row">
-        <div class="gtm-field">
-          <span class="gtm-field-lbl">Book / Exchange</span>
-          <input type="text" id="gtmBook" class="gtm-input" placeholder="e.g. DraftKings" autocomplete="off">
-        </div>
-        <div class="gtm-field">
-          <span class="gtm-field-lbl">Stake per bet ($)</span>
-          <input type="number" id="gtmStake" class="gtm-input" placeholder="0" min="0" step="1">
-        </div>
-      </div>
-      <div class="gtm-kelly-hint" id="gtmKellyHint"></div>
-      <button class="btn-gtm-confirm" id="gtmConfirmBtn" onclick="confirmGroupTrack()">Track All ✓</button>
-    </div>
-  </div>
-</div>
-
 {% endblock %}
 
 {% block scripts %}
@@ -4086,187 +3502,6 @@ function _updateCountdowns() {
 }
 setInterval(_updateCountdowns, 30000);
 _updateCountdowns();
-
-// ── Group Track Modal ───────────────────────────────────────────────────────
-let _gtmCards = [];
-
-function openGroupTrackModal(cards) {
-  _gtmCards = cards;
-  const n = cards.length;
-  document.getElementById('gtmTitle').textContent = `Track ${n} Bet${n !== 1 ? 's' : ''}`;
-
-  // Build legs HTML
-  const legsEl = document.getElementById('gtmLegs');
-  legsEl.innerHTML = '';
-  cards.forEach((card, i) => {
-    const leg = document.createElement('div');
-    leg.className = 'gtm-leg';
-
-    // Leg number badge
-    const num = document.createElement('div');
-    num.className = 'gtm-leg-num';
-    num.textContent = i + 1;
-
-    // Leg info
-    const info = document.createElement('div');
-    info.className = 'gtm-leg-info';
-
-    const team   = card.dataset.team   || card.dataset.playerName || '—';
-    const market = card.dataset.marketDisplay || card.dataset.market || '';
-    const game   = card.dataset.game   || '';
-    const ev     = parseFloat(card.dataset.ev) || 0;
-
-    const nameDiv = document.createElement('div');
-    nameDiv.className = 'gtm-leg-name';
-    nameDiv.textContent = team;
-    nameDiv.title = team;
-
-    const subDiv = document.createElement('div');
-    subDiv.className = 'gtm-leg-sub';
-    subDiv.textContent = [market, game].filter(Boolean).join(' · ') + (ev ? ` · +${ev.toFixed(1)}% EV` : '');
-
-    info.appendChild(nameDiv);
-    info.appendChild(subDiv);
-
-    // Odds input
-    const oddsWrap = document.createElement('div');
-    oddsWrap.className = 'gtm-odds-wrap';
-
-    const oddsLbl = document.createElement('div');
-    oddsLbl.className = 'gtm-odds-lbl';
-    oddsLbl.textContent = 'Odds';
-
-    const oddsInput = document.createElement('input');
-    oddsInput.type = 'text';
-    oddsInput.className = 'gtm-odds-input';
-    oddsInput.id = 'gtm-odds-' + i;
-    oddsInput.value = card.dataset.odds || '';
-    oddsInput.placeholder = '—';
-    oddsInput.inputMode = 'numeric';
-
-    oddsWrap.appendChild(oddsLbl);
-    oddsWrap.appendChild(oddsInput);
-
-    leg.appendChild(num);
-    leg.appendChild(info);
-    leg.appendChild(oddsWrap);
-    legsEl.appendChild(leg);
-  });
-
-  // Pre-fill shared book from first card that has one
-  const bookInput = document.getElementById('gtmBook');
-  bookInput.value = '';
-  for (const card of cards) {
-    const b = card.dataset.book || '';
-    if (b) { bookInput.value = b; break; }
-  }
-
-  // Pre-fill shared stake from Kelly on first card
-  const stakeInput = document.getElementById('gtmStake');
-  stakeInput.value = '';
-  const bankroll = parseFloat(localStorage.getItem('positplusev_bankroll')) || 0;
-  const hintEl   = document.getElementById('gtmKellyHint');
-  if (bankroll > 0) {
-    const firstCard = cards[0];
-    const trueProb  = parseFloat(firstCard.dataset.trueProb) || 0;
-    const odds      = parseInt(firstCard.dataset.odds, 10) || 0;
-    if (trueProb > 0 && odds !== 0) {
-      const kFrac  = _halfKelly(trueProb, odds);
-      const stake  = Math.max(1, Math.round(kFrac * bankroll));
-      stakeInput.value = stake;
-      hintEl.textContent = `${_kellyFracLabel(_getKellyFrac())} suggestion: $${stake} per bet (from $${bankroll.toLocaleString()} bankroll)`;
-    } else {
-      hintEl.textContent = `Bankroll: $${bankroll.toLocaleString()}`;
-    }
-  } else {
-    hintEl.textContent = 'Set bankroll in sidebar to auto-fill stake';
-  }
-
-  document.getElementById('groupTrackOverlay').style.display = 'flex';
-  // Focus stake field after render
-  setTimeout(() => stakeInput.focus(), 80);
-}
-
-function closeGroupTrackModal() {
-  document.getElementById('groupTrackOverlay').style.display = 'none';
-  _gtmCards = [];
-}
-
-function _gtmOverlayClick(e) {
-  if (e.target === document.getElementById('groupTrackOverlay')) closeGroupTrackModal();
-}
-
-function confirmGroupTrack() {
-  const stakeInput = document.getElementById('gtmStake');
-  const bookInput  = document.getElementById('gtmBook');
-  const stake = parseFloat(stakeInput.value);
-  if (!stake || stake <= 0) {
-    stakeInput.style.borderColor = 'rgba(255,91,91,0.6)';
-    stakeInput.focus();
-    return;
-  }
-  stakeInput.style.borderColor = '';
-  const book = bookInput.value.trim();
-
-  const entries = _trackerLoad();
-  _gtmCards.forEach((card, i) => {
-    const oddsInputEl = document.getElementById('gtm-odds-' + i);
-    const cardOdds    = parseInt(card.dataset.odds, 10) || 0;
-    const actualOdds  = oddsInputEl && oddsInputEl.value.trim() !== ''
-      ? (parseInt(oddsInputEl.value, 10) || cardOdds)
-      : cardOdds;
-
-    // Build prop label same as single-track: player + dir/line + stat category
-    const gIsProp     = card.dataset.isProp === 'true';
-    const gPlayer     = card.dataset.playerName || '';
-    const gRawTeam    = card.dataset.team        || '';
-    const gMarketDisp = card.dataset.marketDisplay || card.dataset.market || '';
-    let gBetLabel, gBetMarket;
-    if (gIsProp && gPlayer) {
-      const gDirCap = gRawTeam.charAt(0).toUpperCase() + gRawTeam.slice(1);
-      gBetLabel  = `${gPlayer} ${gDirCap} ${gMarketDisp}`.trim();
-      gBetMarket = '';
-    } else {
-      gBetLabel  = gRawTeam || gPlayer;
-      gBetMarket = gMarketDisp;
-    }
-
-    const entry = {
-      id:           'trk_' + Date.now() + '_' + i + '_' + (card.dataset.betId || i),
-      betCacheId:   card.dataset.betId || '',
-      team:         gBetLabel,
-      game:         card.dataset.game          || '',
-      odds:         actualOdds,
-      book:         book || card.dataset.book  || '',
-      league:       card.dataset.league        || '',
-      market:       gBetMarket,
-      stake:        stake,
-      ev:           parseFloat(card.dataset.ev) || 0,
-      trackedAt:    new Date().toISOString(),
-      commenceTime: card.dataset.commence      || '',
-      result:       null,
-      profit:       null,
-    };
-    entries.push(entry);
-
-    // Mark the per-card track button as tracked
-    const trackBtn = card.querySelector('[id^="track-btn-"]');
-    if (trackBtn) { trackBtn.textContent = '✅ Tracked'; trackBtn.classList.add('tracked'); }
-  });
-
-  _trackerSave(entries);
-  updateTrackerBadge();
-  closeGroupTrackModal();
-
-  // Toast
-  const n = _gtmCards.length;
-  const toast = document.createElement('div');
-  toast.textContent = `📌 ${n} bet${n !== 1 ? 's' : ''} tracked!`;
-  toast.style.cssText = 'position:fixed;bottom:84px;left:50%;transform:translateX(-50%);background:var(--d-surface);border:1px solid rgba(0,214,143,0.4);color:var(--d-green);padding:8px 22px;border-radius:20px;font-size:0.82rem;font-weight:700;z-index:9999;pointer-events:none;transition:opacity 0.4s 1.4s;';
-  document.body.appendChild(toast);
-  requestAnimationFrame(() => requestAnimationFrame(() => { toast.style.opacity = '0'; }));
-  setTimeout(() => toast.remove(), 2000);
-}
 
 // ── Parlay Builder ──────────────────────────────────────────────────────────
 let _parlayMode = false;
@@ -5282,16 +4517,6 @@ function _applyPropGrouping() {
     line.className = 'pph-line';
     hdr.appendChild(line);
 
-    // Track (N) button — only show when 2+ cards in group
-    if (groupCards.length >= 1) {
-      const trackGroupBtn = document.createElement('button');
-      trackGroupBtn.className = 'prop-group-track-btn';
-      trackGroupBtn.textContent = `📌 Track (${groupCards.length})`;
-      trackGroupBtn.title = `Track all ${groupCards.length} ${player} prop${groupCards.length !== 1 ? 's' : ''}`;
-      trackGroupBtn.addEventListener('click', () => openGroupTrackModal(groupCards));
-      hdr.appendChild(trackGroupBtn);
-    }
-
     grid.appendChild(hdr);
     groupCards.forEach(card => grid.appendChild(card));
   });
@@ -5354,14 +4579,6 @@ function _applyGameGrouping() {
     const line = document.createElement('span');
     line.className = 'ggh-line';
     hdr.appendChild(line);
-
-    // Track (N) button for groups with any number of cards
-    const trackGroupBtn = document.createElement('button');
-    trackGroupBtn.className = 'game-group-track-btn';
-    trackGroupBtn.textContent = `📌 Track (${groupCards.length})`;
-    trackGroupBtn.title = `Track all ${groupCards.length} bet${groupCards.length !== 1 ? 's' : ''} on this game`;
-    trackGroupBtn.addEventListener('click', () => openGroupTrackModal(groupCards));
-    hdr.appendChild(trackGroupBtn);
 
     grid.appendChild(hdr);
     groupCards.forEach(card => grid.appendChild(card));
@@ -6549,317 +5766,6 @@ document.addEventListener('click',e=>{const p=document.getElementById('sharpPopo
 document.addEventListener('scroll',hideSharpPopover,true);
 document.addEventListener('keydown',e=>{if(e.key==='Escape')hideSharpPopover();});
 
-// ── Bet Tracker ────────────────────────────────────────────────────────────
-const TRACKER_KEY = 'positev_tracker_v1';
-const TRACKER_MAX = 1000;
-
-function _trackerLoad() {
-  try {
-    const raw = localStorage.getItem(TRACKER_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch { return []; }
-}
-
-function _trackerSave(entries) {
-  try {
-    localStorage.setItem(TRACKER_KEY, JSON.stringify(entries.slice(-TRACKER_MAX)));
-  } catch (err) {
-    // Storage full — prune oldest 100 and retry once
-    try { localStorage.setItem(TRACKER_KEY, JSON.stringify(entries.slice(-TRACKER_MAX + 100))); } catch {}
-  }
-}
-
-function _halfKelly(prob, americanOdds) {
-  const frac = _getKellyFrac();
-  const dec = americanOdds > 0 ? (americanOdds / 100) + 1 : (100 / Math.abs(americanOdds)) + 1;
-  const b = dec - 1;
-  const kelly = (b * prob - (1 - prob)) / b;
-  return Math.max(0, kelly * frac);
-}
-
-function toggleTrackPanel(betId, btn) {
-  const panel = document.getElementById('track-panel-' + betId);
-  if (!panel) return;
-  const opening = !panel.classList.contains('open');
-  panel.classList.toggle('open', opening);
-  if (opening) {
-    const stakeInput = document.getElementById('track-stake-' + betId);
-    const oddsInput  = document.getElementById('track-odds-'  + betId);
-    const bookInput  = document.getElementById('track-book-'  + betId);
-    const kellyHint  = document.getElementById('track-kelly-' + betId);
-    const cardEl     = panel.closest('.bet-card');
-
-    // Pre-fill odds and book from card data
-    if (oddsInput && !oddsInput.value && cardEl) {
-      oddsInput.value = cardEl.dataset.odds || '';
-    }
-    if (bookInput && !bookInput.value && cardEl) {
-      bookInput.value = cardEl.dataset.book || '';
-    }
-
-    if (stakeInput) {
-      const trueProb = parseFloat(stakeInput.dataset.trueProb) || 0;
-      const odds     = parseInt(stakeInput.dataset.odds, 10) || 0;
-      const bankroll = parseFloat(localStorage.getItem('positplusev_bankroll')) || 0;
-      if (bankroll > 0 && trueProb > 0 && odds !== 0) {
-        const kFrac = _halfKelly(trueProb, odds);
-        const stake = Math.max(1, Math.round(kFrac * bankroll));
-        stakeInput.value = stake;
-        if (kellyHint) kellyHint.textContent = `${_kellyFracLabel(_getKellyFrac())}: $${stake} (${(kFrac * 100).toFixed(1)}% of $${bankroll.toLocaleString()})`;
-      } else {
-        stakeInput.value = '';
-        if (kellyHint) kellyHint.textContent = bankroll <= 0 ? 'Set bankroll in sidebar to auto-fill stake' : '';
-      }
-      setTimeout(() => stakeInput.focus(), 50);
-    }
-    btn.textContent = '✕ Cancel';
-  } else {
-    btn.textContent = '📌 Track';
-  }
-}
-
-function confirmTrackBet(betId) {
-  const stakeInput = document.getElementById('track-stake-' + betId);
-  const oddsInput  = document.getElementById('track-odds-'  + betId);
-  const bookInput  = document.getElementById('track-book-'  + betId);
-  if (!stakeInput) return;
-
-  const stake = parseFloat(stakeInput.value);
-  if (!stake || stake <= 0) {
-    stakeInput.style.borderColor = 'rgba(255,91,91,0.6)';
-    stakeInput.focus();
-    return;
-  }
-  stakeInput.style.borderColor = '';
-
-  const cardEl = stakeInput.closest('.bet-card');
-  if (!cardEl) return;
-
-  // Use user-entered odds/book, falling back to card data
-  const cardOdds   = parseInt(cardEl.dataset.odds, 10) || 0;
-  const actualOdds = oddsInput && oddsInput.value.trim() !== ''
-    ? (parseInt(oddsInput.value, 10) || cardOdds)
-    : cardOdds;
-  const actualBook = bookInput && bookInput.value.trim() !== ''
-    ? bookInput.value.trim()
-    : (cardEl.dataset.book || '');
-
-  // Build the pick label — for props, combine player name + direction/line + stat category
-  const isProp     = cardEl.dataset.isProp === 'true';
-  const playerName = cardEl.dataset.playerName || '';
-  const rawTeam    = cardEl.dataset.team        || '';
-  const marketDisp = cardEl.dataset.marketDisplay || cardEl.dataset.market || '';
-  let betLabel, betMarket;
-  if (isProp && playerName) {
-    const dirCap = rawTeam.charAt(0).toUpperCase() + rawTeam.slice(1); // "Over 25.5"
-    betLabel  = `${playerName} ${dirCap} ${marketDisp}`.trim();        // "LeBron James Over 25.5 Points"
-    betMarket = '';   // market is already baked into the label
-  } else {
-    betLabel  = rawTeam;
-    betMarket = marketDisp;
-  }
-
-  const entry = {
-    id:           'trk_' + Date.now() + '_' + betId,
-    betCacheId:   betId,
-    team:         betLabel,
-    game:         cardEl.dataset.game          || '',
-    odds:         actualOdds,
-    book:         actualBook,
-    league:       cardEl.dataset.league        || '',
-    market:       betMarket,
-    stake:        stake,
-    ev:           parseFloat(cardEl.dataset.ev) || 0,
-    trackedAt:    new Date().toISOString(),
-    commenceTime: cardEl.dataset.commence      || '',
-    result:       null,
-    profit:       null,
-  };
-
-  const entries = _trackerLoad();
-  entries.push(entry);
-  _trackerSave(entries);
-
-  // Close panel + mark button
-  const panel = document.getElementById('track-panel-' + betId);
-  if (panel) panel.classList.remove('open');
-  const trackBtn = document.getElementById('track-btn-' + betId);
-  if (trackBtn) { trackBtn.textContent = '✅ Tracked'; trackBtn.classList.add('tracked'); }
-
-  updateTrackerBadge();
-
-  // Toast confirmation
-  const toast = document.createElement('div');
-  toast.textContent = '📌 Bet tracked!';
-  toast.style.cssText = 'position:fixed;bottom:84px;left:50%;transform:translateX(-50%);background:var(--d-surface);border:1px solid rgba(0,214,143,0.4);color:var(--d-green);padding:8px 22px;border-radius:20px;font-size:0.82rem;font-weight:700;z-index:9999;pointer-events:none;transition:opacity 0.4s 1.4s;';
-  document.body.appendChild(toast);
-  requestAnimationFrame(() => requestAnimationFrame(() => { toast.style.opacity = '0'; }));
-  setTimeout(() => toast.remove(), 2000);
-}
-
-function settleTrackedBet(id, result) {
-  const entries = _trackerLoad();
-  const idx = entries.findIndex(e => e.id === id);
-  if (idx < 0) return;
-  const e = entries[idx];
-  const dec = e.odds > 0 ? (e.odds / 100) + 1 : (100 / Math.abs(e.odds)) + 1;
-  e.profit = result === 'won' ? +(e.stake * (dec - 1)).toFixed(2) : result === 'lost' ? -e.stake : 0;
-  e.result = result;
-  entries[idx] = e;
-  _trackerSave(entries);
-  renderTrackerDrawer();
-}
-
-function removeTrackedBet(id) {
-  _trackerSave(_trackerLoad().filter(e => e.id !== id));
-  renderTrackerDrawer();
-  updateTrackerBadge();
-}
-
-function clearAllTracked() {
-  if (!confirm('Clear all tracked bets? This cannot be undone.')) return;
-  localStorage.removeItem(TRACKER_KEY);
-  renderTrackerDrawer();
-  updateTrackerBadge();
-}
-
-function exportTrackerCSV() {
-  const entries = _trackerLoad();
-  if (entries.length === 0) { alert('No bets to export.'); return; }
-  const headers = ['Date','Team/Selection','Game','Odds','Book','League','Market','Stake','EV%','Result','Profit/Loss'];
-  const rows = entries.map(e => {
-    const oddsStr = e.odds > 0 ? '+' + e.odds : String(e.odds);
-    const pl = e.profit != null ? (e.profit >= 0 ? '+' + e.profit.toFixed(2) : e.profit.toFixed(2)) : '';
-    return [
-      e.trackedAt ? new Date(e.trackedAt).toLocaleDateString('en-US') : '',
-      e.team   || '',
-      e.game   || '',
-      oddsStr,
-      e.book   || '',
-      e.league || '',
-      e.market || '',
-      e.stake  || '',
-      e.ev     != null ? e.ev.toFixed(2) + '%' : '',
-      e.result || 'pending',
-      pl,
-    ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(',');
-  });
-  const csv  = [headers.join(','), ...rows].join('\n');
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href     = url;
-  a.download = 'positev_bets_' + new Date().toISOString().slice(0,10) + '.csv';
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-function updateTrackerBadge() {
-  const pending = _trackerLoad().filter(e => e.result === null).length;
-  const badge = document.getElementById('trackerBadge');
-  if (!badge) return;
-  badge.textContent = pending;
-  badge.style.display = pending > 0 ? 'flex' : 'none';
-}
-
-function renderTrackerDrawer() {
-  const entries   = _trackerLoad();
-  const listEl    = document.getElementById('trackerList');
-  const emptyEl   = document.getElementById('trackerEmpty');
-  const summaryEl = document.getElementById('trackerSummary');
-  const capWarn   = document.getElementById('trackerCapWarn');
-  if (!listEl) return;
-
-  // Cap warning — show at 850+ bets
-  if (capWarn) {
-    if (entries.length >= 850) {
-      const remaining = TRACKER_MAX - entries.length;
-      const urgent = entries.length >= 950;
-      capWarn.style.display = 'block';
-      capWarn.style.background = urgent ? 'rgba(255,91,91,0.08)' : 'rgba(255,193,7,0.07)';
-      capWarn.style.borderColor = urgent ? 'rgba(255,91,91,0.35)' : 'rgba(255,193,7,0.35)';
-      capWarn.style.borderLeftColor = urgent ? 'var(--d-red)' : '#FFC107';
-      capWarn.innerHTML = `<strong>${urgent ? '⚠️ Almost full' : '📋 Storage notice'}:</strong> You have ${entries.length} of 1,000 bets tracked (${remaining} remaining). Export your history now so no bets are lost — older entries are dropped once the cap is reached. <span style="text-decoration:underline;font-weight:700;">↓ Export CSV</span>`;
-    } else {
-      capWarn.style.display = 'none';
-    }
-  }
-
-  if (entries.length === 0) {
-    listEl.innerHTML = '';
-    if (summaryEl) summaryEl.innerHTML = '';
-    if (emptyEl)   emptyEl.style.display = '';
-    return;
-  }
-  if (emptyEl) emptyEl.style.display = 'none';
-
-  // Summary stats
-  const settled    = entries.filter(e => e.result !== null);
-  const totalPL    = settled.reduce((s, e) => s + (e.profit || 0), 0);
-  const totalStake = settled.reduce((s, e) => s + e.stake, 0);
-  const roi        = totalStake > 0 ? (totalPL / totalStake) * 100 : 0;
-  const won        = settled.filter(e => e.result === 'won').length;
-  const lost       = settled.filter(e => e.result === 'lost').length;
-  const pending    = entries.filter(e => e.result === null).length;
-
-  if (summaryEl) {
-    const plSign  = totalPL >= 0 ? '+' : '';
-    const roiSign = roi    >= 0 ? '+' : '';
-    summaryEl.innerHTML = `
-      <div class="tracker-stat"><div class="tracker-stat-val ${totalPL > 0 ? 'positive' : totalPL < 0 ? 'negative' : ''}">${plSign}$${Math.abs(totalPL).toFixed(2)}</div><div class="tracker-stat-lbl">P&amp;L</div></div>
-      <div class="tracker-stat"><div class="tracker-stat-val ${roi > 0 ? 'positive' : roi < 0 ? 'negative' : ''}">${roiSign}${roi.toFixed(1)}%</div><div class="tracker-stat-lbl">ROI</div></div>
-      <div class="tracker-stat"><div class="tracker-stat-val">${won}W–${lost}L</div><div class="tracker-stat-lbl">Record</div></div>
-      <div class="tracker-stat"><div class="tracker-stat-val">${pending}</div><div class="tracker-stat-lbl">Pending</div></div>`;
-  }
-
-  // Bet list (newest first)
-  listEl.innerHTML = [...entries].reverse().map(e => {
-    const oddsStr  = e.odds > 0 ? '+' + e.odds : String(e.odds);
-    const dateStr  = e.trackedAt ? new Date(e.trackedAt).toLocaleDateString('en-US', { month:'short', day:'numeric' }) : '';
-    const bookDisp = { draftkings:'DraftKings', fanduel:'FanDuel', betmgm:'BetMGM', caesars:'Caesars', pointsbet:'Fanatics', betfair_ex_uk:'Betfair', kalshi:'Kalshi', novig:'NoVig', polymarket:'Polymarket', prophetx:'ProphetX', betopenly:'BetOpenly' }[e.book] || (e.book || '');
-    let plStr = `$${e.stake} pending`, plClass = 'neutral', resultClass = '';
-    if (e.result === 'won')  { plStr = '+$' + e.profit.toFixed(2);          plClass = 'positive'; resultClass = 'result-won'; }
-    if (e.result === 'lost') { plStr = '−$' + Math.abs(e.profit).toFixed(2); plClass = 'negative'; resultClass = 'result-lost'; }
-    if (e.result === 'push') { plStr = 'Push';                               plClass = 'neutral';  resultClass = 'result-push'; }
-    const contextParts = [e.market || '', e.game || ''].filter(Boolean);
-    const contextLine  = contextParts.join(' · ');
-    return `<div class="tracker-item ${resultClass}">
-      <div class="tracker-item-top">
-        <div class="tracker-item-info">
-          <div class="tracker-item-team">${e.team || '—'}</div>
-          ${contextLine ? `<div class="tracker-item-ctx">${contextLine}</div>` : ''}
-          <div class="tracker-item-meta">
-            <span>${oddsStr}${bookDisp ? ' · ' + bookDisp : ''}</span>
-            <span class="tracker-item-meta-right">$${e.stake} stake · ${dateStr}</span>
-          </div>
-        </div>
-        <div class="tracker-item-right">
-          <div class="tracker-item-pl ${plClass}">${plStr}</div>
-          <button class="btn-settle-remove" onclick="removeTrackedBet('${e.id}')" title="Remove">✕</button>
-        </div>
-      </div>
-      <div class="tracker-item-settle">
-        <button class="btn-settle ${e.result==='won'?'settle-won':''}"  onclick="settleTrackedBet('${e.id}','won')">Won</button>
-        <button class="btn-settle ${e.result==='lost'?'settle-lost':''}" onclick="settleTrackedBet('${e.id}','lost')">Lost</button>
-        <button class="btn-settle ${e.result==='push'?'settle-push':''}" onclick="settleTrackedBet('${e.id}','push')">Push</button>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function openTrackerDrawer() {
-  renderTrackerDrawer();
-  document.getElementById('trackerDrawer').classList.add('open');
-  document.getElementById('trackerOverlay').classList.add('open');
-  document.body.style.overflow = 'hidden';
-}
-
-function closeTrackerDrawer() {
-  document.getElementById('trackerDrawer').classList.remove('open');
-  document.getElementById('trackerOverlay').classList.remove('open');
-  document.body.style.overflow = '';
-}
-
 // ── Cross-book price comparison renderer ──────────────────────────────────
 (function _renderBookComparisons() {
   const NAMES = {
@@ -7119,14 +6025,7 @@ _buildPropTypeChips();
   if (pg) pg.classList.toggle('visible', activeIsProp === 'true');
 })();
 
-// Tracker init: badge + re-mark any bets already tracked this session
-(function() {
-  updateTrackerBadge();
-  _trackerLoad().forEach(e => {
-    const btn = document.getElementById('track-btn-' + e.betCacheId);
-    if (btn) { btn.textContent = '✅ Tracked'; btn.classList.add('tracked'); }
-  });
-})();
+
 </script>
 
 {# ── Kelly info modal ── #}
@@ -7251,12 +6150,6 @@ _buildPropTypeChips();
         <p class="help-section-title">🎰 Parlay builder</p>
         <p>Click <strong>Parlay</strong> in the toolbar to enter parlay mode. Select 2–5 bet cards and the builder automatically calculates the combined odds, combined EV%, and the Kelly-sized stake for the parlay as a whole.</p>
         <p>Note: parlays are generally lower EV than individual bets because the vig compounds across legs. Only use this for bets where you have strong conviction on each leg.</p>
-      </div>
-
-      <div class="help-section">
-        <p class="help-section-title">📊 Bet Tracker</p>
-        <p>Click <strong>Tracker</strong> in the toolbar to log bets and track your results over time. Add any bet — on or off the dashboard — with the stake, odds, and outcome. The tracker calculates your running P&amp;L, ROI, and win rate.</p>
-        <p>Your tracked bets also show a <strong>CLV result</strong> once the game starts, so you can see whether you consistently beat the closing line (the most reliable long-run signal of a profitable model).</p>
       </div>
 
       <div class="help-section">
