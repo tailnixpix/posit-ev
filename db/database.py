@@ -236,6 +236,44 @@ class OddsHistory(Base):
         )
 
 
+class GameSimulation(Base):
+    """
+    Pre-computed Monte Carlo simulation results for a game.
+
+    One row per unique (sport_key, game) pair.  Written by the background
+    simulation job that runs after each EV cache refresh.  The dashboard
+    reads from this table at page-load time so no live computation is needed.
+    """
+
+    __tablename__ = "game_simulations"
+
+    id              = Column(Integer, primary_key=True, index=True)
+    sport_key       = Column(String, nullable=False, index=True)   # e.g. "baseball_mlb"
+    game_id         = Column(String, nullable=True)                 # Odds API event ID
+    game            = Column(String, nullable=False, index=True)   # "Away @ Home"
+    home_team       = Column(String, nullable=False)
+    away_team       = Column(String, nullable=False)
+    commence_time   = Column(DateTime(timezone=True), nullable=True)
+    n_sims          = Column(Integer, default=10_000)
+    home_win_pct    = Column(Float, nullable=True)    # % of sims home team won
+    away_win_pct    = Column(Float, nullable=True)    # % of sims away team won
+    draw_pct        = Column(Float, nullable=True)    # % of sims ending in draw (soccer)
+    projected_outcome = Column(String, nullable=True) # "Home Win" | "Away Win" | "Draw"
+    confidence      = Column(Float, nullable=True)    # 0–100 — pct of sims matching projected_outcome
+    avg_home_score  = Column(Float, nullable=True)    # mean projected home runs/goals
+    avg_away_score  = Column(Float, nullable=True)    # mean projected away runs/goals
+    summary         = Column(Text, nullable=True)     # AI-generated narrative explanation
+    sim_data        = Column(Text, nullable=True)     # JSON with full breakdown (over/under pct, etc.)
+    updated_at      = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    created_at      = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    def __repr__(self) -> str:
+        return (
+            f"<GameSimulation sport={self.sport_key!r} game={self.game!r} "
+            f"outcome={self.projected_outcome!r} confidence={self.confidence}%>"
+        )
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -287,6 +325,7 @@ def ensure_columns() -> None:
             ("odds_history",          OddsHistory),
             ("users",                 User),
             ("newsletter_subscribers", NewsletterSubscriber),
+            ("game_simulations",      GameSimulation),
         ]:
             try:
                 existing_cols = {c["name"] for c in inspector.get_columns(table_name)}
