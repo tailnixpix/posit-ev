@@ -1657,138 +1657,228 @@ html { background: #060A14; }
             </div>
           </div>
 
-          {# ── Card 1: NHL Top Pick with proj band ── #}
-          <div class="mock-card mock-ev-high">
-            <div class="mock-card-accent"></div>
-            <div class="mock-ribbon mock-ribbon-gold">🏆 Top Pick — Highest Model Edge</div>
-            <div class="mock-proj-band">
-              <span style="font-size:0.72rem;">🤖</span>
-              <span class="mock-pb-score mock-pb-win">2.8</span>
-              <span style="font-size:0.55rem;color:#3D5470;">BOS</span>
-              <span class="mock-pb-sep">–</span>
-              <span class="mock-pb-score">1.9</span>
-              <span style="font-size:0.55rem;color:#3D5470;">TOR</span>
-              <span style="color:#3D5470;font-size:0.55rem;margin-left:4px;">· O/U 5.3</span>
-            </div>
-            <div class="mock-card-inner">
-              <div class="mock-card-top">
-                <div class="mock-badges">
-                  <span class="mock-badge-league">NHL</span>
-                  <span class="mock-badge-market">Moneyline</span>
-                  <span class="mock-badge-book">DraftKings</span>
-                </div>
-                <span class="mock-ev-pill high">+12.3% EV</span>
-              </div>
-              <div class="mock-card-main">
-                <div>
-                  <div class="mock-team">Boston Bruins</div>
-                  <div class="mock-game-line">Bruins @ Maple Leafs</div>
-                  <div class="mock-time-line">⏰ Tonight 7:00 PM ET</div>
-                </div>
-                <div class="mock-odds-col">
-                  <div class="mock-odds-val mock-odds-pos">+145</div>
-                  <div class="mock-odds-lbl">Odds</div>
-                </div>
-              </div>
-              <div class="mock-why-box">
-                <div class="mock-why-top">
-                  <span class="mock-why-edge">+12.3% edge</span>
-                  <span class="mock-why-prob">Model: <strong>56%</strong> · Book: <strong>43%</strong></span>
-                </div>
-                <div class="mock-why-size">¼ Kelly bet: <span>4.8%</span> of bankroll</div>
-              </div>
-              <div class="mock-signal-row">
-                <span class="mock-sig mock-sig-green">📈 Odds improved since open</span>
-              </div>
-              <div class="mock-bet-cta">🎰 Bet at DraftKings →</div>
-            </div>
-          </div>
+          {# ── Hero picks — live when pipeline has run, static fallback otherwise ── #}
+          {% set _h_lg = {"icehockey_nhl":"NHL","basketball_nba":"NBA","baseball_mlb":"MLB","soccer_epl":"EPL","soccer_spain_la_liga":"La Liga","soccer_germany_bundesliga":"Bundesliga","soccer_usa_mls":"MLS","soccer_uefa_champs_league":"UCL","americanfootball_nfl":"NFL","americanfootball_ncaaf":"NCAAF"} %}
+          {% set _h_mkt = {"h2h":"Moneyline","h2h_3_way":"3-Way ML","spreads":"Spread","totals":"Total","btts":"Both Teams Score","nrfi":"NRFI","player_points":"Points","player_rebounds":"Rebounds","player_assists":"Assists","player_threes":"3-Pointers","batter_home_runs":"HR","pitcher_strikeouts":"K's"} %}
+          {% set _h_bk = {"draftkings":"DraftKings","fanduel":"FanDuel","betmgm":"BetMGM","caesars":"Caesars","williamhill_us":"Caesars","kalshi":"Kalshi","novig":"NoVig","polymarket":"Polymarket","prophetx":"ProphetX","betopenly":"BetOpenly","pinnacle":"Pinnacle","betrivers":"BetRivers","espnbet":"ESPN Bet","hardrockbet":"Hard Rock Bet"} %}
+          {% set _h_pm = ['kalshi','polymarket'] %}
+          {% set _h_ex = ['novig','prophetx','betopenly'] %}
 
-          {# ── Card 2: MLB Spread, FanDuel ── #}
-          <div class="mock-card mock-ev-high">
-            <div class="mock-card-accent"></div>
-            <div class="mock-ribbon mock-ribbon-green">✅ Strong Pick — High Model Edge</div>
-            <div class="mock-proj-band">
-              <span style="font-size:0.72rem;">🤖</span>
-              <span class="mock-pb-score mock-pb-win">5.1</span>
-              <span style="font-size:0.55rem;color:#3D5470;">MIL</span>
-              <span class="mock-pb-sep">–</span>
-              <span class="mock-pb-score">3.4</span>
-              <span style="font-size:0.55rem;color:#3D5470;">KC</span>
-              <span style="color:#3D5470;font-size:0.55rem;margin-left:4px;">· O/U 8.7</span>
-            </div>
-            <div class="mock-card-inner">
-              <div class="mock-card-top">
-                <div class="mock-badges">
-                  <span class="mock-badge-league">MLB</span>
-                  <span class="mock-badge-market">Spread</span>
-                  <span class="mock-badge-book">FanDuel</span>
-                </div>
-                <span class="mock-ev-pill high">+9.1% EV</span>
-              </div>
-              <div class="mock-card-main">
-                <div>
-                  <div class="mock-team">Brewers &minus;1.5</div>
-                  <div class="mock-game-line">Brewers @ Royals</div>
-                  <div class="mock-time-line">⏰ Tonight 8:10 PM ET</div>
-                </div>
-                <div class="mock-odds-col">
-                  <div class="mock-odds-val mock-odds-pos">+178</div>
-                  <div class="mock-odds-lbl">Odds</div>
-                </div>
-              </div>
-              <div class="mock-why-box">
-                <div class="mock-why-top">
-                  <span class="mock-why-edge">+9.1% edge</span>
-                  <span class="mock-why-prob">Model: <strong>54%</strong> · Book: <strong>46%</strong></span>
-                </div>
-                <div class="mock-why-size">¼ Kelly bet: <span>3.6%</span> of bankroll</div>
-              </div>
-              <div class="mock-signal-row">
-                <span class="mock-sig mock-sig-blue">⚡ Sharp money on this side</span>
-              </div>
-              <div class="mock-bet-cta">🎰 Bet at FanDuel →</div>
-            </div>
-          </div>
+          {% if hero_picks is defined and hero_picks | length > 0 %}
 
-          {# ── Card 3: NBA Prop, Kalshi prediction market ── #}
-          <div class="mock-card mock-ev-med">
-            <div class="mock-card-accent"></div>
-            <div class="mock-card-inner">
-              <div class="mock-card-top">
-                <div class="mock-badges">
-                  <span class="mock-badge-league">NBA</span>
-                  <span class="mock-badge-market">Prop</span>
-                  <span class="mock-badge-book">Kalshi</span>
-                  <span class="mock-badge-pm">🔮 PM</span>
+            {# ── Card 1: Top pick — fully visible ── #}
+            {% set hp = hero_picks[0] %}
+            {% set _bkl = hp.book | lower %}
+            {% set _lg_d = _h_lg.get(hp.league, hp.league | upper) %}
+            {% set _mkt_d = _h_mkt.get(hp.market, hp.market | replace('_',' ') | title) %}
+            {% set _bk_d = _h_bk.get(_bkl, hp.book | title) %}
+            {% if hp.market == "totals" and hp.point %}{% set _t = hp.team ~ " " ~ hp.point %}
+            {% elif hp.market == "spreads" and hp.point %}{% if hp.point > 0 %}{% set _t = hp.team ~ " +" ~ hp.point %}{% else %}{% set _t = hp.team ~ " " ~ hp.point %}{% endif %}
+            {% elif hp.is_prop and hp.point is not none %}{% set _t = hp.team ~ " " ~ hp.point %}
+            {% else %}{% set _t = hp.team %}{% endif %}
+            {% if hp.odds > 0 %}{% set _o = "+" ~ hp.odds %}{% set _oc = 'mock-odds-pos' %}{% else %}{% set _o = hp.odds | string %}{% set _oc = 'mock-odds-neg' %}{% endif %}
+            {% set _tp = (hp.true_prob * 100) | round(1) %}
+            {% if hp.implied_prob %}{% set _ip = (hp.implied_prob * 100) | round(1) %}{% elif hp.odds > 0 %}{% set _ip = (100 / (hp.odds + 100) * 100) | round(1) %}{% else %}{% set _ip = ((-hp.odds) / (-hp.odds + 100) * 100) | round(1) %}{% endif %}
+            {% set _ev_c = 'high' if hp.ev_percent >= 6 else 'med' %}
+            {% set _card_c = 'mock-ev-high' if hp.ev_percent >= 5 else 'mock-ev-med' %}
+            {% if _bkl in _h_pm %}{% set _cta = '📈 Trade on ' ~ _bk_d ~ ' →' %}{% elif _bkl in _h_ex %}{% set _cta = '⚡ Bet at ' ~ _bk_d ~ ' →' %}{% else %}{% set _cta = '🎰 Bet at ' ~ _bk_d ~ ' →' %}{% endif %}
+            <div class="mock-card {{ _card_c }}">
+              <div class="mock-card-accent"></div>
+              <div class="mock-ribbon mock-ribbon-gold">🏆 Top Pick — Highest Model Edge</div>
+              <div class="mock-card-inner">
+                <div class="mock-card-top">
+                  <div class="mock-badges">
+                    <span class="mock-badge-league">{{ _lg_d }}</span>
+                    <span class="mock-badge-market">{{ _mkt_d }}</span>
+                    <span class="mock-badge-book">{{ _bk_d }}</span>
+                    {% if _bkl in _h_pm %}<span class="mock-badge-pm">🔮 PM</span>{% endif %}
+                  </div>
+                  <span class="mock-ev-pill {{ _ev_c }}">+{{ '%.1f'|format(hp.ev_percent) }}% EV</span>
                 </div>
-                <span class="mock-ev-pill med">+6.2% EV</span>
-              </div>
-              <div class="mock-card-main">
-                <div>
-                  <div style="font-size:0.5rem;font-weight:800;color:#9B79FA;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;">LeBron James</div>
-                  <div class="mock-team">Over 26.5 pts</div>
-                  <div class="mock-game-line">Lakers @ Thunder</div>
-                  <div class="mock-time-line">⏰ Tonight 9:30 PM ET</div>
+                <div class="mock-card-main">
+                  <div>
+                    {% if hp.is_prop and hp.player_name %}<div style="font-size:0.5rem;font-weight:800;color:#9B79FA;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;">{{ hp.player_name }}</div>{% endif %}
+                    <div class="mock-team">{{ _t }}</div>
+                    {% if hp.game %}<div class="mock-game-line">{{ hp.game }}</div>{% endif %}
+                  </div>
+                  <div class="mock-odds-col">
+                    <div class="mock-odds-val {{ _oc }}">{{ _o }}</div>
+                    <div class="mock-odds-lbl">Odds</div>
+                  </div>
                 </div>
-                <div class="mock-odds-col">
-                  <div class="mock-odds-val mock-odds-neg">&minus;118</div>
-                  <div class="mock-odds-lbl">Odds</div>
+                <div class="mock-why-box">
+                  <div class="mock-why-top">
+                    <span class="mock-why-edge">+{{ '%.1f'|format(hp.ev_percent) }}% edge</span>
+                    <span class="mock-why-prob">Model: <strong>{{ _tp }}%</strong> · Book: <strong>{{ _ip }}%</strong></span>
+                  </div>
+                  {% if hp.kelly_pct %}<div class="mock-why-size">¼ Kelly bet: <span>{{ '%.1f'|format(hp.kelly_pct) }}%</span> of bankroll</div>{% endif %}
                 </div>
+                <div class="mock-bet-cta">{{ _cta }}</div>
               </div>
-              <div class="mock-why-box">
-                <div class="mock-why-top">
-                  <span class="mock-why-edge">+6.2% edge</span>
-                  <span class="mock-why-prob">Model: <strong>58%</strong> · Book: <strong>46%</strong></span>
-                </div>
-                <div class="mock-why-size">¼ Kelly bet: <span>2.3%</span> of bankroll</div>
-              </div>
-              <div class="mock-signal-row">
-                <span class="mock-sig mock-sig-orange">🔥 Professional money here</span>
-              </div>
-              <div class="mock-bet-cta">📈 Trade on Kalshi →</div>
             </div>
-          </div>
+
+            {# ── Cards 2 & 3: real data, blurred with EV Pro lock ── #}
+            {% for _i in [1, 2] %}
+            {% if hero_picks | length > _i %}
+            {% set hp = hero_picks[_i] %}
+            {% set _bkl = hp.book | lower %}
+            {% set _lg_d = _h_lg.get(hp.league, hp.league | upper) %}
+            {% set _mkt_d = _h_mkt.get(hp.market, hp.market | replace('_',' ') | title) %}
+            {% set _bk_d = _h_bk.get(_bkl, hp.book | title) %}
+            {% if hp.market == "totals" and hp.point %}{% set _t = hp.team ~ " " ~ hp.point %}
+            {% elif hp.market == "spreads" and hp.point %}{% if hp.point > 0 %}{% set _t = hp.team ~ " +" ~ hp.point %}{% else %}{% set _t = hp.team ~ " " ~ hp.point %}{% endif %}
+            {% elif hp.is_prop and hp.point is not none %}{% set _t = hp.team ~ " " ~ hp.point %}
+            {% else %}{% set _t = hp.team %}{% endif %}
+            {% if hp.odds > 0 %}{% set _o = "+" ~ hp.odds %}{% set _oc = 'mock-odds-pos' %}{% else %}{% set _o = hp.odds | string %}{% set _oc = 'mock-odds-neg' %}{% endif %}
+            {% set _ev_c = 'high' if hp.ev_percent >= 6 else 'med' %}
+            {% set _card_c = 'mock-ev-high' if hp.ev_percent >= 5 else 'mock-ev-med' %}
+            <div class="mock-card {{ _card_c }}" style="position:relative;overflow:hidden;">
+              <div class="mock-card-accent"></div>
+              <div class="mock-card-inner" style="filter:blur(4px);pointer-events:none;user-select:none;">
+                <div class="mock-card-top">
+                  <div class="mock-badges">
+                    <span class="mock-badge-league">{{ _lg_d }}</span>
+                    <span class="mock-badge-market">{{ _mkt_d }}</span>
+                    <span class="mock-badge-book">{{ _bk_d }}</span>
+                  </div>
+                  <span class="mock-ev-pill {{ _ev_c }}">+{{ '%.1f'|format(hp.ev_percent) }}% EV</span>
+                </div>
+                <div class="mock-card-main">
+                  <div>
+                    <div class="mock-team">{{ _t }}</div>
+                    {% if hp.game %}<div class="mock-game-line">{{ hp.game }}</div>{% endif %}
+                  </div>
+                  <div class="mock-odds-col">
+                    <div class="mock-odds-val {{ _oc }}">{{ _o }}</div>
+                    <div class="mock-odds-lbl">Odds</div>
+                  </div>
+                </div>
+              </div>
+              <div style="position:absolute;inset:0;background:rgba(15,25,35,0.6);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;border-radius:12px;">
+                <span style="font-size:1.3rem;">🔒</span>
+                <span style="font-size:0.8rem;font-weight:700;color:#e8edf2;">EV Pro Pick</span>
+                <a href="/signup" style="font-size:0.7rem;color:#00D68F;font-weight:600;text-decoration:none;">Unlock All Picks →</a>
+              </div>
+            </div>
+            {% else %}
+            <div class="mock-card mock-ev-med" style="position:relative;overflow:hidden;min-height:160px;">
+              <div style="position:absolute;inset:0;background:rgba(15,25,35,0.6);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;border-radius:12px;">
+                <span style="font-size:1.3rem;">🔒</span>
+                <span style="font-size:0.8rem;font-weight:700;color:#e8edf2;">EV Pro Pick</span>
+                <a href="/signup" style="font-size:0.7rem;color:#00D68F;font-weight:600;text-decoration:none;">Unlock All Picks →</a>
+              </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+
+          {% else %}
+
+            {# ── Static fallback when pipeline hasn't run yet ── #}
+            <div class="mock-card mock-ev-high">
+              <div class="mock-card-accent"></div>
+              <div class="mock-ribbon mock-ribbon-gold">🏆 Top Pick — Highest Model Edge</div>
+              <div class="mock-proj-band">
+                <span style="font-size:0.72rem;">🤖</span>
+                <span class="mock-pb-score mock-pb-win">2.8</span>
+                <span style="font-size:0.55rem;color:#3D5470;">BOS</span>
+                <span class="mock-pb-sep">–</span>
+                <span class="mock-pb-score">1.9</span>
+                <span style="font-size:0.55rem;color:#3D5470;">TOR</span>
+                <span style="color:#3D5470;font-size:0.55rem;margin-left:4px;">· O/U 5.3</span>
+              </div>
+              <div class="mock-card-inner">
+                <div class="mock-card-top">
+                  <div class="mock-badges">
+                    <span class="mock-badge-league">NHL</span>
+                    <span class="mock-badge-market">Moneyline</span>
+                    <span class="mock-badge-book">DraftKings</span>
+                  </div>
+                  <span class="mock-ev-pill high">+12.3% EV</span>
+                </div>
+                <div class="mock-card-main">
+                  <div>
+                    <div class="mock-team">Boston Bruins</div>
+                    <div class="mock-game-line">Bruins @ Maple Leafs</div>
+                    <div class="mock-time-line">⏰ Tonight 7:00 PM ET</div>
+                  </div>
+                  <div class="mock-odds-col">
+                    <div class="mock-odds-val mock-odds-pos">+145</div>
+                    <div class="mock-odds-lbl">Odds</div>
+                  </div>
+                </div>
+                <div class="mock-why-box">
+                  <div class="mock-why-top">
+                    <span class="mock-why-edge">+12.3% edge</span>
+                    <span class="mock-why-prob">Model: <strong>56%</strong> · Book: <strong>43%</strong></span>
+                  </div>
+                  <div class="mock-why-size">¼ Kelly bet: <span>4.8%</span> of bankroll</div>
+                </div>
+                <div class="mock-signal-row">
+                  <span class="mock-sig mock-sig-green">📈 Odds improved since open</span>
+                </div>
+                <div class="mock-bet-cta">🎰 Bet at DraftKings →</div>
+              </div>
+            </div>
+
+            <div class="mock-card mock-ev-high" style="position:relative;overflow:hidden;">
+              <div class="mock-card-accent"></div>
+              <div class="mock-card-inner" style="filter:blur(4px);pointer-events:none;user-select:none;">
+                <div class="mock-card-top">
+                  <div class="mock-badges">
+                    <span class="mock-badge-league">MLB</span>
+                    <span class="mock-badge-market">Spread</span>
+                    <span class="mock-badge-book">FanDuel</span>
+                  </div>
+                  <span class="mock-ev-pill high">+9.1% EV</span>
+                </div>
+                <div class="mock-card-main">
+                  <div>
+                    <div class="mock-team">Brewers &minus;1.5</div>
+                    <div class="mock-game-line">Brewers @ Royals</div>
+                  </div>
+                  <div class="mock-odds-col">
+                    <div class="mock-odds-val mock-odds-pos">+178</div>
+                    <div class="mock-odds-lbl">Odds</div>
+                  </div>
+                </div>
+              </div>
+              <div style="position:absolute;inset:0;background:rgba(15,25,35,0.6);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;border-radius:12px;">
+                <span style="font-size:1.3rem;">🔒</span>
+                <span style="font-size:0.8rem;font-weight:700;color:#e8edf2;">EV Pro Pick</span>
+                <a href="/signup" style="font-size:0.7rem;color:#00D68F;font-weight:600;text-decoration:none;">Unlock All Picks →</a>
+              </div>
+            </div>
+
+            <div class="mock-card mock-ev-med" style="position:relative;overflow:hidden;">
+              <div class="mock-card-accent"></div>
+              <div class="mock-card-inner" style="filter:blur(4px);pointer-events:none;user-select:none;">
+                <div class="mock-card-top">
+                  <div class="mock-badges">
+                    <span class="mock-badge-league">NBA</span>
+                    <span class="mock-badge-market">Prop</span>
+                    <span class="mock-badge-book">Kalshi</span>
+                  </div>
+                  <span class="mock-ev-pill med">+6.2% EV</span>
+                </div>
+                <div class="mock-card-main">
+                  <div>
+                    <div class="mock-team">Over 26.5 pts</div>
+                    <div class="mock-game-line">Lakers @ Thunder</div>
+                  </div>
+                  <div class="mock-odds-col">
+                    <div class="mock-odds-val mock-odds-neg">&minus;118</div>
+                    <div class="mock-odds-lbl">Odds</div>
+                  </div>
+                </div>
+              </div>
+              <div style="position:absolute;inset:0;background:rgba(15,25,35,0.6);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;border-radius:12px;">
+                <span style="font-size:1.3rem;">🔒</span>
+                <span style="font-size:0.8rem;font-weight:700;color:#e8edf2;">EV Pro Pick</span>
+                <a href="/signup" style="font-size:0.7rem;color:#00D68F;font-weight:600;text-decoration:none;">Unlock All Picks →</a>
+              </div>
+            </div>
+
+          {% endif %}
 
           <div class="mock-more">+ 21 more picks today — sort by EV%, time, or odds</div>
         </div>

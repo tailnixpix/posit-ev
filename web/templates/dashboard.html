@@ -1034,6 +1034,170 @@ main { max-width: none !important; padding: 0 !important; }
 .proj-align-yes { background: var(--d-green-dim); color: var(--d-green); border: 1px solid rgba(0,214,143,0.2); }
 .proj-align-no  { background: rgba(255,91,91,0.08); color: var(--d-red); border: 1px solid rgba(255,91,91,0.2); }
 
+/* ── Simulation strip (inline on card face) ─────────────────────────── */
+.sim-strip {
+  background: linear-gradient(135deg, rgba(99,179,237,0.06) 0%, rgba(154,117,250,0.07) 100%);
+  border: 1px solid rgba(99,179,237,0.18);
+  border-radius: 10px;
+  padding: 11px 14px 10px;
+  margin-bottom: 10px;
+}
+.sim-strip-pending {
+  opacity: 0.55;
+  padding: 8px 14px;
+  font-size: 0.75rem;
+  color: var(--d-muted);
+}
+.sim-strip-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 7px;
+}
+.sim-strip-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--d-sub);
+  text-transform: uppercase;
+}
+.sim-conf-chip {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 99px;
+}
+.sim-conf-high { background: rgba(74,222,128,0.15); color: #4ade80; }
+.sim-conf-med  { background: rgba(251,191,36,0.15);  color: #fbbf24; }
+.sim-conf-low  { background: rgba(248,113,113,0.15); color: #f87171; }
+.sim-outcome-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.sim-outcome-label {
+  font-size: 0.7rem;
+  color: var(--d-muted);
+}
+.sim-outcome-val {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--d-text);
+}
+.sim-bar-mini-wrap  { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+.sim-bar-mini-row   { display: flex; align-items: center; gap: 6px; }
+.sim-bar-mini-lbl   { font-size: 0.65rem; color: var(--d-sub); width: 80px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sim-bar-mini-track { flex: 1; height: 5px; background: rgba(255,255,255,0.07); border-radius: 99px; overflow: hidden; }
+.sim-bar-mini-fill  { height: 100%; border-radius: 99px; transition: width 0.6s ease; }
+.sim-fill-home  { background: linear-gradient(90deg, #63b3ed, #4299e1); }
+.sim-fill-away  { background: linear-gradient(90deg, #f687b3, #ed64a6); }
+.sim-fill-draw  { background: linear-gradient(90deg, #fbd38d, #f6ad55); }
+.sim-bar-mini-pct { font-size: 0.65rem; font-weight: 700; color: var(--d-sub); width: 28px; text-align: right; flex-shrink: 0; }
+.sim-score-est {
+  font-size: 0.7rem;
+  color: var(--d-muted);
+  margin-top: 2px;
+}
+.sim-score-est strong { color: var(--d-sub); }
+
+/* ── Simulation button ──────────────────────────────────────────────── */
+.btn-sim {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  background: linear-gradient(135deg, rgba(99,179,237,0.08) 0%, rgba(154,117,250,0.1) 100%);
+  border: 1px solid rgba(99,179,237,0.25);
+  border-radius: 9px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  flex: 1 1 0;
+  min-width: 0;
+  text-align: left;
+}
+.btn-sim:hover { background: linear-gradient(135deg, rgba(99,179,237,0.14) 0%, rgba(154,117,250,0.16) 100%); border-color: rgba(99,179,237,0.4); }
+.btn-sim.sim-btn-open { border-color: rgba(99,179,237,0.5); background: linear-gradient(135deg, rgba(99,179,237,0.14) 0%, rgba(154,117,250,0.16) 100%); }
+.btn-sim-top { font-size: 0.78rem; font-weight: 700; color: var(--d-text); }
+.btn-sim-sub { font-size: 0.62rem; color: var(--d-muted); }
+
+/* ── Simulation detail panel (expandable) ───────────────────────────── */
+.sim-panel {
+  border: 1px solid rgba(99,179,237,0.2);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 8px;
+  background: rgba(10,12,20,0.6);
+}
+.sim-panel-hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px 9px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--d-text);
+  letter-spacing: 0.01em;
+}
+.sim-dist-bars {
+  padding: 10px 14px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sim-dist-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sim-dist-row.sim-row-winner .sim-dist-lbl { color: var(--d-text); font-weight: 600; }
+.sim-dist-lbl  { font-size: 0.72rem; color: var(--d-sub); width: 90px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sim-dist-track { flex: 1; height: 8px; background: rgba(255,255,255,0.06); border-radius: 99px; overflow: hidden; }
+.sim-dist-fill  { height: 100%; border-radius: 99px; transition: width 0.7s ease; }
+.sim-dist-pct  { font-size: 0.72rem; font-weight: 700; color: var(--d-sub); width: 36px; text-align: right; flex-shrink: 0; }
+.sim-dist-pct-winner { color: #4ade80; }
+.sim-stats-strip {
+  display: flex;
+  gap: 0;
+  border-top: 1px solid rgba(255,255,255,0.04);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  margin-top: 6px;
+}
+.sim-stat-cell {
+  flex: 1;
+  padding: 8px 6px;
+  text-align: center;
+  border-right: 1px solid rgba(255,255,255,0.04);
+}
+.sim-stat-cell:last-child { border-right: none; }
+.sim-stat-val { font-size: 0.9rem; font-weight: 700; color: var(--d-text); }
+.sim-stat-lbl { font-size: 0.58rem; color: var(--d-muted); line-height: 1.3; margin-top: 2px; }
+.sim-mkt-note {
+  font-size: 0.68rem;
+  padding: 6px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.sim-mkt-agree   { color: #4ade80; }
+.sim-mkt-diverge { color: #fbbf24; }
+.sim-summary {
+  font-size: 0.78rem;
+  line-height: 1.65;
+  color: var(--d-sub);
+  padding: 10px 14px;
+  border-top: 1px solid rgba(255,255,255,0.04);
+  font-style: italic;
+}
+.sim-panel-footer {
+  font-size: 0.6rem;
+  color: var(--d-muted);
+  padding: 6px 14px 10px;
+  border-top: 1px solid rgba(255,255,255,0.04);
+}
+.sim-panel-loading { padding: 14px 16px; }
+.sim-panel-error   { padding: 12px 14px; font-size: 0.75rem; color: var(--d-red, #f87171); }
+
 /* AI panel — animated expand/collapse via max-height */
 .ai-panel {
   display: grid;
@@ -1326,6 +1490,83 @@ main { max-width: none !important; padding: 0 !important; }
 }
 .btn-track:hover { background: rgba(100,149,237,0.15); }
 .btn-track.tracked { background: rgba(0,214,143,0.1); border-color: rgba(0,214,143,0.3); color: var(--d-green); }
+
+/* ── Analyze button ── */
+.btn-analyze {
+  flex: 0 0 auto;
+  background: rgba(155,121,250,0.08);
+  border: 1px solid rgba(155,121,250,0.25);
+  color: var(--d-purple, #a78bfa);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, color 0.15s;
+}
+.btn-analyze:hover { background: rgba(155,121,250,0.18); }
+.btn-analyze.ai-open { background: rgba(155,121,250,0.15); border-color: rgba(155,121,250,0.45); }
+
+/* ── Top Pick featured banner ── */
+.featured-pick-wrap {
+  margin-bottom: 18px;
+  background: linear-gradient(135deg, rgba(0,214,143,0.05) 0%, rgba(124,58,237,0.05) 100%);
+  border: 1px solid rgba(0,214,143,0.22);
+  border-radius: 14px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.featured-pick-label {
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--d-green, #00D68F);
+  margin-bottom: 4px;
+}
+.featured-pick-team {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--d-text, #e8edf2);
+  line-height: 1.2;
+}
+.featured-pick-sub {
+  font-size: 0.7rem;
+  color: var(--d-muted, #8fa3b8);
+  margin-top: 3px;
+}
+.featured-pick-ev-lbl {
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: var(--d-muted, #8fa3b8);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.featured-pick-ev {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--d-green, #00D68F);
+  white-space: nowrap;
+}
+.featured-pick-cta {
+  margin-left: auto;
+  background: var(--d-green, #00D68F);
+  color: #0f1923;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 18px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: opacity 0.15s;
+  white-space: nowrap;
+}
+.featured-pick-cta:hover { opacity: 0.85; }
 
 .track-panel {
   display: none;
@@ -3055,6 +3296,29 @@ main { max-width: none !important; padding: 0 !important; }
       </div>
     </div>
 
+    {# ── TOP PICK FEATURED BANNER ── #}
+    {% if bets %}
+    {% set _fp = bets[0] %}
+    {% if _fp.odds > 0 %}{% set _fp_odds = "+" ~ _fp.odds %}{% else %}{% set _fp_odds = _fp.odds | string %}{% endif %}
+    {% if _fp.market == "totals" and _fp.point %}{% set _fp_team = _fp.team ~ " " ~ _fp.point %}
+    {% elif _fp.market == "spreads" and _fp.point %}{% if _fp.point > 0 %}{% set _fp_team = _fp.team ~ " +" ~ _fp.point %}{% else %}{% set _fp_team = _fp.team ~ " " ~ _fp.point %}{% endif %}
+    {% else %}{% set _fp_team = _fp.team %}{% endif %}
+    <div class="featured-pick-wrap" id="featuredPickWrap">
+      <div style="flex:1;min-width:160px;">
+        <div class="featured-pick-label">⚡ Top Pick Today</div>
+        <div class="featured-pick-team">{{ _fp_team }}</div>
+        <div class="featured-pick-sub">{{ _fp.game or '' }}&nbsp;·&nbsp;{{ _fp_odds }}</div>
+      </div>
+      <div style="text-align:center;">
+        <div class="featured-pick-ev-lbl">EV%</div>
+        <div class="featured-pick-ev">+{{ '%.1f'|format(_fp.ev_percent) }}%</div>
+      </div>
+      <button class="featured-pick-cta" onclick="scrollAndAnalyze({{ _fp.id }})">
+        Analyze This Pick →
+      </button>
+    </div>
+    {% endif %}
+
     {# ── CARD VIEW ── #}
     <div class="cards-grid" id="cardsGrid" style="visibility:hidden">
 
@@ -3085,6 +3349,7 @@ main { max-width: none !important; padding: 0 !important; }
           {% set _implied_pct = ((100 / (bet.odds + 100) * 100) if bet.odds > 0 else ((-bet.odds) / (-bet.odds + 100) * 100)) | round(1) %}
 
           <div class="bet-card {{ tier }}{{ ' prop-card' if bet.is_prop else '' }}"
+               id="card-{{ bet.id }}"
                data-bet-id="{{ bet.id }}"
                data-league="{{ bet.league }}"
                data-market="{{ market_key }}"
@@ -3273,6 +3538,10 @@ main { max-width: none !important; padding: 0 !important; }
               {# — Cross-book price comparison (populated by JS) — #}
               {% if bet.all_book_odds %}<div class="odds-compare-wrap" id="oc-{{ bet.id }}"></div>{% endif %}
 
+              {# — Sim sport detection (used by button + panel below) — #}
+              {% set _SIM_SPORTS = ['baseball_mlb','soccer_epl','soccer_spain_la_liga','soccer_germany_bundesliga','soccer_usa_mls','soccer_uefa_champs_league','soccer_uefa_europa_league','soccer_france_ligue_one','soccer_italy_serie_a','soccer_fifa_world_cup','soccer_uefa_nations_league','soccer_conmebol_copa_libertadores','soccer_conmebol_copa_america'] %}
+              {% set _is_sim_sport = bet.league in _SIM_SPORTS and not bet.is_prop and bet.game and ' @ ' in (bet.game or '') %}
+
               {# — Best Book + Bet CTA — #}
               <div class="card-book-strip">
                 <div class="book-strip-label">
@@ -3284,13 +3553,16 @@ main { max-width: none !important; padding: 0 !important; }
                 </button>
               </div>
 
-              {# — Actions: Analyze + Track — #}
+              {# — Actions: Simulate + Track — #}
               <div class="card-actions-row">
-                <button class="btn-analyze" id="analyze-btn-{{ bet.id }}" onclick="toggleAnalysisPanel({{ bet.id }}, this)">
-                  <span class="btn-analyze-top">🎯 Should I Bet This?</span>
-                  <span class="btn-analyze-sub">{% if bet.confidence_score %}{{ bet.confidence_score | int }}% AI confidence · {% endif %}Full analysis &amp; verdict</span>
+                {% if _is_sim_sport %}
+                <button class="btn-sim" id="sim-btn-{{ bet.id }}" onclick="toggleSimPanel({{ bet.id }}, this)">
+                  <span class="btn-sim-top">🎲 Full Simulation</span>
+                  <span class="btn-sim-sub">AI narrative · score dist · over/under</span>
                 </button>
+                {% endif %}
                 <button class="btn-track" id="track-btn-{{ bet.id }}" onclick="toggleTrackPanel({{ bet.id }}, this)">📌 Track</button>
+                <button class="btn-analyze" id="analyze-btn-{{ bet.id }}" data-bet-id="{{ bet.id }}" onclick="toggleAiPanel(this)">🤖 +EV Insight</button>
               </div>
 
               {# — Track Panel — #}
@@ -3319,6 +3591,11 @@ main { max-width: none !important; padding: 0 !important; }
                 </div>
                 <div class="track-kelly-hint" id="track-kelly-{{ bet.id }}"></div>
               </div>
+
+              {# — Simulation Detail Panel (lazy-loaded, MLB + soccer only) — #}
+              {% if _is_sim_sport %}
+              <div class="sim-panel" id="sim-panel-{{ bet.id }}" style="display:none;"></div>
+              {% endif %}
 
               {# — Combined Analysis Panel (Projection + AI Insight) — #}
               <div class="analysis-wrap" id="analysis-wrap-{{ bet.id }}">
@@ -5744,6 +6021,24 @@ function _buildProjHtml(d) {
 
 // ── AI panel ───────────────────────────────────────────────────────────────
 const _aiCache = {};
+
+function _loadAnalysis(betId) {
+  delete _aiCache[betId];
+  const btn   = document.getElementById('analyze-btn-' + betId);
+  const panel = document.getElementById('ai-panel-'   + betId);
+  if (panel && panel.classList.contains('open')) panel.classList.remove('open');
+  if (btn) { btn.classList.remove('ai-open'); btn.textContent = '🤖 +EV Insight'; toggleAiPanel(btn); }
+}
+
+function scrollAndAnalyze(betId) {
+  const card = document.getElementById('card-' + betId);
+  if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  setTimeout(() => {
+    const btn = document.getElementById('analyze-btn-' + betId);
+    if (btn && !btn.classList.contains('ai-open')) toggleAiPanel(btn);
+  }, card ? 450 : 0);
+}
+
 function toggleAiPanel(btn) {
   const betId = btn.dataset.betId;
   const panel = document.getElementById('ai-panel-' + betId);
@@ -5754,6 +6049,7 @@ function toggleAiPanel(btn) {
   btn.style.transition = 'opacity 0.15s';
   btn.style.opacity = '0';
   setTimeout(() => {
+    btn.classList.toggle('ai-open', !isOpen);
     btn.textContent = isOpen ? '🤖 +EV Insight' : '✕ Close';
     btn.style.opacity = '1';
   }, 120);
@@ -5787,7 +6083,7 @@ function toggleAiPanel(btn) {
         footEl.innerHTML = data.rule_based
           ? 'Powered by model signals'
           : data.generated_at
-            ? `Generated at ${new Date(data.generated_at).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})} — Claude Opus 4.6`
+            ? `Generated at ${new Date(data.generated_at).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})} — Sharp Analysis`
             : 'Powered by Sharp Analysis';
       }
     })
@@ -5806,7 +6102,7 @@ function toggleAiPanel(btn) {
         }
         errorEl.style.display = 'block';
         errorEl.style.cursor  = 'pointer';
-        errorEl.onclick = () => { delete _aiCache[betId]; _loadAnalysis(betId); };
+        errorEl.onclick = () => _loadAnalysis(betId);
       }
     });
 }
@@ -5950,6 +6246,115 @@ function _buildPropContextHtml(d) {
   }
 
   return '<div style="padding:8px 12px;font-size:0.72rem;color:var(--d-muted);">No prop context available.</div>';
+}
+
+// ── Monte Carlo Simulation Panel ─────────────────────────────────────────
+async function toggleSimPanel(betId, btn) {
+  const panel = document.getElementById('sim-panel-' + betId);
+  if (!panel) return;
+
+  if (panel.style.display !== 'none') {
+    panel.style.display = 'none';
+    btn.classList.remove('sim-btn-open');
+    return;
+  }
+
+  panel.style.display = 'block';
+  btn.classList.add('sim-btn-open');
+
+  if (panel.dataset.loaded) return;
+
+  panel.innerHTML = '<div class="sim-panel-loading"><div class="skel-bar skel-w90" style="margin:12px 16px 6px;"></div><div class="skel-bar skel-w75" style="margin:0 16px 6px;"></div><div class="skel-bar skel-w60" style="margin:0 16px 16px;"></div></div>';
+
+  try {
+    const resp = await fetch('/api/simulation/' + betId, { credentials: 'same-origin' });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.detail || resp.statusText);
+    }
+    const d = await resp.json();
+    panel.innerHTML = _buildSimHtml(d);
+    panel.dataset.loaded = '1';
+  } catch (e) {
+    panel.innerHTML = '<div class="sim-panel-error">Simulation data unavailable: ' + (e.message || 'retry later') + '</div>';
+  }
+}
+
+function _buildSimHtml(d) {
+  const isSoccer  = d.draw_pct > 0;
+  const scoreUnit = d.sport_key === 'baseball_mlb' ? 'runs' : 'goals';
+  const confCls   = d.confidence >= 65 ? 'sim-conf-high' : d.confidence >= 55 ? 'sim-conf-med' : 'sim-conf-low';
+
+  // Outcome distribution bars
+  let bars = `<div class="sim-dist-bars">`;
+  bars += _simBar(d.home_team, d.home_win_pct, 'sim-fill-home', d.projected_outcome === 'Home Win');
+  if (isSoccer) bars += _simBar('Draw', d.draw_pct, 'sim-fill-draw', d.projected_outcome === 'Draw');
+  bars += _simBar(d.away_team, d.away_win_pct, 'sim-fill-away', d.projected_outcome === 'Away Win');
+  bars += `</div>`;
+
+  // Stats row
+  let stats = `<div class="sim-stats-strip">
+    <div class="sim-stat-cell">
+      <div class="sim-stat-val">${d.avg_home_score.toFixed(1)}</div>
+      <div class="sim-stat-lbl">Avg ${scoreUnit}<br>${d.home_team}</div>
+    </div>
+    <div class="sim-stat-cell">
+      <div class="sim-stat-val">${d.avg_away_score.toFixed(1)}</div>
+      <div class="sim-stat-lbl">Avg ${scoreUnit}<br>${d.away_team}</div>
+    </div>`;
+  if (d.total_line != null && d.over_pct != null) {
+    stats += `<div class="sim-stat-cell">
+      <div class="sim-stat-val">${Math.round(d.over_pct)}%</div>
+      <div class="sim-stat-lbl">Over ${d.total_line}</div>
+    </div>
+    <div class="sim-stat-cell">
+      <div class="sim-stat-val">${Math.round(d.under_pct)}%</div>
+      <div class="sim-stat-lbl">Under ${d.total_line}</div>
+    </div>`;
+  }
+  stats += `</div>`;
+
+  // Market alignment note
+  let mktNote = '';
+  if (d.market_home_win_prob != null) {
+    const mktLeader = d.market_home_win_prob > d.market_away_win_prob ? d.home_team : d.away_team;
+    const simLeader = d.home_win_pct > d.away_win_pct ? d.home_team : d.away_team;
+    const aligned = mktLeader === simLeader;
+    mktNote = `<div class="sim-mkt-note ${aligned ? 'sim-mkt-agree' : 'sim-mkt-diverge'}">
+      ${aligned ? '✓ Market aligned' : '⚠ Sim diverges from market'} — Market: ${d.home_team} ${d.market_home_win_prob}% · ${d.away_team} ${d.market_away_win_prob}%
+    </div>`;
+  }
+
+  // AI summary
+  const summaryHtml = d.summary
+    ? `<div class="sim-summary">"${d.summary}"</div>`
+    : '';
+
+  const updatedAt = d.updated_at
+    ? new Date(d.updated_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+    : '';
+
+  return `
+    <div class="sim-panel-hdr">
+      <span>🎲 Simulation Analysis</span>
+      <span class="sim-conf-chip ${confCls}">${d.confidence.toFixed(1)}% confidence</span>
+    </div>
+    ${bars}
+    ${stats}
+    ${mktNote}
+    ${summaryHtml}
+    <div class="sim-panel-footer">${(d.n_sims || 10000).toLocaleString()} Monte Carlo simulations · Poisson ${isSoccer ? 'goal' : 'run'} model · The Odds API calibrated${updatedAt ? ' · Updated ' + updatedAt : ''}</div>`;
+}
+
+function _simBar(label, pct, fillCls, isWinner) {
+  // All rows use identical structure (label + track + pct) so the track
+  // width is consistent and width:X% maps correctly to the displayed pct.
+  // Winner styling is applied via CSS class only — no extra flex children.
+  return `<div class="sim-dist-row ${isWinner ? 'sim-row-winner' : ''}">
+    <span class="sim-dist-lbl">${isWinner ? '▶ ' : ''}${label}</span>
+    <div class="sim-dist-track"><div class="sim-dist-fill ${fillCls}" style="width:${Math.min(pct, 100)}%"></div></div>
+    <span class="sim-dist-pct ${isWinner ? 'sim-dist-pct-winner' : ''}">${pct.toFixed(1)}%</span>
+  </div>`;
 }
 
 // ── Combined Analysis Panel (Projection + AI) ────────────────────────────

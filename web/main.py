@@ -60,7 +60,7 @@ _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
-from db.database import DailyPick, EVBetCache, NewsletterSubscriber, OddsHistory, SessionLocal, User, create_tables, ensure_columns  # noqa: E402
+from db.database import DailyPick, EVBetCache, GameSimulation, NewsletterSubscriber, OddsHistory, SessionLocal, User, create_tables, ensure_columns  # noqa: E402
 from web.auth import (                                                   # noqa: E402
     router as auth_router,
     create_access_token,
@@ -882,6 +882,231 @@ def _score_hr_props() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Monte Carlo simulation runner — runs in background after each cache refresh
+# ---------------------------------------------------------------------------
+
+def _run_simulations() -> None:
+    """
+    For every unique MLB/soccer game in EVBetCache, run 10,000 Monte Carlo
+    simulations and upsert results into the GameSimulation table.
+
+    Uses Poisson run/goal distributions calibrated against the no-vig true
+    probabilities already stored in EVBetCache (derived from The Odds API
+    sharp-book consensus).  An AI summary is generated for each game using
+    claude-haiku-4-5.
+    """
+    from models.simulator import run_simulation, SUPPORTED_SPORT_KEYS, SOCCER_SPORT_KEYS, MLB_SPORT_KEY
+    import json
+    import anthropic as _anthropic
+
+    _now = datetime.now(timezone.utc)
+
+    try:
+        with SessionLocal() as db:
+            # Fetch all non-prop, non-expired rows for supported sports.
+            # Use != True so NULL rows (is_prop not set) are included alongside False.
+            rows = (
+                db.query(EVBetCache)
+                .filter(
+                    EVBetCache.league.in_(list(SUPPORTED_SPORT_KEYS)),
+                    EVBetCache.is_prop != True,  # noqa: E712 — catches NULL + False
+                    EVBetCache.game.isnot(None),
+                    (EVBetCache.commence_time == None) | (EVBetCache.commence_time > _now),  # noqa: E711
+                )
+                .all()
+            )
+
+            # Group by (league, game)
+            games: dict[str, list] = {}
+            for row in rows:
+                key = f"{row.league}|{row.game}"
+                games.setdefault(key, []).append(row)
+
+            log.info("_run_simulations: found %d unique games across %d rows", len(games), len(rows))
+
+            _client = _anthropic.Anthropic()
+
+            for game_key, game_rows in games.items():
+                try:
+                    _process_one_simulation(db, game_rows, _client, SOCCER_SPORT_KEYS, MLB_SPORT_KEY, json)
+                except Exception:
+                    log.exception("Simulation failed for game_key=%r", game_key)
+
+            db.commit()
+            log.info("_run_simulations: complete")
+
+    except Exception:
+        log.exception("_run_simulations: outer error")
+
+
+def _process_one_simulation(db, game_rows: list, client, soccer_keys, mlb_key, json_mod) -> None:
+    """Compute and upsert a simulation for one game's worth of EVBetCache rows."""
+    from models.simulator import run_simulation
+
+    sport_key = game_rows[0].league
+    game_str  = game_rows[0].game
+
+    parts = (game_str or "").split(" @ ", 1)
+    if len(parts) != 2:
+        return
+    away_team, home_team = parts[0].strip(), parts[1].strip()
+
+    # ── Extract win probabilities from h2h rows ──────────────────────────
+    h2h_rows = [r for r in game_rows if r.market == "h2h"]
+    if not h2h_rows:
+        return
+
+    draw_rows  = [r for r in h2h_rows if r.team.lower() in ("draw", "tie")]
+    team_rows  = [r for r in h2h_rows if r.team.lower() not in ("draw", "tie")]
+
+    # Average true_prob across all books for each team name
+    team_prob_map: dict[str, list[float]] = {}
+    for r in team_rows:
+        team_prob_map.setdefault(r.team, []).append(r.true_prob)
+    avg_prob = {name: sum(probs) / len(probs) for name, probs in team_prob_map.items()}
+
+    away_lc = away_team.lower()
+    home_lc = home_team.lower()
+    home_prob = away_prob = None
+    for name, prob in avg_prob.items():
+        name_lc = name.lower()
+        if home_lc and (home_lc in name_lc or name_lc in home_lc):
+            home_prob = prob
+        elif away_lc and (away_lc in name_lc or name_lc in away_lc):
+            away_prob = prob
+
+    # Fallback: first two entries ordered as away, home (Odds API convention)
+    if home_prob is None or away_prob is None:
+        ordered = list(avg_prob.values())
+        if len(ordered) >= 2:
+            away_prob, home_prob = ordered[0], ordered[1]
+        elif len(ordered) == 1:
+            home_prob = ordered[0]
+            away_prob = 1.0 - home_prob
+        else:
+            return  # cannot determine probs
+
+    draw_prob = (sum(r.true_prob for r in draw_rows) / len(draw_rows)) if draw_rows else 0.0
+
+    # ── Get totals line ────────────────────────────────────────────────────
+    total_rows = [r for r in game_rows if r.market == "totals"]
+    total_line = total_rows[0].point if total_rows else None
+
+    # ── Run simulation ─────────────────────────────────────────────────────
+    result = run_simulation(
+        sport_key=sport_key,
+        game=game_str,
+        home_team=home_team,
+        away_team=away_team,
+        home_win_prob=float(home_prob),
+        away_win_prob=float(away_prob),
+        draw_prob=float(draw_prob),
+        total_line=total_line,
+        n_sims=10_000,
+    )
+    if result is None:
+        return
+
+    # ── Generate AI summary ────────────────────────────────────────────────
+    summary = _generate_sim_summary(result, client)
+
+    # ── Upsert into GameSimulation ─────────────────────────────────────────
+    existing = db.query(GameSimulation).filter(
+        GameSimulation.sport_key == sport_key,
+        GameSimulation.game == game_str,
+    ).first()
+
+    sim_json = json_mod.dumps(result.narrative_data)
+    now = datetime.now(timezone.utc)
+
+    if existing:
+        existing.home_win_pct      = result.home_win_pct
+        existing.away_win_pct      = result.away_win_pct
+        existing.draw_pct          = result.draw_pct
+        existing.projected_outcome = result.projected_outcome
+        existing.confidence        = result.confidence
+        existing.avg_home_score    = result.avg_home_score
+        existing.avg_away_score    = result.avg_away_score
+        existing.summary           = summary
+        existing.sim_data          = sim_json
+        existing.updated_at        = now
+    else:
+        db.add(GameSimulation(
+            sport_key         = sport_key,
+            game_id           = game_rows[0].game_id,
+            game              = game_str,
+            home_team         = home_team,
+            away_team         = away_team,
+            commence_time     = game_rows[0].commence_time,
+            n_sims            = result.n_sims,
+            home_win_pct      = result.home_win_pct,
+            away_win_pct      = result.away_win_pct,
+            draw_pct          = result.draw_pct,
+            projected_outcome = result.projected_outcome,
+            confidence        = result.confidence,
+            avg_home_score    = result.avg_home_score,
+            avg_away_score    = result.avg_away_score,
+            summary           = summary,
+            sim_data          = sim_json,
+            updated_at        = now,
+            created_at        = now,
+        ))
+    log.info("Simulation upserted: %r — %s (%.1f%%)", game_str, result.projected_outcome, result.confidence)
+
+
+def _generate_sim_summary(result, client) -> str:
+    """Generate a 3-4 sentence plain-English summary of simulation results via Claude Haiku."""
+    from models.simulator import MLB_SPORT_KEY, SOCCER_SPORT_KEYS
+
+    is_soccer  = result.sport_key in SOCCER_SPORT_KEYS
+    sport_lbl  = "soccer match" if is_soccer else "baseball game"
+    score_unit = "goals" if is_soccer else "runs"
+    nd         = result.narrative_data
+
+    draw_line = (
+        f"Draw: {result.draw_pct:.1f}% of simulations\n"
+        if is_soccer else ""
+    )
+    ou_line = ""
+    if nd.get("total_line") and nd.get("over_pct") is not None:
+        ou_line = f"Over/Under {nd['total_line']}: {nd['over_pct']:.0f}% Over / {nd.get('under_pct', 0):.0f}% Under\n"
+
+    context = f"""Game: {result.game} ({sport_lbl})
+Simulations run: {result.n_sims:,}
+
+Simulation Results:
+{result.home_team} wins: {result.home_win_pct:.1f}% of simulations
+{draw_line}{result.away_team} wins: {result.away_win_pct:.1f}% of simulations
+{ou_line}
+Projected Outcome: {result.projected_outcome} ({result.confidence:.1f}% confidence)
+Expected Score: {result.home_team} {result.avg_home_score:.1f} — {result.away_team} {result.avg_away_score:.1f} {score_unit}
+
+Market-Implied Probabilities (sharp no-vig):
+{result.home_team}: {nd.get('market_home_win_prob', '?')}%
+{"Draw: " + str(nd.get('market_draw_prob', '?')) + "%" if is_soccer else ""}
+{result.away_team}: {nd.get('market_away_win_prob', '?')}%"""
+
+    prompt = (
+        "You are a data-driven sports analyst. Based on the Monte Carlo simulation "
+        "results below, write exactly 3 sentences explaining why the projected outcome "
+        "is likely. Reference the confidence percentage and expected scoring. "
+        "Be direct and specific — no hedging, no filler phrases.\n\n"
+        + context
+    )
+
+    try:
+        msg = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=180,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        return msg.content[0].text.strip()
+    except Exception:
+        log.exception("_generate_sim_summary: Claude call failed")
+        return ""
+
+
+# ---------------------------------------------------------------------------
 # Card summary generation — runs in background after each cache refresh
 # ---------------------------------------------------------------------------
 
@@ -1134,6 +1359,17 @@ async def on_startup() -> None:
         id="ev_cache_refresh",
         name="Refresh EV bet cache (every 30 min)",
         next_run_time=datetime.now(timezone.utc),   # run once at startup
+        misfire_grace_time=120,
+        replace_existing=True,
+    )
+    # Monte Carlo simulations — runs 3 min after each cache refresh.
+    # Fires after enrichment so adjusted_prob values are available.
+    scheduler.add_job(
+        _run_simulations,
+        trigger=IntervalTrigger(minutes=30),
+        id="game_simulations",
+        name="Monte Carlo simulations for MLB/soccer (every 30 min)",
+        next_run_time=datetime.now(timezone.utc) + timedelta(minutes=3),
         misfire_grace_time=120,
         replace_existing=True,
     )
@@ -1734,6 +1970,79 @@ async def get_projection(bet_id: int, request: Request, db: Session = Depends(ge
     return JSONResponse(merged)
 
 
+@app.get("/api/simulation/{bet_id}")
+async def get_simulation(bet_id: int, request: Request, db: Session = Depends(get_db)):
+    """
+    Return pre-computed Monte Carlo simulation results for a bet's game.
+
+    Subscription required.  Only available for MLB and soccer leagues.
+    Results are pre-computed by the background simulation job and served
+    directly from the GameSimulation table — no live computation at request time.
+    """
+    token = get_token_from_request(request)
+    if not token:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    payload = decode_access_token(token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    user = db.query(User).filter(User.id == int(payload["sub"])).first()
+    if not user or not user.is_subscribed:
+        raise HTTPException(status_code=403, detail="Subscription required")
+
+    bet_row = db.query(EVBetCache).filter(EVBetCache.id == bet_id).first()
+    if not bet_row:
+        raise HTTPException(status_code=404, detail="Bet not found")
+
+    from models.simulator import SUPPORTED_SPORT_KEYS
+    if (bet_row.league or "") not in SUPPORTED_SPORT_KEYS:
+        raise HTTPException(status_code=422, detail="Simulation not available for this sport")
+
+    if not bet_row.game or " @ " not in (bet_row.game or ""):
+        raise HTTPException(status_code=422, detail="No simulation for this bet type")
+
+    sim = db.query(GameSimulation).filter(
+        GameSimulation.sport_key == bet_row.league,
+        GameSimulation.game == bet_row.game,
+    ).first()
+
+    if not sim:
+        raise HTTPException(
+            status_code=404,
+            detail="Simulation not yet available — runs 3 min after next cache refresh",
+        )
+
+    import json as _json
+    sim_data = {}
+    if sim.sim_data:
+        try:
+            sim_data = _json.loads(sim.sim_data)
+        except Exception:
+            pass
+
+    return JSONResponse({
+        "sport_key":         sim.sport_key,
+        "game":              sim.game,
+        "home_team":         sim.home_team,
+        "away_team":         sim.away_team,
+        "n_sims":            sim.n_sims,
+        "projected_outcome": sim.projected_outcome,
+        "confidence":        sim.confidence,
+        "home_win_pct":      sim.home_win_pct,
+        "away_win_pct":      sim.away_win_pct,
+        "draw_pct":          sim.draw_pct,
+        "avg_home_score":    sim.avg_home_score,
+        "avg_away_score":    sim.avg_away_score,
+        "total_line":        sim_data.get("total_line"),
+        "over_pct":          sim_data.get("over_pct"),
+        "under_pct":         sim_data.get("under_pct"),
+        "market_home_win_prob": sim_data.get("market_home_win_prob"),
+        "market_away_win_prob": sim_data.get("market_away_win_prob"),
+        "market_draw_prob":  sim_data.get("market_draw_prob"),
+        "summary":           sim.summary,
+        "updated_at":        sim.updated_at.isoformat() if sim.updated_at else None,
+    })
+
+
 @app.get("/api/prop-context/{bet_id}")
 async def get_prop_context(bet_id: int, request: Request, db: Session = Depends(get_db)):
     """
@@ -2028,8 +2337,21 @@ async def landing(request: Request, db: Session = Depends(get_db)):
         })
     track_chart_data = _json.dumps(_chart_points)
 
+    # Top 3 live picks for the hero mockup — real data replaces hardcoded cards
+    _hero_now = datetime.now(timezone.utc)
+    hero_picks = (
+        db.query(EVBetCache)
+        .filter(
+            (EVBetCache.commence_time == None) |  # noqa: E711
+            (EVBetCache.commence_time > _hero_now)
+        )
+        .order_by(EVBetCache.ev_percent.desc())
+        .limit(3)
+        .all()
+    )
+
     return templates.TemplateResponse(request, "index.html", {
-        "track_picks":      settled,   # pending picks excluded — only show settled results
+        "track_picks":      settled,
         "track_won":        won,
         "track_lost":       lost,
         "track_total":      len(settled),
@@ -2038,6 +2360,7 @@ async def landing(request: Request, db: Session = Depends(get_db)):
         "track_units":      total_units,
         "streak_count":     streak_count,
         "track_chart_data": track_chart_data,
+        "hero_picks":       hero_picks,
     })
 
 
@@ -2597,6 +2920,22 @@ async def dashboard(
     except Exception as _exc:
         log.warning("dashboard: hr_picks fetch failed: %s", _exc)
 
+    # Build sim lookup: {game_str: GameSimulation} for supported sports
+    from models.simulator import SUPPORTED_SPORT_KEYS as _SIM_SPORTS
+    try:
+        _sim_rows = (
+            db.query(GameSimulation)
+            .filter(
+                GameSimulation.sport_key.in_(list(_SIM_SPORTS)),
+                (GameSimulation.commence_time == None) | (GameSimulation.commence_time > _now_utc),  # noqa: E711
+            )
+            .all()
+        )
+        game_sim_map = {gs.game: gs for gs in _sim_rows}
+    except Exception as _sim_err:
+        log.warning("dashboard: game_sim_map build failed: %s", _sim_err)
+        game_sim_map = {}
+
     return templates.TemplateResponse(
         request,
         "dashboard.html",
@@ -2612,6 +2951,7 @@ async def dashboard(
             "trial_days_remaining": trial_days_remaining,
             "trial_ends_at":        trial_ends_at,
             "hr_picks":             hr_picks,
+            "game_sim_map":         game_sim_map,
         },
     )
 
@@ -3353,6 +3693,22 @@ async def admin_newsletter_resubscribe(
         db.commit()
         log.info("Admin resubscribed newsletter subscriber %s", sub.email)
     return RedirectResponse(url="/admin", status_code=303)
+
+
+@app.post("/admin/run-simulations")
+async def admin_run_simulations(request: Request, pin: str = Form(default="")):
+    """Manually trigger the Monte Carlo simulation job."""
+    _admin_pin = os.getenv("ADMIN_PIN", "")
+    authed = (
+        bool(request.session.get("admin_authenticated"))
+        or (pin and _admin_pin and pin == _admin_pin)
+    )
+    if not authed:
+        return JSONResponse({"error": "unauthorized"}, status_code=403)
+
+    import threading
+    threading.Thread(target=_run_simulations, daemon=True).start()
+    return JSONResponse({"status": "simulation job started in background"})
 
 
 @app.post("/admin/refresh-cache")
