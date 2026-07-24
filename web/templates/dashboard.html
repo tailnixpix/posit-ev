@@ -2292,6 +2292,11 @@ main { max-width: none !important; padding: 0 !important; }
 .cards-grid.compact-mode .card-summary-inline { display: none !important; }
 .cards-grid.compact-mode .card-story,
 .cards-grid.compact-mode .sharp-money-row { display: none !important; }
+/* Analysis panel always shows when explicitly opened, even in compact mode.
+   Higher specificity (0,4,0) beats the 0,3,0 compact-mode rules above. */
+.cards-grid.compact-mode .analysis-wrap.open { display: flex !important; }
+.cards-grid.compact-mode .analysis-wrap.open .ai-panel { display: grid !important; grid-template-rows: 1fr !important; opacity: 1 !important; margin-top: 0 !important; }
+.cards-grid.compact-mode .analysis-wrap.open .proj-panel { display: block !important; }
 
 /* ═══════════════════════════════════════════════════════════════
    PARLAY BUILDER
@@ -3734,6 +3739,12 @@ function toggleCompact() {
   _isCompact = !_isCompact;
   localStorage.setItem('positplusev_compact', _isCompact ? '1' : '0');
   _applyCompact();
+}
+// On mobile the compact toggle button is hidden, so if compact mode was
+// saved from a desktop session, clear it so the analyze panel is accessible.
+if (window.innerWidth < 768 && _isCompact) {
+  _isCompact = false;
+  localStorage.setItem('positplusev_compact', '0');
 }
 _applyCompact();
 
