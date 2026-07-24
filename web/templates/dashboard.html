@@ -2787,8 +2787,8 @@ main { max-width: none !important; padding: 0 !important; }
     {% if bets %}
     {% set _fp = bets[0] %}
     {% if _fp.odds > 0 %}{% set _fp_odds = "+" ~ _fp.odds %}{% else %}{% set _fp_odds = _fp.odds | string %}{% endif %}
-    {% if _fp.market == "totals" and _fp.point %}{% set _fp_team = _fp.team ~ " " ~ _fp.point %}
-    {% elif _fp.market == "spreads" and _fp.point %}{% if _fp.point > 0 %}{% set _fp_team = _fp.team ~ " +" ~ _fp.point %}{% else %}{% set _fp_team = _fp.team ~ " " ~ _fp.point %}{% endif %}
+    {% if _fp.market == "totals" and _fp.point is not none %}{% set _fp_pt = (_fp.point | int) if (_fp.point == (_fp.point | int)) else _fp.point %}{% set _fp_team = _fp.team ~ " " ~ _fp_pt %}
+    {% elif _fp.market == "spreads" and _fp.point is not none %}{% if _fp.point > 0 %}{% set _fp_team = _fp.team ~ " +" ~ _fp.point %}{% else %}{% set _fp_team = _fp.team ~ " " ~ _fp.point %}{% endif %}
     {% else %}{% set _fp_team = _fp.team %}{% endif %}
     <div class="featured-pick-wrap" id="featuredPickWrap">
       <div style="flex:1;min-width:160px;">
@@ -2818,8 +2818,8 @@ main { max-width: none !important; padding: 0 !important; }
           {% set market_map = {"h2h":"Moneyline","h2h_3_way":"3-Way ML","spreads":"Spread","totals":"Total","btts":"Both Teams Score","team_totals":"Team Total","nrfi":"NRFI/YRFI","player_points":"Points","player_rebounds":"Rebounds","player_assists":"Assists","player_threes":"3-Pointers","player_blocks":"Blocks","player_steals":"Steals","player_turnovers":"Turnovers","player_double_double":"Dbl-Dbl","player_points_rebounds_assists":"Pts+Reb+Ast","player_points_rebounds":"Pts+Reb","player_points_assists":"Pts+Ast","player_goals":"Goals","player_shots_on_goal":"SOG","player_blocked_shots":"Blk Shots","player_saves":"Saves","player_anytime_goalscorer":"Anytime Scorer","player_power_play_points":"PP Points","batter_home_runs":"HR","batter_hits":"Hits","batter_rbis":"RBI","batter_total_bases":"Total Bases","batter_stolen_bases":"SB","batter_strikeouts":"Strikeouts","batter_walks":"BB","pitcher_strikeouts":"K's","pitcher_hits_allowed":"Hits Allowed","pitcher_earned_runs":"Earned Runs","pitcher_outs":"Pitcher Outs"} %}
           {% set market_display = market_map.get(bet.market, bet.market | replace('_',' ') | title) %}
           {% if bet.odds > 0 %}{% set odds_str = "+" ~ bet.odds %}{% else %}{% set odds_str = bet.odds | string %}{% endif %}
-          {% if bet.market == "totals" and bet.point %}{% set team_display = bet.team ~ " " ~ bet.point %}
-          {% elif bet.market == "spreads" and bet.point %}{% if bet.point > 0 %}{% set team_display = bet.team ~ " +" ~ bet.point %}{% else %}{% set team_display = bet.team ~ " " ~ bet.point %}{% endif %}
+          {% if bet.market == "totals" and bet.point is not none %}{% set point_fmt = (bet.point | int) if (bet.point == (bet.point | int)) else bet.point %}{% set team_display = bet.team ~ " " ~ point_fmt %}
+          {% elif bet.market == "spreads" and bet.point is not none %}{% if bet.point > 0 %}{% set team_display = bet.team ~ " +" ~ bet.point %}{% else %}{% set team_display = bet.team ~ " " ~ bet.point %}{% endif %}
           {% elif bet.is_prop and bet.point is not none %}{% set point_fmt = (bet.point | int) if (bet.point == (bet.point | int)) else bet.point %}{% set team_display = bet.team ~ " " ~ point_fmt %}
           {% else %}{% set team_display = bet.team %}{% endif %}
           {% if bet.market == "h2h_3_way" %}{% set market_key = "h2h" %}{# 3-way grouped under Moneyline filter #}
