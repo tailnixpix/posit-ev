@@ -5264,8 +5264,29 @@ function scrollAndAnalyze(betId) {
   const card = document.getElementById('card-' + betId);
   if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
   setTimeout(() => {
-    const btn = document.getElementById('analyze-btn-' + betId);
-    if (btn && !btn.classList.contains('open')) toggleAnalysisPanel(betId, btn);
+    const btn  = document.getElementById('analyze-btn-' + betId);
+    const wrap = document.getElementById('analysis-wrap-' + betId);
+    if (!wrap) return;
+    if (wrap.classList.contains('open')) {
+      // Panel already open — just scroll to it
+      wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      return;
+    }
+    // Force-open via toggleAnalysisPanel (btn may be CSS-hidden in compact mode,
+    // but it's still in the DOM so closest('.bet-card') works)
+    if (btn) {
+      toggleAnalysisPanel(betId, btn);
+    } else {
+      // btn not in DOM at all — open the wrap directly and trigger fetch
+      wrap.classList.add('open');
+      setTimeout(() => wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 60);
+      const loadEl = document.getElementById('ai-loading-' + betId);
+      const contentEl = document.getElementById('ai-content-' + betId);
+      const errorEl = document.getElementById('ai-error-' + betId);
+      if (loadEl) loadEl.style.display = 'block';
+      if (contentEl) contentEl.style.display = 'none';
+      if (errorEl) errorEl.style.display = 'none';
+    }
   }, card ? 450 : 0);
 }
 
@@ -5589,9 +5610,10 @@ function _simBar(label, pct, fillCls, isWinner) {
 
 // ── Combined Analysis Panel (Projection + AI) ────────────────────────────
 function toggleAnalysisPanel(betId, btn) {
+  try {
   const wrap = document.getElementById('analysis-wrap-' + betId);
   if (!wrap) return;
-  const card   = btn.closest('.bet-card');
+  const card   = btn ? btn.closest('.bet-card') : document.getElementById('card-' + betId);
   const isOpen = wrap.classList.contains('open');
 
   if (isOpen) {
@@ -5708,6 +5730,13 @@ function toggleAnalysisPanel(betId, btn) {
         };
       }
     });
+  } catch (e) {
+    console.error('toggleAnalysisPanel error:', e);
+    const errorEl = document.getElementById('ai-error-' + betId);
+    const wrap    = document.getElementById('analysis-wrap-' + betId);
+    if (wrap) wrap.classList.add('open');
+    if (errorEl) { errorEl.textContent = 'Analysis unavailable — tap to retry.'; errorEl.style.display = 'block'; }
+  }
 }
 
 // ── EV Modal ───────────────────────────────────────────────────────────────
