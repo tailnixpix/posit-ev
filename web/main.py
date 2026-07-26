@@ -2945,6 +2945,121 @@ async def dashboard(
     except Exception as _exc:
         log.warning("dashboard: hr_picks fetch failed: %s", _exc)
 
+    # Build 3-4 case-for-the-pick bullets for the featured banner
+    fp_bullets: list[str] = []
+    try:
+        if bets:
+            _fb = bets[0]
+            _gc: dict = {}
+            try:
+                _gc = _json.loads(_fb.game_context or "{}") or {}
+            except Exception:
+                pass
+
+            # Determine home/away
+            _game_str = _fb.game or ""
+            _parts = _game_str.split(" @ ", 1) if " @ " in _game_str else []
+            _away_name = _parts[0].strip() if _parts else ""
+            _home_name = _parts[1].strip() if len(_parts) > 1 else ""
+            _team_lower = (_fb.team or "").lower()
+            # Simple heuristic: does the bet team appear in the home slot?
+            _is_home = bool(_home_name) and any(
+                w in _home_name.lower()
+                for w in _team_lower.split()
+                if len(w) > 2
+            )
+
+            # ── 1. Team win streak from trend string ─────────────────────
+            def _parse_trend(s: str):
+                import re as _re2
+                m = _re2.match(r"^(\d+)-(\d+)\s+([WL])(\d+)$", (s or "").strip())
+                return (int(m.group(1)), int(m.group(2)), m.group(3), int(m.group(4))) if m else None
+
+            _my_trend = _fb.home_trend if _is_home else _fb.away_trend
+            _opp_trend = _fb.away_trend if _is_home else _fb.home_trend
+            _t = _parse_trend(_my_trend or "")
+            if _t:
+                _wins, _losses, _dir, _streak = _t
+                _ha_word = "home" if _is_home else "away"
+                if _dir == "W" and _streak >= 2:
+                    fp_bullets.append(
+                        f"{_fb.team} are on a {_streak}-game winning streak "
+                        f"({_wins}-{_losses} over their last 10)."
+                    )
+                elif _dir == "W":
+                    fp_bullets.append(
+                        f"{_fb.team} have won their last {_streak} game"
+                        + ("s" if _streak > 1 else "")
+                        + f" and are {_wins}-{_losses} over their last 10."
+                    )
+                elif _dir == "L" and _fb.market in ("totals",):
+                    # Losing streak on a totals pick — still relevant for under
+                    fp_bullets.append(
+                        f"{_fb.team} are {_wins}-{_losses} over their last 10 games."
+                    )
+                else:
+                    fp_bullets.append(
+                        f"{_fb.team} are {_wins}-{_losses} over their last 10 games."
+                    )
+
+            # ── 2. Season record + current streak from game_context ───────
+            _my_rec = _gc.get("home_record" if _is_home else "away_record", "")
+            _my_strk = _gc.get("home_streak" if _is_home else "away_streak", "")
+            _opp_rec = _gc.get("away_record" if _is_home else "home_record", "")
+            _opp_strk = _gc.get("away_streak" if _is_home else "home_streak", "")
+
+            if _my_rec and _fb.market in ("h2h", "h2h_3_way", "spreads"):
+                _strk_txt = f", currently on a {_my_strk} streak" if _my_strk else ""
+                _ha_label = "at home" if _is_home else "on the road"
+                fp_bullets.append(
+                    f"{_fb.team} hold a {_my_rec} season record{_strk_txt}, playing {_ha_label} today."
+                )
+
+            # ── 3. Sharp money / public split ─────────────────────────────
+            _mp = _fb.money_pct
+            _bp = _fb.bet_pct
+            _ss = _fb.sharp_score
+            if _mp is not None and float(_mp) >= 60:
+                _rev = _bp is not None and float(_mp) > float(_bp) + 8
+                if _rev:
+                    fp_bullets.append(
+                        f"Reverse line movement alert: {int(_bp)}% of bets but "
+                        f"{int(_mp)}% of sharp money is on {_fb.team}."
+                    )
+                else:
+                    fp_bullets.append(
+                        f"{int(_mp)}% of sharp betting money has come in on "
+                        f"{_fb.team} today."
+                    )
+            elif _ss is not None and float(_ss) >= 65:
+                fp_bullets.append(
+                    f"Sharp money score of {int(_ss)}/100 — professional bettors "
+                    f"are aligned with this pick."
+                )
+
+            # ── 4. Market edge / EV context ───────────────────────────────
+            _ev = float(_fb.ev_percent or 0)
+            _true_p = float(_fb.true_prob or 0.5) * 100
+            _raw_odds = int(_fb.odds or -110)
+            _impl_p = (100 / (_raw_odds + 100) * 100) if _raw_odds > 0 else (abs(_raw_odds) / (abs(_raw_odds) + 100) * 100)
+            _odds_str = f"+{_raw_odds}" if _raw_odds > 0 else str(_raw_odds)
+            if _fb.market == "h2h" and _opp_rec:
+                _strk_txt2 = f" ({_opp_strk} streak)" if _opp_strk else ""
+                _opp_name = _away_name if _is_home else _home_name
+                fp_bullets.append(
+                    f"Opponent {_opp_name} enter this game {_opp_rec}{_strk_txt2} — "
+                    f"model gives {_fb.team} a {_true_p:.0f}% true win probability at {_odds_str} odds."
+                )
+            elif not fp_bullets or len(fp_bullets) < 3:
+                fp_bullets.append(
+                    f"Model assigns a {_true_p:.0f}% win probability vs. the book's "
+                    f"implied {_impl_p:.0f}%, giving a +{_ev:.1f}% EV edge at {_odds_str}."
+                )
+
+            fp_bullets = fp_bullets[:4]
+    except Exception as _fbe:
+        log.warning("dashboard: fp_bullets build failed: %s", _fbe)
+
     # Build sim lookup: {game_str: GameSimulation} for supported sports
     from models.simulator import SUPPORTED_SPORT_KEYS as _SIM_SPORTS
     try:
@@ -2977,6 +3092,7 @@ async def dashboard(
             "trial_ends_at":        trial_ends_at,
             "hr_picks":             hr_picks,
             "game_sim_map":         game_sim_map,
+            "fp_bullets":           fp_bullets,
         },
     )
 
