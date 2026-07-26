@@ -2956,105 +2956,139 @@ async def dashboard(
             except Exception:
                 pass
 
+            # If game_context is empty, do a quick ESPN fetch for the top pick now.
+            # This ensures season records + streaks are always available even if the
+            # enrichment scheduler hasn't run yet today.
+            if not _gc.get("home_record") and _fb.game and " @ " in _fb.game:
+                try:
+                    from scripts.context_fetcher import fetch_game_context as _fgc
+                    _live_gc = _fgc(_fb.game, _fb.league or "", _fb.commence_time)
+                    if _live_gc:
+                        _gc = _live_gc
+                        # Also persist it so subsequent loads are instant
+                        try:
+                            _fb.game_context = _json.dumps(_live_gc)
+                            db.commit()
+                        except Exception:
+                            db.rollback()
+                except Exception as _gc_err:
+                    log.debug("fp_bullets: on-demand game_context fetch failed: %s", _gc_err)
+
             # Determine home/away
             _game_str = _fb.game or ""
             _parts = _game_str.split(" @ ", 1) if " @ " in _game_str else []
             _away_name = _parts[0].strip() if _parts else ""
             _home_name = _parts[1].strip() if len(_parts) > 1 else ""
-            _team_lower = (_fb.team or "").lower()
-            # Simple heuristic: does the bet team appear in the home slot?
-            _is_home = bool(_home_name) and any(
-                w in _home_name.lower()
-                for w in _team_lower.split()
-                if len(w) > 2
-            )
 
-            # ── 1. Team win streak from trend string ─────────────────────
+            import re as _re2
+
             def _parse_trend(s: str):
-                import re as _re2
-                m = _re2.match(r"^(\d+)-(\d+)\s+([WL])(\d+)$", (s or "").strip())
-                return (int(m.group(1)), int(m.group(2)), m.group(3), int(m.group(4))) if m else None
+                """Parse '7-3 W4', '7-3 L2', or bare '7-3'. Returns (wins,losses,dir,streak) or None."""
+                s = (s or "").strip()
+                if not s:
+                    return None
+                # Full form: "7-3 W4"
+                m = _re2.match(r"^(\d+)-(\d+)\s+([WL])(\d+)$", s)
+                if m:
+                    return int(m.group(1)), int(m.group(2)), m.group(3), int(m.group(4))
+                # Short form: "7-3" (streak unknown/absent)
+                m = _re2.match(r"^(\d+)-(\d+)$", s)
+                if m:
+                    w, l = int(m.group(1)), int(m.group(2))
+                    return w, l, "W" if w >= l else "L", 0
+                return None
 
-            _my_trend = _fb.home_trend if _is_home else _fb.away_trend
-            _opp_trend = _fb.away_trend if _is_home else _fb.home_trend
-            _t = _parse_trend(_my_trend or "")
-            if _t:
-                _wins, _losses, _dir, _streak = _t
-                _ha_word = "home" if _is_home else "away"
-                if _dir == "W" and _streak >= 2:
-                    fp_bullets.append(
-                        f"{_fb.team} are on a {_streak}-game winning streak "
-                        f"({_wins}-{_losses} over their last 10)."
-                    )
-                elif _dir == "W":
-                    fp_bullets.append(
-                        f"{_fb.team} have won their last {_streak} game"
-                        + ("s" if _streak > 1 else "")
-                        + f" and are {_wins}-{_losses} over their last 10."
-                    )
-                elif _dir == "L" and _fb.market in ("totals",):
-                    # Losing streak on a totals pick — still relevant for under
-                    fp_bullets.append(
-                        f"{_fb.team} are {_wins}-{_losses} over their last 10 games."
-                    )
+            def _streak_sentence(team: str, wins: int, losses: int, dir_: str, streak: int, ha: str = "") -> str:
+                ha_txt = f" ({ha})" if ha else ""
+                if dir_ == "W" and streak >= 3:
+                    return f"{team}{ha_txt} on a {streak}-game win streak ({wins}-{losses} L10)."
+                elif dir_ == "W" and streak >= 1:
+                    return f"{team}{ha_txt} have won {streak} straight ({wins}-{losses} L10)."
+                elif dir_ == "L" and streak >= 3:
+                    return f"{team}{ha_txt} have lost {streak} in a row ({wins}-{losses} L10)."
                 else:
-                    fp_bullets.append(
-                        f"{_fb.team} are {_wins}-{_losses} over their last 10 games."
-                    )
+                    return f"{team}{ha_txt} are {wins}-{losses} over their last 10 games."
 
-            # ── 2. Season record + current streak from game_context ───────
-            _my_rec = _gc.get("home_record" if _is_home else "away_record", "")
-            _my_strk = _gc.get("home_streak" if _is_home else "away_streak", "")
-            _opp_rec = _gc.get("away_record" if _is_home else "home_record", "")
-            _opp_strk = _gc.get("away_streak" if _is_home else "home_streak", "")
+            # ── 1. Season records from game_context (ESPN) ────────────────
+            # These come from the enrichment scheduler and are the most
+            # reliable source for current-season records + live streaks.
+            _home_rec  = _gc.get("home_record", "")
+            _home_strk = _gc.get("home_streak", "")  # e.g. "W3", "L2"
+            _away_rec  = _gc.get("away_record", "")
+            _away_strk = _gc.get("away_streak", "")
 
-            if _my_rec and _fb.market in ("h2h", "h2h_3_way", "spreads"):
-                _strk_txt = f", currently on a {_my_strk} streak" if _my_strk else ""
-                _ha_label = "at home" if _is_home else "on the road"
+            def _streak_from_espn(strk: str) -> str:
+                """'W3' → '3-game win streak', 'L2' → '2-game losing streak'."""
+                if not strk:
+                    return ""
+                m = _re2.match(r"^([WL])(\d+)$", strk)
+                if not m:
+                    return strk
+                d, n = m.group(1), int(m.group(2))
+                if n >= 2:
+                    return f"{n}-game {'win' if d=='W' else 'losing'} streak"
+                return f"{'won' if d=='W' else 'lost'} last game"
+
+            if _home_rec:
+                _hs_txt = _streak_from_espn(_home_strk)
+                _hs_suffix = f", {_hs_txt}" if _hs_txt else ""
                 fp_bullets.append(
-                    f"{_fb.team} hold a {_my_rec} season record{_strk_txt}, playing {_ha_label} today."
+                    f"{_home_name or 'Home team'} (home) are {_home_rec} on the season{_hs_suffix}."
                 )
+
+            if _away_rec:
+                _as_txt = _streak_from_espn(_away_strk)
+                _as_suffix = f", {_as_txt}" if _as_txt else ""
+                fp_bullets.append(
+                    f"{_away_name or 'Away team'} (away) are {_away_rec} on the season{_as_suffix}."
+                )
+
+            # ── 2. L10 trend from pipeline (home_trend / away_trend) ──────
+            # Supplement if game_context didn't supply records for both sides.
+            for _tname, _tval, _tha in [
+                (_home_name or "Home team", _fb.home_trend, "home"),
+                (_away_name or "Away team", _fb.away_trend, "away"),
+            ]:
+                if not _tval or len(fp_bullets) >= 3:
+                    continue
+                _parsed = _parse_trend(_tval)
+                if _parsed:
+                    _tw, _tl, _td, _ts = _parsed
+                    fp_bullets.append(_streak_sentence(_tname, _tw, _tl, _td, _ts, _tha))
 
             # ── 3. Sharp money / public split ─────────────────────────────
             _mp = _fb.money_pct
             _bp = _fb.bet_pct
             _ss = _fb.sharp_score
-            if _mp is not None and float(_mp) >= 60:
+            if _mp is not None and float(_mp) >= 55 and len(fp_bullets) < 4:
                 _rev = _bp is not None and float(_mp) > float(_bp) + 8
                 if _rev:
                     fp_bullets.append(
-                        f"Reverse line movement alert: {int(_bp)}% of bets but "
-                        f"{int(_mp)}% of sharp money is on {_fb.team}."
+                        f"Reverse line movement: {int(_bp)}% of bets but "
+                        f"{int(_mp)}% of the money is on {_fb.team}."
                     )
                 else:
                     fp_bullets.append(
                         f"{int(_mp)}% of sharp betting money has come in on "
                         f"{_fb.team} today."
                     )
-            elif _ss is not None and float(_ss) >= 65:
+            elif _ss is not None and float(_ss) >= 60 and len(fp_bullets) < 4:
                 fp_bullets.append(
-                    f"Sharp money score of {int(_ss)}/100 — professional bettors "
-                    f"are aligned with this pick."
+                    f"Sharp score {int(_ss)}/100 — professional bettors are "
+                    f"aligned with this pick."
                 )
 
-            # ── 4. Market edge / EV context ───────────────────────────────
+            # ── 4. Model edge — always the last bullet ────────────────────
             _ev = float(_fb.ev_percent or 0)
             _true_p = float(_fb.true_prob or 0.5) * 100
             _raw_odds = int(_fb.odds or -110)
-            _impl_p = (100 / (_raw_odds + 100) * 100) if _raw_odds > 0 else (abs(_raw_odds) / (abs(_raw_odds) + 100) * 100)
+            _impl_p = (100 / (_raw_odds + 100) * 100) if _raw_odds > 0 \
+                      else (abs(_raw_odds) / (abs(_raw_odds) + 100) * 100)
             _odds_str = f"+{_raw_odds}" if _raw_odds > 0 else str(_raw_odds)
-            if _fb.market == "h2h" and _opp_rec:
-                _strk_txt2 = f" ({_opp_strk} streak)" if _opp_strk else ""
-                _opp_name = _away_name if _is_home else _home_name
-                fp_bullets.append(
-                    f"Opponent {_opp_name} enter this game {_opp_rec}{_strk_txt2} — "
-                    f"model gives {_fb.team} a {_true_p:.0f}% true win probability at {_odds_str} odds."
-                )
-            elif not fp_bullets or len(fp_bullets) < 3:
-                fp_bullets.append(
-                    f"Model assigns a {_true_p:.0f}% win probability vs. the book's "
-                    f"implied {_impl_p:.0f}%, giving a +{_ev:.1f}% EV edge at {_odds_str}."
-                )
+            fp_bullets.append(
+                f"Model gives a {_true_p:.0f}% true probability vs. the book's "
+                f"implied {_impl_p:.0f}% — a +{_ev:.1f}% EV edge at {_odds_str}."
+            )
 
             fp_bullets = fp_bullets[:4]
     except Exception as _fbe:
