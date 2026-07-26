@@ -674,6 +674,76 @@ def fetch_mlb_batter_platoon_splits(player_name: str) -> dict:
     return result
 
 
+def fetch_mlb_batter_game_log(player_name: str, prop_market: str) -> dict:
+    """
+    Return last 7 game results for a specific MLB batting stat.
+
+    Used to compute prop hit streaks like "HR in 3 of last 7 games".
+    Returns {} on any failure — never raises.
+
+    Keys returned:
+        game_log:          list of {date, val, opp, home} — most recent first
+        stat_label:        short label ("HR", "H", "RBI", "TB", "K", "BB")
+        consecutive_streak: int — consecutive games with >=1 of the stat (from today back)
+        hit_count_last7:   int — total games with >=1 in last 7
+        games_checked:     int — number of games sampled
+    """
+    _STAT_MAP = {
+        "batter_home_runs":   ("homeRuns",    "HR"),
+        "batter_hits":        ("hits",        "H"),
+        "batter_rbis":        ("rbi",         "RBI"),
+        "batter_total_bases": ("totalBases",  "TB"),
+        "batter_strikeouts":  ("strikeOuts",  "K"),
+        "batter_walks":       ("baseOnBalls", "BB"),
+    }
+    if prop_market not in _STAT_MAP:
+        return {}
+
+    stat_key, stat_label = _STAT_MAP[prop_market]
+    player_id = _fetch_mlb_player_id(player_name)
+    if not player_id:
+        return {}
+
+    year = datetime.now().year
+    data = _get(
+        f"{_MLB_PEOPLE}/{player_id}/stats",
+        params={"stats": "gameLog", "group": "hitting", "season": year},
+    )
+
+    games: list[dict] = []
+    try:
+        for sg in data.get("stats", []):
+            for split in sg.get("splits", []):
+                val  = int(split.get("stat", {}).get(stat_key, 0) or 0)
+                date = split.get("date", "")
+                opp  = (split.get("opponent") or {}).get("abbreviation", "")
+                home = split.get("isHome", True)
+                games.append({"date": date, "val": val, "opp": opp, "home": home})
+    except Exception:
+        return {}
+
+    if not games:
+        return {}
+
+    games.sort(key=lambda g: g["date"], reverse=True)
+    recent = games[:7]
+
+    streak = 0
+    for g in recent:
+        if g["val"] >= 1:
+            streak += 1
+        else:
+            break
+
+    return {
+        "game_log":           recent,
+        "stat_label":         stat_label,
+        "consecutive_streak": streak,
+        "hit_count_last7":    sum(1 for g in recent if g["val"] >= 1),
+        "games_checked":      len(recent),
+    }
+
+
 def _fetch_nhl_player_id(player_name: str) -> Optional[int]:
     """
     Look up an NHL player ID via the NHL search endpoint.
@@ -875,6 +945,10 @@ def fetch_prop_context(
                 ctx["prop_context_type"] = "mlb_batter_splits"
             else:
                 ctx["prop_context_type"] = "no_data"
+            # Always attempt game log for batter props regardless of splits
+            game_log_data = fetch_mlb_batter_game_log(player_name, prop_market)
+            if game_log_data:
+                ctx["game_log"] = game_log_data
 
     elif sport_key == "icehockey_nhl":
         if prop_market == "player_shots_on_goal":

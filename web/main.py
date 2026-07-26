@@ -2167,6 +2167,12 @@ async def get_analysis(bet_id: int, request: Request, db: Session = Depends(get_
         # Extract recommended_action from stored text "**Strong Bet**\n\n..."
         _m   = _re.match(r"^\*\*([^*]+)\*\*", bet_row.analysis or "")
         _rec = _m.group(1) if _m else ""
+        _cgc: dict = {}
+        try:
+            import json as _json
+            _cgc = _json.loads(bet_row.game_context or "{}") or {}
+        except Exception:
+            pass
         return JSONResponse({
             "analysis":             bet_row.analysis,
             "confidence_score":     bet_row.confidence_score,
@@ -2175,6 +2181,12 @@ async def get_analysis(bet_id: int, request: Request, db: Session = Depends(get_
             "rule_based":           False,
             "edge_tag":             "",
             "recommended_action":   _rec,
+            "home_record":          _cgc.get("home_record", ""),
+            "away_record":          _cgc.get("away_record", ""),
+            "home_streak":          _cgc.get("home_streak", ""),
+            "away_streak":          _cgc.get("away_streak", ""),
+            "home_team":            _cgc.get("home_team", ""),
+            "away_team":            _cgc.get("away_team", ""),
         })
 
     # Build bet dict for analyzer — include ALL rich pipeline fields so Claude
@@ -2260,6 +2272,13 @@ async def get_analysis(bet_id: int, request: Request, db: Session = Depends(get_
             db.rollback()
 
     _rec = (result.get("raw") or {}).get("analysis", {}).get("recommended_action", "") or ""
+    # Parse game_context for team records/streaks and include in response
+    _gc: dict = {}
+    try:
+        import json as _json
+        _gc = _json.loads(bet_dict.get("game_context") or "{}") or {}
+    except Exception:
+        pass
     return JSONResponse({
         "analysis":             result["analysis"],
         "confidence_score":     result["confidence_score"],
@@ -2268,6 +2287,12 @@ async def get_analysis(bet_id: int, request: Request, db: Session = Depends(get_
         "cached":               False,
         "rule_based":           rule_based,
         "recommended_action":   _rec,
+        "home_record":          _gc.get("home_record", ""),
+        "away_record":          _gc.get("away_record", ""),
+        "home_streak":          _gc.get("home_streak", ""),
+        "away_streak":          _gc.get("away_streak", ""),
+        "home_team":            _gc.get("home_team", ""),
+        "away_team":            _gc.get("away_team", ""),
     })
 
 

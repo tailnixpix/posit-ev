@@ -2807,9 +2807,12 @@ main { max-width: none !important; padding: 0 !important; }
         <div class="featured-pick-ev-lbl">EV%</div>
         <div class="featured-pick-ev">+{{ '%.1f'|format(_fp.ev_percent) }}%</div>
       </div>
-      <button class="featured-pick-cta" onclick="scrollAndAnalyze({{ _fp.id }})">
-        Analyze This Pick →
-      </button>
+      {% if _fp.confidence_score %}
+      <div style="text-align:center;">
+        <div class="featured-pick-ev-lbl">Confidence</div>
+        <div class="featured-pick-ev" style="font-size:1.1rem;">{{ _fp.confidence_score | int }}%</div>
+      </div>
+      {% endif %}
     </div>
     {% endif %}
 
@@ -5430,6 +5433,36 @@ function _buildPropContextHtml(d) {
     }
     h += '</tbody></table>';
     if (!lhp.pa && !rhp.pa) h += '<div style="padding:8px 12px;font-size:0.72rem;color:var(--d-muted);">No split data yet this season.</div>';
+
+    // Game log streak section
+    const gl = d.game_log;
+    if (gl && gl.game_log && gl.game_log.length) {
+      const label  = gl.stat_label || '';
+      const streak = gl.consecutive_streak || 0;
+      const hits   = gl.hit_count_last7   || 0;
+      const n      = gl.games_checked     || gl.game_log.length;
+      const streakColor = streak >= 3 ? 'var(--d-green)' : streak >= 1 ? 'var(--d-primary)' : 'var(--d-muted)';
+      h += `<div class="prop-ctx-hdr" style="margin-top:10px;"><span>📊 Recent ${label} — Last ${n} Games</span>
+        <span style="font-weight:600;color:${streakColor};">${hits}/${n} games</span></div>`;
+      if (streak >= 2) {
+        h += `<div style="padding:4px 12px 6px;font-size:0.72rem;color:${streakColor};font-weight:600;">🔥 ${streak}-game ${label} streak</div>`;
+      }
+      h += '<div>';
+      for (const g of gl.game_log) {
+        const date = g.date ? g.date.slice(5) : '';
+        const ha   = g.home ? 'vs' : '@';
+        const hit  = g.val >= 1;
+        const dot  = hit ? `<span style="color:var(--d-green);font-weight:700;">✓</span>` : `<span style="color:var(--d-muted);">–</span>`;
+        const valCls = hit ? ' class="pgl-val st-highlight"' : ' class="pgl-val"';
+        h += `<div class="prop-ctx-gamelog-row">
+          <span class="pgl-date">${date}</span>
+          <span class="pgl-dec">${dot}</span>
+          <span class="pgl-opp">${ha} ${g.opp||'?'}</span>
+          <span${valCls}>${g.val} ${label}</span>
+        </div>`;
+      }
+      h += '</div>';
+    }
     return h;
   }
 
@@ -5999,6 +6032,68 @@ function _buildAnalysisHtml(data, card) {
     </div>`;
   }
 
+  // Team form chips — parse home_trend / away_trend ("7-3 W4" format)
+  function _parseTrend(s) {
+    if (!s) return null;
+    const m = s.match(/^(\d+)-(\d+)\s+([WL])(\d+)$/);
+    if (!m) return null;
+    return { wins: +m[1], losses: +m[2], dir: m[3], streak: +m[4] };
+  }
+  const homeTrendRaw = (card && card.dataset.homeTrend) || '';
+  const awayTrendRaw = (card && card.dataset.awayTrend) || '';
+  const gameStr      = (card && card.dataset.game) || '';
+  const isPropCard   = (card && card.dataset.isProp) === 'true';
+  const parts        = gameStr.includes(' @ ') ? gameStr.split(' @ ') : [];
+  const awayName     = parts[0] || '';
+  const homeName     = parts[1] || '';
+
+  if (!isPropCard && (homeTrendRaw || awayTrendRaw)) {
+    for (const [side, raw, name] of [['home', homeTrendRaw, homeName], ['away', awayTrendRaw, awayName]]) {
+      const t = _parseTrend(raw);
+      if (!t) continue;
+      const icon  = t.dir === 'W' && t.streak >= 3 ? '🔥' : t.dir === 'L' && t.streak >= 3 ? '❄️' : t.dir === 'W' ? '📈' : '📉';
+      const cls   = t.dir === 'W' ? (t.streak >= 3 ? 'sig-sharp' : '') : 'sig-neg';
+      const label = `${name || (side === 'home' ? 'Home' : 'Away')} L10`;
+      const val   = `${t.wins}-${t.losses} · ${t.dir}${t.streak}`;
+      chips += `<div class="ai-sig ${cls}">
+        <span class="ai-sig-icon">${icon}</span>
+        <div class="ai-sig-body">
+          <span class="ai-sig-label">${label}</span>
+          <span class="ai-sig-val">${val}</span>
+        </div>
+      </div>`;
+    }
+  }
+
+  // ── H2H matchup block — ML picks only ───────────────────────────────────
+  let h2hHtml = '';
+  const isMLPick = (card && card.dataset.market) === 'h2h';
+  if (isMLPick && (data.home_record || data.away_record)) {
+    const aName  = data.away_team  || awayName || 'Away';
+    const hName  = data.home_team  || homeName || 'Home';
+    const aRec   = data.away_record  || '—';
+    const hRec   = data.home_record  || '—';
+    const aStrk  = data.away_streak  || '';
+    const hStrk  = data.home_streak  || '';
+    const _srkIcon = s => {
+      if (!s) return '';
+      return s.startsWith('W') ? ' 🔥' : s.startsWith('L') ? ' ❄️' : '';
+    };
+    h2hHtml = `<div style="margin:10px 0 4px;padding:8px 12px;background:var(--d-card-bg,rgba(255,255,255,0.04));border-radius:8px;border:1px solid var(--d-border,rgba(255,255,255,0.08));">
+      <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:.07em;color:var(--d-muted);margin-bottom:6px;">Season Records</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:110px;">
+          <div style="font-size:0.7rem;color:var(--d-muted);margin-bottom:2px;">@ ${hName}</div>
+          <div style="font-size:0.9rem;font-weight:700;font-variant-numeric:tabular-nums;">${hRec}<span style="font-size:0.7rem;font-weight:400;color:var(--d-muted);margin-left:4px;">${hStrk}${_srkIcon(hStrk)}</span></div>
+        </div>
+        <div style="flex:1;min-width:110px;">
+          <div style="font-size:0.7rem;color:var(--d-muted);margin-bottom:2px;">${aName} (away)</div>
+          <div style="font-size:0.9rem;font-weight:700;font-variant-numeric:tabular-nums;">${aRec}<span style="font-size:0.7rem;font-weight:400;color:var(--d-muted);margin-left:4px;">${aStrk}${_srkIcon(aStrk)}</span></div>
+        </div>
+      </div>
+    </div>`;
+  }
+
   // ── Why-bet narrative ─────────────────────────────────────────────────────
   // Strip the leading **Verdict**\n\n from the analysis text
   const rawText = (data.analysis || '');
@@ -6018,6 +6113,8 @@ function _buildAnalysisHtml(data, card) {
         <span class="ai-conf-num" style="color:${confColour}">Confidence ${conf}%</span>
       </div>
     </div>
+
+    ${h2hHtml}
 
     ${whyHtml ? `<div class="ai-why">
       <div class="ai-why-body"><p>${whyHtml}</p></div>
