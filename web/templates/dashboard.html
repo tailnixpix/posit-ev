@@ -5637,14 +5637,19 @@ function _buildSimHtml(d) {
   }
   stats += `</div>`;
 
-  // Market alignment note
+  // Sim-vs-bet verdict badge (primary) + market alignment note (secondary context)
   let mktNote = '';
+  if (d.sim_agrees_with_bet === true) {
+    mktNote += `<div class="sim-mkt-note sim-mkt-agree">✅ Simulation agrees with this pick</div>`;
+  } else if (d.sim_agrees_with_bet === false) {
+    mktNote += `<div class="sim-mkt-note sim-mkt-diverge">⚠️ Simulation projects the opposite side</div>`;
+  }
   if (d.market_home_win_prob != null) {
     const mktLeader = d.market_home_win_prob > d.market_away_win_prob ? d.home_team : d.away_team;
     const simLeader = d.home_win_pct > d.away_win_pct ? d.home_team : d.away_team;
-    const aligned = mktLeader === simLeader;
-    mktNote = `<div class="sim-mkt-note ${aligned ? 'sim-mkt-agree' : 'sim-mkt-diverge'}">
-      ${aligned ? '✓ Market aligned' : '⚠ Sim diverges from market'} — Market: ${d.home_team} ${d.market_home_win_prob}% · ${d.away_team} ${d.market_away_win_prob}%
+    const mktSimAligned = mktLeader === simLeader;
+    mktNote += `<div class="sim-mkt-note" style="opacity:0.7;font-size:0.68rem;">
+      ${mktSimAligned ? '✓ Market aligned with sim' : '⚠ Market diverges from sim'} — ${d.home_team} ${d.market_home_win_prob}% · ${d.away_team} ${d.market_away_win_prob}%
     </div>`;
   }
 

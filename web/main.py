@@ -2019,27 +2019,48 @@ async def get_simulation(bet_id: int, request: Request, db: Session = Depends(ge
         except Exception:
             pass
 
+    # Determine whether the simulation's projected winner matches the bet.
+    # Uses the same word-overlap logic as the projection panel's model_agrees_with_bet.
+    def _word_set_sim(s: str) -> set:
+        skip = {"at", "the", "a", "an", "vs", "fc", "sc", "city", "state"}
+        return {w for w in (s or "").lower().split() if w not in skip and len(w) > 2}
+
+    sim_agrees_with_bet: Optional[bool] = None
+    _bet_team = (bet_row.team or "").strip()
+    _projected = (sim.projected_outcome or "")
+    if _bet_team and _projected and bet_row.market in ("h2h", "h2h_3_way", "spreads"):
+        # projected_outcome is e.g. "Home Win" or "Away Win" — resolve to team name
+        _g_parts   = (sim.game or "").split(" @ ", 1)
+        _away_sim  = _g_parts[0].strip() if len(_g_parts) > 1 else ""
+        _home_sim  = _g_parts[1].strip() if len(_g_parts) > 1 else ""
+        _proj_team = _home_sim if "home" in _projected.lower() else _away_sim
+        if _proj_team:
+            sim_agrees_with_bet = bool(
+                _word_set_sim(_proj_team) & _word_set_sim(_bet_team)
+            )
+
     return JSONResponse({
-        "sport_key":         sim.sport_key,
-        "game":              sim.game,
-        "home_team":         sim.home_team,
-        "away_team":         sim.away_team,
-        "n_sims":            sim.n_sims,
-        "projected_outcome": sim.projected_outcome,
-        "confidence":        sim.confidence,
-        "home_win_pct":      sim.home_win_pct,
-        "away_win_pct":      sim.away_win_pct,
-        "draw_pct":          sim.draw_pct,
-        "avg_home_score":    sim.avg_home_score,
-        "avg_away_score":    sim.avg_away_score,
-        "total_line":        sim_data.get("total_line"),
-        "over_pct":          sim_data.get("over_pct"),
-        "under_pct":         sim_data.get("under_pct"),
+        "sport_key":            sim.sport_key,
+        "game":                 sim.game,
+        "home_team":            sim.home_team,
+        "away_team":            sim.away_team,
+        "n_sims":               sim.n_sims,
+        "projected_outcome":    sim.projected_outcome,
+        "confidence":           sim.confidence,
+        "home_win_pct":         sim.home_win_pct,
+        "away_win_pct":         sim.away_win_pct,
+        "draw_pct":             sim.draw_pct,
+        "avg_home_score":       sim.avg_home_score,
+        "avg_away_score":       sim.avg_away_score,
+        "total_line":           sim_data.get("total_line"),
+        "over_pct":             sim_data.get("over_pct"),
+        "under_pct":            sim_data.get("under_pct"),
         "market_home_win_prob": sim_data.get("market_home_win_prob"),
         "market_away_win_prob": sim_data.get("market_away_win_prob"),
-        "market_draw_prob":  sim_data.get("market_draw_prob"),
-        "summary":           sim.summary,
-        "updated_at":        sim.updated_at.isoformat() if sim.updated_at else None,
+        "market_draw_prob":     sim_data.get("market_draw_prob"),
+        "summary":              sim.summary,
+        "updated_at":           sim.updated_at.isoformat() if sim.updated_at else None,
+        "sim_agrees_with_bet":  sim_agrees_with_bet,
     })
 
 
