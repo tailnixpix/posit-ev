@@ -48,6 +48,12 @@ ADJUSTMENT_CONFIG: dict = {
     "soccer_three_way_1x2":       True,   # handle home/draw/away separately
     "soccer_draw_no_bet":         True,   # compute DNB implied odds from 1X2
     "soccer_euro_fatigue":        True,   # discount midweek European competition teams
+
+    # --- NFL ---
+    "nfl_home_field":             True,   # apply empirical home-field boost
+    "nfl_rest_advantage":         True,   # penalise short-week teams (TNF) / reward bye weeks
+    "nfl_dome_weather":           True,   # penalise dome teams forced to play outdoor in elements
+    "nfl_division_game":          True,   # compress edge in intra-division matchups
 }
 
 # ---------------------------------------------------------------------------
@@ -79,6 +85,14 @@ class GameContext:
     # Soccer
     home_euro_midweek: bool = False   # home played Champions/Europa League in last 4 days
     away_euro_midweek: bool = False
+
+    # NFL
+    home_rest_days: int = 7           # days of rest before this game (7 = normal week)
+    away_rest_days: int = 7
+    home_dome: bool = False           # home team's home stadium is a dome
+    away_dome: bool = False           # away team's home stadium is a dome
+    is_outdoor_venue: bool = True     # today's venue is outdoor (matters for dome teams)
+    is_division_game: bool = False    # intra-division matchup
 
     # Injuries (shared, populated by context_fetcher)
     home_injuries: list = field(default_factory=list)  # notable injured players on home team
@@ -466,6 +480,208 @@ def apply_nba_adjustments(
 
 
 # ---------------------------------------------------------------------------
+# NFL adjustments
+# ---------------------------------------------------------------------------
+
+# Home field: NFL home teams win ~57% historically → ~+2.5% boost on true prob.
+_NFL_HOME_FIELD_BOOST   = 0.025
+
+# Rest edge: Thursday Night Football teams get only 4 days' rest vs. opponent's 7+.
+# Bye-week teams have 14 days' rest, a meaningful advantage.
+_NFL_SHORT_WEEK_PENALTY = 0.020   # ≤5 days rest
+_NFL_BYE_WEEK_BOOST     = 0.018   # ≥13 days rest (coming off bye)
+
+# Dome teams playing in outdoor elements (cold, wind, rain) are disadvantaged
+# because their offence is calibrated to a controlled environment.
+_NFL_DOME_OUTDOOR_PENALTY = 0.015
+
+# Division games: teams know each other inside out — edges compress toward 50/50.
+_NFL_DIVISION_SHRINK    = 0.012
+
+
+def nfl_home_field_adjustment(
+    ctx: GameContext,
+    home_prob: float,
+    away_prob: float,
+    config: dict = ADJUSTMENT_CONFIG,
+) -> tuple:
+    """
+    Apply an empirical home-field boost to the home team.
+
+    NFL home teams win ~57% of games historically. This translates to a
+    roughly +2.5pp nudge on the true probability before other adjustments.
+    """
+    if not config.get("nfl_home_field"):
+        return (
+            AdjustedProb(home_prob, home_prob),
+            AdjustedProb(away_prob, away_prob),
+        )
+
+    boost = _NFL_HOME_FIELD_BOOST
+    new_home = min(0.95, home_prob + boost)
+    new_away = max(0.05, away_prob - boost)
+
+    home_adj = AdjustedProb(
+        original_prob=home_prob,
+        adjusted_prob=new_home,
+        flags=[f"NFL HFA +{boost*100:.1f}%"],
+    )
+    away_adj = AdjustedProb(
+        original_prob=away_prob,
+        adjusted_prob=new_away,
+        flags=[],
+    )
+    return home_adj, away_adj
+
+
+def nfl_rest_adjustment(
+    ctx: GameContext,
+    home_prob: float,
+    away_prob: float,
+    config: dict = ADJUSTMENT_CONFIG,
+) -> tuple:
+    """
+    Penalise teams on a short week (≤5 rest days — Thursday Night Football)
+    and reward teams coming off a bye (≥13 rest days).
+
+    Rest-day counts default to 7 (normal NFL week) when not set by the
+    context fetcher.
+    """
+    if not config.get("nfl_rest_advantage"):
+        return (
+            AdjustedProb(home_prob, home_prob),
+            AdjustedProb(away_prob, away_prob),
+        )
+
+    home_delta = away_delta = 0.0
+    home_flags: list = []
+    away_flags: list = []
+
+    h_rest = ctx.home_rest_days
+    a_rest = ctx.away_rest_days
+
+    # Short-week penalty
+    if h_rest <= 5:
+        home_delta -= _NFL_SHORT_WEEK_PENALTY
+        home_flags.append(f"NFL short week ({h_rest}d) -{_NFL_SHORT_WEEK_PENALTY*100:.1f}%")
+    if a_rest <= 5:
+        away_delta -= _NFL_SHORT_WEEK_PENALTY
+        away_flags.append(f"NFL short week ({a_rest}d) -{_NFL_SHORT_WEEK_PENALTY*100:.1f}%")
+
+    # Bye-week boost
+    if h_rest >= 13:
+        home_delta += _NFL_BYE_WEEK_BOOST
+        home_flags.append(f"NFL bye-week rest ({h_rest}d) +{_NFL_BYE_WEEK_BOOST*100:.1f}%")
+    if a_rest >= 13:
+        away_delta += _NFL_BYE_WEEK_BOOST
+        away_flags.append(f"NFL bye-week rest ({a_rest}d) +{_NFL_BYE_WEEK_BOOST*100:.1f}%")
+
+    return (
+        AdjustedProb(home_prob, max(0.05, min(0.95, home_prob + home_delta)), flags=home_flags),
+        AdjustedProb(away_prob, max(0.05, min(0.95, away_prob + away_delta)), flags=away_flags),
+    )
+
+
+def nfl_dome_weather_adjustment(
+    ctx: GameContext,
+    home_prob: float,
+    away_prob: float,
+    config: dict = ADJUSTMENT_CONFIG,
+) -> tuple:
+    """
+    Discount dome-based teams when the game is played outdoors.
+
+    A dome team's offence (typically pass-heavy) is calibrated to a
+    controlled environment. Playing in cold/wind/rain reduces their edge.
+    Only applies when `is_outdoor_venue=True` and at least one team is a
+    dome team.
+    """
+    if not config.get("nfl_dome_weather"):
+        return (
+            AdjustedProb(home_prob, home_prob),
+            AdjustedProb(away_prob, away_prob),
+        )
+
+    home_delta = away_delta = 0.0
+    home_flags: list = []
+    away_flags: list = []
+
+    if ctx.is_outdoor_venue:
+        if ctx.home_dome:
+            home_delta -= _NFL_DOME_OUTDOOR_PENALTY
+            away_delta += _NFL_DOME_OUTDOOR_PENALTY
+            home_flags.append(f"NFL dome team outdoor -{_NFL_DOME_OUTDOOR_PENALTY*100:.1f}%")
+        if ctx.away_dome:
+            away_delta -= _NFL_DOME_OUTDOOR_PENALTY
+            home_delta += _NFL_DOME_OUTDOOR_PENALTY
+            away_flags.append(f"NFL dome team outdoor -{_NFL_DOME_OUTDOOR_PENALTY*100:.1f}%")
+
+    return (
+        AdjustedProb(home_prob, max(0.05, min(0.95, home_prob + home_delta)), flags=home_flags),
+        AdjustedProb(away_prob, max(0.05, min(0.95, away_prob + away_delta)), flags=away_flags),
+    )
+
+
+def nfl_division_game_adjustment(
+    ctx: GameContext,
+    home_prob: float,
+    away_prob: float,
+    config: dict = ADJUSTMENT_CONFIG,
+) -> tuple:
+    """
+    Compress the edge toward 50/50 for intra-division games.
+
+    Division teams face each other twice per season; familiarity reduces
+    scheme advantages and games are historically tighter than non-division
+    matchups.
+    """
+    if not config.get("nfl_division_game") or not ctx.is_division_game:
+        return (
+            AdjustedProb(home_prob, home_prob),
+            AdjustedProb(away_prob, away_prob),
+        )
+
+    shrink = _NFL_DIVISION_SHRINK
+    new_home = home_prob - shrink * (home_prob - 0.5)
+    new_away = away_prob - shrink * (away_prob - 0.5)
+
+    return (
+        AdjustedProb(home_prob, max(0.05, min(0.95, new_home)),
+                     flags=[f"NFL division game edge compressed {shrink*100:.0f}%"]),
+        AdjustedProb(away_prob, max(0.05, min(0.95, new_away)), flags=[]),
+    )
+
+
+def apply_nfl_adjustments(
+    ctx: GameContext,
+    home_prob: float,
+    away_prob: float,
+    config: dict = ADJUSTMENT_CONFIG,
+) -> tuple:
+    """Apply all enabled NFL adjustments in order and return (home_adj, away_adj)."""
+    home_adj, away_adj = nfl_home_field_adjustment(ctx, home_prob, away_prob, config)
+    h2, a2 = nfl_rest_adjustment(ctx, home_adj.effective_prob, away_adj.effective_prob, config)
+    home_adj.adjusted_prob = h2.effective_prob
+    away_adj.adjusted_prob = a2.effective_prob
+    home_adj.flags.extend(h2.flags)
+    away_adj.flags.extend(a2.flags)
+
+    h3, a3 = nfl_dome_weather_adjustment(ctx, home_adj.effective_prob, away_adj.effective_prob, config)
+    home_adj.adjusted_prob = h3.effective_prob
+    away_adj.adjusted_prob = a3.effective_prob
+    home_adj.flags.extend(h3.flags)
+    away_adj.flags.extend(a3.flags)
+
+    h4, a4 = nfl_division_game_adjustment(ctx, home_adj.effective_prob, away_adj.effective_prob, config)
+    home_adj.adjusted_prob = h4.effective_prob
+    away_adj.adjusted_prob = a4.effective_prob
+    home_adj.flags.extend(h4.flags)
+    away_adj.flags.extend(a4.flags)
+
+    return home_adj, away_adj
+
+
+# ---------------------------------------------------------------------------
 # Soccer adjustments
 # ---------------------------------------------------------------------------
 
@@ -791,6 +1007,19 @@ def apply_adjustments(
             "warnings": result["warnings"],
             "confidence_multipliers": [1.0] * len(adjusted),
             "extra": {"dnb": result["dnb"]},
+        }
+
+    elif sport == "americanfootball_nfl":
+        if len(probs) < 2:
+            return {"adjusted_probs": probs, "flags": [], "warnings": ["Not enough probs for NFL"], "extra": {}}
+        home_prob, away_prob = probs[0], probs[1]
+        home_adj, away_adj = apply_nfl_adjustments(ctx, home_prob, away_prob, config)
+        return {
+            "adjusted_probs": [home_adj.effective_prob, away_adj.effective_prob],
+            "flags": home_adj.flags + away_adj.flags,
+            "warnings": home_adj.warnings + away_adj.warnings,
+            "confidence_multipliers": [home_adj.confidence_multiplier, away_adj.confidence_multiplier],
+            "extra": {},
         }
 
     elif sport.startswith("golf_"):

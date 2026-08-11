@@ -68,6 +68,7 @@ LEAGUE_ALIASES: dict = {
     "nhl":        "icehockey_nhl",
     "nba":        "basketball_nba",
     "mlb":        "baseball_mlb",
+    "nfl":        "americanfootball_nfl",
     "epl":        "soccer_epl",
     "laliga":     "soccer_spain_la_liga",
     "bundesliga": "soccer_germany_bundesliga",

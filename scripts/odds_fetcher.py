@@ -32,6 +32,7 @@ SPORT_KEYS = [
     "icehockey_nhl",
     "basketball_nba",
     "baseball_mlb",
+    "americanfootball_nfl",
     "soccer_epl",
     "soccer_spain_la_liga",
     "soccer_germany_bundesliga",
