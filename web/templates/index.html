@@ -1586,20 +1586,20 @@ html { background: #060A14; }
         <span class="announce-pill-dot"></span>
         📬 Free daily pick — no card required &nbsp;&bull;&nbsp; Sent every morning at 8 AM CT
       </div>
-      <div class="hero-eyebrow">⚡ Live odds &nbsp;&bull;&nbsp; 10+ sportsbooks &nbsp;&bull;&nbsp; 8 leagues &nbsp;&bull;&nbsp; Updated every 30 min</div>
-      <h1>Stop guessing. Start betting with a <span class="accent">mathematical edge</span>.</h1>
+      <div class="hero-eyebrow">⚡ Live odds &nbsp;&bull;&nbsp; 10+ sportsbooks &nbsp;&bull;&nbsp; 9 leagues incl. NFL &nbsp;&bull;&nbsp; Updated every 30 min</div>
+      <h1>NFL season +EV picks — every game, powered by <span class="accent">data</span>.</h1>
       <p class="hero-sub">
         Posit+EV scans every major sportsbook and prediction market, finds where the books have
         the price wrong, and surfaces every +EV bet before the line moves —
         including Kalshi, Polymarket, NoVig &amp; ProphetX, available in all 50 states.
       </p>
       <div class="hero-actions">
-        <a href="#free-pick" class="btn-hero-primary" onclick="setTimeout(function(){var el=document.getElementById('nlEmail');if(el)el.focus();},400);">Get Today's Free Pick &rarr;</a>
-        <a href="/register" class="btn-hero-ghost">Start 7-Day Free Trial</a>
+        <a href="/dashboard?league=americanfootball_nfl" class="btn-hero-primary">See Today's NFL Edges &rarr;</a>
+        <a href="#free-pick" class="btn-hero-ghost" onclick="setTimeout(function(){var el=document.getElementById('nlEmail');if(el)el.focus();},400);">Get Free Pick</a>
       </div>
       <div class="hero-trust">
         <span><span class="ht-check">✓</span> Free pick every morning — no card needed</span>
-        <span><span class="ht-check">✓</span> Player Props (NBA, MLB, NHL)</span>
+        <span><span class="ht-check">✓</span> Player Props (NFL, NBA, MLB, NHL)</span>
         <span><span class="ht-check">✓</span> Prediction Markets — all 50 states</span>
         <span><span class="ht-check">✓</span> CLV tracker — know if your bets beat the closing line</span>
         <span><span class="ht-check">✓</span> 🔥 Sharp move alerts on steaming lines</span>
@@ -1612,7 +1612,7 @@ html { background: #060A14; }
           <span class="hcov-pill">🏀 NBA</span>
           <span class="hcov-pill">⚾ MLB</span>
           <span class="hcov-pill">⚽ EPL · La Liga · Bundesliga · MLS · UCL</span>
-          <span class="hcov-pill soon">🏈 NFL — Coming Fall 2026</span>
+          <span class="hcov-pill">🏈 NFL</span>
         </div>
         <div class="hcov-row">
           <span class="hcov-pill props">🎯 Props — NBA, MLB, NHL &nbsp;·&nbsp; Team Totals &nbsp;·&nbsp; NRFI/YRFI</span>
@@ -2691,7 +2691,7 @@ html { background: #060A14; }
       <div style="text-align:left;margin-bottom:30px;display:flex;flex-direction:column;gap:11px;">
         <div style="display:flex;align-items:center;gap:10px;font-size:0.9rem;color:#c8d8e8;">
           <span style="color:#00D68F;font-weight:800;flex-shrink:0;font-size:1rem;">✓</span>
-          50+ +EV picks daily across all 8 leagues
+          50+ +EV picks daily across all 9 leagues
         </div>
         <div style="display:flex;align-items:center;gap:10px;font-size:0.9rem;color:#c8d8e8;">
           <span style="color:#00D68F;font-weight:800;flex-shrink:0;font-size:1rem;">✓</span>
@@ -2731,14 +2731,72 @@ html { background: #060A14; }
   </div>
 </section>
 
+{# ── NFL Bet Types ──────────────────────────────────────────────────────── #}
+<section class="section" style="background:linear-gradient(180deg,#07091a 0%,#0c0f24 100%);border-top:1px solid rgba(83,74,183,0.2);border-bottom:1px solid rgba(83,74,183,0.2);">
+  <div class="container">
+    <p class="section-label" style="text-align:center;color:#a78bfa;">NFL</p>
+    <h2 class="section-title" style="text-align:center;margin:0 auto var(--space-4);">
+      Every NFL bet type, covered.
+    </h2>
+    <p style="text-align:center;color:rgba(255,255,255,.55);font-size:1rem;max-width:560px;margin:0 auto var(--space-8);">
+      New to sports betting or just new to football? Here's what each bet type means — and where the edges are.
+    </p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px;">
+      <div style="background:rgba(83,74,183,0.08);border:1px solid rgba(83,74,183,0.2);border-radius:14px;padding:24px 20px;">
+        <div style="font-size:1.6rem;margin-bottom:10px;">🏆</div>
+        <div style="font-weight:800;font-size:1rem;color:#e2e8f0;margin-bottom:6px;">Moneyline</div>
+        <div style="font-size:0.85rem;color:rgba(255,255,255,.5);line-height:1.5;">Pick which team wins outright. No point spread — just win or lose. Biggest +EV opportunities are here when books misprice a team's true win probability.</div>
+      </div>
+      <div style="background:rgba(83,74,183,0.08);border:1px solid rgba(83,74,183,0.2);border-radius:14px;padding:24px 20px;">
+        <div style="font-size:1.6rem;margin-bottom:10px;">📐</div>
+        <div style="font-weight:800;font-size:1rem;color:#e2e8f0;margin-bottom:6px;">Spread</div>
+        <div style="font-size:0.85rem;color:rgba(255,255,255,.5);line-height:1.5;">Your team must win (or lose by less than) the point spread. E.g., Chiefs -6.5 means KC wins by 7+. Our model finds spreads priced too wide or too tight.</div>
+      </div>
+      <div style="background:rgba(83,74,183,0.08);border:1px solid rgba(83,74,183,0.2);border-radius:14px;padding:24px 20px;">
+        <div style="font-size:1.6rem;margin-bottom:10px;">🎯</div>
+        <div style="font-weight:800;font-size:1rem;color:#e2e8f0;margin-bottom:6px;">Total (O/U)</div>
+        <div style="font-size:0.85rem;color:rgba(255,255,255,.5);line-height:1.5;">Bet on whether the combined score goes over or under the line. Weather, pace of play, and defensive matchups create regular mispricing the public ignores.</div>
+      </div>
+      <div style="background:rgba(83,74,183,0.08);border:1px solid rgba(83,74,183,0.2);border-radius:14px;padding:24px 20px;">
+        <div style="font-size:1.6rem;margin-bottom:10px;">🎲</div>
+        <div style="font-weight:800;font-size:1rem;color:#e2e8f0;margin-bottom:6px;">Player Props</div>
+        <div style="font-size:0.85rem;color:rgba(255,255,255,.5);line-height:1.5;">Bet on individual stat lines — passing yards, receiving TDs, rush attempts. Books set these quickly and often get them wrong. Our model finds the gaps before they close.</div>
+      </div>
+      <div style="background:rgba(83,74,183,0.08);border:1px solid rgba(83,74,183,0.2);border-radius:14px;padding:24px 20px;">
+        <div style="font-size:1.6rem;margin-bottom:10px;">🔗</div>
+        <div style="font-weight:800;font-size:1rem;color:#e2e8f0;margin-bottom:6px;">Same Game Parlay</div>
+        <div style="font-size:0.85rem;color:rgba(255,255,255,.5);line-height:1.5;">Combine multiple bets from the same game into one ticket for bigger payouts. SGPs with correlated legs (e.g., QB passing yards + team total) offer the most edge.</div>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:36px;">
+      <a href="/register" style="display:inline-block;background:linear-gradient(135deg,#534AB7 0%,#7C3AED 100%);color:#fff;font-weight:800;font-size:0.95rem;padding:14px 28px;border-radius:10px;text-decoration:none;letter-spacing:0.01em;">
+        See today's NFL edges &rarr;
+      </a>
+    </div>
+  </div>
+</section>
+
 {# ── Leagues ───────────────────────────────────────────────────────────── #}
 <section class="section section-white">
   <div class="container">
     <p class="section-label" style="text-align:center;">Coverage</p>
     <h2 class="section-title" style="text-align:center; margin:0 auto var(--space-6);">
-      8 leagues. Every day.
+      9 leagues. Every day.
     </h2>
     <div class="leagues-grid">
+
+      <div class="league-card" style="border-color:rgba(83,74,183,0.35);background:rgba(83,74,183,0.06);">
+        <div class="league-emoji">🏈</div>
+        <p class="league-name">NFL</p>
+        <p class="league-full">National Football League</p>
+        <div class="league-markets">
+          <span class="market-dot">ML</span>
+          <span class="market-dot">Spread</span>
+          <span class="market-dot">Total</span>
+          <span class="market-dot market-dot-props">Player Props</span>
+          <span class="market-dot market-dot-props">SGPs</span>
+        </div>
+      </div>
 
       <div class="league-card">
         <div class="league-emoji">🏒</div>

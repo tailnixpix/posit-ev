@@ -853,7 +853,9 @@ main { max-width: none !important; padding: 0 !important; }
   white-space: nowrap;
 }
 .badge-league { background: rgba(79,158,255,0.12); color: var(--d-blue); }
-.badge-market { background: rgba(155,121,250,0.12); color: var(--d-purple); }
+.badge-nfl      { background: rgba(83,74,183,0.18); color: #a78bfa; border: 1px solid rgba(83,74,183,0.35); }
+.badge-bet-type { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.45); border: 1px solid rgba(255,255,255,0.08); }
+.badge-market   { background: rgba(155,121,250,0.12); color: var(--d-purple); }
 .badge-book   { background: var(--d-bright); color: var(--d-sub); }
 .badge-pm     { background: rgba(155,121,250,0.12); color: var(--d-purple); }
 
@@ -2624,6 +2626,7 @@ main { max-width: none !important; padding: 0 !important; }
 {# ── Sport bar ── #}
 <div class="sport-bar" id="sportBar">
   <button class="sport-pill active" data-filter="league" data-value="all">All Picks</button>
+  <button class="sport-pill" id="nflPill" data-filter="league" data-value="americanfootball_nfl">🏈 NFL</button>
   <button class="sport-pill" data-filter="league" data-value="icehockey_nhl">🏒 NHL</button>
   <button class="sport-pill" data-filter="league" data-value="basketball_nba">🏀 NBA</button>
   <button class="sport-pill" data-filter="league" data-value="baseball_mlb">⚾ MLB</button>
@@ -2787,6 +2790,24 @@ main { max-width: none !important; padding: 0 !important; }
     </div>
     {% endif %}
 
+    {# NFL Season banner — shown when NFL bets are available today #}
+    {% set _nfl_count = namespace(v=0) %}
+    {% for _b in bets %}{% if _b.league == 'americanfootball_nfl' %}{% set _nfl_count.v = _nfl_count.v + 1 %}{% endif %}{% endfor %}
+    {% if _nfl_count.v > 0 %}
+    <div id="nflBanner" style="display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,rgba(83,74,183,0.15) 0%,rgba(83,74,183,0.06) 100%);border:1px solid rgba(83,74,183,0.3);border-radius:10px;padding:12px 18px;margin-bottom:16px;">
+      <span style="font-size:1.4rem;flex-shrink:0;">🏈</span>
+      <div style="flex:1;">
+        <span style="font-weight:700;color:#a78bfa;font-size:0.95rem;">NFL Season is live —</span>
+        <span style="color:rgba(255,255,255,.65);font-size:0.9rem;"> {{ _nfl_count.v }} +EV pick{{ 's' if _nfl_count.v != 1 else '' }} available today.</span>
+      </div>
+      <button onclick="document.getElementById('nflPill') && document.getElementById('nflPill').click(); document.getElementById('nflBanner').remove();"
+              style="background:rgba(83,74,183,0.25);border:1px solid rgba(83,74,183,0.4);color:#a78bfa;font-weight:700;font-size:0.8rem;padding:6px 14px;border-radius:7px;cursor:pointer;white-space:nowrap;">
+        View NFL picks →
+      </button>
+      <button onclick="document.getElementById('nflBanner').remove()" style="background:none;border:none;color:rgba(255,255,255,.35);cursor:pointer;font-size:1rem;flex-shrink:0;">✕</button>
+    </div>
+    {% endif %}
+
     {# Subheader #}
     <div class="dash-subheader">
       <div class="dash-title-block">
@@ -2926,7 +2947,11 @@ main { max-width: none !important; padding: 0 !important; }
             <div class="card-hdr">
               {# Left: league badge + optional source badge — wrapped so flex:1 absorbs space #}
               <div class="card-hdr-left">
-                <span class="badge badge-league">{{ league_display }}</span>
+                <span class="badge {{ 'badge-nfl' if bet.league == 'americanfootball_nfl' else 'badge-league' }}">{{ league_display }}</span>
+                {% if market_key == 'h2h' %}<span class="badge badge-bet-type">Straight</span>
+                {% elif market_key == 'spreads' %}<span class="badge badge-bet-type">Spread</span>
+                {% elif market_key == 'totals' %}<span class="badge badge-bet-type">Total</span>
+                {% elif market_key == 'props' %}<span class="badge badge-bet-type">Prop</span>{% endif %}
                 {% if (bet.source_type or 'sportsbook') == 'exchange' %}
                 <span class="badge badge-pm" style="background:rgba(250,199,117,0.12);color:#F9C74F;">⚡ Exchange</span>
                 {% elif (bet.source_type or 'sportsbook') == 'prediction_market' %}
@@ -4004,7 +4029,14 @@ function sortCards() {
   const grid  = document.getElementById('cardsGrid');
   if (!grid) return;
   const cards = Array.from(grid.querySelectorAll('.bet-card'));
+  const nflFirst = activeLeague === 'all';
   cards.sort((a, b) => {
+    // In "All Picks" view, NFL cards float to the top as a group
+    if (nflFirst) {
+      const aNfl = a.dataset.league === 'americanfootball_nfl' ? 0 : 1;
+      const bNfl = b.dataset.league === 'americanfootball_nfl' ? 0 : 1;
+      if (aNfl !== bNfl) return aNfl - bNfl;
+    }
     switch (activeSort) {
       case 'ev_asc':   return parseFloat(a.dataset.ev) - parseFloat(b.dataset.ev);
       case 'time_asc': { const ta = a.dataset.commence ? new Date(a.dataset.commence).getTime() : Infinity; const tb = b.dataset.commence ? new Date(b.dataset.commence).getTime() : Infinity; return ta - tb; }
