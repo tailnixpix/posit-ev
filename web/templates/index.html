@@ -37,7 +37,7 @@ main { max-width: none; padding: 0; }
 /* ── Track record table ────────────────────────────────────────────── */
 .tr-stats { display:flex; justify-content:center; gap:40px; margin-bottom:var(--space-6); flex-wrap:wrap; }
 .tr-stat { text-align:center; }
-.tr-stat-val { font-size:2rem; font-weight:800; color:var(--text-primary); line-height:1; }
+.tr-stat-val { font-size:2rem; font-weight:800; color:#0F6E56; line-height:1; }
 .tr-stat-lbl { font-size:0.75rem; color:var(--text-muted); margin-top:4px; font-weight:500; }
 .tr-table-wrap { overflow-x:auto; border-radius:12px; border:1px solid var(--brand-border); }
 .tr-table { width:100%; border-collapse:collapse; font-size:0.85rem; }
@@ -77,7 +77,7 @@ main { max-width: none; padding: 0; }
 }
 .tr-chart-wrap {
   position: relative; max-width: 680px; margin: var(--space-5) auto var(--space-2);
-  background: linear-gradient(160deg, rgba(83,74,183,0.04) 0%, #fff 60%);
+  background: #ffffff;
   border: 1px solid var(--brand-border);
   border-top: 3px solid #534AB7;
   border-radius: 20px; padding: 28px 28px 20px; overflow: hidden;
@@ -92,8 +92,8 @@ main { max-width: none; padding: 0; }
   text-transform:uppercase; color:var(--text-muted); margin-bottom:3px;
 }
 .tr-chart-kpis { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
-.tr-chart-roi  { font-size:2rem; font-weight:800; line-height:1; }
-.tr-chart-pl   { font-size:1rem; font-weight:700; line-height:1; opacity:0.85; }
+.tr-chart-roi  { font-size:2rem; font-weight:800; line-height:1; color:#0F6E56; }
+.tr-chart-pl   { font-size:1rem; font-weight:700; line-height:1; opacity:0.85; color:#0F6E56; }
 .tr-chart-since { font-size:0.72rem; color:var(--text-muted); margin-top:2px; }
 .tr-chart-wrap canvas { display:block; width:100% !important; }
 .tr-toggle-wrap { text-align:center; margin:var(--space-4) 0 var(--space-2); }
@@ -1532,7 +1532,7 @@ html { background: #060A14; }
 .tr-table th { color: #64748b; border-color: #1A2740; }
 .tr-table td { border-color: rgba(255,255,255,.04); }
 .tr-table tbody tr:hover { background: rgba(255,255,255,.03); }
-.tr-stat-val { color: #e2e8f0 !important; }
+.tr-stat-val { color: #0F6E56 !important; }
 .tr-stat-lbl { color: #64748b !important; }
 .tr-team     { color: #e2e8f0 !important; }
 .tr-date     { color: #64748b !important; }
@@ -1549,7 +1549,7 @@ html { background: #060A14; }
 .tr-toggle-btn:hover { background: #131D2E; border-color: rgba(124,58,237,.4); }
 .tr-assumption { color: #64748b; }
 .tr-streak-banner { background: linear-gradient(90deg, #0D0B1E 0%, #141028 100%); border-color: #2A2650; }
-.tr-chart-wrap { background: linear-gradient(160deg, rgba(83,74,183,0.12) 0%, #0F1923 60%) !important; border-color: rgba(124,58,237,0.22) !important; border-top-color: #534AB7 !important; }
+.tr-chart-wrap { background: #0F1923 !important; border-color: rgba(124,58,237,0.22) !important; border-top-color: #534AB7 !important; }
 .tr-chart-label { color: #64748b !important; }
 .tr-chart-since { color: #64748b !important; }
 .tr-filter-pill { background: rgba(255,255,255,0.04) !important; border-color: rgba(255,255,255,0.1) !important; color: rgba(255,255,255,0.5) !important; }
@@ -2926,7 +2926,7 @@ html { background: #060A14; }
 </section>
 
 {# ── Track Record ───────────────────────────────────────────────────────── #}
-<section class="section section-white" id="track-record" style="background:linear-gradient(180deg,#f8f7ff 0%,#fff 100%);padding-top:80px;padding-bottom:80px;">
+<section class="section section-white" id="track-record" style="padding-top:80px;padding-bottom:80px;">
   <div class="container">
     <p class="section-label" style="text-align:center;">Verified Results</p>
     <h2 class="section-title" style="text-align:center; margin:0 auto var(--space-4);">
@@ -2944,23 +2944,23 @@ html { background: #060A14; }
       </div>
       <div class="tr-stat">
         {% if track_roi is not none %}
-        <div class="tr-stat-val" id="trStatROI" style="color:{% if track_roi >= 0 %}#16A34A{% else %}#DC2626{% endif %};">
+        <div class="tr-stat-val" id="trStatROI">
           {% if track_roi >= 0 %}+{{ '%.1f'|format(track_roi) }}%{% else %}{{ '%.1f'|format(track_roi) }}%{% endif %}
         </div>
         <div class="tr-stat-lbl" id="trStatRecord">ROI · {{ track_won }}W – {{ track_lost }}L</div>
         {% else %}
-        <div class="tr-stat-val" id="trStatROI" style="color:#16A34A;">{{ track_won }}W – {{ track_lost }}L</div>
+        <div class="tr-stat-val" id="trStatROI">{{ track_won }}W – {{ track_lost }}L</div>
         <div class="tr-stat-lbl" id="trStatRecord">Record</div>
         {% endif %}
       </div>
       <div class="tr-stat">
-        <div class="tr-stat-val" id="trStatPL" style="color:{% if track_pl >= 0 %}#16A34A{% else %}#DC2626{% endif %};">
+        <div class="tr-stat-val" id="trStatPL">
           {% if track_pl >= 0 %}+${{ '%.2f'|format(track_pl) }}{% else %}-${{ '%.2f'|format(-track_pl) }}{% endif %}
         </div>
         <div class="tr-stat-lbl">P&amp;L</div>
       </div>
       <div class="tr-stat">
-        <div class="tr-stat-val" id="trStatUnits" style="color:{% if track_units >= 0 %}#16A34A{% else %}#DC2626{% endif %};">
+        <div class="tr-stat-val" id="trStatUnits">
           {% if track_units >= 0 %}+{{ '%.1f'|format(track_units) }}{% else %}{{ '%.1f'|format(track_units) }}{% endif %} u
         </div>
         <div class="tr-stat-lbl">Units</div>
@@ -2979,8 +2979,8 @@ html { background: #060A14; }
           </div>
           <div class="tr-chart-kpis">
             {% if track_roi is not none %}
-            <span class="tr-chart-roi" style="color:{{ _roi_color }};">{% if track_roi >= 0 %}+{% endif %}{{ '%.1f'|format(track_roi) }}% <span style="font-size:0.9rem; font-weight:700;">ROI</span></span>
-            <span class="tr-chart-pl"  style="color:{{ _roi_color }};">{% if track_pl >= 0 %}+${{ '%.2f'|format(track_pl) }}{% else %}-${{ '%.2f'|format(-track_pl) }}{% endif %}</span>
+            <span class="tr-chart-roi">{% if track_roi >= 0 %}+{% endif %}{{ '%.1f'|format(track_roi) }}% <span style="font-size:0.9rem; font-weight:700;">ROI</span></span>
+            <span class="tr-chart-pl">{% if track_pl >= 0 %}+${{ '%.2f'|format(track_pl) }}{% else %}-${{ '%.2f'|format(-track_pl) }}{% endif %}</span>
             {% endif %}
           </div>
         </div>
@@ -3405,8 +3405,8 @@ html { background: #060A14; }
 
   var finalRoi  = values[values.length - 1];
   var isPos     = finalRoi >= 0;
-  var lineColor = isPos ? '#00D68F' : '#f87171';
-  var glowColor = isPos ? 'rgba(0,214,143,0.15)' : 'rgba(248,113,113,0.12)';
+  var lineColor = isPos ? '#0F6E56' : '#f87171';
+  var glowColor = isPos ? 'rgba(15,110,86,0.15)' : 'rgba(248,113,113,0.12)';
 
   /* detect dark background */
   var isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -3417,8 +3417,9 @@ html { background: #060A14; }
   var ctx = canvas.getContext('2d');
 
   var grad = ctx.createLinearGradient(0, 0, 0, 200);
-  grad.addColorStop(0,   isPos ? 'rgba(0,214,143,0.18)' : 'rgba(248,113,113,0.15)');
-  grad.addColorStop(0.7, isPos ? 'rgba(0,214,143,0.04)' : 'rgba(248,113,113,0.03)');
+  grad.addColorStop(0,   isPos ? 'rgba(15,110,86,0.12)' : 'rgba(248,113,113,0.12)');
+  grad.addColorStop(0.7, isPos ? 'rgba(15,110,86,0.02)' : 'rgba(248,113,113,0.02)');
+
   grad.addColorStop(1,   'rgba(0,0,0,0)');
 
   new Chart(ctx, {
