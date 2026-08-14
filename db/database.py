@@ -348,6 +348,19 @@ def ensure_columns() -> None:
                     print(f"[db] Added missing column: {table_name}.{col.name} ({sql_type})")
                 except Exception as _exc:
                     print(f"[db] Warning: could not add {table_name}.{col.name}: {_exc}")
+
+        # Ensure unique index on newsletter_subscribers.email (guards against
+        # tables created before the unique=True constraint was in the model).
+        try:
+            with engine.begin() as conn:
+                conn.execute(_text(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS"
+                    " ix_newsletter_subscribers_email_unique"
+                    " ON newsletter_subscribers (email)"
+                ))
+        except Exception as _exc:
+            print(f"[db] Warning: could not ensure newsletter email unique index: {_exc}")
+
     except Exception as _top:
         print(f"[db] ensure_columns failed (non-fatal): {_top}")
 

@@ -2031,7 +2031,8 @@ html { background: #060A14; }
             required
             class="nl-input"
           />
-          <button type="submit" id="nlBtn" class="nl-btn-primary">
+          <button type="submit" id="nlBtn" class="nl-btn-primary"
+                  onclick="if(!this.form.checkValidity())return;this.disabled=true;">
             Get My Free Pick &rarr;
           </button>
         </div>

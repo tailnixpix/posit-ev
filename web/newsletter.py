@@ -38,6 +38,7 @@ if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
 from config import LOCAL_TZ                                   # noqa: E402
+from sqlalchemy.exc import IntegrityError                                          # noqa: E402
 from db.database import DailyPick, EVBetCache, NewsletterSubscriber, SessionLocal  # noqa: E402
 from web.beehiiv import add_subscriber as bh_add, remove_subscriber as bh_remove, create_post as bh_post  # noqa: E402
 
@@ -1521,6 +1522,7 @@ async def newsletter_subscribe(
         )
 
     db = SessionLocal()
+    already_active = False
     try:
         existing = (
             db.query(NewsletterSubscriber)
@@ -1530,6 +1532,7 @@ async def newsletter_subscribe(
 
         if existing:
             if existing.is_active:
+                # Already subscribed — skip insert and skip welcome email entirely
                 return JSONResponse(
                     {"status": "already_subscribed",
                      "message": "You're already subscribed to daily picks."},
@@ -1541,14 +1544,20 @@ async def newsletter_subscribe(
             log.info("Newsletter: re-activated subscriber %s", email)
         else:
             subscriber = NewsletterSubscriber(
-                email       = email,
+                email         = email,
                 subscribed_at = datetime.now(timezone.utc),
-                is_active   = True,
+                is_active     = True,
             )
             db.add(subscriber)
             db.commit()
             log.info("Newsletter: new subscriber %s", email)
 
+    except IntegrityError:
+        # Race condition: another request inserted the same email between our
+        # check and our insert. Treat as already-subscribed.
+        db.rollback()
+        log.info("Newsletter: duplicate insert caught for %s — already subscribed", email)
+        already_active = True
     except Exception as exc:
         db.rollback()
         log.error("Newsletter subscribe DB error for %s: %s", email, exc)
@@ -1558,6 +1567,13 @@ async def newsletter_subscribe(
         )
     finally:
         db.close()
+
+    if already_active:
+        return JSONResponse(
+            {"status": "already_subscribed",
+             "message": "You're already subscribed to daily picks."},
+            status_code=200,
+        )
 
     # Sync to Beehiiv (non-blocking)
     try:
