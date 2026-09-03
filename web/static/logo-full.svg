@@ -9,8 +9,7 @@
     </filter>
   </defs>
 
-  <!-- Dark background -->
-  <rect width="380" height="90" rx="8" fill="#111827"/>
+  <!-- No background — transparent so it blends with any hero gradient -->
 
   <!-- Bars icon (70×70 canvas, offset to center vertically at y=10) -->
   <g transform="translate(12,10)">
@@ -22,10 +21,10 @@
     <rect x="36" y="23.8" width="13" height="46.2" rx="3" fill="#534AB7"/>
     <!-- Bar 4: spike -->
     <rect x="54" y="4.2"  width="13" height="65.8" rx="3" fill="#00D68F" filter="url(#spike-glow-f)"/>
-    <!-- Dot rings centred on top edge of bar 4 (cx=60.5, cy=4.2) -->
-    <circle cx="60.5" cy="4.2" r="5.5" fill="#111827"/>
+    <!-- Dot rings centred on top edge of bar 4 -->
+    <circle cx="60.5" cy="4.2" r="5.5" fill="#080C14"/>
     <circle cx="60.5" cy="4.2" r="3.8" fill="#00D68F"/>
-    <circle cx="60.5" cy="4.2" r="1.6" fill="#111827"/>
+    <circle cx="60.5" cy="4.2" r="1.6" fill="#080C14"/>
   </g>
 
   <!-- Wordmark -->
