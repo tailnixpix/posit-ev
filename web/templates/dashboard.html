@@ -21,6 +21,7 @@
   --d-sub:      #8896AB;
   --d-muted:    #3D4F66;
   --d-red:      #FF5B5B;
+  --d-primary:  #534AB7;
 }
 body, html {
   background: var(--d-bg) !important;
@@ -54,7 +55,7 @@ main { max-width: none !important; padding: 0 !important; }
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 10px 20px;
+  padding: 8px 20px;
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -64,20 +65,19 @@ main { max-width: none !important; padding: 0 !important; }
   align-items: center;
   gap: 5px;
   background: transparent;
+  color: var(--d-sub);
   border: 1px solid var(--d-border);
   border-radius: 20px;
   padding: 5px 14px;
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   font-weight: 600;
-  color: var(--d-sub);
-  cursor: pointer;
   white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.15s ease;
   font-family: inherit;
-  transition: all 0.12s;
-  flex-shrink: 0;
 }
-.sport-pill:hover { border-color: var(--d-green); color: var(--d-green); }
-.sport-pill.active { background: var(--d-green-dim); border-color: var(--d-green); color: var(--d-green); }
+.sport-pill:hover { color: var(--d-text); border-color: var(--d-bright); }
+.sport-pill.active { background: #534AB7; color: #fff; border-color: #534AB7; }
 .sport-pill .pill-count {
   font-size: 0.62rem;
   background: var(--d-bright);
@@ -540,7 +540,7 @@ main { max-width: none !important; padding: 0 !important; }
 .dash-main {
   flex: 1;
   min-width: 0;
-  padding: 28px 28px 80px;
+  padding: 20px 24px 80px;
 }
 
 /* ── Subheader bar ── */
@@ -567,15 +567,9 @@ main { max-width: none !important; padding: 0 !important; }
 .dash-chips-row { display: contents; }
 /* Desktop: controls-row is transparent — controls behave as direct flex children */
 .dash-controls-row { display: contents; }
-.stat-chip {
-  background: var(--d-surface);
-  border: 1px solid var(--d-border);
-  border-radius: 8px;
-  padding: 6px 12px;
-  text-align: center;
-}
-.stat-chip .sc-val { font-size: 1rem; font-weight: 800; color: var(--d-green); line-height: 1; }
-.stat-chip .sc-lbl { font-size: 0.6rem; color: var(--d-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+.stat-chip { background: var(--d-card); border: 1px solid var(--d-border); border-radius: 8px; padding: 8px 14px; display: flex; flex-direction: column; gap: 1px; min-width: 80px; }
+.stat-chip .sc-val { font-size: 1rem; font-weight: 700; color: var(--d-green); line-height: 1.2; }
+.stat-chip .sc-lbl { font-size: 0.6rem; color: var(--d-sub); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 0; }
 
 /* View toggle */
 .view-toggle {
@@ -618,8 +612,8 @@ main { max-width: none !important; padding: 0 !important; }
 
 .cards-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 16px;
   align-items: start;
 }
 
@@ -627,10 +621,11 @@ main { max-width: none !important; padding: 0 !important; }
   background: var(--d-card);
   border: 1px solid var(--d-border);
   border-radius: 12px;
-  overflow: hidden;
+  overflow: visible;
   animation: card-in 0.3s ease both;
   transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
   position: relative;
+  min-height: 0;
 }
 .bet-card:hover {
   border-color: var(--d-bright);
@@ -659,24 +654,27 @@ main { max-width: none !important; padding: 0 !important; }
 }
 /* Elite ribbon accent at the top of the card */
 .elite-ribbon {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 14px;
+  display: block;
+  padding: 5px 12px;
+  margin: 0;
+  line-height: 1.4;
   background: linear-gradient(90deg, rgba(155,121,250,0.2) 0%, rgba(155,121,250,0.05) 100%);
   border-bottom: 1px solid rgba(155,121,250,0.15);
-  font-size: 0.58rem;
-  font-weight: 800;
+  font-size: 0.65rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.8px;
   color: var(--d-purple);
+  border-radius: 11px 11px 0 0;
 }
 .elite-ribbon-dot {
+  display: inline-block;
   width: 5px; height: 5px;
   border-radius: 50%;
   background: var(--d-purple);
   box-shadow: 0 0 6px rgba(155,121,250,0.8);
-  flex-shrink: 0;
+  vertical-align: middle;
+  margin-right: 3px;
 }
 
 /* ── Trust strip (model performance bar above subheader) ── */
@@ -809,21 +807,21 @@ main { max-width: none !important; padding: 0 !important; }
 
 /* Top ribbon */
 .card-ribbon {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 16px;
-  font-size: 0.6rem;
+  display: block;
+  padding: 5px 12px;
+  margin: 0;
+  font-size: 0.65rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.8px;
+  line-height: 1.4;
   color: #fff;
+  border-radius: 11px 11px 0 0;
 }
 .ribbon-top1 { background: linear-gradient(90deg, #1a1050 0%, #6D28D9 100%); }
 .ribbon-top2 { background: linear-gradient(90deg, #0a2a1a 0%, #059669 100%); }
 
 /* Card layout: 3 zones */
-.card-body { padding: 16px 18px 20px; }
 
 /* Inline proj band */
 .proj-band {
@@ -851,6 +849,9 @@ main { max-width: none !important; padding: 0 !important; }
   padding: 2px 7px;
   border-radius: 4px;
   white-space: nowrap;
+  position: relative;
+  z-index: 1;
+  isolation: isolate;
 }
 .badge-league { background: rgba(79,158,255,0.12); color: var(--d-blue); }
 .badge-nfl      { background: rgba(83,74,183,0.18); color: #a78bfa; border: 1px solid rgba(83,74,183,0.35); }
@@ -858,13 +859,14 @@ main { max-width: none !important; padding: 0 !important; }
 .badge-market   { background: rgba(155,121,250,0.12); color: var(--d-purple); }
 .badge-book   { background: var(--d-bright); color: var(--d-sub); }
 .badge-pm     { background: rgba(155,121,250,0.12); color: var(--d-purple); }
+.badge-exchange { background: rgba(255,122,69,0.1); color: var(--d-orange); border: 1px solid rgba(255,122,69,0.2); font-size: 0.58rem; padding: 2px 6px; }
 
 /* EV badge */
 .ev-badge {
   flex-shrink: 0;
   font-size: 0.88rem;
   font-weight: 900;
-  padding: 4px 10px;
+  padding: 3px 9px;
   border-radius: 20px;
   white-space: nowrap;
   letter-spacing: -0.3px;
@@ -1476,21 +1478,6 @@ main { max-width: none !important; padding: 0 !important; }
 }
 
 /* ── EV Insight button ── */
-.btn-ev-insight {
-  flex: 1 1 0;
-  background: rgba(155,121,250,0.08);
-  border: 1px solid rgba(155,121,250,0.25);
-  color: var(--d-purple, #a78bfa);
-  border-radius: 8px;
-  padding: 8px 12px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  cursor: pointer;
-  font-family: inherit;
-  transition: background 0.15s, color 0.15s;
-}
-.btn-ev-insight:hover { background: rgba(155,121,250,0.18); }
-.btn-ev-insight.open { background: rgba(155,121,250,0.15); border-color: rgba(155,121,250,0.45); }
 
 /* ── Top Pick featured banner ── */
 .featured-pick-wrap {
@@ -1498,7 +1485,7 @@ main { max-width: none !important; padding: 0 !important; }
   background: linear-gradient(135deg, rgba(0,214,143,0.05) 0%, rgba(124,58,237,0.05) 100%);
   border: 1px solid rgba(0,214,143,0.22);
   border-radius: 14px;
-  padding: 14px 18px;
+  padding: 14px 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -1691,13 +1678,13 @@ main { max-width: none !important; padding: 0 !important; }
   html { overflow-x: hidden; }
 
   .sidebar { display: none; }
-  .dash-main { padding: 10px 10px 80px; }
+  .dash-main { padding: 16px 16px 60px; }
   .cards-grid { grid-template-columns: 1fr; gap: 14px; }
   .sport-bar { top: 46px; padding: 8px 12px; }
   .dash-layout { min-height: auto; }
 
   /* ── Card layout fixes for narrow screens ── */
-  .card-body { padding: 12px 14px 16px; }
+  .card-body { padding: 10px 14px 16px; }
   .ev-badge { font-size: 0.78rem; padding: 3px 8px; }
   .clv-pill   { padding: 3px 7px; }
   .clv-pill-val { font-size: 0.68rem; }
@@ -1707,7 +1694,7 @@ main { max-width: none !important; padding: 0 !important; }
   /* Countdown badge: slightly smaller */
   .cdwn-badge { font-size: 0.56rem; }
 
-  /* ── Mobile subheader: 3 clean rows ── */
+  /* ── Mobile subheader ── */
   .dash-subheader {
     display: flex;
     flex-direction: column;
@@ -1716,10 +1703,8 @@ main { max-width: none !important; padding: 0 !important; }
     margin-bottom: 14px;
     flex-wrap: nowrap;
   }
-  /* Row 1: title — already full width */
   .dash-title-block h1 { font-size: 1rem; }
   .dash-spacer { display: none; }
-  /* Row 2: 3 equal stat chips */
   .dash-chips-row {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -1727,13 +1712,12 @@ main { max-width: none !important; padding: 0 !important; }
   }
   .stat-chip { padding: 7px 8px; }
   .stat-chip .sc-val { font-size: 0.92rem; }
-  /* Row 3: controls — sort left, toggles right */
   .dash-controls-row {
     display: flex;
     gap: 8px;
     align-items: center;
   }
-  .dash-controls-row .sort-select {
+  .dash-right-stats .sort-select {
     flex: 1;
     min-width: 0;
     font-size: 0.75rem;
@@ -1955,36 +1939,56 @@ main { max-width: none !important; padding: 0 !important; }
 
 /* Tighter min-width so cards fit better on narrow screens */
 .cards-grid {
-  grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
 }
 
 /* Card header — one clean flex row, never wraps */
 .card-hdr {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  padding: 7px 12px 5px;
   gap: 8px;
-  padding: 10px 14px;
-  border-bottom: 1px solid rgba(255,255,255,0.07);
+  min-width: 0;
+  margin: 0;
+  min-height: 0;
+  height: auto;
 }
-/* Left badges: flex:1 absorbs all remaining space so the right group
-   never gets pushed toward or past the card edge */
 .card-hdr-left {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
+  flex-wrap: nowrap;
   flex: 1;
   min-width: 0;
+  overflow: hidden;
+  position: relative;
+  z-index: 1;
 }
-/* Right group: fixed width, never shrinks, never margin-auto */
+.card-hdr-left > * { flex-shrink: 0; }
 .card-hdr-right {
   display: flex;
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
+  flex-wrap: nowrap;
 }
+/* EV + divergence row — second header line */
+.card-ev-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 3px 12px 7px;
+  border-bottom: 1px solid var(--d-border);
+  margin: 0;
+  min-width: 0;
+}
+.card-ev-row .ev-badge         { flex-shrink: 0; white-space: nowrap; }
+.card-ev-row .divergence-badge { flex-shrink: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
 
 /* Tighter body padding */
-.card-body { padding: 14px 16px 18px; }
+.card-body { padding: 10px 12px 14px; }
 
 /* ── Bet identity ───────────────────────────────────────────── */
 .card-bet-name { margin-bottom: 8px; }
@@ -2047,24 +2051,32 @@ main { max-width: none !important; padding: 0 !important; }
   padding: 10px 6px 9px;
   text-align: center;
   border-right: 1px solid var(--d-border);
+  min-width: 0;
+  overflow: hidden;
 }
 .metric-cell:last-child { border-right: none; }
 .mc-val {
-  font-size: 0.95rem;
-  font-weight: 800;
+  font-size: 0.88rem;
+  font-weight: 700;
   color: var(--d-text);
   line-height: 1;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .mc-green { color: var(--d-green) !important; }
 .mc-lbl {
-  font-size: 0.53rem;
+  font-size: 0.62rem;
+  color: var(--d-sub);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--d-muted);
+  letter-spacing: 0.4px;
   margin-top: 4px;
   font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 /* On very small screens collapse to 2×2 so cells don't squeeze */
 @media (max-width: 380px) {
@@ -2567,11 +2579,12 @@ main { max-width: none !important; padding: 0 !important; }
 
 /* ── Sharp Grade badge (composite conviction grade S/A/B/C/D) ── */
 .sharp-grade-badge {
-  display: inline-flex; align-items: center; justify-content: center;
-  min-width: 26px; height: 26px; border-radius: 6px;
-  font-size: 0.68rem; font-weight: 800; letter-spacing: 0.03em;
-  cursor: default; flex-shrink: 0;
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 2px 6px; border-radius: 6px;
+  font-size: 0.65rem; font-weight: 700; letter-spacing: 0.03em;
+  cursor: default; flex-shrink: 0; white-space: nowrap;
 }
+.sharp-grade-badge .tooltip-icon { width: 12px; height: 12px; font-size: 8px; }
 .sg-s {
   background: linear-gradient(135deg,#a78bfa 0%,#f59e0b 100%);
   color:#fff; box-shadow: 0 0 10px rgba(167,139,250,.45);
@@ -2594,13 +2607,16 @@ main { max-width: none !important; padding: 0 !important; }
 
 /* ── Mobile overrides for revamped card ─────────────────────── */
 @media (max-width: 768px) {
-  .card-hdr { padding: 8px 12px; gap: 7px; }
+  .card-hdr { padding: 6px 10px 4px; gap: 6px; }
   .card-hdr-left { gap: 4px; }
-  .card-hdr-right { gap: 5px; }
-  .card-body { padding: 12px 12px 14px; }
+  .card-hdr-right { gap: 4px; }
+  .card-ev-row { padding: 3px 10px 6px; }
+  .card-body { padding: 10px 12px 14px; }
+  .dash-top-row { flex-direction: column; gap: 12px; padding: 12px 0 10px; }
+  .dash-right-stats { width: 100%; justify-content: space-between; }
   .bet-name-team,
   .bet-name-player { font-size: 1.05rem; }
-  .mc-val { font-size: 0.88rem; }
+  .mc-val { font-size: 0.82rem; }
   .card-metrics { margin-bottom: 10px; }
   .metric-cell { padding: 8px 4px 7px; }
   .card-book-strip { padding: 9px 10px; margin-bottom: 10px; }
@@ -2614,6 +2630,153 @@ main { max-width: none !important; padding: 0 !important; }
   .clv-pill { padding: 2px 7px; }
   .clv-pill-lbl { font-size: 0.55rem; }
   .clv-pill-val { font-size: 0.65rem; }
+}
+/* ── Consensus score ring ── */
+.consensus-wrap { display:flex; align-items:center; gap:10px; padding:10px 0; border-top:1px solid var(--d-border); }
+.consensus-ring-wrap { position:relative; flex-shrink:0; width:44px; height:44px; }
+.consensus-ring { display:block; }
+.consensus-inner { position:absolute; top:0; left:0; width:44px; height:44px; display:flex; align-items:center; justify-content:center; }
+.consensus-val { font-size:11px; font-weight:700; color:var(--d-text); }
+.consensus-meta { display:flex; flex-direction:column; gap:2px; }
+.consensus-label { font-size:11px; color:var(--d-sub); }
+.consensus-grade { font-size:12px; font-weight:600; }
+/* ── Value expiry timer ── */
+.expiry-wrap { padding:8px 0; border-top:1px solid var(--d-border); }
+.expiry-bar-track { height:4px; border-radius:2px; background:var(--d-border); margin-bottom:6px; overflow:hidden; }
+.expiry-bar-fill { height:100%; border-radius:2px; transition:width 0.3s ease; }
+.expiry-meta { display:flex; align-items:center; gap:6px; font-size:11px; }
+.expiry-label { color:var(--d-sub); flex:1; }
+.expiry-val { font-weight:600; color:var(--d-text); }
+/* ── Model vs market divergence badge ── */
+.divergence-badge { display:inline-flex; align-items:center; font-size:10px; font-weight:500; color:#a78bfa; background:rgba(83,74,183,0.15); border-radius:4px; padding:2px 6px; }
+/* ── Sharp book heatmap ── */
+.heatmap-wrap { padding:10px 0; border-top:1px solid var(--d-border); }
+.heatmap-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.heatmap-title { font-size:11px; font-weight:500; color:var(--d-sub); }
+.heatmap-signal { font-size:10px; font-weight:600; padding:2px 8px; border-radius:10px; }
+.heatmap-sig-sharp   { background:rgba(15,110,86,0.15); color:#0F6E56; }
+.heatmap-sig-soft    { background:rgba(248,113,113,0.15); color:#f87171; }
+.heatmap-sig-neutral { background:rgba(83,74,183,0.15); color:#a78bfa; }
+.heatmap-grid { display:grid; grid-template-columns:1fr 40px 1fr; gap:4px; align-items:center; }
+.heatmap-cell { background:var(--d-surface); border-radius:8px; padding:8px; text-align:center; }
+.heatmap-sharp { border:1px solid rgba(15,110,86,0.25); }
+.heatmap-soft  { border:1px solid rgba(248,113,113,0.18); }
+.hm-val { font-size:15px; font-weight:600; color:var(--d-text); }
+.hm-lbl { font-size:10px; color:var(--d-sub); margin-top:2px; }
+.hm-books { font-size:9px; color:var(--d-muted); margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.heatmap-divider { text-align:center; }
+.hm-div-val { font-size:13px; font-weight:600; }
+.hm-pos { color:#0F6E56; }
+.hm-neg { color:#f87171; }
+.hm-div-lbl { font-size:9px; color:var(--d-muted); }
+/* ── Divergence feed header ── */
+.divergence-feed-header { display:none; flex-direction:column; gap:2px; padding:8px 0 12px; }
+.divergence-feed-header.visible { display:flex; }
+.dfh-title { font-size:14px; font-weight:500; color:var(--d-text); }
+.dfh-sub { font-size:12px; color:var(--d-sub); }
+@media (max-width: 600px) {
+  .card-ev-row { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .card-ev-row .divergence-badge { max-width: 200px; }
+}
+@media (max-width: 480px) {
+  .card-hdr { padding: 5px 10px 3px; }
+  .card-hdr-left { flex-wrap: wrap; }
+  .badge { font-size: 0.58rem; padding: 2px 6px; }
+}
+/* ── Tooltip component ── */
+.tooltip-wrap { position:relative; display:inline-flex; align-items:center; gap:4px; }
+.tooltip-icon { width:14px; height:14px; border-radius:50%; background:rgba(83,74,183,0.15); color:#534AB7; font-size:9px; font-weight:500; display:inline-flex; align-items:center; justify-content:center; cursor:help; flex-shrink:0; line-height:1; border:1px solid rgba(83,74,183,0.25); }
+.tooltip-box { position:absolute; width:220px; background:#1E1A47; color:#e2e8f0; font-size:11px; line-height:1.5; padding:10px 12px; border-radius:10px; border:1px solid rgba(174,169,236,0.2); border-top:2px solid #534AB7; box-shadow:0 4px 20px rgba(0,0,0,0.3); opacity:0; pointer-events:none; transition:opacity 0.15s ease; z-index:99999; white-space:normal; }
+@media (max-width: 600px) {
+  .tooltip-box { width:180px; }
+}
+/* ── Middle Bet Finder ───────────────────────────────────────────────── */
+.middles-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 16px; align-items: start; }
+.middle-card { background: var(--d-card); border: 1px solid var(--d-border); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.middle-card[data-grade='Elite'] { border-color: rgba(15,110,86,0.4); box-shadow: 0 0 0 1px rgba(15,110,86,0.15); }
+.middle-card[data-grade='Strong'] { border-color: rgba(83,74,183,0.4); }
+.middle-card-header { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.middle-grade-badge { font-size: 10px; font-weight: 500; padding: 3px 10px; border-radius: 20px; }
+.grade-elite { background: rgba(15,110,86,0.15); color: #0F6E56; }
+.grade-strong { background: rgba(83,74,183,0.15); color: #534AB7; }
+.grade-value { background: rgba(250,199,117,0.15); color: #b45309; }
+.grade-speculative { background: rgba(148,163,184,0.15); color: #64748b; }
+.middle-window-badge { font-size: 11px; font-weight: 500; color: #534AB7; background: rgba(83,74,183,0.1); padding: 3px 10px; border-radius: 20px; }
+.middle-time { font-size: 11px; color: var(--d-sub); margin-left: auto; }
+.middle-game { font-size: 15px; font-weight: 500; color: var(--d-text); }
+.middle-market-label { font-size: 12px; color: var(--d-sub); }
+.middle-legs { display: grid; grid-template-columns: 1fr 32px 1fr; align-items: center; gap: 8px; background: var(--d-bg); border-radius: 12px; padding: 12px; }
+.middle-leg { display: flex; flex-direction: column; gap: 4px; }
+.leg-book { font-size: 10px; font-weight: 500; color: var(--d-sub); text-transform: uppercase; letter-spacing: 0.05em; }
+.leg-pick { font-size: 13px; font-weight: 500; color: var(--d-text); }
+.leg-odds { font-size: 14px; font-weight: 500; color: var(--d-text); }
+.leg-pos { color: #0F6E56; }
+.middle-vs { text-align: center; font-size: 10px; font-weight: 500; color: var(--d-sub); }
+.middle-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.mm-cell { background: var(--d-bg); border-radius: 8px; padding: 8px; text-align: center; }
+.mm-val { font-size: 13px; font-weight: 500; color: var(--d-text); }
+.mm-lbl { font-size: 9px; color: var(--d-sub); margin-top: 2px; }
+.middle-footer { font-size: 11px; color: var(--d-sub); text-align: center; padding-top: 4px; border-top: 1px solid var(--d-border); }
+/* ── Sparkline ─────────────────────────────────────────────────────────── */
+/* ── Odds freshness dot ─────────────────────────────────────────────────── */
+.freshness-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; cursor: help; }
+.freshness-dot.fresh { background: #0F6E56; box-shadow: 0 0 0 2px rgba(15,110,86,0.2); }
+.freshness-dot.stale-warn { background: #FAC775; box-shadow: 0 0 0 2px rgba(250,199,117,0.2); }
+.freshness-dot.stale { background: #f87171; box-shadow: 0 0 0 2px rgba(248,113,113,0.2); }
+/* ── Watchlist button ───────────────────────────────────────────────────── */
+.watchlist-btn { background: none; border: none; cursor: pointer; color: var(--d-sub); display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 6px; transition: all 0.15s ease; padding: 0; flex-shrink: 0; }
+.watchlist-btn:hover { color: #534AB7; background: rgba(83,74,183,0.1); }
+.watchlist-btn.active { color: #FAC775; }
+.watchlist-btn.active svg path { fill: #FAC775; stroke: #FAC775; }
+/* ── Toast notification ─────────────────────────────────────────────────── */
+.posit-toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); background: #1E1A47; color: #e2e8f0; font-size: 13px; font-weight: 500; padding: 10px 20px; border-radius: 20px; border: 1px solid rgba(174,169,236,0.3); opacity: 0; transition: all 0.25s ease; z-index: 99999; white-space: nowrap; pointer-events: none; }
+.posit-toast.toast-show { opacity: 1; transform: translateX(-50%) translateY(0); }
+/* ── EV Leaderboard ─────────────────────────────────────────────────────── */
+.dash-top-row { display: flex; align-items: flex-start; gap: 20px; padding: 16px 0 12px; border-bottom: 1px solid var(--d-border); margin-bottom: 16px; }
+.ev-leaderboard { flex: 1; min-width: 0; margin-bottom: 0; padding: 0; }
+.dash-right-stats { display: flex; align-items: center; gap: 10px; flex-shrink: 0; flex-wrap: wrap; }
+.dash-right-stats .sort-select { align-self: center; flex-shrink: 0; }
+.evlb-header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; padding: 0; }
+.evlb-title { font-size: 0.82rem; font-weight: 600; color: var(--d-text); }
+.evlb-sub { font-size: 0.7rem; color: var(--d-sub); }
+.evlb-scroll { display: flex; flex-direction: row; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; align-items: stretch; }
+.evlb-scroll::-webkit-scrollbar { display: none; }
+.evlb-card { flex-shrink: 0; width: 148px; min-height: 0; background: var(--d-card); border: 1px solid var(--d-border); border-radius: 10px; padding: 10px 12px; cursor: pointer; transition: border-color 0.15s; display: flex; flex-direction: column; gap: 4px; }
+.evlb-card:hover { border-color: #534AB7; }
+.evlb-league { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px; }
+.evlb-grade { font-size: 0.62rem; font-weight: 700; color: var(--d-sub); }
+.evlb-grade-s { color: var(--d-green); }
+.evlb-team { font-size: 0.75rem; font-weight: 600; color: var(--d-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.evlb-market { font-size: 0.65rem; color: var(--d-sub); }
+.evlb-bottom { display: flex; align-items: center; justify-content: space-between; margin-top: auto; }
+.evlb-ev { font-size: 0.75rem; font-weight: 700; color: var(--d-green); }
+.evlb-time { font-size: 0.62rem; color: var(--d-muted); }
+
+/* ── Cards grid responsive ── */
+@media (max-width: 1200px) { .cards-grid { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); } }
+@media (max-width: 900px)  { .cards-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); } }
+@media (max-width: 768px)  { .cards-grid { grid-template-columns: 1fr; gap: 14px; } }
+@media (max-width: 600px)  { .cards-grid { grid-template-columns: 1fr; gap: 12px; } }
+
+/* ── Dash main responsive ── */
+@media (max-width: 768px) { .dash-main { padding: 16px 16px 60px; } }
+@media (max-width: 600px) { .dash-main { padding: 12px 10px 60px; } }
+
+/* ── Middles grid responsive ── */
+@media (max-width: 600px) { .middles-grid { grid-template-columns: 1fr; gap: 12px; } }
+
+/* ── Mobile dashboard fixes ── */
+@media (max-width: 600px) {
+  .sport-bar { padding: 8px 12px; gap: 5px; }
+  .sport-pill { padding: 4px 10px; font-size: 0.7rem; }
+  .dash-subheader { padding: 10px 10px 0; }
+  .stat-chip { padding: 8px 12px; }
+  .stat-chip .sc-val { font-size: 1rem; }
+  .evlb-card { width: 130px; }
+  .mc-val { font-size: 0.78rem; }
+  .card-metrics { grid-template-columns: repeat(4, 1fr); gap: 3px; }
+  .middle-legs { grid-template-columns: 1fr 24px 1fr; }
+  .mm-cell { padding: 6px 4px; }
 }
 </style>
 {% endblock %}
@@ -2634,6 +2797,8 @@ main { max-width: none !important; padding: 0 !important; }
   <button class="sport-pill" data-filter="is_prop" data-value="true">🎯 Props{% if _prop_count.v > 0 %}<span class="pill-count" id="propPillCount">{{ _prop_count.v }}</span>{% endif %}</button>
   <button class="sport-pill" id="sharpFlowPill" data-filter="sharp_flow" data-value="true">⚡ Sharp Flow</button>
   <button class="sport-pill" id="hrModelPill" data-filter="hr_model" data-value="true">⚾ HR Model{% if hr_picks|length > 0 %}<span class="pill-count" style="background:rgba(240,180,41,0.2);color:#f0b429;">{{ hr_picks|length }}</span>{% endif %}</button>
+  <button class="sport-pill" id="divergencePill" data-filter="divergence" data-value="true">↕ Divergence</button>
+  <button class="sport-pill" id="middlesPill" data-filter="middles" data-value="true">⟺ Middles</button>
   <div class="search-wrap">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--d-muted);flex-shrink:0;"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
     <input type="text" id="globalSearch" placeholder="Search team, player…" autocomplete="off" />
@@ -2794,7 +2959,7 @@ main { max-width: none !important; padding: 0 !important; }
     {% set _nfl_count = namespace(v=0) %}
     {% for _b in bets %}{% if _b.league == 'americanfootball_nfl' %}{% set _nfl_count.v = _nfl_count.v + 1 %}{% endif %}{% endfor %}
     {% if _nfl_count.v > 0 %}
-    <div id="nflBanner" style="display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,rgba(83,74,183,0.15) 0%,rgba(83,74,183,0.06) 100%);border:1px solid rgba(83,74,183,0.3);border-radius:10px;padding:12px 18px;margin-bottom:16px;">
+    <div id="nflBanner" style="display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,rgba(83,74,183,0.15) 0%,rgba(83,74,183,0.06) 100%);border:1px solid rgba(83,74,183,0.3);border-radius:10px;padding:12px 0;margin-bottom:16px;">
       <span style="font-size:1.4rem;flex-shrink:0;">🏈</span>
       <div style="flex:1;">
         <span style="font-weight:700;color:#a78bfa;font-size:0.95rem;">NFL Season is live —</span>
@@ -2814,22 +2979,49 @@ main { max-width: none !important; padding: 0 !important; }
         <h1>+EV Picks</h1>
         <p id="today-date">—</p>
       </div>
-      {% if bets %}
-      <div class="dash-chips-row">
-        <div class="stat-chip"><div class="sc-val" id="stat-total">{{ bet_count }}</div><div class="sc-lbl">+EV Bets</div></div>
-        <div class="stat-chip"><div class="sc-val">{{ "%.1f"|format(bets[0].ev_percent) }}%</div><div class="sc-lbl">Best EV</div></div>
-        {% set total_ev = namespace(v=0) %}{% for b in bets %}{% set total_ev.v = total_ev.v + b.ev_percent %}{% endfor %}
-        <div class="stat-chip"><div class="sc-val">{{ "%.1f"|format(total_ev.v / bet_count) }}%</div><div class="sc-lbl">Avg EV</div></div>
+      <div class="dash-top-row">
+        {% if ev_leaderboard %}
+        <div class="ev-leaderboard" id="evLeaderboard">
+          <div class="evlb-header">
+            <span class="evlb-title">Today's Best Edge Per League</span>
+            <span class="evlb-sub">Updated every 30 min</span>
+          </div>
+          <div class="evlb-scroll">
+            {% for lb in ev_leaderboard %}
+            <div class="evlb-card" onclick="scrollToCardById({{ lb.bet_id }})">
+              <div class="evlb-league">
+                <span class="badge {{ 'badge-nfl' if lb.league == 'americanfootball_nfl' else 'badge-league' }}">{{ lb.league_display }}</span>
+                <span class="evlb-grade {{ 'evlb-grade-s' if lb.sharp_grade == 'S' else '' }}">{{ lb.sharp_grade }}</span>
+              </div>
+              <div class="evlb-team">{{ lb.team }}</div>
+              <div class="evlb-market">{{ lb.market_display }}</div>
+              <div class="evlb-bottom">
+                <span class="evlb-ev">+{{ "%.1f"|format(lb.ev_percent) }}% EV</span>
+                <span class="evlb-time">{{ lb.commence_time_display }}</span>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+        <div class="dash-right-stats">
+          {% if bets %}
+          <div class="dash-chips-row">
+            <div class="stat-chip"><div class="sc-val" id="stat-total">{{ bet_count }}</div><div class="sc-lbl">+EV Bets</div></div>
+            <div class="stat-chip"><div class="sc-val">{{ "%.1f"|format(bets[0].ev_percent) }}%</div><div class="sc-lbl">Best EV</div></div>
+            {% set total_ev = namespace(v=0) %}{% for b in bets %}{% set total_ev.v = total_ev.v + b.ev_percent %}{% endfor %}
+            <div class="stat-chip"><div class="sc-val">{{ "%.1f"|format(total_ev.v / bet_count) }}%</div><div class="sc-lbl">Avg EV</div></div>
+          </div>
+          {% endif %}
+          <select class="sort-select" id="sortSelect">
+            <option value="ev_desc">↑ EV% High→Low</option>
+            <option value="ev_asc">↓ EV% Low→High</option>
+            <option value="time_asc">⏰ Game Time</option>
+            <option value="odds_best">💰 Best Odds</option>
+          </select>
+        </div>
       </div>
-      {% endif %}
-      <div class="dash-spacer"></div>
       <div class="dash-controls-row">
-        <select class="sort-select" id="sortSelect">
-          <option value="ev_desc">↑ EV% High→Low</option>
-          <option value="ev_asc">↓ EV% Low→High</option>
-          <option value="time_asc">⏰ Game Time</option>
-          <option value="odds_best">💰 Best Odds</option>
-        </select>
         <div class="view-toggle">
           <button class="view-toggle-btn active" id="viewCard" onclick="setView('card')">⊞ Cards</button>
           <button class="view-toggle-btn" id="viewTable" onclick="setView('table')">≡ Table</button>
@@ -2876,6 +3068,12 @@ main { max-width: none !important; padding: 0 !important; }
     </div>
     {% endif %}
 
+    {# ── Divergence feed header (shown when Divergence pill is active) ── #}
+    <div class="divergence-feed-header" id="divergenceFeedHeader">
+      <span class="dfh-title">↕ Model vs Market</span>
+      <span class="dfh-sub">Showing picks where our model diverges most from the market</span>
+    </div>
+
     {# ── CARD VIEW ── #}
     <div class="cards-grid" id="cardsGrid" style="visibility:hidden">
 
@@ -2904,6 +3102,12 @@ main { max-width: none !important; padding: 0 !important; }
           {% if _bk in _exchange_books %}{% set _cta_icon = '⚡' %}{% elif _bk in _pred_mkt_books %}{% set _cta_icon = '📈' %}{% else %}{% set _cta_icon = '🎰' %}{% endif %}
           {% set _true_pct = (bet.true_prob * 100) | round(1) %}
           {% set _implied_pct = ((100 / (bet.odds + 100) * 100) if bet.odds > 0 else ((-bet.odds) / (-bet.odds + 100) * 100)) | round(1) %}
+          {% set _consensus_color = '#0F6E56' if bet.consensus_score >= 80 else ('#534AB7' if bet.consensus_score >= 60 else ('#FAC775' if bet.consensus_score >= 40 else '#f87171')) %}
+          {% set _consensus_grade = 'Strong' if bet.consensus_score >= 80 else ('Good' if bet.consensus_score >= 60 else ('Moderate' if bet.consensus_score >= 40 else 'Weak')) %}
+          {% set _expiry_pct_raw = ((bet.value_expiry_minutes | float) / 240.0 * 100.0) | int %}
+          {% set _expiry_pct = 100 if _expiry_pct_raw > 100 else _expiry_pct_raw %}
+          {% set _expiry_color = '#0F6E56' if bet.value_expiry_minutes >= 120 else ('#FAC775' if bet.value_expiry_minutes >= 60 else '#f87171') %}
+          {% if bet.value_expiry_minutes >= 60 %}{% set _expiry_display = (bet.value_expiry_minutes // 60) | string ~ 'h ' ~ (bet.value_expiry_minutes % 60) | string ~ 'm' %}{% else %}{% set _expiry_display = bet.value_expiry_minutes | string ~ 'm' %}{% endif %}
 
           <div class="bet-card {{ tier }}{{ ' prop-card' if bet.is_prop else '' }}"
                id="card-{{ bet.id }}"
@@ -2933,6 +3137,10 @@ main { max-width: none !important; padding: 0 !important; }
                {% if bet.opening_odds and bet.opening_odds != bet.odds %}data-opening-odds="{{ bet.opening_odds }}"{% endif %}
                {% if bet.commence_time %}data-commence="{{ bet.commence_time.isoformat() }}"{% endif %}
                {% if bet.all_book_odds %}data-all-book-odds="{{ bet.all_book_odds | e }}"{% endif %}
+               data-divergence="{{ '%.1f'|format(bet.divergence_score) }}"
+               data-line-history="{{ bet.line_history | e }}"
+               data-consensus-line="{{ bet.consensus_line or '' }}"
+               data-deviation="{{ bet.deviation_flag | default('consensus') }}"
                onclick="_onBetCardClick(event, this)">
 
             {# ── Elite tier accent ribbon — suppressed when CLV is moving against the position ── #}
@@ -2953,19 +3161,40 @@ main { max-width: none !important; padding: 0 !important; }
                 {% elif market_key == 'totals' %}<span class="badge badge-bet-type">Total</span>
                 {% elif market_key == 'props' %}<span class="badge badge-bet-type">Prop</span>{% endif %}
                 {% if (bet.source_type or 'sportsbook') == 'exchange' %}
-                <span class="badge badge-pm" style="background:rgba(250,199,117,0.12);color:#F9C74F;">⚡ Exchange</span>
+                <span class="badge badge-exchange">⚡ Exchange</span>
                 {% elif (bet.source_type or 'sportsbook') == 'prediction_market' %}
                 <span class="badge badge-pm">🔮 PM</span>
                 {% endif %}
               </div>
-              {# Right: Sharp Grade + EV badge #}
+              {# Right: Sharp Grade, freshness dot, watchlist button #}
               <div class="card-hdr-right">
                 {% if bet.sharp_grade %}
-                <span class="sharp-grade-badge sg-{{ bet.sharp_grade | lower }}"
-                      title="Sharp conviction grade {{ bet.sharp_grade }}{% if bet.clv_grade %} · CLV {{ bet.clv_grade }}{% endif %}">{{ bet.sharp_grade }}</span>
+                <span class="sharp-grade-badge sg-{{ bet.sharp_grade | lower }} tooltip-wrap">{{ bet.sharp_grade }}<span class="tooltip-icon">?</span><span class="tooltip-box tip-right">Our grade for how much sharp (professional) money is on this pick. S = maximum sharp signal, A = strong, B = moderate, C = minimal. Sharp grades are derived from line movement, steam moves, and reverse line movement.</span></span>
                 {% endif %}
-                <span class="ev-badge {{ tier }}">+{{ "%.1f"|format(bet.ev_percent) }}% EV</span>
+                <span class="tooltip-wrap">
+                  <span class="freshness-dot {{ 'fresh' if bet.odds_age_minutes <= 15 else 'stale-warn' if bet.odds_age_minutes <= 30 else 'stale' }}"
+                        title="Odds updated {{ bet.odds_age_minutes|round(0)|int }} min ago"></span>
+                  <span class="tooltip-box tip-right">Odds last updated {{ bet.odds_age_minutes|round(0)|int }} min ago. Green = under 15 min, yellow = 15–30 min, red = over 30 min. Always verify at the book before placing.</span>
+                </span>
+                <button class="watchlist-btn"
+                        id="wl-btn-{{ bet.id }}"
+                        data-bet-id="{{ bet.id }}"
+                        onclick="toggleWatchlist({{ bet.id }}, this)"
+                        title="Add to paper trail">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M7 1L8.8 5.2L13.5 5.5L10 8.5L11.1 13L7 10.5L2.9 13L4 8.5L0.5 5.5L5.2 5.2Z"
+                          stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+                  </svg>
+                </button>
               </div>
+            </div>
+
+            {# ── EV + Divergence row (second header row) ───────────────── #}
+            <div class="card-ev-row">
+              <span class="ev-badge {{ tier }}">+{{ "%.1f"|format(bet.ev_percent) }}% <span class="tooltip-wrap">EV<span class="tooltip-icon">?</span><span class="tooltip-box">Expected Value percentage. A +5% EV means that for every $100 wagered on this bet, you can expect to profit $5 on average over a large sample. Positive EV bets are mathematically profitable long term.</span></span></span>
+              {% if bet.divergence_score >= 3.0 %}
+              <span class="divergence-badge tooltip-wrap">↕ {{ "%.1f"|format(bet.divergence_score) }}pp edge vs market<span class="tooltip-icon">?</span><span class="tooltip-box tip-right">The gap in percentage points between our model probability and the market implied probability. A higher number means our model disagrees more strongly with the market &mdash; these are our highest-conviction edges.</span></span>
+              {% endif %}
             </div>
 
             {# ── Card Body ────────────────────────────────────────────── #}
@@ -3043,58 +3272,97 @@ main { max-width: none !important; padding: 0 !important; }
                   <span class="clv-pill {{ 'clv-pill-pos' if _clv_pos else 'clv-pill-neg' }}"
                         onclick="showClvPopover(event,{{ 'true' if _clv_pos else 'false' }})"
                         title="{{ 'Line steamed — sharp money confirmed this edge' if _clv_pos else 'Line drifted — monitor this bet' }}">
-                    <span class="clv-pill-lbl">CLV {{ '▲' if _clv_pos else '▽' }}</span>
+                    <span class="clv-pill-lbl tooltip-wrap">CLV {{ '▲' if _clv_pos else '▽' }}<span class="tooltip-icon">?</span><span class="tooltip-box">Closing Line Value measures whether you beat the final market odds. Consistently beating the closing line is the strongest indicator of a sharp bettor. Positive CLV = you got a better number than where the market settled.</span></span>
                     <span class="clv-pill-val">{{ op }}→{{ cur }}</span>
                   </span>
                 {% endif %}
               </div>
 
-              {# — Pillar 2: Sharp money signal — #}
-              {% if bet.bet_pct is not none or bet.money_pct is not none %}
-              {% set _sharp_split = (bet.money_pct is not none and bet.bet_pct is not none and (bet.money_pct - bet.bet_pct) >= 15) %}
-              <div class="sharp-money-row">
-                {% if bet.bet_pct is not none %}
-                <div class="money-bar-line">
-                  <span class="money-bar-icon">🎟</span>
-                  <span class="money-bar-lbl">Bets</span>
-                  <div class="money-bar-track"><div class="money-bar-fill-public" style="width:{{ bet.bet_pct | int }}%"></div></div>
-                  <span class="money-bar-pct">{{ bet.bet_pct | int }}%</span>
-                </div>
-                {% endif %}
-                {% if bet.money_pct is not none %}
-                <div class="money-bar-line">
-                  <span class="money-bar-icon">💰</span>
-                  <span class="money-bar-lbl">Money</span>
-                  <div class="money-bar-track"><div class="money-bar-fill-money" style="width:{{ bet.money_pct | int }}%"></div></div>
-                  <span class="money-bar-pct {{ 'heavy' if bet.money_pct >= 60 else '' }}">{{ bet.money_pct | int }}%</span>
-                </div>
-                {% endif %}
-                {% if _sharp_split %}
-                <div class="sharp-split-note">⚡ Smart money {{ (bet.money_pct - bet.bet_pct) | int }}pp above public tickets</div>
-                {% endif %}
-              </div>
-              {% endif %}
-
               {# — 4-Cell Metrics Strip — #}
               <div class="card-metrics">
                 <div class="metric-cell">
-                  <div class="mc-val mc-green">{{ "%.0f"|format(_true_pct) }}%</div>
-                  <div class="mc-lbl">Model</div>
+                  <div class="mc-val mc-green">{{ "%.1f"|format(bet.true_prob * 100 if bet.true_prob <= 1 else bet.true_prob) }}%</div>
+                  <div class="mc-lbl"><span class="tooltip-wrap">True Prob<span class="tooltip-icon">?</span><span class="tooltip-box">Our model's estimated win probability for this bet, after removing the bookmaker's margin.</span></span></div>
                 </div>
                 <div class="metric-cell">
-                  <div class="mc-val">{{ "%.0f"|format(_implied_pct) }}%</div>
-                  <div class="mc-lbl">Book</div>
+                  <div class="mc-val {{ 'mc-green' if bet.divergence_score >= 3 else '' }}">+{{ "%.1f"|format(bet.divergence_score) }}pp</div>
+                  <div class="mc-lbl"><span class="tooltip-wrap">Edge<span class="tooltip-icon">?</span><span class="tooltip-box">The percentage-point gap between our model probability and the market implied probability. Larger = stronger edge.</span></span></div>
                 </div>
                 <div class="metric-cell">
                   <div class="mc-val {{ 'mc-green' if bet.odds > 0 else '' }}">{{ odds_str }}</div>
-                  <div class="mc-lbl">Odds</div>
+                  <div class="mc-lbl"><span class="tooltip-wrap">Odds<span class="tooltip-icon">?</span><span class="tooltip-box">The American odds at the best available book. Positive odds (e.g. +163) mean you profit that amount on a $100 bet. Negative odds (e.g. -110) mean you must bet that amount to profit $100.</span></span></div>
                 </div>
                 <div class="metric-cell">
                   <div class="mc-val mc-green kelly-val" data-prob="{{ bet.true_prob }}" data-odds="{{ bet.odds }}">—</div>
                   <div class="kelly-dollar" style="display:none;font-size:0.56rem;color:var(--d-green);font-weight:700;margin:1px 0;"></div>
-                  <div class="mc-lbl kelly-size-label">¼ Kelly</div>
+                  <div class="mc-lbl kelly-size-label"><span class="tooltip-wrap">¼ Kelly<span class="tooltip-icon">?</span><span class="tooltip-box">The recommended bet size as a percentage of your bankroll using the Kelly Criterion. We use ¼ Kelly for safety — it reduces variance while still growing your bankroll over time.</span></span></div>
                 </div>
               </div>
+
+              {# — Consensus score ring — #}
+              <div class="consensus-wrap">
+                <div class="consensus-ring-wrap">
+                  <svg class="consensus-ring" viewBox="0 0 44 44" width="44" height="44">
+                    <circle cx="22" cy="22" r="18" fill="none" stroke="var(--d-border)" stroke-width="4"/>
+                    <circle cx="22" cy="22" r="18" fill="none"
+                            stroke="{{ _consensus_color }}" stroke-width="4"
+                            stroke-dasharray="{{ ((bet.consensus_score / 100) * 113) | round(1) }} 113"
+                            stroke-linecap="round"
+                            transform="rotate(-90 22 22)"/>
+                  </svg>
+                  <div class="consensus-inner">
+                    <div class="consensus-val">{{ bet.consensus_score }}</div>
+                  </div>
+                </div>
+                <div class="consensus-meta">
+                  <div class="consensus-label"><span class="tooltip-wrap">Consensus<span class="tooltip-icon">?</span><span class="tooltip-box">A 0&ndash;100 score combining EV%, sharp grade, closing line value, and simulation results into one conviction signal. 80+ = Strong, 60&ndash;79 = Good, 40&ndash;59 = Moderate, below 40 = Weak.</span></span></div>
+                  <div class="consensus-grade" style="color:{{ _consensus_color }};">{{ _consensus_grade }}</div>
+                </div>
+              </div>
+
+              {# — Value expiry timer — #}
+              <div class="expiry-wrap">
+                <div class="expiry-bar-track">
+                  <div class="expiry-bar-fill" style="width:{{ _expiry_pct }}%;background:{{ _expiry_color }};"></div>
+                </div>
+                <div class="expiry-meta">
+                  <span>⏱</span>
+                  <span class="expiry-label"><span class="tooltip-wrap">Edge window<span class="tooltip-icon">?</span><span class="tooltip-box">An estimate of how long this edge is likely to remain before the market corrects. Based on market type, sharp action, and time to game start. Act sooner on shorter windows.</span></span></span>
+                  <span class="expiry-val" data-expiry-min="{{ bet.value_expiry_minutes }}">{{ _expiry_display }}</span>
+                </div>
+              </div>
+
+              {# — Sharp book heatmap — #}
+              {% if bet.sharp_book_heatmap and bet.sharp_book_heatmap.sharp_avg_prob is not none and bet.sharp_book_heatmap.soft_avg_prob is not none %}
+              <div class="heatmap-wrap">
+                <div class="heatmap-header">
+                  <span class="heatmap-title tooltip-wrap">Sharp vs Soft<span class="tooltip-icon">?</span><span class="tooltip-box tip-right">Sharp books (Pinnacle, Circa, BetOnline) set efficient lines with low margins. Soft books (DraftKings, FanDuel, BetMGM) cater to recreational bettors. When sharp books price a team higher than soft books, it signals professional money on that side.</span></span>
+                  {% if bet.sharp_book_heatmap.divergence > 0 %}
+                  <span class="heatmap-signal heatmap-sig-sharp">Sharp lean</span>
+                  {% elif bet.sharp_book_heatmap.divergence < -1.5 %}
+                  <span class="heatmap-signal heatmap-sig-soft">Soft lean</span>
+                  {% else %}
+                  <span class="heatmap-signal heatmap-sig-neutral">Consensus</span>
+                  {% endif %}
+                </div>
+                <div class="heatmap-grid">
+                  <div class="heatmap-cell heatmap-sharp">
+                    <div class="hm-val">{{ (bet.sharp_book_heatmap.sharp_avg_prob * 100) | round(1) }}%</div>
+                    <div class="hm-lbl">Sharp books</div>
+                    <div class="hm-books">{{ bet.sharp_book_heatmap.sharp_books_present | join(', ') }}</div>
+                  </div>
+                  <div class="heatmap-divider">
+                    <div class="hm-div-val {{ 'hm-pos' if bet.sharp_book_heatmap.divergence > 0 else 'hm-neg' }}">{{ '+' if bet.sharp_book_heatmap.divergence > 0 else '' }}{{ bet.sharp_book_heatmap.divergence }}pp</div>
+                    <div class="hm-div-lbl">gap</div>
+                  </div>
+                  <div class="heatmap-cell heatmap-soft">
+                    <div class="hm-val">{{ (bet.sharp_book_heatmap.soft_avg_prob * 100) | round(1) }}%</div>
+                    <div class="hm-lbl">Soft books</div>
+                    <div class="hm-books">{{ bet.sharp_book_heatmap.soft_books_present | join(', ') }}</div>
+                  </div>
+                </div>
+              </div>
+              {% endif %}
 
               {# — Cross-book price comparison (populated by JS) — #}
               {% if bet.all_book_odds %}<div class="odds-compare-wrap" id="oc-{{ bet.id }}"></div>{% endif %}
@@ -3114,16 +3382,14 @@ main { max-width: none !important; padding: 0 !important; }
                 </button>
               </div>
 
-              {# — Actions: Simulate + Track — #}
+              {# — Actions: Simulate — #}
+              {% if _is_sim_sport %}
               <div class="card-actions-row">
-                {% if _is_sim_sport %}
                 <button class="btn-sim" id="sim-btn-{{ bet.id }}" onclick="toggleSimPanel({{ bet.id }}, this)">
-                  <span class="btn-sim-top">🎲 Full Simulation</span>
-                  <span class="btn-sim-sub">AI narrative · score dist · over/under</span>
+                  <span class="btn-sim-top tooltip-wrap">🎲 Simulate<span class="tooltip-icon">?</span><span class="tooltip-box">Runs 10,000 simulated versions of this game using our model distributions. Shows projected score range, win probability, and whether the simulation agrees with the bet direction.</span></span>
                 </button>
-                {% endif %}
-                <button class="btn-ev-insight" id="analyze-btn-{{ bet.id }}" data-bet-id="{{ bet.id }}" onclick="toggleAnalysisPanel({{ bet.id }}, this)">🤖 +EV Insight</button>
               </div>
+              {% endif %}
 
               {# — Simulation Detail Panel (lazy-loaded, MLB + soccer only) — #}
               {% if _is_sim_sport %}
@@ -3185,6 +3451,55 @@ main { max-width: none !important; padding: 0 !important; }
         <button onclick="clearFilters()" style="margin-top:12px;background:var(--d-green-dim);border:1px solid rgba(0,214,143,0.25);color:var(--d-green);border-radius:8px;padding:8px 18px;font-family:inherit;font-size:0.82rem;font-weight:600;cursor:pointer;">Clear Filters</button>
       </div>
     </div>{# /cardsGrid #}
+
+    {# ── MIDDLES GRID ── #}
+    <div class="middles-grid" id="middlesGrid" style="display:none; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 20px;">
+      {% for m in middles %}
+      <div class="middle-card" data-grade="{{ m.middle_grade }}">
+        <div class="middle-card-header">
+          <span class="middle-grade-badge grade-{{ m.middle_grade | lower }}">{{ m.middle_grade }}</span>
+          <span class="middle-window-badge">⟺ {{ m.middle_window }}pt window</span>
+          <span class="middle-time">{{ m.game_time }}</span>
+        </div>
+        <div class="middle-game">{{ m.game }}</div>
+        <div class="middle-market-label">{{ m.market_display }}</div>
+        <div class="middle-legs">
+          <div class="middle-leg">
+            <div class="leg-book">{{ m.leg1_book }}</div>
+            <div class="leg-pick">{{ m.leg1_pick }}</div>
+            <div class="leg-odds {{ 'leg-pos' if m.leg1_odds > 0 else '' }}">{{ m.leg1_odds_str }}</div>
+          </div>
+          <div class="middle-vs">VS</div>
+          <div class="middle-leg">
+            <div class="leg-book">{{ m.leg2_book }}</div>
+            <div class="leg-pick">{{ m.leg2_pick }}</div>
+            <div class="leg-odds {{ 'leg-pos' if m.leg2_odds > 0 else '' }}">{{ m.leg2_odds_str }}</div>
+          </div>
+        </div>
+        <div class="middle-metrics">
+          <div class="mm-cell">
+            <div class="mm-val mc-green">{{ "%.1f"|format(m.middle_win_prob * 100) }}%</div>
+            <div class="mm-lbl">Middle prob <span class="tooltip-wrap"><span class="tooltip-icon">?</span><span class="tooltip-box">Probability the final result lands inside the middle window — meaning both bets win simultaneously.</span></span></div>
+          </div>
+          <div class="mm-cell">
+            <div class="mm-val mc-green">+{{ "%.1f"|format(m.best_case_profit_pct) }}%</div>
+            <div class="mm-lbl">If middle hits</div>
+          </div>
+          <div class="mm-cell">
+            <div class="mm-val" style="color:#f87171">-{{ "%.1f"|format(m.worst_case_loss_pct) }}%</div>
+            <div class="mm-lbl">Worst case</div>
+          </div>
+          <div class="mm-cell">
+            <div class="mm-val">{{ "%.1f"|format(m.combined_ev) }}%</div>
+            <div class="mm-lbl">Combined EV</div>
+          </div>
+        </div>
+        <div class="middle-footer">Both legs are +EV independently — middle win is upside</div>
+      </div>
+      {% else %}
+      <div style="color:var(--d-sub);font-size:13px;padding:20px;grid-column:1/-1">No middles found for today's picks.</div>
+      {% endfor %}
+    </div>
 
     {# ── HR MODEL SECTION ── #}
     <div id="hrModelSection">
@@ -4187,7 +4502,8 @@ function applyFilters() {
       else if (activeDay === 'all')      { dayOk = _dnum(cd) >= _dnum(todayStr); }
     }
 
-    const passOther = leagueOk && marketOk && bookOk && clvDirOk && propOk && propMarketOk && evOk && edgeOk && multiBookOk && searchOk && notHrProp && sharpFlowOk;
+    const divergenceOk = !_divergenceActive || parseFloat(card.dataset.divergence || '0') >= 3.0;
+    const passOther = leagueOk && marketOk && bookOk && clvDirOk && propOk && propMarketOk && evOk && edgeOk && multiBookOk && searchOk && notHrProp && sharpFlowOk && divergenceOk;
     const show = passOther && dayOk;
     card.style.display = show ? '' : 'none';
     if (show) visible++;
@@ -4235,15 +4551,28 @@ function applyFilters() {
   if (_gamesGrouped && activeIsProp !== 'true') _applyGameGrouping();
   else _clearGameGroupHeaders();
 
+  // When divergence mode is active, sort visible cards by divergence score descending
+  if (_divergenceActive) {
+    const _grid = document.getElementById('cardsGrid');
+    if (_grid) {
+      const _vis = Array.from(_grid.querySelectorAll('.bet-card')).filter(c => c.style.display !== 'none');
+      _vis.sort((a, b) => parseFloat(b.dataset.divergence || '0') - parseFloat(a.dataset.divergence || '0'));
+      _vis.forEach(c => _grid.appendChild(c));
+    }
+  }
+
   _saveFilters();
 
   // Ribbons must be re-stamped last, after grouping headers are in place
   _updateTopPickRibbon();
+  // Re-init tooltips so any newly visible cards pick up listeners
+  if (typeof initTooltips === 'function') initTooltips();
 }
 
 // ── HR Model section toggle ────────────────────────────────────────────────
 let _hrModelActive = false;
 let _sharpFlowActive = false;
+let _divergenceActive = false;
 
 function _setHrModel(active) {
   _hrModelActive = active;
@@ -4281,7 +4610,21 @@ document.querySelectorAll('.sport-pill').forEach(btn => {
       applyFilters();
       return;
     }
+    if (ft === 'divergence') {
+      _divergenceActive = !_divergenceActive;
+      document.getElementById('divergencePill').classList.toggle('active', _divergenceActive);
+      const _dfh = document.getElementById('divergenceFeedHeader');
+      if (_dfh) _dfh.classList.toggle('visible', _divergenceActive);
+      applyFilters();
+      return;
+    }
     if (_sharpFlowActive) { _sharpFlowActive = false; document.getElementById('sharpFlowPill').classList.remove('active'); }
+    if (_divergenceActive) {
+      _divergenceActive = false;
+      document.getElementById('divergencePill').classList.remove('active');
+      const _dfh2 = document.getElementById('divergenceFeedHeader');
+      if (_dfh2) _dfh2.classList.remove('visible');
+    }
     if (ft === 'hr_model') {
       // Toggle HR model section
       if (_hrModelActive) {
@@ -5232,7 +5575,7 @@ function _loadProjection(betId, btn, panel, attempt) {
   panel.style.display = 'block';
   panel.innerHTML = '<div style="padding:10px 12px;"><div class="skel-bar skel-w90"></div><div class="skel-bar skel-w75"></div><div class="skel-bar skel-w60"></div></div>';
 
-  fetch('/api/projection/' + betId)
+  fetch('/api/projection/' + betId, { credentials: 'same-origin' })
     .then(r => {
       if (r.status === 422) return null;          // prop / no game data
       if (r.status === 503 || r.status === 500) throw Object.assign(new Error('service'), {retryable: true, status: r.status});
@@ -5386,7 +5729,7 @@ function toggleAiPanel(btn) {
   if (loadEl)    loadEl.style.display    = 'block';
   if (contentEl) contentEl.style.display = 'none';
   if (errorEl)   errorEl.style.display   = 'none';
-  fetch('/api/analysis/' + betId)
+  fetch('/api/analysis/' + betId, { credentials: 'same-origin' })
     .then(r => {
       if (!r.ok) {
         return r.json().catch(() => ({})).then(body => {
@@ -5439,7 +5782,7 @@ function _loadPropContext(betId, panel) {
   panel.style.display = 'block';
   panel.innerHTML = '<div style="padding:10px 12px;"><div class="skel-bar skel-w90"></div><div class="skel-bar skel-w75"></div><div class="skel-bar skel-w60"></div></div>';
 
-  fetch('/api/prop-context/' + betId)
+  fetch('/api/prop-context/' + betId, { credentials: 'same-origin' })
     .then(r => {
       if (r.status === 422 || r.status === 403) return null;   // no data or not subscribed
       if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -5822,7 +6165,7 @@ function toggleAnalysisPanel(betId, btn) {
           errorEl.style.display   = 'none';
           if (loadEl)    loadEl.style.display    = 'block';
           if (contentEl) contentEl.style.display = 'none';
-          fetch('/api/analysis/' + betId)
+          fetch('/api/analysis/' + betId, { credentials: 'same-origin' })
             .then(r => r.ok ? r.json() : r.json().catch(()=>({})).then(b=>{throw new Error(r.status+':'+(b.detail||''));}))
             .then(data => {
               _aiCache[betId] = data;
@@ -6222,11 +6565,186 @@ function _renderAiMeta(metaEl, betId, data) {
   metaEl.innerHTML = html;
 }
 
+// ── Tooltip: body-appended, position:fixed (escapes overflow:hidden) ───────
+function initTooltips() {
+  var activeTooltip = null;
+  document.querySelectorAll('.tooltip-wrap').forEach(function(wrap) {
+    var icon = wrap.querySelector('.tooltip-icon');
+    var box  = wrap.querySelector('.tooltip-box');
+    if (!icon || !box) return;
+    // Move tooltip to body so it's never clipped by any ancestor overflow
+    box.remove();
+    document.body.appendChild(box);
+    box.style.position   = 'fixed';
+    box.style.zIndex     = '99999';
+    box.style.pointerEvents = 'none';
+    box.style.opacity    = '0';
+    box.style.transition = 'opacity 0.15s ease';
+    // Desktop: mouseenter / mouseleave
+    icon.addEventListener('mouseenter', function() {
+      if (activeTooltip && activeTooltip !== box) activeTooltip.style.opacity = '0';
+      var r    = icon.getBoundingClientRect();
+      var tipW = window.innerWidth < 600 ? 180 : 220;
+      var left = r.left + r.width / 2 - tipW / 2;
+      var top  = r.top - 8;
+      if (left < 8) left = 8;
+      if (left + tipW > window.innerWidth - 8) left = window.innerWidth - tipW - 8;
+      box.style.width  = tipW + 'px';
+      box.style.left   = left + 'px';
+      box.style.bottom = (window.innerHeight - top) + 'px';
+      box.style.top    = 'auto';
+      box.style.opacity = '1';
+      activeTooltip = box;
+    });
+    icon.addEventListener('mouseleave', function() {
+      box.style.opacity = '0';
+      activeTooltip = null;
+    });
+    // Mobile: tap-to-show for 3 seconds
+    icon.addEventListener('touchstart', function(e) {
+      e.preventDefault();
+      if (activeTooltip && activeTooltip !== box) activeTooltip.style.opacity = '0';
+      var r    = icon.getBoundingClientRect();
+      var tipW = 180;
+      var left = r.left + r.width / 2 - tipW / 2;
+      var top  = r.top - 8;
+      if (left < 8) left = 8;
+      if (left + tipW > window.innerWidth - 8) left = window.innerWidth - tipW - 8;
+      box.style.width  = tipW + 'px';
+      box.style.left   = left + 'px';
+      box.style.bottom = (window.innerHeight - top) + 'px';
+      box.style.top    = 'auto';
+      box.style.opacity = '1';
+      activeTooltip = box;
+      setTimeout(function() { box.style.opacity = '0'; activeTooltip = null; }, 3000);
+    }, { passive: false });
+  });
+}
+
+// ── Value expiry countdown ─────────────────────────────────────────────────
+setInterval(function() {
+  document.querySelectorAll('[data-expiry-min]').forEach(function(el) {
+    var mins = parseInt(el.dataset.expiryMin || '0', 10);
+    if (mins <= 0) return;
+    mins = Math.max(0, mins - 1);
+    el.dataset.expiryMin = mins;
+    el.textContent = mins >= 60
+      ? (Math.floor(mins / 60) + 'h ' + (mins % 60) + 'm')
+      : (mins + 'm');
+    var wrap = el.closest('.expiry-wrap');
+    if (wrap) {
+      var fill = wrap.querySelector('.expiry-bar-fill');
+      if (fill) {
+        fill.style.width = Math.min(100, Math.round(mins / 240 * 100)) + '%';
+        fill.style.background = mins >= 120 ? '#0F6E56' : (mins >= 60 ? '#FAC775' : '#f87171');
+      }
+    }
+    if (mins === 0) {
+      var card = el.closest('.bet-card');
+      if (card) {
+        card.style.transition = 'opacity 0.5s ease';
+        card.style.opacity = '0';
+        setTimeout(function() { card.style.display = 'none'; applyFilters(); }, 500);
+      }
+    }
+  });
+}, 60000);
+
+// ── Middles pill ───────────────────────────────────────────────────────────
+const middlesPill = document.getElementById('middlesPill');
+const middlesGrid = document.getElementById('middlesGrid');
+const _cardsGridEl = document.getElementById('cardsGrid');
+let _middlesActive = false;
+if (middlesPill) {
+  middlesPill.addEventListener('click', function() {
+    _middlesActive = !_middlesActive;
+    middlesPill.classList.toggle('active', _middlesActive);
+    if (_middlesActive) {
+      _cardsGridEl.style.display = 'none';
+      middlesGrid.style.display = 'grid';
+      document.querySelectorAll('.sport-pill').forEach(function(p) { if (p !== middlesPill) p.classList.remove('active'); });
+    } else {
+      _cardsGridEl.style.display = '';
+      middlesGrid.style.display = 'none';
+    }
+  });
+}
+// When any other pill is clicked, deactivate middles
+document.querySelectorAll('.sport-pill').forEach(function(p) {
+  if (p.id !== 'middlesPill') {
+    p.addEventListener('click', function() {
+      if (_middlesActive) {
+        _middlesActive = false;
+        middlesPill && middlesPill.classList.remove('active');
+        _cardsGridEl.style.display = '';
+        middlesGrid.style.display = 'none';
+      }
+    });
+  }
+});
+
+// ── scrollToCardById (leaderboard) ────────────────────────────────────────
+function scrollToCardById(betId) {
+  var card = document.querySelector('[data-bet-id="' + betId + '"]');
+  if (!card) return;
+  card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  card.style.outline = '2px solid #534AB7';
+  card.style.outlineOffset = '3px';
+  setTimeout(function() { card.style.outline = ''; card.style.outlineOffset = ''; }, 2000);
+}
+
+// ── Watchlist / Paper Trail ────────────────────────────────────────────────
+async function toggleWatchlist(betId, btn) {
+  console.log('[watchlist] toggleWatchlist called, betId=', betId, 'active=', btn.classList.contains('active'));
+  if (btn.classList.contains('active')) return;
+  try {
+    btn.style.opacity = '0.5';
+    const resp = await fetch('/watchlist/add', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({bet_cache_id: betId})
+    });
+    console.log('[watchlist] response status:', resp.status);
+    const data = await resp.json();
+    console.log('[watchlist] response body:', data);
+    if (!resp.ok) {
+      console.warn('[watchlist] server error:', resp.status, data);
+      if (resp.status === 401 || resp.status === 403) showToast('Sign in to track bets');
+      else showToast('Could not add to paper trail — try again');
+      return;
+    }
+    if (data.success) {
+      btn.classList.add('active');
+      btn.title = 'Added to paper trail';
+      showToast('Added to paper trail ⭐');
+      const wlCount = document.getElementById('wl-nav-count');
+      if (wlCount) wlCount.textContent = data.count;
+    } else {
+      console.warn('[watchlist] success=false:', data.error);
+      showToast('Could not add to paper trail — try again');
+    }
+  } catch(e) {
+    console.error('[watchlist] fetch error:', e);
+    showToast('Could not add to paper trail — try again');
+  }
+  finally { btn.style.opacity = '1'; }
+}
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.className = 'posit-toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.classList.add('toast-show'), 10);
+  setTimeout(() => { t.classList.remove('toast-show'); setTimeout(() => t.remove(), 300); }, 2500);
+}
+
 // ── Init ───────────────────────────────────────────────────────────────────
 _restoreFilters();   // re-apply saved filter state before first render
 sortCards();
 applyFilters();
 updateFilterBadge();
+initTooltips();
 // Reveal grid only after filters have been applied — prevents the flash
 // where all picks appear briefly before JS narrows to today's picks.
 document.getElementById('cardsGrid').style.visibility = '';

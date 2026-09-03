@@ -159,6 +159,8 @@
       cursor: pointer;
     }
     .support-success button:hover { opacity: 0.88; }
+    /* ── Watchlist count badge (nav) ── */
+    .wl-count-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 16px; height: 16px; background: #534AB7; color: #fff; font-size: 9px; font-weight: 600; border-radius: 8px; padding: 0 4px; margin-left: 4px; vertical-align: middle; }
   </style>
   {% block head %}{% endblock %}
 </head>
@@ -181,6 +183,7 @@
           {% if not is_admin_page %}
           <div class="nav-group">
             <a href="/dashboard" class="nav-btn nav-btn-soft">Dashboard</a>
+            <a href="/watchlist" class="nav-btn nav-btn-soft">Paper Trail <span class="wl-count-badge" id="wl-nav-count">{{ wl_pending_count if wl_pending_count is defined else 0 }}</span></a>
             <a href="/account" class="nav-btn nav-btn-soft">Account</a>
             <a href="#" class="nav-btn nav-btn-soft" onclick="openSupportModal(); return false;">Support</a>
           </div>
@@ -216,7 +219,7 @@
   <!-- ── Sitewide footer ─────────────────────────────────────────────── -->
   <footer style="border-top:1px solid #E5E7EB; padding:20px 24px; text-align:center;
                  background:#F9FAFB;">
-    <div style="max-width:900px; margin:0 auto; display:flex; align-items:center;
+    <div style="max-width:1080px; margin:0 auto; display:flex; align-items:center;
                 justify-content:center; flex-wrap:wrap; gap:6px 20px;
                 font-size:0.75rem; color:#9CA3AF;">
       <span>© 2026 PositEV</span>
