@@ -2724,10 +2724,6 @@ main { max-width: none !important; padding: 0 !important; }
 .freshness-dot.stale-warn { background: #FAC775; box-shadow: 0 0 0 2px rgba(250,199,117,0.2); }
 .freshness-dot.stale { background: #f87171; box-shadow: 0 0 0 2px rgba(248,113,113,0.2); }
 /* ── Watchlist button ───────────────────────────────────────────────────── */
-.watchlist-btn { background: none; border: none; cursor: pointer; color: var(--d-sub); display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 6px; transition: all 0.15s ease; padding: 0; flex-shrink: 0; }
-.watchlist-btn:hover { color: #534AB7; background: rgba(83,74,183,0.1); }
-.watchlist-btn.active { color: #FAC775; }
-.watchlist-btn.active svg path { fill: #FAC775; stroke: #FAC775; }
 /* ── Toast notification ─────────────────────────────────────────────────── */
 .posit-toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); background: #1E1A47; color: #e2e8f0; font-size: 13px; font-weight: 500; padding: 10px 20px; border-radius: 20px; border: 1px solid rgba(174,169,236,0.3); opacity: 0; transition: all 0.25s ease; z-index: 99999; white-space: nowrap; pointer-events: none; }
 .posit-toast.toast-show { opacity: 1; transform: translateX(-50%) translateY(0); }
@@ -3166,7 +3162,7 @@ main { max-width: none !important; padding: 0 !important; }
                 <span class="badge badge-pm">🔮 PM</span>
                 {% endif %}
               </div>
-              {# Right: Sharp Grade, freshness dot, watchlist button #}
+              {# Right: Sharp Grade, freshness dot #}
               <div class="card-hdr-right">
                 {% if bet.sharp_grade %}
                 <span class="sharp-grade-badge sg-{{ bet.sharp_grade | lower }} tooltip-wrap">{{ bet.sharp_grade }}<span class="tooltip-icon">?</span><span class="tooltip-box tip-right">Our grade for how much sharp (professional) money is on this pick. S = maximum sharp signal, A = strong, B = moderate, C = minimal. Sharp grades are derived from line movement, steam moves, and reverse line movement.</span></span>
@@ -3176,16 +3172,6 @@ main { max-width: none !important; padding: 0 !important; }
                         title="Odds updated {{ bet.odds_age_minutes|round(0)|int }} min ago"></span>
                   <span class="tooltip-box tip-right">Odds last updated {{ bet.odds_age_minutes|round(0)|int }} min ago. Green = under 15 min, yellow = 15–30 min, red = over 30 min. Always verify at the book before placing.</span>
                 </span>
-                <button class="watchlist-btn"
-                        id="wl-btn-{{ bet.id }}"
-                        data-bet-id="{{ bet.id }}"
-                        onclick="toggleWatchlist({{ bet.id }}, this)"
-                        title="Add to paper trail">
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M7 1L8.8 5.2L13.5 5.5L10 8.5L11.1 13L7 10.5L2.9 13L4 8.5L0.5 5.5L5.2 5.2Z"
-                          stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
-                  </svg>
-                </button>
               </div>
             </div>
 
@@ -6693,43 +6679,6 @@ function scrollToCardById(betId) {
   setTimeout(function() { card.style.outline = ''; card.style.outlineOffset = ''; }, 2000);
 }
 
-// ── Watchlist / Paper Trail ────────────────────────────────────────────────
-async function toggleWatchlist(betId, btn) {
-  console.log('[watchlist] toggleWatchlist called, betId=', betId, 'active=', btn.classList.contains('active'));
-  if (btn.classList.contains('active')) return;
-  try {
-    btn.style.opacity = '0.5';
-    const resp = await fetch('/watchlist/add', {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({bet_cache_id: betId})
-    });
-    console.log('[watchlist] response status:', resp.status);
-    const data = await resp.json();
-    console.log('[watchlist] response body:', data);
-    if (!resp.ok) {
-      console.warn('[watchlist] server error:', resp.status, data);
-      if (resp.status === 401 || resp.status === 403) showToast('Sign in to track bets');
-      else showToast('Could not add to paper trail — try again');
-      return;
-    }
-    if (data.success) {
-      btn.classList.add('active');
-      btn.title = 'Added to paper trail';
-      showToast('Added to paper trail ⭐');
-      const wlCount = document.getElementById('wl-nav-count');
-      if (wlCount) wlCount.textContent = data.count;
-    } else {
-      console.warn('[watchlist] success=false:', data.error);
-      showToast('Could not add to paper trail — try again');
-    }
-  } catch(e) {
-    console.error('[watchlist] fetch error:', e);
-    showToast('Could not add to paper trail — try again');
-  }
-  finally { btn.style.opacity = '1'; }
-}
 function showToast(msg) {
   const t = document.createElement('div');
   t.className = 'posit-toast';
