@@ -1,42 +1,36 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 120" width="320" height="120" role="img" aria-label="Posit+EV logo">
-  <title>Posit+EV</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 90" width="380" height="90">
+  <defs>
+    <filter id="spike-glow-f" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="2.5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
 
-  <!-- Card background -->
-  <rect x="1" y="1" width="318" height="118" rx="14" ry="14"
-        fill="#EEEDFE" stroke="#AFA9EC" stroke-width="1.5"/>
+  <!-- Dark background -->
+  <rect width="380" height="90" rx="8" fill="#111827"/>
 
-  <!-- Probability arc icon — translate centers arc vertically in card -->
-  <g transform="translate(18, 23)">
-
-    <!-- +EV zone: shaded fill under right half of arc (8% opacity) -->
-    <!-- Right-half bezier computed via De Casteljau at t=0.5 on M 8,55 C 20,8 60,8 78,55 -->
-    <path d="M 40.75,19.75 C 54.5,19.75 69,31.5 78,55 L 40.75,55 Z"
-          fill="#534AB7" fill-opacity="0.08"/>
-
-    <!-- Full probability arc -->
-    <path d="M 8,55 C 20,8 60,8 78,55"
-          fill="none"
-          stroke="#534AB7"
-          stroke-width="3.5"
-          stroke-linecap="round"/>
-
-    <!-- Dot at arc peak -->
-    <circle cx="40.75" cy="19.75" r="4.5" fill="#534AB7"/>
-
+  <!-- Bars icon (70×70 canvas, offset to center vertically at y=10) -->
+  <g transform="translate(12,10)">
+    <!-- Bar 1: faded -->
+    <rect x="0"  y="44.8" width="13" height="25.2" rx="3" fill="#534AB7" opacity="0.4"/>
+    <!-- Bar 2: faded -->
+    <rect x="18" y="33.6" width="13" height="36.4" rx="3" fill="#534AB7" opacity="0.6"/>
+    <!-- Bar 3: solid -->
+    <rect x="36" y="23.8" width="13" height="46.2" rx="3" fill="#534AB7"/>
+    <!-- Bar 4: spike -->
+    <rect x="54" y="4.2"  width="13" height="65.8" rx="3" fill="#00D68F" filter="url(#spike-glow-f)"/>
+    <!-- Dot rings centred on top edge of bar 4 (cx=60.5, cy=4.2) -->
+    <circle cx="60.5" cy="4.2" r="5.5" fill="#111827"/>
+    <circle cx="60.5" cy="4.2" r="3.8" fill="#00D68F"/>
+    <circle cx="60.5" cy="4.2" r="1.6" fill="#111827"/>
   </g>
 
-  <!-- Wordmark: Posit+EV — 'Posit' and 'EV' in deep indigo, '+' in brand purple -->
-  <text x="112" y="65"
-        font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif"
-        font-size="36"
-        font-weight="500"
-        letter-spacing="-0.5"><tspan fill="#26215C">Posit</tspan><tspan fill="#534AB7">+</tspan><tspan fill="#26215C">EV</tspan></text>
+  <!-- Wordmark -->
+  <text x="94" y="47" font-family="-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif" font-size="28" font-weight="700" letter-spacing="-0.5" fill="#E8EDF2">Posit<tspan fill="#534AB7">+</tspan>EV</text>
 
   <!-- Tagline -->
-  <text x="113" y="83"
-        font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif"
-        font-size="12"
-        fill="#7F77DD"
-        letter-spacing="0.2">Find the edge. Beat the market.</text>
-
+  <text x="95" y="64" font-family="-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif" font-size="8.5" font-weight="700" letter-spacing="1.6" fill="#8FA3B8">FIND THE EDGE. BEAT THE MARKET.</text>
 </svg>

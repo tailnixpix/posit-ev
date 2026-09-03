@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 90" width="380" height="90">
+  <defs>
+    <filter id="spike-glow-l" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Bars icon (70×70 canvas, y-offset=10) -->
+  <g transform="translate(12,10)">
+    <!-- Bar 1: faded -->
+    <rect x="0"  y="44.8" width="13" height="25.2" rx="3" fill="#534AB7" opacity="0.3"/>
+    <!-- Bar 2: faded -->
+    <rect x="18" y="33.6" width="13" height="36.4" rx="3" fill="#534AB7" opacity="0.5"/>
+    <!-- Bar 3: solid -->
+    <rect x="36" y="23.8" width="13" height="46.2" rx="3" fill="#534AB7"/>
+    <!-- Bar 4: spike (dark green for light bg) -->
+    <rect x="54" y="4.2"  width="13" height="65.8" rx="3" fill="#0F6E56" filter="url(#spike-glow-l)"/>
+    <!-- Dot rings -->
+    <circle cx="60.5" cy="4.2" r="5.5" fill="#fff"/>
+    <circle cx="60.5" cy="4.2" r="3.8" fill="#0F6E56"/>
+    <circle cx="60.5" cy="4.2" r="1.6" fill="#fff"/>
+  </g>
+
+  <!-- Wordmark (dark for light bg) -->
+  <text x="94" y="47" font-family="-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif" font-size="28" font-weight="700" letter-spacing="-0.5" fill="#26215C">Posit<tspan fill="#534AB7">+</tspan>EV</text>
+
+  <!-- Tagline -->
+  <text x="95" y="64" font-family="-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif" font-size="8.5" font-weight="700" letter-spacing="1.6" fill="#6B7280">FIND THE EDGE. BEAT THE MARKET.</text>
+</svg>

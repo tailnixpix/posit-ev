@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 36" width="160" height="36">
+  <defs>
+    <filter id="spike-glow-c" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="1.5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Bars icon (28×28 canvas, centred vertically: offset y=(36-28)/2=4) -->
+  <g transform="translate(0,4)">
+    <!-- Bar 1: faded -->
+    <rect x="0"  y="17.9" width="5.2" height="10.1" rx="1.5" fill="#534AB7" opacity="0.4"/>
+    <!-- Bar 2: faded -->
+    <rect x="7.2" y="13.4" width="5.2" height="14.6" rx="1.5" fill="#534AB7" opacity="0.6"/>
+    <!-- Bar 3: solid -->
+    <rect x="14.4" y="9.5" width="5.2" height="18.5" rx="1.5" fill="#534AB7"/>
+    <!-- Bar 4: spike -->
+    <rect x="21.6" y="1.7" width="5.2" height="26.3" rx="1.5" fill="#00D68F" filter="url(#spike-glow-c)"/>
+    <!-- Dot rings (cx=24.2, cy=1.7) -->
+    <circle cx="24.2" cy="1.7" r="2.4" fill="transparent" stroke="#00D68F" stroke-width="1.2"/>
+    <circle cx="24.2" cy="1.7" r="1.0" fill="#00D68F"/>
+  </g>
+
+  <!-- Wordmark (x = 0 + 27 + 8 = 35) -->
+  <text x="36" y="24" font-family="-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif" font-size="18" font-weight="700" letter-spacing="-0.3" fill="#E8EDF2">Posit<tspan fill="#534AB7">+</tspan>EV</text>
+</svg>

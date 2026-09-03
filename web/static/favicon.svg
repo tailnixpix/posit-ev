@@ -1,17 +1,30 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="Posit+EV icon">
-  <title>Posit+EV</title>
-  <!-- Card background — matches brand card style at icon scale -->
-  <rect width="32" height="32" rx="6" ry="6" fill="#EEEDFE" stroke="#AFA9EC" stroke-width="1"/>
-  <!-- +EV zone fill: right half of arc at 8% opacity -->
-  <!-- Arc: M 4,26 C 10,6 22,6 28,26  — De Casteljau peak at (16,11), right half control pts (20.5,11) (25,16) -->
-  <path d="M 16,11 C 20.5,11 25,16 28,26 L 16,26 Z"
-        fill="#534AB7" fill-opacity="0.08"/>
-  <!-- Probability arc -->
-  <path d="M 4,26 C 10,6 22,6 28,26"
-        fill="none"
-        stroke="#534AB7"
-        stroke-width="2.5"
-        stroke-linecap="round"/>
-  <!-- Peak dot -->
-  <circle cx="16" cy="11" r="2.5" fill="#534AB7"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <defs>
+    <filter id="spike-glow-ico" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="1.2" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="32" height="32" rx="6" fill="#111827"/>
+
+  <!-- Bars icon (20×20 canvas, centred: offset x=6, y=6) -->
+  <g transform="translate(6,6)">
+    <!-- Bar 1: faded -->
+    <rect x="0"   y="12.8" width="4" height="7.2" rx="1.2" fill="#534AB7" opacity="0.4"/>
+    <!-- Bar 2: faded -->
+    <rect x="5.3" y="9.6"  width="4" height="10.4" rx="1.2" fill="#534AB7" opacity="0.6"/>
+    <!-- Bar 3: solid -->
+    <rect x="10.6" y="6.8" width="4" height="13.2" rx="1.2" fill="#534AB7"/>
+    <!-- Bar 4: spike -->
+    <rect x="15.9" y="1.2" width="4"  height="18.8" rx="1.2" fill="#00D68F" filter="url(#spike-glow-ico)"/>
+    <!-- Dot rings (cx=17.9, cy=1.2) -->
+    <circle cx="17.9" cy="1.2" r="2.3" fill="#111827"/>
+    <circle cx="17.9" cy="1.2" r="1.6" fill="#00D68F"/>
+    <circle cx="17.9" cy="1.2" r="0.7" fill="#111827"/>
+  </g>
 </svg>
