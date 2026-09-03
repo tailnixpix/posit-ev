@@ -41,6 +41,7 @@ from config import LOCAL_TZ                                   # noqa: E402
 from sqlalchemy.exc import IntegrityError                                          # noqa: E402
 from db.database import DailyPick, EVBetCache, NewsletterSubscriber, SessionLocal  # noqa: E402
 from web.beehiiv import add_subscriber as bh_add, remove_subscriber as bh_remove, create_post as bh_post  # noqa: E402
+from web.auth import _is_rate_limited  # noqa: E402
 
 load_dotenv()
 
@@ -240,9 +241,10 @@ def _send(to: str, subject: str, html: str) -> bool:
 # ---------------------------------------------------------------------------
 
 def _make_unsub_token(email: str) -> str:
-    """Create a signed JWT encoding an unsubscribe action for *email*."""
+    """Create a signed JWT encoding an unsubscribe action for *email* (90-day expiry)."""
+    exp = datetime.now(timezone.utc) + timedelta(days=90)
     return jwt.encode(
-        {"sub": email, "action": "unsub"},
+        {"sub": email, "action": "unsub", "exp": exp},
         _JWT_SECRET,
         algorithm=_JWT_ALGORITHM,
     )
@@ -252,13 +254,17 @@ def _decode_unsub_token(token: str) -> Optional[str]:
     """
     Decode an unsubscribe token.
 
-    Returns the email string on success, or None if the token is invalid /
-    not an unsubscribe token.
+    Returns the email string on success, or None if the token is invalid,
+    not an unsubscribe token, or expired.
     """
+    from jose import ExpiredSignatureError
     try:
         payload = jwt.decode(token, _JWT_SECRET, algorithms=[_JWT_ALGORITHM])
         if payload.get("action") == "unsub":
             return payload.get("sub")
+        return None
+    except ExpiredSignatureError:
+        log.info("Newsletter: expired unsubscribe token")
         return None
     except JWTError:
         return None
@@ -1513,6 +1519,14 @@ async def newsletter_subscribe(
     Idempotent: re-activates inactive subscribers rather than creating duplicates.
     """
     email = email.strip().lower()
+
+    # Rate limit: max 3 subscribe attempts per IP per hour
+    client_ip = (request.client.host if request.client else "unknown")
+    if _is_rate_limited(f'newsletter_sub:{client_ip}', max_calls=3, window_sec=3600):
+        return JSONResponse(
+            {"status": "error", "detail": "Too many requests. Please try again later."},
+            status_code=429,
+        )
 
     # Basic format check
     if "@" not in email or "." not in email.split("@")[-1]:

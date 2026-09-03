@@ -4,10 +4,20 @@ odds_fetcher.py — Fetch odds from The Odds API and return clean pandas DataFra
 Supports: h2h, spreads, totals, player_props
 Bookmakers: draftkings, fanduel, betmgm, pointsbet, caesars
 """
+# CREDIT BUDGET ESTIMATE (post-optimization):
+# Game odds: ~6 active sports avg × 48 peak runs + ~6 × 10 off-peak runs = ~348/day
+# Props: ~3 sports × 4 games × 34 peak runs (skip off-peak) = ~408/day
+# Futures: 2/day (once daily job)
+# Pre-newsletter: 33 credits once daily
+# TOTAL ESTIMATED: ~791 credits/day × 30 days = ~23,730/month
+# BUFFER REMAINING: ~76,270 credits (76% headroom)
+# MONTHLY LIMIT SET: 95,000 (brake engages before hard limit)
+
 import sys
 import os
 import time
 import logging
+from collections import defaultdict
 from typing import Optional, Union
 import requests
 import pandas as pd
@@ -40,6 +50,48 @@ SPORT_KEYS = [
     "soccer_uefa_champs_league",
     "soccer_fifa_world_cup",
 ]
+
+# Seasonal date ranges for automatic off-season skipping.
+# Seasons that cross a year boundary (NFL, NHL, NBA) use end month < start month —
+# get_active_sports() handles this by setting end to the following calendar year.
+SPORT_SEASONS: dict = {
+    "americanfootball_nfl":      {"start": (8, 1),  "end": (2, 15)},
+    "americanfootball_ncaaf":    {"start": (8, 15), "end": (1, 20)},
+    "basketball_nba":            {"start": (10, 1), "end": (6, 30)},
+    "basketball_ncaab":          {"start": (11, 1), "end": (4, 10)},
+    "icehockey_nhl":             {"start": (10, 1), "end": (6, 30)},
+    "baseball_mlb":              {"start": (3, 20), "end": (11, 5)},
+    "soccer_epl":                {"start": (8, 1),  "end": (5, 31)},
+    "soccer_spain_la_liga":      {"start": (8, 1),  "end": (5, 31)},
+    "soccer_germany_bundesliga": {"start": (8, 1),  "end": (5, 31)},
+    "soccer_usa_mls":            {"start": (2, 15), "end": (12, 10)},
+    "soccer_uefa_champs_league": {"start": (9, 1),  "end": (5, 31)},
+    "soccer_fifa_world_cup":     {"start": (11, 1), "end": (7, 31)},
+}
+
+
+def get_active_sports() -> list[str]:
+    """Return the subset of SPORT_KEYS that are currently in season."""
+    today = datetime.now()
+    active = []
+    for sport, season in SPORT_SEASONS.items():
+        if sport not in SPORT_KEYS:
+            continue
+        s_month, s_day = season["start"]
+        e_month, e_day = season["end"]
+        start = datetime(today.year, s_month, s_day)
+        # Season crosses year boundary (e.g. NFL Oct → Feb)
+        if e_month < s_month:
+            end = datetime(today.year + 1, e_month, e_day)
+        else:
+            end = datetime(today.year, e_month, e_day)
+        if start <= today <= end:
+            active.append(sport)
+    log.info(
+        "[Odds API] Active sports today: %s (%d of %d)",
+        active, len(active), len(SPORT_SEASONS),
+    )
+    return active
 
 # Championship / outright futures — separate Odds API sport keys.
 # These are only active during their respective playoff seasons.
@@ -226,6 +278,70 @@ def reset_quota_state() -> None:
 
 
 # ---------------------------------------------------------------------------
+# In-memory credit counter
+# ---------------------------------------------------------------------------
+
+MONTHLY_CREDIT_LIMIT = 95_000   # brake threshold — 5k buffer below 100k hard limit
+DAILY_CREDIT_LIMIT   = 3_200    # 95_000 / 30 days
+_WARNING_THRESHOLD   = 76_000   # 80% of monthly limit → Telegram warning
+
+_credit_log: dict = defaultdict(int)
+
+
+def log_credit_use(job_name: str, credits: int = 1) -> None:
+    _credit_log[job_name]      += credits
+    _credit_log["total_today"] += credits
+    _credit_log["total_month"] += credits
+
+
+def get_credit_summary() -> dict:
+    return dict(_credit_log)
+
+
+def reset_daily_credits() -> None:
+    _credit_log["total_today"] = 0
+    log.info("[Credits] Daily counter reset.")
+
+
+def reset_monthly_credits() -> None:
+    _credit_log["total_month"] = 0
+    log.info("[Credits] Monthly counter reset.")
+
+
+def send_credit_alert(message: str) -> None:
+    token   = os.getenv("TELEGRAM_BOT_TOKEN", "")
+    chat_id = os.getenv("TELEGRAM_CHAT_ID", "")
+    if not token or not chat_id:
+        return
+    try:
+        requests.post(
+            f"https://api.telegram.org/bot{token}/sendMessage",
+            json={"chat_id": chat_id, "text": f"⚠️ Posit+EV Credit Alert: {message}"},
+            timeout=10,
+        )
+    except Exception as _e:
+        log.warning("Credit alert send failed: %s", _e)
+
+
+def credit_brake_check(job_name: str) -> bool:
+    """Return False (and alert) if monthly or daily credit limits are exceeded."""
+    monthly = _credit_log["total_month"]
+    daily   = _credit_log["total_today"]
+    if monthly >= MONTHLY_CREDIT_LIMIT:
+        msg = f"MONTHLY LIMIT REACHED ({monthly:,}/{MONTHLY_CREDIT_LIMIT:,}) — all fetches paused"
+        log.critical("[CREDIT BRAKE] %s — blocking %s", msg, job_name)
+        send_credit_alert(msg)
+        return False
+    if daily >= DAILY_CREDIT_LIMIT:
+        log.warning("[CREDIT BRAKE] Daily limit reached (%d/%d) — blocking %s", daily, DAILY_CREDIT_LIMIT, job_name)
+        return False
+    if monthly >= _WARNING_THRESHOLD and monthly - _credit_log.get("_warned_at", 0) >= 1_000:
+        _credit_log["_warned_at"] = monthly
+        send_credit_alert(f"80% of monthly budget used ({monthly:,}/{MONTHLY_CREDIT_LIMIT:,})")
+    return True
+
+
+# ---------------------------------------------------------------------------
 # HTTP helpers
 # ---------------------------------------------------------------------------
 
@@ -282,6 +398,7 @@ def _get(url: str, params: dict, retries: int = 3) -> Optional[Union[dict, list]
                 return None
 
             resp.raise_for_status()
+            log_credit_use("api_request")
             return resp.json()
 
         except requests.exceptions.Timeout:
@@ -427,7 +544,7 @@ def get_odds_df(
     Returns a tidy DataFrame with one row per (game, bookmaker, market, outcome).
     Includes a ``source_type`` column: "sportsbook" or "prediction_market".
     """
-    sport_keys = sport_keys or SPORT_KEYS
+    sport_keys = sport_keys or get_active_sports()
     markets = markets or MARKETS
     # Use ALL_BOOKMAKERS so prediction markets are included in h2h fetches
     bookmakers = bookmakers or ALL_BOOKMAKERS
@@ -490,10 +607,23 @@ def get_odds_df(
     return df
 
 
+def should_fetch_props(sport_key: str, game_odds_df: "pd.DataFrame") -> bool:
+    """Return True if the sport has upcoming games worth fetching props for."""
+    if game_odds_df is None or game_odds_df.empty:
+        return False
+    if "sport_key" not in game_odds_df.columns:
+        return True
+    sport_games = game_odds_df[game_odds_df["sport_key"] == sport_key]
+    if len(sport_games) == 0:
+        log.info("[Odds API] Skipping props for %s — no games in current odds data", sport_key)
+        return False
+    return True
+
+
 def get_props_df(
     sport_keys: list[str] = None,
     bookmakers: list[str] = None,
-    max_games: int = 6,
+    max_games: int = 4,
 ) -> pd.DataFrame:
     """
     Fetch player props for NBA, MLB, and NHL only.
@@ -528,9 +658,10 @@ def get_props_df(
         )[:max_games]
 
         log.info(
-            "Props: %s — %d total games from API, %d within 30h window",
-            sport, len(games), len(upcoming),
+            "[Odds API] Props fetch: %s — %d total games from API, %d within 30h window → %d requests",
+            sport, len(games), len(upcoming), len(upcoming),
         )
+        log_credit_use(f"props_{sport}", len(upcoming))
 
         for game in upcoming:
             game_label = f"{game.get('away_team', '?')} @ {game.get('home_team', '?')}"
@@ -634,6 +765,24 @@ def get_futures_df(
         len(df), df["sport_key"].nunique() if not df.empty else 0,
     )
     return df
+
+
+def fetch_futures_only() -> pd.DataFrame:
+    """
+    Lightweight daily futures fetch — called once per day at 3 AM CT instead
+    of on every 30-min refresh.  Saves ~2 credits × 46 off-peak runs = ~92 credits/day.
+    """
+    log.info("[Odds API] Running daily futures fetch")
+    if not credit_brake_check("futures_daily"):
+        return pd.DataFrame()
+    try:
+        futures_df = get_futures_df()
+        rows = 0 if futures_df is None or futures_df.empty else len(futures_df)
+        log.info("[Odds API] Futures fetched: %d entries", rows)
+        return futures_df if futures_df is not None else pd.DataFrame()
+    except Exception as exc:
+        log.error("[Odds API] Futures fetch error: %s", exc)
+        return pd.DataFrame()
 
 
 def get_best_lines(df: pd.DataFrame, market: str = "h2h") -> pd.DataFrame:

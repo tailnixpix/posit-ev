@@ -28,10 +28,13 @@ from sqlalchemy import (
     Date,
     DateTime,
     Float,
+    ForeignKey,
+    Index,
     Integer,
     String,
     Text,
     create_engine,
+    func,
 )
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
@@ -159,7 +162,13 @@ class EVBetCache(Base):
     hr_model_prob   = Column(Float, nullable=True)   # HR model: true P(HR in game)
     hr_model_score  = Column(Float, nullable=True)   # HR model: composite ranking score
     hr_model_meta   = Column(Text, nullable=True)    # HR model: JSON {pitcher_name, pitcher_hr9, park_label, wind_label, batter_hr_ppa, batter_pa}
+    odds_updated_at = Column(DateTime(timezone=True), nullable=True)  # when odds were last fetched from the Odds API
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True, nullable=False)
+
+    __table_args__ = (
+        Index('ix_ev_bet_cache_commence_time', 'commence_time'),
+        Index('ix_ev_bet_cache_ev_percent', 'ev_percent'),
+    )
 
     def __repr__(self) -> str:
         sign = "+" if self.odds > 0 else ""
@@ -167,6 +176,30 @@ class EVBetCache(Base):
             f"<EVBetCache id={self.id} league={self.league!r} "
             f"team={self.team!r} odds={sign}{self.odds} ev={self.ev_percent:.1f}%>"
         )
+
+
+class WatchlistEntry(Base):
+    """User's paper-trail watchlist of +EV bets they're tracking without real money."""
+
+    __tablename__ = 'watchlist_entries'
+
+    id            = Column(Integer, primary_key=True, index=True)
+    user_id       = Column(Integer, ForeignKey('users.id'), nullable=False)
+    bet_cache_id  = Column(Integer, nullable=True)  # intentionally no FK — ev_bet_cache rows are ephemeral
+    game          = Column(String, nullable=True)
+    league        = Column(String, nullable=True)
+    team          = Column(String, nullable=True)
+    market        = Column(String, nullable=True)
+    odds          = Column(Integer, nullable=True)
+    ev_percent    = Column(Float, nullable=True)
+    true_prob     = Column(Float, nullable=True)
+    added_at      = Column(DateTime(timezone=True), server_default=func.now())
+    notes         = Column(String, nullable=True)
+    paper_result  = Column(String, nullable=True, default='pending')
+    paper_odds    = Column(Integer, nullable=True)
+
+    def __repr__(self) -> str:
+        return f"<WatchlistEntry id={self.id} user_id={self.user_id} team={self.team!r} result={self.paper_result!r}>"
 
 
 class DailyPick(Base):

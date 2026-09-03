@@ -1,0 +1,388 @@
+{% extends "base.html" %}
+{% block title %}Paper Trail — Posit+EV{% endblock %}
+
+{% block head %}
+<style>
+/* ── Dark theme override ── */
+:root {
+  color-scheme: dark;
+  --d-bg:       #080C14;
+  --d-surface:  #0D1321;
+  --d-card:     #111827;
+  --d-border:   #1E2A3A;
+  --d-bright:   #263244;
+  --d-green:    #00D68F;
+  --d-green-dim:rgba(0,214,143,0.10);
+  --d-orange:   #FF7A45;
+  --d-purple:   #9B79FA;
+  --d-blue:     #4F9EFF;
+  --d-text:     #E4EAF4;
+  --d-sub:      #8896AB;
+  --d-muted:    #3D4F66;
+  --d-red:      #FF5B5B;
+}
+body, html {
+  background: var(--d-bg) !important;
+  color: var(--d-text) !important;
+}
+nav {
+  background: var(--d-surface) !important;
+  border-bottom: 1px solid var(--d-border) !important;
+}
+nav a, nav button { color: var(--d-sub) !important; }
+nav a:hover, nav button:hover { color: var(--d-text) !important; }
+
+/* ── Page layout ── */
+.wl-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px 20px 60px;
+}
+.wl-header {
+  margin-bottom: 28px;
+}
+.wl-title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--d-text);
+  margin: 0 0 6px;
+}
+.wl-subtitle {
+  font-size: 0.9rem;
+  color: var(--d-sub);
+  margin: 0 0 24px;
+}
+
+/* ── Stats row ── */
+.wl-stats {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 28px;
+}
+.wl-stat-card {
+  background: var(--d-card);
+  border: 1px solid var(--d-border);
+  border-radius: 12px;
+  padding: 14px 20px;
+  min-width: 100px;
+  flex: 1;
+}
+.wl-stat-val {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--d-text);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.wl-stat-lbl {
+  font-size: 0.72rem;
+  color: var(--d-sub);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.wl-stat-card.stat-green .wl-stat-val { color: var(--d-green); }
+.wl-stat-card.stat-red .wl-stat-val { color: var(--d-red); }
+
+/* ── Table ── */
+.wl-table-wrap {
+  background: var(--d-card);
+  border: 1px solid var(--d-border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.wl-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.wl-table th {
+  background: var(--d-surface);
+  color: var(--d-sub);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 10px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--d-border);
+  white-space: nowrap;
+}
+.wl-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--d-border);
+  font-size: 0.84rem;
+  color: var(--d-text);
+  vertical-align: middle;
+}
+.wl-table tr:last-child td {
+  border-bottom: none;
+}
+.wl-table tbody tr {
+  transition: background 0.12s ease;
+}
+.wl-table tbody tr:hover {
+  background: var(--d-surface);
+}
+.wl-table tbody tr.wl-row-removing {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+/* ── Cell styles ── */
+.wl-league-badge {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: rgba(83,74,183,0.15);
+  color: var(--d-purple);
+  white-space: nowrap;
+}
+.wl-pick {
+  font-weight: 600;
+  color: var(--d-text);
+}
+.wl-game {
+  font-size: 0.74rem;
+  color: var(--d-sub);
+  margin-top: 2px;
+}
+.wl-odds-pos { color: var(--d-green); font-weight: 600; }
+.wl-odds-neg { color: var(--d-text); font-weight: 600; }
+.wl-ev { font-weight: 600; color: var(--d-green); }
+.wl-date { color: var(--d-sub); font-size: 0.78rem; white-space: nowrap; }
+
+/* ── Status select ── */
+.wl-status-select {
+  background: var(--d-surface);
+  border: 1px solid var(--d-border);
+  border-radius: 7px;
+  color: var(--d-text);
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 500;
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.wl-status-select:focus {
+  outline: none;
+  border-color: #534AB7;
+}
+.wl-status-select.status-win   { border-color: var(--d-green);  color: var(--d-green); }
+.wl-status-select.status-loss  { border-color: var(--d-red);    color: var(--d-red); }
+.wl-status-select.status-push  { border-color: #FAC775;          color: #FAC775; }
+.wl-status-select.status-pending { border-color: var(--d-border); color: var(--d-sub); }
+
+/* ── Remove button ── */
+.wl-remove-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--d-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+  padding: 0;
+}
+.wl-remove-btn:hover {
+  color: var(--d-red);
+  background: rgba(255,91,91,0.1);
+}
+
+/* ── Empty state ── */
+.wl-empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--d-sub);
+}
+.wl-empty-icon {
+  font-size: 2.5rem;
+  margin-bottom: 12px;
+}
+.wl-empty h2 {
+  font-size: 1.1rem;
+  color: var(--d-text);
+  margin: 0 0 8px;
+}
+.wl-empty p {
+  font-size: 0.88rem;
+  margin: 0 0 20px;
+}
+.wl-empty a {
+  display: inline-block;
+  background: var(--d-green-dim);
+  border: 1px solid rgba(0,214,143,0.25);
+  color: var(--d-green);
+  border-radius: 8px;
+  padding: 9px 20px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+.wl-empty a:hover { background: rgba(0,214,143,0.18); }
+
+/* ── Record display ── */
+.wl-record { font-weight: 700; font-size: 1.5rem; }
+.wl-record-w { color: var(--d-green); }
+.wl-record-sep { color: var(--d-muted); }
+.wl-record-l { color: var(--d-red); }
+.wl-record-p { color: #FAC775; }
+
+/* ── Responsive ── */
+@media (max-width: 700px) {
+  .wl-table-wrap { overflow-x: auto; }
+  .wl-table { min-width: 600px; }
+  .wl-stats { gap: 8px; }
+  .wl-stat-card { padding: 10px 14px; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="wl-page">
+
+  <div class="wl-header">
+    <h1 class="wl-title">⭐ Paper Trail</h1>
+    <p class="wl-subtitle">Track picks you're monitoring without real money on the line</p>
+  </div>
+
+  {# ── Stats row ── #}
+  <div class="wl-stats">
+    <div class="wl-stat-card">
+      <div class="wl-stat-val">{{ total }}</div>
+      <div class="wl-stat-lbl">Total tracked</div>
+    </div>
+    <div class="wl-stat-card">
+      <div class="wl-stat-val">{{ pending }}</div>
+      <div class="wl-stat-lbl">Pending</div>
+    </div>
+    <div class="wl-stat-card stat-green">
+      <div class="wl-stat-val">
+        <span class="wl-record">
+          <span class="wl-record-w">{{ wins }}</span><span class="wl-record-sep">-</span><span class="wl-record-l">{{ losses }}</span><span class="wl-record-sep">-</span><span class="wl-record-p">{{ pushes }}</span>
+        </span>
+      </div>
+      <div class="wl-stat-lbl">Record (W-L-P)</div>
+    </div>
+  </div>
+
+  {# ── Table ── #}
+  <div class="wl-table-wrap">
+    {% if entries %}
+    <table class="wl-table">
+      <thead>
+        <tr>
+          <th>Date Added</th>
+          <th>League</th>
+          <th>Pick</th>
+          <th>Market</th>
+          <th>Odds</th>
+          <th>EV%</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="wl-tbody">
+        {% for e in entries %}
+        {% set odds_str = ('+' ~ e.odds) if e.odds and e.odds > 0 else (e.odds | string if e.odds else '—') %}
+        {% set market_map = {"h2h":"Moneyline","h2h_3_way":"3-Way ML","spreads":"Spread","totals":"Total","btts":"Both Teams Score","team_totals":"Team Total","nrfi":"NRFI/YRFI"} %}
+        {% set market_display = market_map.get(e.market, (e.market | replace('_',' ') | title) if e.market else '—') %}
+        {% set league_map = {"icehockey_nhl":"NHL","basketball_nba":"NBA","baseball_mlb":"MLB","soccer_epl":"EPL","americanfootball_nfl":"NFL"} %}
+        {% set league_display = league_map.get(e.league, (e.league | upper) if e.league else '—') %}
+        <tr id="wl-row-{{ e.id }}">
+          <td class="wl-date">{{ e.added_at.strftime('%b %d') if e.added_at else '—' }}</td>
+          <td>
+            {% if e.league %}
+            <span class="wl-league-badge">{{ league_display }}</span>
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            <div class="wl-pick">{{ e.team or '—' }}</div>
+            {% if e.game %}<div class="wl-game">{{ e.game }}</div>{% endif %}
+          </td>
+          <td>{{ market_display }}</td>
+          <td>
+            {% if e.odds %}
+            <span class="{{ 'wl-odds-pos' if e.odds > 0 else 'wl-odds-neg' }}">{{ odds_str }}</span>
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            {% if e.ev_percent %}
+            <span class="wl-ev">+{{ "%.1f"|format(e.ev_percent) }}%</span>
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            <select class="wl-status-select status-{{ e.paper_result or 'pending' }}"
+                    id="wl-status-{{ e.id }}"
+                    onchange="updateWlStatus({{ e.id }}, this)">
+              <option value="pending" {% if e.paper_result == 'pending' or not e.paper_result %}selected{% endif %}>Pending</option>
+              <option value="win"     {% if e.paper_result == 'win'     %}selected{% endif %}>Win</option>
+              <option value="loss"    {% if e.paper_result == 'loss'    %}selected{% endif %}>Loss</option>
+              <option value="push"    {% if e.paper_result == 'push'    %}selected{% endif %}>Push</option>
+            </select>
+          </td>
+          <td>
+            <button class="wl-remove-btn" onclick="removeWlEntry({{ e.id }}, this)" title="Remove from paper trail">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M2 3.5h10M5.5 3.5V2.5a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 .5.5v1M5 3.5l.5 8M9 3.5l-.5 8M3.5 3.5 4 11.5a.5.5 0 0 0 .5.5h5a.5.5 0 0 0 .5-.5l.5-8"
+                      stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="wl-empty">
+      <div class="wl-empty-icon">⭐</div>
+      <h2>No picks tracked yet</h2>
+      <p>Star any pick on the dashboard to add it to your paper trail.</p>
+      <a href="/dashboard">← Back to Dashboard</a>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function updateWlStatus(entryId, select) {
+  const paper_result = select.value;
+  // Update select styling
+  select.className = 'wl-status-select status-' + paper_result;
+  try {
+    await fetch('/watchlist/update/' + entryId, {
+      method: 'PATCH',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({paper_result})
+    });
+  } catch(e) {
+    console.error('watchlist update error:', e);
+  }
+}
+
+async function removeWlEntry(entryId, btn) {
+  const row = document.getElementById('wl-row-' + entryId);
+  try {
+    const resp = await fetch('/watchlist/remove/' + entryId, { method: 'DELETE' });
+    const data = await resp.json();
+    if (data.success && row) {
+      row.classList.add('wl-row-removing');
+      setTimeout(() => row.remove(), 320);
+    }
+  } catch(e) {
+    console.error('watchlist remove error:', e);
+  }
+}
+</script>
+{% endblock %}

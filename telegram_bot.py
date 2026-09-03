@@ -729,6 +729,34 @@ async def _auth_guard(update: Update) -> bool:
 
 
 # ---------------------------------------------------------------------------
+# /credits — Odds API credit usage summary
+# ---------------------------------------------------------------------------
+
+async def cmd_credits(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """/credits — show Odds API credit usage for today and this month."""
+    if not await _auth_guard(update): return
+    try:
+        from scripts.odds_fetcher import get_credit_summary, MONTHLY_CREDIT_LIMIT, DAILY_CREDIT_LIMIT
+        summary = get_credit_summary()
+        today   = summary.get("total_today", 0)
+        month   = summary.get("total_month", 0)
+        pct     = month / MONTHLY_CREDIT_LIMIT * 100
+        pace    = month / max(datetime.now().day, 1) * 30
+        warn    = "⚠️ " if pace >= MONTHLY_CREDIT_LIMIT * 0.8 else ""
+        lines = [
+            "📊 <b>Odds API Credit Usage</b>",
+            f"  Today:   <b>{today:,}</b> / {DAILY_CREDIT_LIMIT:,}",
+            f"  Month:   <b>{month:,}</b> / {MONTHLY_CREDIT_LIMIT:,} ({pct:.1f}%)",
+            f"  {warn}30-day pace: ~{int(pace):,} credits",
+        ]
+        if pct >= 80:
+            lines.append("🔴 <b>Warning:</b> over 80% of monthly budget used!")
+        await update.message.reply_html("\n".join(lines))
+    except Exception as exc:
+        await update.message.reply_text(f"Error fetching credit summary: {exc}")
+
+
+# ---------------------------------------------------------------------------
 # /picks — instant picks from the live DB cache (no API calls)
 # ---------------------------------------------------------------------------
 
@@ -871,10 +899,11 @@ def _build_app():
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start",  cmd_start))
     app.add_handler(CommandHandler("help",   cmd_help))
-    app.add_handler(CommandHandler("picks",  cmd_picks))
-    app.add_handler(CommandHandler("game",   cmd_game))
-    app.add_handler(CommandHandler("today",  cmd_today))
-    app.add_handler(CommandHandler("report", cmd_report))
+    app.add_handler(CommandHandler("picks",   cmd_picks))
+    app.add_handler(CommandHandler("game",    cmd_game))
+    app.add_handler(CommandHandler("today",   cmd_today))
+    app.add_handler(CommandHandler("report",  cmd_report))
+    app.add_handler(CommandHandler("credits", cmd_credits))
     # Free-text handler — registered last so commands take priority
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     return app

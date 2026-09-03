@@ -69,7 +69,12 @@ log = logging.getLogger(__name__)
 # Config
 # ---------------------------------------------------------------------------
 
-JWT_SECRET: str         = os.getenv("JWT_SECRET", "change-me-in-production")
+JWT_SECRET: str         = os.getenv("JWT_SECRET", "")
+if not JWT_SECRET or JWT_SECRET == "change-me-in-production":
+    raise RuntimeError(
+        "JWT_SECRET env var is not set or uses the insecure default. "
+        "Set a strong random secret in your .env / Railway environment."
+    )
 JWT_ALGORITHM: str      = "HS256"
 JWT_EXPIRE_MINUTES: int = 60 * 24 * 7   # 7 days
 

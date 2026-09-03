@@ -25,6 +25,7 @@ Run:
     uvicorn web.main:app --reload
 """
 
+import csv
 import json
 import logging
 import math
@@ -34,6 +35,8 @@ import secrets
 import sys
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+
+from scipy import stats as scipy_stats
 
 import stripe as _stripe
 import sentry_sdk
@@ -60,7 +63,7 @@ _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
-from db.database import DailyPick, EVBetCache, GameSimulation, NewsletterSubscriber, OddsHistory, SessionLocal, User, create_tables, ensure_columns  # noqa: E402
+from db.database import DailyPick, EVBetCache, GameSimulation, NewsletterSubscriber, OddsHistory, SessionLocal, User, WatchlistEntry, create_tables, ensure_columns  # noqa: E402
 from web.auth import (                                                   # noqa: E402
     router as auth_router,
     create_access_token,
@@ -102,6 +105,13 @@ if _sentry_dsn:
 def _is_admin(request: Request) -> bool:
     """Return True if the current session has a valid admin PIN login."""
     return bool(request.session.get("admin_authenticated"))
+
+
+def _is_admin_jwt(token_payload: dict) -> bool:
+    """Return True if a decoded JWT belongs to the configured admin email."""
+    admin_email = os.getenv("ADMIN_EMAIL", "")
+    email = (token_payload.get("email") or "").strip().lower()
+    return bool(email and admin_email and email == admin_email.strip().lower())
 
 
 # ---------------------------------------------------------------------------
@@ -334,6 +344,12 @@ def refresh_ev_cache() -> int:
         log.warning("EV cache refresh already in progress — skipping.")
         return 0
 
+    # Credit brake — halt if monthly or daily budget is exceeded
+    from scripts.odds_fetcher import credit_brake_check as _credit_brake
+    if not _credit_brake("ev_cache_refresh"):
+        log.warning("EV cache refresh blocked by credit brake.")
+        return 0
+
     _cache_status["running"] = True
     log.info("EV cache refresh: starting pipeline...")
 
@@ -424,20 +440,8 @@ def refresh_ev_cache() -> int:
         except Exception as _props_exc:
             log.warning("Props fetch/calc failed (non-fatal): %s", _props_exc)
 
-        # ── Championship futures (NHL/NBA playoffs) ───────────────────────
-        # Uses separate *_championship_winner sport keys with outrights market.
-        # No 7-day filter — futures have commence_times months away.
-        try:
-            futures_df = get_futures_df()
-            if not futures_df.empty:
-                futures_ev_df = find_all_positive_ev(futures_df, markets=["outrights"])
-                if not futures_ev_df.empty:
-                    # Tag as non-prop game bets so they pass the newsletter filter
-                    futures_ev_df["is_prop"] = False
-                    ev_df = _pd.concat([ev_df, futures_ev_df], ignore_index=True)
-                    log.info("Futures: found %d +EV championship winner bets.", len(futures_ev_df))
-        except Exception as _fut_exc:
-            log.warning("Futures fetch/calc failed (non-fatal): %s", _fut_exc)
+        # Championship futures are now fetched once daily at 3 AM CT by
+        # _fetch_futures_daily() — removed from 30-min cycle to save ~92 credits/day.
     except Exception as exc:
         log.error("EV cache refresh: pipeline failed: %s", exc, exc_info=True)
         _cache_status.update({"running": False, "last_error": str(exc),
@@ -734,6 +738,21 @@ def refresh_ev_cache() -> int:
             _score_hr_props()
         except Exception as _hr_exc:
             log.warning("EV cache refresh: inline HR scoring failed: %s", _hr_exc)
+
+        # ── Smart interval — slow down off-peak to save credits ───────────
+        # Peak 10 AM–1 AM CT: 30 min. Off-peak 1–10 AM CT: 90 min.
+        try:
+            from pytz import timezone as _tz
+            _now_ct = datetime.now(_tz("America/Chicago"))
+            _hour = _now_ct.hour
+            _interval = 30 if (_hour >= 10 or _hour == 0) else 90
+            scheduler.reschedule_job(
+                "ev_cache_refresh",
+                trigger=IntervalTrigger(minutes=_interval),
+            )
+            log.info("EV cache: next refresh in %d min (hour=%d CT)", _interval, _hour)
+        except Exception as _rs_exc:
+            log.warning("EV cache: could not reschedule interval: %s", _rs_exc)
 
         return count
 
@@ -1340,6 +1359,67 @@ async def on_startup() -> None:
         except Exception:
             _db.rollback()
 
+    # ── Credit housekeeping helpers ───────────────────────────────────────────
+
+    def _reset_daily_credits():
+        try:
+            from scripts.odds_fetcher import reset_daily_credits as _rdc
+            _rdc()
+        except Exception as _e:
+            log.warning("Daily credit reset failed: %s", _e)
+
+    def _reset_monthly_credits():
+        try:
+            from scripts.odds_fetcher import reset_monthly_credits as _rmc
+            _rmc()
+        except Exception as _e:
+            log.warning("Monthly credit reset failed: %s", _e)
+
+    def _fetch_futures_daily():
+        """
+        Fetch championship futures once per day (3 AM CT) and merge into EVBetCache.
+        Replaces the per-30-min futures call to save ~92 credits/day.
+        """
+        try:
+            from scripts.odds_fetcher import fetch_futures_only as _ff
+            from models.ev_calculator import find_all_positive_ev as _fev
+            import pandas as _pd
+            futures_df = _ff()
+            if futures_df is None or futures_df.empty:
+                return
+            futures_ev_df = _fev(futures_df, markets=["outrights"])
+            if futures_ev_df.empty:
+                return
+            futures_ev_df["is_prop"] = False
+            db = SessionLocal()
+            try:
+                from db.database import EVBetCache
+                existing_ids = {r.game_id for r in db.query(EVBetCache.game_id).all() if r.game_id}
+                rows = []
+                for _, row in futures_ev_df.iterrows():
+                    gid = str(row.get("game_id", "") or "")
+                    if gid in existing_ids:
+                        continue
+                    rows.append(EVBetCache(
+                        game_id=gid,
+                        league=str(row.get("sport_key", "")),
+                        market=str(row.get("market", "outrights")),
+                        team=str(row.get("outcome_name", "")),
+                        game=str(row.get("game", "")),
+                        book=str(row.get("bookmaker", "")),
+                        odds=int(row.get("price", -110)),
+                        ev_percent=float(row.get("ev_percent", 0)),
+                        true_prob=float(row.get("true_prob", 0)),
+                    ))
+                if rows:
+                    db.add_all(rows)
+                    db.commit()
+                    log.info("Futures daily job: inserted %d futures bets.", len(rows))
+            finally:
+                db.close()
+        except Exception as exc:
+            log.warning("_fetch_futures_daily failed: %s", exc)
+
     # Stripe subscription sync — runs hourly to heal users whose DB record
     # was never updated after a successful Stripe checkout (webhook/success miss).
     scheduler.add_job(
@@ -1431,6 +1511,31 @@ async def on_startup() -> None:
         trigger=CronTrigger(hour=3, minute=0, timezone="America/Chicago"),
         id="odds_history_purge",
         name="Purge OddsHistory rows older than 14 days (daily at 3 AM CT)",
+        replace_existing=True,
+    )
+
+    # Daily futures fetch — 3:02 AM CT (just after purge), once per day
+    scheduler.add_job(
+        _fetch_futures_daily,
+        trigger=CronTrigger(hour=3, minute=2, timezone="America/Chicago"),
+        id="futures_daily",
+        name="Daily championship futures fetch (3:02 AM CT)",
+        replace_existing=True,
+    )
+
+    # Credit counter resets
+    scheduler.add_job(
+        _reset_daily_credits,
+        trigger=CronTrigger(hour=0, minute=0, timezone="America/Chicago"),
+        id="credit_reset_daily",
+        name="Reset daily Odds API credit counter (midnight CT)",
+        replace_existing=True,
+    )
+    scheduler.add_job(
+        _reset_monthly_credits,
+        trigger=CronTrigger(day=1, hour=0, minute=1, timezone="America/Chicago"),
+        id="credit_reset_monthly",
+        name="Reset monthly Odds API credit counter (1st of month CT)",
         replace_existing=True,
     )
 
@@ -1578,9 +1683,15 @@ class SubscriptionMiddleware:
 
 
 app.add_middleware(SubscriptionMiddleware)
+_secret_key = os.getenv("SECRET_KEY", "")
+if not _secret_key or _secret_key == "dev-secret-change-in-production":
+    raise RuntimeError(
+        "SECRET_KEY env var is not set or uses the insecure default. "
+        "Set a strong random secret in your .env / Railway environment."
+    )
 app.add_middleware(
     SessionMiddleware,
-    secret_key=os.getenv("SECRET_KEY", "dev-secret-change-in-production"),
+    secret_key=_secret_key,
     session_cookie="positev_admin_session",
     max_age=86400 * 7,   # 7-day session
     https_only=False,    # Railway terminates TLS at the proxy layer
@@ -2168,6 +2279,13 @@ async def get_analysis(bet_id: int, request: Request, db: Session = Depends(get_
         }
     """
     from datetime import timedelta
+
+    token = get_token_from_request(request)
+    if not token:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    _auth_payload = decode_access_token(token)
+    if not _auth_payload or not _auth_payload.get("sub"):
+        raise HTTPException(status_code=401, detail="Authentication required")
 
     bet_row = db.query(EVBetCache).filter(EVBetCache.id == bet_id).first()
     if not bet_row:
@@ -3131,6 +3249,405 @@ async def dashboard(
         log.warning("dashboard: game_sim_map build failed: %s", _sim_err)
         game_sim_map = {}
 
+    # ── get_line_history: read past odds from daily CSV reports ───────────────
+    _REPORTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'reports')
+
+    def get_line_history(game_id, market, team):
+        try:
+            results = []
+            if not os.path.isdir(_REPORTS_DIR):
+                return []
+            for fname in sorted(os.listdir(_REPORTS_DIR)):
+                if not fname.startswith('ev_report_') or not fname.endswith('.csv'):
+                    continue
+                date_part = fname[len('ev_report_'):-len('.csv')]
+                fpath = os.path.join(_REPORTS_DIR, fname)
+                try:
+                    with open(fpath, newline='', encoding='utf-8') as f:
+                        reader = csv.DictReader(f)
+                        for row in reader:
+                            if row.get('game_id') != game_id:
+                                continue
+                            if row.get('market') != market:
+                                continue
+                            outcome = (row.get('outcome_name') or '').lower()
+                            if team.lower() not in outcome:
+                                continue
+                            try:
+                                odds_val = int(float(row.get('american_odds', 0)))
+                                ev_val = float(row.get('ev_pct', row.get('ev_percent', 0)) or 0)
+                                results.append({'date': date_part, 'odds': odds_val, 'ev_pct': ev_val})
+                            except (ValueError, TypeError):
+                                continue
+                except Exception:
+                    continue
+            results = sorted(results, key=lambda x: x['date'])[-10:]
+            if len(results) < 2:
+                return []
+            return results
+        except Exception:
+            return []
+
+    # ── Computed signal fields attached to each bet ───────────────────────────
+    def _bet_signals(b):
+        # 1. consensus_score (0-100): weighted average of available signals
+        sigs = {}
+        if b.ev_percent is not None:
+            sigs['ev'] = min(100.0, float(b.ev_percent) / 20.0 * 100.0)
+        if b.true_prob is not None and b.implied_prob is not None:
+            _tp = float(b.true_prob); _ip = float(b.implied_prob)
+            if _tp > 1.0: _tp /= 100.0
+            if _ip > 1.0: _ip /= 100.0
+            sigs['prob_gap'] = min(100.0, max(0.0, (_tp - _ip) * 500.0))
+        _gm = {'S': 100.0, 'A': 80.0, 'B': 60.0, 'C': 40.0}
+        if b.sharp_grade in _gm:
+            sigs['sharp'] = _gm[b.sharp_grade]
+        if b.opening_odds and b.opening_odds != b.odds:
+            sigs['clv'] = 100.0 if b.opening_odds > b.odds else 0.0
+        else:
+            sigs['clv'] = 50.0
+        try:
+            _gs = game_sim_map.get(b.game or '')
+            if _gs:
+                for _attr in ('home_win_prob', 'win_prob', 'sim_win_prob'):
+                    _mv = getattr(_gs, _attr, None)
+                    if _mv is not None:
+                        sigs['mc'] = float(_mv) * 100.0
+                        break
+        except Exception:
+            pass
+        _wts = {'ev': 0.30, 'prob_gap': 0.25, 'sharp': 0.20, 'clv': 0.15, 'mc': 0.10}
+        _tw = sum(_wts[k] for k in sigs if k in _wts)
+        _raw = (sum(sigs[k] * _wts[k] for k in sigs if k in _wts) / _tw) if _tw else 50.0
+        b.consensus_score = max(0, min(100, int(round(_raw))))
+
+        # 2. value_expiry_minutes: base by market, reduced by sharp grade / CLV / time-to-game
+        _mkt = b.market or ''
+        if _mkt in ('h2h', 'h2h_3_way', 'btts'):
+            _base = 180
+        elif _mkt == 'spreads':
+            _base = 120
+        elif _mkt in ('totals', 'team_totals', 'nrfi'):
+            _base = 240
+        else:
+            _base = 90
+        _mult = 1.0
+        if b.sharp_grade in ('S', 'A'):
+            _mult *= 0.70
+        if b.opening_odds and b.opening_odds != b.odds and b.opening_odds < b.odds:
+            _mult *= 0.80
+        if b.commence_time:
+            try:
+                _ct = b.commence_time if b.commence_time.tzinfo else b.commence_time.replace(tzinfo=timezone.utc)
+                if (_ct - _now_utc).total_seconds() < 7200:
+                    _mult *= 0.50
+            except Exception:
+                pass
+        b.value_expiry_minutes = max(15, int(_base * _mult))
+
+        # 3. divergence_score: abs pp gap between model true prob and book implied prob
+        if b.true_prob is not None and b.implied_prob is not None:
+            _tp = float(b.true_prob); _ip = float(b.implied_prob)
+            if _tp > 1.0: _tp /= 100.0
+            if _ip > 1.0: _ip /= 100.0
+            b.divergence_score = round(abs(_tp - _ip) * 100.0, 1)
+        else:
+            b.divergence_score = 0.0
+
+        # 4. sharp_book_heatmap: sharp vs soft book avg implied probs from all_book_odds
+        _SHARP = {'pinnacle', 'betcris', 'bookmaker', 'circa', 'betonlineag'}
+        _SOFT  = {'draftkings', 'fanduel', 'betmgm', 'caesars', 'pointsbet', 'bet365'}
+        try:
+            _raw = b.all_book_odds
+            if isinstance(_raw, str):
+                _raw = _json.loads(_raw)
+            _ao = _raw if isinstance(_raw, dict) else {}
+        except Exception:
+            _ao = {}
+        # 5. consensus_line, consensus_implied_prob, book_deviation, deviation_flag
+        try:
+            _raw_abo = b.all_book_odds
+            if isinstance(_raw_abo, str):
+                import json as _json
+                _raw_abo = _json.loads(_raw_abo)
+            _ao2 = _raw_abo if isinstance(_raw_abo, dict) else {}
+            if _ao2:
+                _odds_vals = [float(v) for v in _ao2.values() if v is not None]
+                if _odds_vals:
+                    b.consensus_line = int(round(sum(_odds_vals) / len(_odds_vals)))
+                    _probs = []
+                    for _o2 in _odds_vals:
+                        if _o2 > 0:
+                            _probs.append(100.0 / (_o2 + 100.0))
+                        else:
+                            _probs.append(abs(_o2) / (abs(_o2) + 100.0))
+                    b.consensus_implied_prob = round(sum(_probs) / len(_probs), 4)
+                    b.book_deviation = int(b.odds) - b.consensus_line
+                    if b.book_deviation >= 3:
+                        b.deviation_flag = 'above'
+                    elif b.book_deviation <= -3:
+                        b.deviation_flag = 'below'
+                    else:
+                        b.deviation_flag = 'consensus'
+                else:
+                    b.consensus_line = None; b.consensus_implied_prob = None
+                    b.book_deviation = 0; b.deviation_flag = 'consensus'
+            else:
+                b.consensus_line = None; b.consensus_implied_prob = None
+                b.book_deviation = 0; b.deviation_flag = 'consensus'
+        except Exception:
+            b.consensus_line = None; b.consensus_implied_prob = None
+            b.book_deviation = 0; b.deviation_flag = 'consensus'
+
+        # 6. money_bet_gap, sharp_divergence_signal, fade_signal
+        if b.money_pct is not None and b.bet_pct is not None:
+            b.money_bet_gap = round(abs(float(b.money_pct) - float(b.bet_pct)), 1)
+            b.sharp_divergence_signal = float(b.money_pct) > float(b.bet_pct) + 15
+            b.fade_signal = float(b.bet_pct) > float(b.money_pct) + 20
+        else:
+            b.money_bet_gap = None
+            b.sharp_divergence_signal = False
+            b.fade_signal = False
+
+        _sp, _fp, _sn, _fn = [], [], [], []
+        for _bk_k, _ov in _ao.items():
+            try:
+                _o = float(_ov)
+                _pr = (100.0 / (_o + 100.0)) if _o > 0 else (abs(_o) / (abs(_o) + 100.0))
+            except (TypeError, ZeroDivisionError, ValueError):
+                continue
+            _bl = str(_bk_k).lower()
+            if any(_s in _bl for _s in _SHARP):
+                _sp.append(_pr); _sn.append(_bk_k)
+            elif any(_s in _bl for _s in _SOFT):
+                _fp.append(_pr); _fn.append(_bk_k)
+        if _sp and _fp:
+            _sa = sum(_sp) / len(_sp); _fa = sum(_fp) / len(_fp)
+            b.sharp_book_heatmap = {
+                'sharp_avg_prob': round(_sa, 4),
+                'soft_avg_prob':  round(_fa, 4),
+                'divergence':     round((_sa - _fa) * 100.0, 1),
+                'sharp_books_present': _sn,
+                'soft_books_present':  _fn,
+            }
+        else:
+            b.sharp_book_heatmap = None
+
+    for _sb in bets:
+        try:
+            _bet_signals(_sb)
+        except Exception as _bse:
+            log.debug("dashboard: _bet_signals failed bet %s: %s", getattr(_sb, 'id', '?'), _bse)
+            _sb.consensus_score          = 50
+            _sb.value_expiry_minutes     = 120
+            _sb.divergence_score         = 0.0
+            _sb.sharp_book_heatmap       = None
+            _sb.consensus_line           = None
+            _sb.consensus_implied_prob   = None
+            _sb.book_deviation           = 0
+            _sb.deviation_flag           = 'consensus'
+            _sb.money_bet_gap            = None
+            _sb.sharp_divergence_signal  = False
+            _sb.fade_signal              = False
+        # Attach line history for sparklines
+        try:
+            _lh = get_line_history(
+                _sb.game_id or '',
+                _sb.market or '',
+                _sb.team or '',
+            )
+            _sb.line_history = json.dumps(_lh)
+        except Exception:
+            _sb.line_history = '[]'
+        # Odds freshness indicator
+        try:
+            _ts = getattr(_sb, 'odds_updated_at', None) or getattr(_sb, 'created_at', None)
+            if _ts:
+                _ts_aware = _ts if _ts.tzinfo else _ts.replace(tzinfo=timezone.utc)
+                _sb.odds_age_minutes = max(0, int((_now_utc - _ts_aware).total_seconds() / 60))
+            else:
+                _sb.odds_age_minutes = 999
+        except Exception:
+            _sb.odds_age_minutes = 999
+
+    # ── find_middles: surface same-game opposite-leg middle opportunities ─────
+    def find_middles(bets_list):
+        try:
+            from collections import defaultdict
+            by_key = defaultdict(list)
+            for b in bets_list:
+                mkt = b.market or ''
+                if mkt not in ('spreads', 'totals'):
+                    continue
+                gid = b.game_id or ''
+                by_key[(gid, mkt)].append(b)
+
+            middles_out = []
+            for (gid, mkt), group in by_key.items():
+                if len(group) < 2:
+                    continue
+                for i in range(len(group)):
+                    for j in range(i + 1, len(group)):
+                        b1, b2 = group[i], group[j]
+                        try:
+                            if mkt == 'spreads':
+                                t1 = (b1.team or '').lower()
+                                t2 = (b2.team or '').lower()
+                                if t1 == t2:
+                                    continue
+                                p1 = float(b1.point or 0)
+                                p2 = float(b2.point or 0)
+                                # A middle exists if both spreads favor the same-side push window
+                                # e.g., Team A -3 and Team B -4 → window of 1pt
+                                gap = abs(abs(p1) - abs(p2))
+                                if gap < 1.0:
+                                    continue
+                                center = (abs(p1) + abs(p2)) / 2.0
+                                window = gap
+                                std = 10.0
+                            else:  # totals
+                                team1 = (b1.team or '').lower()
+                                team2 = (b2.team or '').lower()
+                                if 'over' in team1 and 'under' in team2:
+                                    b_over, b_under = b1, b2
+                                elif 'under' in team1 and 'over' in team2:
+                                    b_over, b_under = b2, b1
+                                else:
+                                    continue
+                                over_pt = float(b_over.point or 0)
+                                under_pt = float(b_under.point or 0)
+                                if under_pt <= over_pt:
+                                    continue
+                                window = under_pt - over_pt
+                                center = (over_pt + under_pt) / 2.0
+                                std = 8.0
+                                b1, b2 = b_over, b_under
+
+                            # Compute probabilities
+                            mid_win_prob = (
+                                scipy_stats.norm.cdf(center + window / 2, loc=center, scale=std)
+                                - scipy_stats.norm.cdf(center - window / 2, loc=center, scale=std)
+                            )
+                            o1 = int(b1.odds or -110)
+                            o2 = int(b2.odds or -110)
+                            imp1 = (100.0 / (o1 + 100.0)) if o1 > 0 else (abs(o1) / (abs(o1) + 100.0))
+                            imp2 = (100.0 / (o2 + 100.0)) if o2 > 0 else (abs(o2) / (abs(o2) + 100.0))
+                            worst_case = abs(imp1 + imp2 - 2) * 50
+                            pf1 = o1 / 100.0 if o1 > 0 else 100.0 / abs(o1)
+                            pf2 = o2 / 100.0 if o2 > 0 else 100.0 / abs(o2)
+                            best_case = (pf1 + pf2) / 2.0 * 100.0
+                            combined_ev = ((b1.ev_percent or 0) + (b2.ev_percent or 0)) / 2.0
+
+                            # Grade
+                            if mid_win_prob >= 0.12 and combined_ev >= 3:
+                                grade = 'Elite'
+                            elif mid_win_prob >= 0.08 and combined_ev >= 2:
+                                grade = 'Strong'
+                            elif mid_win_prob >= 0.05:
+                                grade = 'Value'
+                            else:
+                                grade = 'Speculative'
+
+                            _ct = b1.commence_time
+                            try:
+                                game_time = _ct.strftime('%-I:%M %p') if _ct and hasattr(_ct, 'strftime') else ''
+                            except Exception:
+                                game_time = str(_ct)[:16] if _ct else ''
+
+                            o1_str = f'+{o1}' if o1 > 0 else str(o1)
+                            o2_str = f'+{o2}' if o2 > 0 else str(o2)
+
+                            middles_out.append({
+                                'middle_window':       round(window, 1),
+                                'middle_win_prob':     round(mid_win_prob, 4),
+                                'worst_case_loss_pct': round(worst_case, 1),
+                                'best_case_profit_pct': round(best_case, 1),
+                                'combined_ev':         round(combined_ev, 1),
+                                'books_involved':      [b1.book or '', b2.book or ''],
+                                'middle_grade':        grade,
+                                'game':                b1.game or '',
+                                'game_time':           game_time,
+                                'market_display':      'Spread' if mkt == 'spreads' else 'Total',
+                                'leg1_book':           b1.book or '',
+                                'leg1_pick':           b1.team or '',
+                                'leg1_odds':           o1,
+                                'leg1_odds_str':       o1_str,
+                                'leg2_book':           b2.book or '',
+                                'leg2_pick':           b2.team or '',
+                                'leg2_odds':           o2,
+                                'leg2_odds_str':       o2_str,
+                            })
+                        except Exception:
+                            continue
+
+            middles_out.sort(key=lambda x: x['middle_win_prob'], reverse=True)
+            return middles_out
+        except Exception as _me:
+            log.warning("find_middles failed: %s", _me)
+            return []
+
+    # ── get_ev_leaderboard: best EV pick per league ───────────────────────────
+    def get_ev_leaderboard(bets_list):
+        from collections import defaultdict
+        by_league = defaultdict(list)
+        for b in bets_list:
+            if b.ev_percent is not None:
+                by_league[b.league].append(b)
+        result = []
+        _league_display = {
+            'americanfootball_nfl':  'NFL',
+            'basketball_nba':        'NBA',
+            'icehockey_nhl':         'NHL',
+            'baseball_mlb':          'MLB',
+            'soccer_usa_mls':        'MLS',
+            'soccer':                'Soccer',
+            'americanfootball_ncaaf':'NCAAF',
+            'basketball_ncaab':      'NCAAB',
+        }
+        for league, league_bets in by_league.items():
+            best = max(league_bets, key=lambda x: x.ev_percent)
+            _odds = best.odds
+            _odds_str = ('+' + str(_odds)) if _odds > 0 else str(_odds)
+            _mkt = best.market or ''
+            _mkt_display = {
+                'h2h': 'Moneyline', 'spreads': 'Spread',
+                'totals': 'Total', 'h2h_3_way': 'Moneyline',
+            }.get(_mkt, _mkt.replace('_', ' ').title())
+            _ct = best.commence_time
+            _ct_disp = ''
+            if _ct:
+                try:
+                    _ct_disp = _ct.strftime('%-I:%M %p') if hasattr(_ct, 'strftime') else str(_ct)[:16]
+                except Exception:
+                    _ct_disp = str(_ct)[:16]
+            result.append({
+                'league':                 league,
+                'league_display':         _league_display.get(league, league.split('_')[-1].upper()),
+                'team':                   best.team or '',
+                'market_display':         _mkt_display,
+                'odds_str':               _odds_str,
+                'ev_percent':             float(best.ev_percent),
+                'consensus_score':        getattr(best, 'consensus_score', 50),
+                'sharp_grade':            best.sharp_grade or '—',
+                'commence_time_display':  _ct_disp,
+                'bet_id':                 best.id,
+            })
+        result.sort(key=lambda x: x['ev_percent'], reverse=True)
+        return result[:6]
+
+    middles      = find_middles(bets)
+    ev_leaderboard = get_ev_leaderboard(bets)
+
+    wl_pending_count = 0
+    if current_user:
+        try:
+            wl_pending_count = db.query(WatchlistEntry).filter(
+                WatchlistEntry.user_id == current_user.id,
+                WatchlistEntry.paper_result == 'pending'
+            ).count()
+        except Exception:
+            wl_pending_count = 0
+
     return templates.TemplateResponse(
         request,
         "dashboard.html",
@@ -3148,6 +3665,9 @@ async def dashboard(
             "hr_picks":             hr_picks,
             "game_sim_map":         game_sim_map,
             "fp_bullets":           fp_bullets,
+            "middles":              middles,
+            "ev_leaderboard":       ev_leaderboard,
+            "wl_pending_count":     wl_pending_count,
         },
     )
 
@@ -3191,6 +3711,85 @@ async def admin_logout(request: Request):
     """Clear the admin session."""
     request.session.clear()
     return RedirectResponse(url="/admin/login", status_code=303)
+
+
+# ---------------------------------------------------------------------------
+# Watchlist / Paper Trail routes
+# ---------------------------------------------------------------------------
+
+@app.post('/watchlist/add')
+async def watchlist_add(request: Request, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    body = await request.json()
+    bet_cache_id = body.get('bet_cache_id')
+    try:
+        bet = db.query(EVBetCache).filter(EVBetCache.id == bet_cache_id).first() if bet_cache_id else None
+        entry = WatchlistEntry(
+            user_id=current_user.id,
+            bet_cache_id=bet_cache_id,
+            game=bet.game if bet else None,
+            league=bet.league if bet else None,
+            team=bet.team if bet else None,
+            market=bet.market if bet else None,
+            odds=bet.odds if bet else None,
+            ev_percent=float(bet.ev_percent) if bet and bet.ev_percent else None,
+            true_prob=float(bet.true_prob) if bet and bet.true_prob else None,
+            paper_result='pending',
+            paper_odds=bet.odds if bet else None,
+        )
+        db.add(entry)
+        db.commit()
+        count = db.query(WatchlistEntry).filter(WatchlistEntry.user_id == current_user.id, WatchlistEntry.paper_result == 'pending').count()
+        return JSONResponse({'success': True, 'count': count})
+    except Exception as exc:
+        db.rollback()
+        import logging as _logging
+        _logging.getLogger(__name__).error('watchlist_add error: %s', exc)
+        return JSONResponse({'success': False, 'error': str(exc)}, status_code=500)
+
+
+@app.delete('/watchlist/remove/{entry_id}')
+async def watchlist_remove(entry_id: int, request: Request, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user:
+        return JSONResponse({'success': False}, status_code=401)
+    entry = db.query(WatchlistEntry).filter(WatchlistEntry.id == entry_id, WatchlistEntry.user_id == current_user.id).first()
+    if entry:
+        db.delete(entry)
+        db.commit()
+    return JSONResponse({'success': True})
+
+
+@app.patch('/watchlist/update/{entry_id}')
+async def watchlist_update(entry_id: int, request: Request, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user:
+        return JSONResponse({'success': False}, status_code=401)
+    body = await request.json()
+    paper_result = body.get('paper_result')
+    entry = db.query(WatchlistEntry).filter(WatchlistEntry.id == entry_id, WatchlistEntry.user_id == current_user.id).first()
+    if entry and paper_result in ('win', 'loss', 'push', 'pending'):
+        entry.paper_result = paper_result
+        db.commit()
+    return JSONResponse({'success': True})
+
+
+@app.get('/watchlist')
+async def watchlist_page(request: Request, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user:
+        return RedirectResponse('/login', status_code=302)
+    entries = db.query(WatchlistEntry).filter(WatchlistEntry.user_id == current_user.id).order_by(WatchlistEntry.added_at.desc()).all()
+    total = len(entries)
+    pending = sum(1 for e in entries if e.paper_result == 'pending')
+    wins = sum(1 for e in entries if e.paper_result == 'win')
+    losses = sum(1 for e in entries if e.paper_result == 'loss')
+    pushes = sum(1 for e in entries if e.paper_result == 'push')
+    return templates.TemplateResponse('watchlist.html', {
+        'request': request, 'user': current_user, 'entries': entries,
+        'total': total, 'pending': pending, 'wins': wins, 'losses': losses, 'pushes': pushes,
+        'wl_pending_count': pending,
+    })
 
 
 # ---------------------------------------------------------------------------
@@ -3529,14 +4128,14 @@ async def admin_sync_stripe_user(
 
     Also accepts Bearer JWT auth so it can be called from the CLI.
     """
-    # Auth: admin session OR Bearer JWT
+    # Auth: admin session OR Bearer JWT belonging to ADMIN_EMAIL
     authorized = _is_admin(request)
     if not authorized:
         auth_header = request.headers.get("Authorization", "")
         if auth_header.startswith("Bearer "):
             from web.auth import decode_access_token as _dat
             payload = _dat(auth_header[7:].strip())
-            if payload and payload.get("email"):
+            if payload and _is_admin_jwt(payload):
                 authorized = True
     if not authorized:
         return JSONResponse({"status": "error", "detail": "Unauthorized"}, status_code=403)
@@ -3891,13 +4490,22 @@ async def admin_newsletter_resubscribe(
     return RedirectResponse(url="/admin", status_code=303)
 
 
+@app.get("/admin/credit-usage")
+async def admin_credit_usage(request: Request):
+    """Return in-memory Odds API credit usage counters. Admin-only."""
+    if not _is_admin(request):
+        raise HTTPException(status_code=403, detail="Admin access required")
+    from scripts.odds_fetcher import get_credit_summary as _gcs
+    return JSONResponse(_gcs())
+
+
 @app.post("/admin/run-simulations")
 async def admin_run_simulations(request: Request, pin: str = Form(default="")):
     """Manually trigger the Monte Carlo simulation job."""
     _admin_pin = os.getenv("ADMIN_PIN", "")
     authed = (
         bool(request.session.get("admin_authenticated"))
-        or (pin and _admin_pin and pin == _admin_pin)
+        or (pin and _admin_pin and secrets.compare_digest(pin, _admin_pin))
     )
     if not authed:
         return JSONResponse({"error": "unauthorized"}, status_code=403)
@@ -3922,7 +4530,7 @@ async def admin_refresh_cache(
     _admin_pin = os.getenv("ADMIN_PIN", "")
     authed = (
         bool(request.session.get("admin_authenticated"))
-        or (pin and _admin_pin and pin == _admin_pin)
+        or (pin and _admin_pin and secrets.compare_digest(pin, _admin_pin))
     )
     if not authed:
         return JSONResponse({"error": "unauthorized"}, status_code=403)
@@ -3970,12 +4578,12 @@ async def admin_send_correction_newsletter(
 
     authorized = False
 
-    # Method 1: valid JWT Bearer token
+    # Method 1: valid JWT Bearer token belonging to ADMIN_EMAIL
     auth_header = request.headers.get("Authorization", "")
     if auth_header.startswith("Bearer "):
         token = auth_header[7:].strip()
         payload = decode_access_token(token)
-        if payload and payload.get("email"):
+        if payload and _is_admin_jwt(payload):
             authorized = True
             log.info(
                 "Correction newsletter: authorized via Bearer JWT for %s",
@@ -4038,7 +4646,7 @@ async def admin_trigger_daily_newsletter(
     if auth_header.startswith("Bearer "):
         token = auth_header[7:].strip()
         payload = decode_access_token(token)
-        if payload and payload.get("email"):
+        if payload and _is_admin_jwt(payload):
             authorized = True
             log.info("trigger-daily-newsletter: authorized via Bearer JWT for %s", payload.get("email"))
 

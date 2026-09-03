@@ -338,6 +338,13 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
           ↻ Flush &amp; Refresh Cache
         </button>
       </form>
+      <button id="adminSimBtn" onclick="adminTriggerSimulations()"
+              style="font-size:0.82rem; font-weight:600; padding:8px 16px;
+                     background:#0e7490; color:#fff;
+                     border:1px solid #0e7490;
+                     border-radius:8px; cursor:pointer; font-family:inherit;">
+        🎲 Run Simulations
+      </button>
       <form action="/admin/logout" method="post" style="margin:0;">
         <button type="submit"
                 style="font-size:0.82rem; font-weight:600; padding:8px 16px;
@@ -1281,6 +1288,28 @@ function toggleColl(id) {
   const hdr  = document.getElementById(id + '-hdr');
   const open = body.classList.toggle('open');
   hdr.classList.toggle('open', open);
+}
+
+/* ── Monte Carlo simulations ── */
+async function adminTriggerSimulations() {
+  const btn = document.getElementById('adminSimBtn');
+  if (!btn || btn.disabled) return;
+  btn.disabled = true;
+  btn.textContent = '⏳ Running…';
+  try {
+    const fd = new FormData(); fd.append('pin', '');
+    const res = await fetch('/admin/run-simulations', { method: 'POST', body: fd, credentials: 'same-origin' });
+    if (res.ok) {
+      btn.textContent = '✓ Started — ~30s';
+      setTimeout(() => { btn.disabled = false; btn.textContent = '🎲 Run Simulations'; }, 35000);
+    } else {
+      btn.textContent = '✗ Error';
+      setTimeout(() => { btn.disabled = false; btn.textContent = '🎲 Run Simulations'; }, 3000);
+    }
+  } catch (e) {
+    btn.textContent = '✗ Error';
+    setTimeout(() => { btn.disabled = false; btn.textContent = '🎲 Run Simulations'; }, 3000);
+  }
 }
 
 /* ── EV cache refresh ── */
