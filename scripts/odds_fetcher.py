@@ -309,18 +309,20 @@ def reset_monthly_credits() -> None:
 
 
 def send_credit_alert(message: str) -> None:
-    token   = os.getenv("TELEGRAM_BOT_TOKEN", "")
-    chat_id = os.getenv("TELEGRAM_CHAT_ID", "")
-    if not token or not chat_id:
-        return
-    try:
-        requests.post(
-            f"https://api.telegram.org/bot{token}/sendMessage",
-            json={"chat_id": chat_id, "text": f"⚠️ Posit+EV Credit Alert: {message}"},
-            timeout=10,
-        )
-    except Exception as _e:
-        log.warning("Credit alert send failed: %s", _e)
+    # TELEGRAM SUSPENDED — reactivate when ready
+    # token   = os.getenv("TELEGRAM_BOT_TOKEN", "")
+    # chat_id = os.getenv("TELEGRAM_CHAT_ID", "")
+    # if not token or not chat_id:
+    #     return
+    # try:
+    #     requests.post(
+    #         f"https://api.telegram.org/bot{token}/sendMessage",
+    #         json={"chat_id": chat_id, "text": f"⚠️ Posit+EV Credit Alert: {message}"},
+    #         timeout=10,
+    #     )
+    # except Exception as _e:
+    #     log.warning("Credit alert send failed: %s", _e)
+    print(f"[CREDIT ALERT] {message}")
 
 
 def credit_brake_check(job_name: str) -> bool:

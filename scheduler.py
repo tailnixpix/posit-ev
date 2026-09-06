@@ -30,7 +30,8 @@ import schedule
 
 sys.path.insert(0, os.path.dirname(__file__))
 from config import LOG_LEVEL, LOCAL_TZ
-from telegram_notifier import notify_pipeline_results, send_message
+# TELEGRAM SUSPENDED — reactivate when ready
+# from telegram_notifier import notify_pipeline_results, send_message
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -78,18 +79,19 @@ def run_ev_scan(label: str, league_args: list, market_args: list) -> None:
         # Rich terminal output
         print_rich_report(ev_df, sports_scanned=sport_keys, run_ts=datetime.now(timezone.utc))
 
-        # Telegram notification
-        title = f"{label.title()} +EV Report"
-        notify_pipeline_results(ev_df, title=title)
+        # TELEGRAM SUSPENDED — reactivate when ready
+        # title = f"{label.title()} +EV Report"
+        # notify_pipeline_results(ev_df, title=title)
 
         if ev_df.empty:
             log.info("=== EV scan [%s] completed — no +EV bets above threshold ===", label)
         else:
-            log.info("=== EV scan [%s] completed — %d bets, Telegram notified ===", label, len(ev_df))
+            log.info("=== EV scan [%s] completed — %d bets ===", label, len(ev_df))
 
     except Exception as exc:
         log.error("EV scan [%s] failed: %s", label, exc, exc_info=True)
-        send_message(f"⚠️ <b>EV scan [{label}] failed</b>\n<code>{exc}</code>")
+        # TELEGRAM SUSPENDED — reactivate when ready
+        # send_message(f"⚠️ <b>EV scan [{label}] failed</b>\n<code>{exc}</code>")
 
 
 # ---------------------------------------------------------------------------

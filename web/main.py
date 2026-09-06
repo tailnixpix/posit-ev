@@ -377,13 +377,14 @@ def refresh_ev_cache() -> int:
                 "🚨 *Odds API credits exhausted* — bet cards are paused.\n"
                 "Renew at https://the-odds-api.com to restore the feed."
             )
-            log.critical("EV cache: Odds API quota exhausted — notifying via Telegram.")
-            try:
-                from telegram_notifier import send_message as _tg_send
-                import asyncio as _asyncio
-                _asyncio.run(_tg_send(_quota_msg))
-            except Exception as _tg_exc:
-                log.warning("Telegram quota alert failed: %s", _tg_exc)
+            log.critical("EV cache: Odds API quota exhausted.")
+            # TELEGRAM SUSPENDED — reactivate when ready
+            # try:
+            #     from telegram_notifier import send_message as _tg_send
+            #     import asyncio as _asyncio
+            #     _asyncio.run(_tg_send(_quota_msg))
+            # except Exception as _tg_exc:
+            #     log.warning("Telegram quota alert failed: %s", _tg_exc)
             _cache_status.update({
                 "running": False, "last_count": 0,
                 "last_error": "OUT_OF_USAGE_CREDITS",
@@ -396,26 +397,28 @@ def refresh_ev_cache() -> int:
         if _remaining is not None:
             if _remaining <= CRITICAL_CREDIT_THRESHOLD:
                 log.critical("Odds API credits critically low: %d remaining.", _remaining)
-                try:
-                    from telegram_notifier import send_message as _tg_send
-                    import asyncio as _asyncio
-                    _asyncio.run(_tg_send(
-                        f"🔴 *Odds API: only {_remaining} credits left!* "
-                        f"Renew soon at https://the-odds-api.com"
-                    ))
-                except Exception:
-                    pass
+                # TELEGRAM SUSPENDED — reactivate when ready
+                # try:
+                #     from telegram_notifier import send_message as _tg_send
+                #     import asyncio as _asyncio
+                #     _asyncio.run(_tg_send(
+                #         f"🔴 *Odds API: only {_remaining} credits left!* "
+                #         f"Renew soon at https://the-odds-api.com"
+                #     ))
+                # except Exception:
+                #     pass
             elif _remaining <= LOW_CREDIT_THRESHOLD:
                 log.warning("Odds API credits low: %d remaining.", _remaining)
-                try:
-                    from telegram_notifier import send_message as _tg_send
-                    import asyncio as _asyncio
-                    _asyncio.run(_tg_send(
-                        f"⚠️ *Odds API: {_remaining} credits remaining.* "
-                        f"Consider topping up at https://the-odds-api.com"
-                    ))
-                except Exception:
-                    pass
+                # TELEGRAM SUSPENDED — reactivate when ready
+                # try:
+                #     from telegram_notifier import send_message as _tg_send
+                #     import asyncio as _asyncio
+                #     _asyncio.run(_tg_send(
+                #         f"⚠️ *Odds API: {_remaining} credits remaining.* "
+                #         f"Consider topping up at https://the-odds-api.com"
+                #     ))
+                # except Exception:
+                #     pass
 
         # ── Player props (NBA, MLB, NHL) ──────────────────────────────────
         # Always attempt props for all configured prop sports.
@@ -1542,8 +1545,8 @@ async def on_startup() -> None:
     scheduler.start()
     log.info("APScheduler started — EV cache refreshes every 30 min + 7:59 AM CT pre-newsletter, newsletter sends at 8 AM CT.")
 
-    # Start Telegram bot in a background daemon thread (runs its own event loop)
-    _start_telegram_bot()
+    # TELEGRAM SUSPENDED — reactivate when ready
+    # _start_telegram_bot()
 
 
 def _start_telegram_bot() -> None:
