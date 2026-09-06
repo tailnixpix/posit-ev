@@ -79,14 +79,29 @@ main { max-width: none !important; padding: 0 !important; }
 .sport-pill:hover { color: var(--d-text); border-color: var(--d-bright); }
 .sport-pill.active { background: #534AB7; color: #fff; border-color: #534AB7; }
 .sport-pill .pill-count {
-  font-size: 0.62rem;
-  background: var(--d-bright);
-  color: var(--d-sub);
-  border-radius: 10px;
-  padding: 1px 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 16px;
+  padding: 0 5px;
+  border-radius: 8px;
+  font-size: 10px;
   font-weight: 700;
+  background: rgba(255,255,255,0.1);
+  color: var(--d-sub);
+  margin-left: 2px;
+  line-height: 1;
 }
-.sport-pill.active .pill-count { background: rgba(0,214,143,0.2); color: var(--d-green); }
+.sport-pill.active .pill-count { background: rgba(255,255,255,0.2); color: #fff; }
+.sport-pill .pill-count:empty { display: none; }
+/* Pill groups */
+.pill-group { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.pill-group-label { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--d-muted); margin-right: 2px; white-space: nowrap; flex-shrink: 0; }
+.pill-group-divider { width: 1px; height: 20px; background: var(--d-border); margin: 0 12px; flex-shrink: 0; }
+/* Clear All button */
+.clear-all-btn { flex-shrink: 0; background: none; border: 1px solid var(--d-border); border-radius: 16px; color: var(--d-sub); font-size: 11px; font-weight: 600; padding: 4px 12px; cursor: pointer; white-space: nowrap; transition: all 0.15s ease; font-family: inherit; }
+.clear-all-btn:hover { border-color: #f87171; color: #f87171; background: rgba(248,113,113,0.06); }
 
 /* Search pill */
 .search-wrap {
@@ -141,7 +156,7 @@ main { max-width: none !important; padding: 0 !important; }
 .sidebar::-webkit-scrollbar-thumb { background: #2D3D55; border-radius: 4px; }
 .sidebar::-webkit-scrollbar-thumb:hover { background: #3D4F66; }
 .sidebar-section-label {
-  font-size: 0.6rem;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -725,7 +740,7 @@ main { max-width: none !important; padding: 0 !important; }
 }
 .ts-sep { color: var(--d-border); font-size: 0.8rem; }
 .ts-disclaimer {
-  font-size: 0.58rem;
+  font-size: 11px;
   color: var(--d-muted);
   margin-left: auto;
   font-style: italic;
@@ -759,7 +774,7 @@ main { max-width: none !important; padding: 0 !important; }
   margin: 4px 0 8px;
 }
 .card-story-label {
-  font-size: 0.58rem;
+  font-size: 11px;
   font-weight: 700;
   color: rgba(79,158,255,0.65);
   text-transform: uppercase;
@@ -842,7 +857,7 @@ main { max-width: none !important; padding: 0 !important; }
 .proj-band .pb-detail { color: var(--d-sub); font-weight: 600; }
 
 .badge {
-  font-size: 0.6rem;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -860,7 +875,7 @@ main { max-width: none !important; padding: 0 !important; }
 .badge-market   { background: rgba(155,121,250,0.12); color: var(--d-purple); }
 .badge-book   { background: var(--d-bright); color: var(--d-sub); }
 .badge-pm     { background: rgba(155,121,250,0.12); color: var(--d-purple); }
-.badge-exchange { background: rgba(255,122,69,0.1); color: var(--d-orange); border: 1px solid rgba(255,122,69,0.2); font-size: 0.58rem; padding: 2px 6px; }
+.badge-exchange { background: rgba(255,122,69,0.1); color: var(--d-orange); border: 1px solid rgba(255,122,69,0.2); font-size: 11px; padding: 2px 6px; }
 
 /* EV badge */
 .ev-badge {
@@ -885,13 +900,13 @@ main { max-width: none !important; padding: 0 !important; }
 .bet-card.prop-card { border-left: 3px solid var(--d-purple); background: linear-gradient(100deg, rgba(167,139,250,0.04) 0%, transparent 45%); }
 .prop-player-name { font-size: 1rem; font-weight: 800; color: var(--d-text); line-height: 1.2; margin-bottom: 4px; }
 .prop-stat-row { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; flex-wrap: wrap; }
-.prop-stat-badge { font-size: 0.58rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 2px 7px; border-radius: 4px; background: rgba(167,139,250,0.15); color: var(--d-purple); white-space: nowrap; flex-shrink: 0; }
+.prop-stat-badge { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 2px 7px; border-radius: 4px; background: rgba(167,139,250,0.15); color: var(--d-purple); white-space: nowrap; flex-shrink: 0; }
 .prop-direction { font-size: 0.85rem; font-weight: 700; }
 .prop-direction-over { color: var(--d-green); }
 .prop-direction-under { color: var(--d-orange); }
 .prop-line-val { font-size: 0.85rem; font-weight: 800; color: var(--d-text); }
 /* Props pill count badge */
-.pill-count { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 16px; padding: 0 4px; background: rgba(167,139,250,0.2); color: var(--d-purple); border-radius: 8px; font-size: 0.6rem; font-weight: 700; margin-left: 3px; vertical-align: middle; }
+.pill-count { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 16px; padding: 0 4px; background: rgba(167,139,250,0.2); color: var(--d-purple); border-radius: 8px; font-size: 11px; font-weight: 700; margin-left: 3px; vertical-align: middle; }
 .sport-pill.active .pill-count { background: rgba(167,139,250,0.4); }
 /* ── HR Model section ───────────────────────────────────────────────────── */
 #hrModelSection { display: none; padding: 0 0 32px; }
@@ -982,7 +997,7 @@ main { max-width: none !important; padding: 0 !important; }
 }
 
 /* kelly-dollar: shown inside 4-cell metrics Kelly cell when bankroll is set */
-.kelly-dollar { font-size: 0.56rem; color: var(--d-green); font-weight: 700; display: block; margin-top: 1px; }
+.kelly-dollar { font-size: 11px; color: var(--d-green); font-weight: 700; display: block; margin-top: 1px; }
 
 /* Projection panel */
 .proj-panel {
@@ -1001,7 +1016,7 @@ main { max-width: none !important; padding: 0 !important; }
   padding: 6px 12px;
   background: rgba(0,214,143,0.06);
   border-bottom: 1px solid rgba(0,214,143,0.1);
-  font-size: 0.58rem;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.6px;
@@ -1178,7 +1193,7 @@ main { max-width: none !important; padding: 0 !important; }
 }
 .sim-stat-cell:last-child { border-right: none; }
 .sim-stat-val { font-size: 0.9rem; font-weight: 700; color: var(--d-text); }
-.sim-stat-lbl { font-size: 0.58rem; color: var(--d-muted); line-height: 1.3; margin-top: 2px; }
+.sim-stat-lbl { font-size: 11px; color: var(--d-muted); line-height: 1.3; margin-top: 2px; }
 .sim-mkt-note {
   font-size: 0.68rem;
   padding: 6px 14px;
@@ -1301,7 +1316,7 @@ main { max-width: none !important; padding: 0 !important; }
 
 /* Probability comparison bars */
 .ai-prob-section { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; padding: 11px 13px; display: flex; flex-direction: column; gap: 7px; }
-.ai-prob-hdr { font-size: 0.58rem; font-weight: 700; letter-spacing: 0.9px; text-transform: uppercase; color: var(--d-muted); }
+.ai-prob-hdr { font-size: 11px; font-weight: 700; letter-spacing: 0.9px; text-transform: uppercase; color: var(--d-muted); }
 .ai-prob-row { display: flex; align-items: center; gap: 8px; }
 .ai-prob-lbl { font-size: 0.64rem; font-weight: 600; width: 40px; flex-shrink: 0; }
 .ai-prob-lbl.lbl-model { color: #4F9EFF; }
@@ -1320,7 +1335,7 @@ main { max-width: none !important; padding: 0 !important; }
 .ai-sig { display: flex; align-items: center; gap: 6px; padding: 7px 11px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.04); min-width: 0; }
 .ai-sig-icon { font-size: 0.95rem; flex-shrink: 0; }
 .ai-sig-body { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.ai-sig-label { font-size: 0.55rem; font-weight: 700; letter-spacing: 0.7px; text-transform: uppercase; color: var(--d-muted); }
+.ai-sig-label { font-size: 11px; font-weight: 700; letter-spacing: 0.7px; text-transform: uppercase; color: var(--d-muted); }
 .ai-sig-val   { font-size: 0.72rem; font-weight: 700; color: var(--d-text); white-space: nowrap; }
 .ai-sig.sig-ev    { border-color: rgba(0,214,143,0.3);  background: rgba(0,214,143,0.06); }
 .ai-sig.sig-sharp { border-color: rgba(245,197,66,0.3); background: rgba(245,197,66,0.06); }
@@ -1330,7 +1345,7 @@ main { max-width: none !important; padding: 0 !important; }
 
 /* Why-bet narrative */
 .ai-why { border-top: 1px solid rgba(255,255,255,0.07); padding-top: 12px; display: flex; flex-direction: column; gap: 5px; }
-.ai-why-hdr { font-size: 0.58rem; font-weight: 700; letter-spacing: 0.9px; text-transform: uppercase; color: var(--d-muted); }
+.ai-why-hdr { font-size: 11px; font-weight: 700; letter-spacing: 0.9px; text-transform: uppercase; color: var(--d-muted); }
 .ai-why-body { font-size: 0.8rem; line-height: 1.6; color: var(--d-sub); }
 .ai-why-body strong { color: var(--d-text); }
 
@@ -2649,12 +2664,12 @@ main { max-width: none !important; padding: 0 !important; }
 .expiry-label { color:var(--d-sub); flex:1; }
 .expiry-val { font-weight:600; color:var(--d-text); }
 /* ── Model vs market divergence badge ── */
-.divergence-badge { display:inline-flex; align-items:center; font-size:10px; font-weight:500; color:#a78bfa; background:rgba(83,74,183,0.15); border-radius:4px; padding:2px 6px; }
+.divergence-badge { display:inline-flex; align-items:center; font-size:11px; font-weight:500; color:#a78bfa; background:rgba(83,74,183,0.15); border-radius:4px; padding:2px 6px; }
 /* ── Sharp book heatmap ── */
 .heatmap-wrap { padding:10px 0; border-top:1px solid var(--d-border); }
 .heatmap-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
 .heatmap-title { font-size:11px; font-weight:500; color:var(--d-sub); }
-.heatmap-signal { font-size:10px; font-weight:600; padding:2px 8px; border-radius:10px; }
+.heatmap-signal { font-size:11px; font-weight:600; padding:2px 8px; border-radius:10px; }
 .heatmap-sig-sharp   { background:rgba(15,110,86,0.15); color:#0F6E56; }
 .heatmap-sig-soft    { background:rgba(248,113,113,0.15); color:#f87171; }
 .heatmap-sig-neutral { background:rgba(83,74,183,0.15); color:#a78bfa; }
@@ -2663,13 +2678,13 @@ main { max-width: none !important; padding: 0 !important; }
 .heatmap-sharp { border:1px solid rgba(15,110,86,0.25); }
 .heatmap-soft  { border:1px solid rgba(248,113,113,0.18); }
 .hm-val { font-size:15px; font-weight:600; color:var(--d-text); }
-.hm-lbl { font-size:10px; color:var(--d-sub); margin-top:2px; }
-.hm-books { font-size:9px; color:var(--d-muted); margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.hm-lbl { font-size:11px; color:var(--d-sub); margin-top:2px; }
+.hm-books { font-size:11px; color:var(--d-muted); margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .heatmap-divider { text-align:center; }
 .hm-div-val { font-size:13px; font-weight:600; }
 .hm-pos { color:#0F6E56; }
 .hm-neg { color:#f87171; }
-.hm-div-lbl { font-size:9px; color:var(--d-muted); }
+.hm-div-lbl { font-size:11px; color:var(--d-muted); }
 /* ── Divergence feed header ── */
 .divergence-feed-header { display:none; flex-direction:column; gap:2px; padding:8px 0 12px; }
 .divergence-feed-header.visible { display:flex; }
@@ -2760,12 +2775,16 @@ main { max-width: none !important; padding: 0 !important; }
 @media (max-width: 600px) { .dash-main { padding: 12px 10px 60px; } }
 
 /* ── Middles grid responsive ── */
+@media (max-width: 768px) { .middles-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); } }
 @media (max-width: 600px) { .middles-grid { grid-template-columns: 1fr; gap: 12px; } }
 
 /* ── Mobile dashboard fixes ── */
 @media (max-width: 600px) {
   .sport-bar { padding: 8px 12px; gap: 5px; }
   .sport-pill { padding: 4px 10px; font-size: 0.7rem; }
+  .pill-group-label { display: none; }
+  .pill-group-divider { margin: 0 8px; }
+  .clear-all-btn { font-size: 10px; padding: 3px 10px; }
   .dash-subheader { padding: 10px 10px 0; }
   .stat-chip { padding: 8px 12px; }
   .stat-chip .sc-val { font-size: 1rem; }
@@ -2774,6 +2793,12 @@ main { max-width: none !important; padding: 0 !important; }
   .card-metrics { grid-template-columns: repeat(4, 1fr); gap: 3px; }
   .middle-legs { grid-template-columns: 1fr 24px 1fr; }
   .mm-cell { padding: 6px 4px; }
+  .middle-card { padding: 14px 12px; }
+  .middle-metrics { grid-template-columns: repeat(4, 1fr); gap: 3px; }
+  .mm-val { font-size: 12px; }
+  .mm-lbl { font-size: 10px; }
+  .leg-pick { font-size: 12px; }
+  .leg-odds { font-size: 13px; }
 }
 </style>
 {% endblock %}
@@ -2785,18 +2810,27 @@ main { max-width: none !important; padding: 0 !important; }
 
 {# ── Sport bar ── #}
 <div class="sport-bar" id="sportBar">
-  <button class="sport-pill active" data-filter="league" data-value="all">All Picks</button>
-  <button class="sport-pill" id="nflPill" data-filter="league" data-value="americanfootball_nfl">🏈 NFL</button>
-  <button class="sport-pill" id="ncaafPill" data-filter="league" data-value="americanfootball_ncaaf">🏈 NCAAF</button>
-  <button class="sport-pill" data-filter="league" data-value="icehockey_nhl">🏒 NHL</button>
-  <button class="sport-pill" data-filter="league" data-value="basketball_nba">🏀 NBA</button>
-  <button class="sport-pill" data-filter="league" data-value="baseball_mlb">⚾ MLB</button>
-  <button class="sport-pill" data-filter="league" data-value="soccer">⚽ Soccer</button>
-  <button class="sport-pill" data-filter="is_prop" data-value="true">🎯 Props{% if _prop_count.v > 0 %}<span class="pill-count" id="propPillCount">{{ _prop_count.v }}</span>{% endif %}</button>
-  <button class="sport-pill" id="sharpFlowPill" data-filter="sharp_flow" data-value="true">⚡ Sharp Flow</button>
-  <button class="sport-pill" id="hrModelPill" data-filter="hr_model" data-value="true">⚾ HR Model{% if hr_picks|length > 0 %}<span class="pill-count" style="background:rgba(240,180,41,0.2);color:#f0b429;">{{ hr_picks|length }}</span>{% endif %}</button>
-  <button class="sport-pill" id="divergencePill" data-filter="divergence" data-value="true">↕ Divergence</button>
-  <button class="sport-pill" id="middlesPill" data-filter="middles" data-value="true">⟺ Middles</button>
+  <div class="pill-group">
+    <span class="pill-group-label">Leagues</span>
+    <button class="sport-pill active" data-filter="league" data-value="all">All Picks <span class="pill-count" id="pc-all"></span></button>
+    <button class="sport-pill" id="nflPill" data-filter="league" data-value="americanfootball_nfl">🏈 NFL <span class="pill-count" id="pc-nfl"></span></button>
+    <button class="sport-pill" id="ncaafPill" data-filter="league" data-value="americanfootball_ncaaf">🏈 NCAAF <span class="pill-count" id="pc-ncaaf"></span></button>
+    <button class="sport-pill" data-filter="league" data-value="icehockey_nhl">🏒 NHL <span class="pill-count" id="pc-nhl"></span></button>
+    <button class="sport-pill" data-filter="league" data-value="basketball_nba">🏀 NBA <span class="pill-count" id="pc-nba"></span></button>
+    <button class="sport-pill" data-filter="league" data-value="baseball_mlb">⚾ MLB <span class="pill-count" id="pc-mlb"></span></button>
+    <button class="sport-pill" data-filter="league" data-value="soccer">⚽ Soccer <span class="pill-count" id="pc-soccer"></span></button>
+  </div>
+  <div class="pill-group-divider"></div>
+  <div class="pill-group">
+    <span class="pill-group-label">Signals</span>
+    <button class="sport-pill" data-filter="is_prop" data-value="true">🎯 Props <span class="pill-count" id="pc-props"></span></button>
+    <button class="sport-pill" id="sharpFlowPill" data-filter="sharp_flow" data-value="true">⚡ Sharp Flow <span class="pill-count" id="pc-sharp"></span></button>
+    <button class="sport-pill" id="hrModelPill" data-filter="hr_model" data-value="true">⚾ HR Model <span class="pill-count" id="pc-hr"></span></button>
+    <button class="sport-pill" id="divergencePill" data-filter="divergence" data-value="true">↕ Divergence <span class="pill-count" id="pc-div"></span></button>
+    <button class="sport-pill" id="middlesPill" data-filter="middles" data-value="true">⟺ Middles <span class="pill-count" id="pc-mid"></span></button>
+  </div>
+  <div style="flex:1;min-width:12px;"></div>
+  <button class="clear-all-btn" id="clearAllBtn" onclick="clearFilters()" style="display:none;">&#x2715; Clear filters</button>
   <div class="search-wrap">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--d-muted);flex-shrink:0;"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
     <input type="text" id="globalSearch" placeholder="Search team, player…" autocomplete="off" />
@@ -2874,11 +2908,11 @@ main { max-width: none !important; padding: 0 !important; }
       </div>
     </div>
 
-    <div class="sidebar-section-label">Line Movement</div>
+    <div class="sidebar-section-label tooltip-wrap">Line Direction<span class="tooltip-icon">?</span><span class="tooltip-box">Line direction shows whether the market is moving in your favor (improving) or against you (moving away). Picks with improving lines suggest the market is coming to you — act before it closes further.</span></div>
     <div class="qfilter-btns" style="flex-wrap:wrap;gap:4px;">
       <button class="qfilter-btn active" data-filter="clvdir" data-value="all">All <span class="chip-count"></span></button>
-      <button class="qfilter-btn" data-filter="clvdir" data-value="pos">📈 CLV+ <span class="chip-count"></span></button>
-      <button class="qfilter-btn" data-filter="clvdir" data-value="neg">⚠️ CLV− <span class="chip-count"></span></button>
+      <button class="qfilter-btn" data-filter="clvdir" data-value="pos">📈 Line Improving <span class="chip-count"></span></button>
+      <button class="qfilter-btn" data-filter="clvdir" data-value="neg">⚠️ Line Moving Against <span class="chip-count"></span></button>
     </div>
 
     <div class="sidebar-section-label">Model Edge
@@ -3297,7 +3331,7 @@ main { max-width: none !important; padding: 0 !important; }
                   <span class="clv-pill {{ 'clv-pill-pos' if _clv_pos else 'clv-pill-neg' }}"
                         onclick="showClvPopover(event,{{ 'true' if _clv_pos else 'false' }})"
                         title="{{ 'Line steamed — sharp money confirmed this edge' if _clv_pos else 'Line drifted — monitor this bet' }}">
-                    <span class="clv-pill-lbl tooltip-wrap">CLV {{ '▲' if _clv_pos else '▽' }}<span class="tooltip-icon">?</span><span class="tooltip-box">Closing Line Value measures whether you beat the final market odds. Consistently beating the closing line is the strongest indicator of a sharp bettor. Positive CLV = you got a better number than where the market settled.</span></span>
+                    <span class="clv-pill-lbl tooltip-wrap">CLV {{ '▲' if _clv_pos else '▽' }}<span class="tooltip-icon">?</span><span class="tooltip-box">Closing Line Value (CLV) — whether your odds are better or worse than where the market closed. Positive CLV means you got a better number than the final market price, which is the strongest indicator of sharp betting skill.</span></span>
                     <span class="clv-pill-val">{{ op }}→{{ cur }}</span>
                   </span>
                 {% endif %}
@@ -3319,7 +3353,7 @@ main { max-width: none !important; padding: 0 !important; }
                 </div>
                 <div class="metric-cell">
                   <div class="mc-val mc-green kelly-val" data-prob="{{ bet.true_prob }}" data-odds="{{ bet.odds }}">—</div>
-                  <div class="kelly-dollar" style="display:none;font-size:0.56rem;color:var(--d-green);font-weight:700;margin:1px 0;"></div>
+                  <div class="kelly-dollar" style="display:none;color:var(--d-green);font-weight:700;margin:1px 0;"></div>
                   <div class="mc-lbl kelly-size-label"><span class="tooltip-wrap">¼ Kelly<span class="tooltip-icon">?</span><span class="tooltip-box">The recommended bet size as a percentage of your bankroll using the Kelly Criterion. We use ¼ Kelly for safety — it reduces variance while still growing your bankroll over time.</span></span></div>
                 </div>
               </div>
@@ -3478,7 +3512,7 @@ main { max-width: none !important; padding: 0 !important; }
     </div>{# /cardsGrid #}
 
     {# ── MIDDLES GRID ── #}
-    <div class="middles-grid" id="middlesGrid" style="display:none; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 20px;">
+    <div class="middles-grid" id="middlesGrid" style="display:none;">
       {% for m in middles %}
       <div class="middle-card" data-grade="{{ m.middle_grade }}">
         <div class="middle-card-header">
@@ -3755,7 +3789,7 @@ main { max-width: none !important; padding: 0 !important; }
 
     {# Line Movement #}
     <div>
-      <div class="mf-section-label">Line Movement</div>
+      <div class="mf-section-label">Line Direction</div>
       <div class="mf-btns">
         <button class="qfilter-btn active" data-filter="clvdir" data-value="all">All <span class="chip-count"></span></button>
         <button class="qfilter-btn" data-filter="clvdir" data-value="pos">📈 CLV+ <span class="chip-count"></span></button>
@@ -4464,6 +4498,52 @@ function updateChipCounts() {
   });
 }
 
+function updateSportPillCounts() {
+  const allCards = document.querySelectorAll('.bet-card');
+  const counts = { all: 0, nfl: 0, ncaaf: 0, nhl: 0, nba: 0, mlb: 0, soccer: 0, props: 0, sharp: 0, div: 0 };
+  allCards.forEach(card => {
+    if (card.style.display === 'none') return;
+    const league = card.dataset.league || '';
+    const isProp = card.dataset.prop === '1';
+    counts.all++;
+    if (league === 'americanfootball_nfl') counts.nfl++;
+    else if (league === 'americanfootball_ncaaf') counts.ncaaf++;
+    else if (league === 'icehockey_nhl') counts.nhl++;
+    else if (league === 'basketball_nba') counts.nba++;
+    else if (league === 'baseball_mlb') counts.mlb++;
+    else if (league.includes('soccer')) counts.soccer++;
+    if (isProp) counts.props++;
+    if (parseFloat(card.dataset.sharpScore || '0') >= 70) counts.sharp++;
+    if (parseFloat(card.dataset.divergence || '0') >= 3) counts.div++;
+  });
+  const midCards = document.querySelectorAll('.middle-card');
+  const hrCards  = document.querySelectorAll('[data-hr-model="1"]');
+  const idMap = {
+    all:'pc-all', nfl:'pc-nfl', ncaaf:'pc-ncaaf', nhl:'pc-nhl',
+    nba:'pc-nba', mlb:'pc-mlb', soccer:'pc-soccer',
+    props:'pc-props', sharp:'pc-sharp', div:'pc-div'
+  };
+  Object.entries(counts).forEach(([key, count]) => {
+    const el = document.getElementById(idMap[key]);
+    if (el) el.textContent = count > 0 ? count : '';
+  });
+  const hrEl  = document.getElementById('pc-hr');
+  const midEl = document.getElementById('pc-mid');
+  if (hrEl)  hrEl.textContent  = hrCards.length  > 0 ? hrCards.length  : '';
+  if (midEl) midEl.textContent = midCards.length > 0 ? midCards.length : '';
+}
+
+function updateClearBtn() {
+  const btn = document.getElementById('clearAllBtn');
+  if (!btn) return;
+  const hasFilter = (
+    activeLeague !== 'all' || activeIsProp !== 'all' || activeMarket !== 'all' ||
+    activeCLVDir !== 'all' || activeMinEv > 0 || activeMinEdge > 0 ||
+    activeMultiBook || activeBooks.size > 0
+  );
+  btn.style.display = hasFilter ? 'inline-flex' : 'none';
+}
+
 // ── Top Pick ribbon — tracks the first two VISIBLE cards with CLV+ or no CLV ─
 function _updateTopPickRibbon() {
   // Remove any existing ribbon divs
@@ -4567,6 +4647,8 @@ function applyFilters() {
 
   // Update count badges on all filter chips
   updateChipCounts();
+  updateSportPillCounts();
+  updateClearBtn();
 
   // Reapply prop grouping if active
   if (_propsGrouped && activeIsProp === 'true') _applyPropGrouping();
@@ -5150,6 +5232,7 @@ function clearFilters() {
   _buildPropTypeChips(); // rebuild with all leagues visible again
   applyFilters();
   updateFilterBadge();
+  updateClearBtn();
 }
 
 // ── Filter state persistence ───────────────────────────────────────────────
@@ -6750,6 +6833,8 @@ function showToast(msg) {
 _restoreFilters();   // re-apply saved filter state before first render
 sortCards();
 applyFilters();
+updateSportPillCounts();
+updateClearBtn();
 updateFilterBadge();
 initTooltips();
 // Reveal grid only after filters have been applied — prevents the flash
