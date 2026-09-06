@@ -3424,7 +3424,7 @@ async def dashboard(
                 _sp.append(_pr); _sn.append(_bk_k)
             elif any(_s in _bl for _s in _SOFT):
                 _fp.append(_pr); _fn.append(_bk_k)
-        if _sp and _fp:
+        if _sp and _fp and getattr(b, 'league', '') != 'americanfootball_ncaaf':
             _sa = sum(_sp) / len(_sp); _fa = sum(_fp) / len(_fp)
             b.sharp_book_heatmap = {
                 'sharp_avg_prob': round(_sa, 4),
@@ -3433,6 +3433,9 @@ async def dashboard(
                 'sharp_books_present': _sn,
                 'soft_books_present':  _fn,
             }
+        elif _sp and _fp:
+            # NCAAF: thin sharp-book coverage — suppress heatmap to avoid misleading signals
+            b.sharp_book_heatmap = None
         else:
             b.sharp_book_heatmap = None
 
@@ -3964,6 +3967,7 @@ async def admin_dashboard(
         "soccer_germany_bundesliga": "Bundesliga", "soccer_usa_mls": "MLS",
         "soccer_fifa_world_cup": "World Cup",
         "americanfootball_nfl": "NFL",
+        "americanfootball_ncaaf": "NCAAF",
     }
     total_won_count    = sum(1 for p in settled if p.result == "won")
     total_lost_count   = sum(1 for p in settled if p.result == "lost")

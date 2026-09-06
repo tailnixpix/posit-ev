@@ -43,6 +43,7 @@ SPORT_KEYS = [
     "basketball_nba",
     "baseball_mlb",
     "americanfootball_nfl",
+    "americanfootball_ncaaf",
     "soccer_epl",
     "soccer_spain_la_liga",
     "soccer_germany_bundesliga",
@@ -282,7 +283,7 @@ def reset_quota_state() -> None:
 # ---------------------------------------------------------------------------
 
 MONTHLY_CREDIT_LIMIT = 95_000   # brake threshold — 5k buffer below 100k hard limit
-DAILY_CREDIT_LIMIT   = 3_200    # 95_000 / 30 days
+DAILY_CREDIT_LIMIT   = 3_400    # increased from 3,200 to account for NCAAF season days
 _WARNING_THRESHOLD   = 76_000   # 80% of monthly limit → Telegram warning
 
 _credit_log: dict = defaultdict(int)

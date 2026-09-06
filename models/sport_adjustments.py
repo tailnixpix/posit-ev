@@ -54,6 +54,12 @@ ADJUSTMENT_CONFIG: dict = {
     "nfl_rest_advantage":         True,   # penalise short-week teams (TNF) / reward bye weeks
     "nfl_dome_weather":           True,   # penalise dome teams forced to play outdoor in elements
     "nfl_division_game":          True,   # compress edge in intra-division matchups
+
+    # --- NCAAF ---
+    "ncaaf_home_field_boost":     True,   # +4% home boost (stronger than NFL; crowd size, travel)
+    "ncaaf_rivalry_game":         True,   # flag rivalry/bowl/championship game context
+    "ncaaf_rest_flag":            True,   # flag when either team played within 6 days
+    "ncaaf_sharp_signal_threshold": True, # downgrade sharp_grade when < 3 books present
 }
 
 # ---------------------------------------------------------------------------
@@ -86,13 +92,17 @@ class GameContext:
     home_euro_midweek: bool = False   # home played Champions/Europa League in last 4 days
     away_euro_midweek: bool = False
 
-    # NFL
+    # NFL / NCAAF
     home_rest_days: int = 7           # days of rest before this game (7 = normal week)
     away_rest_days: int = 7
     home_dome: bool = False           # home team's home stadium is a dome
     away_dome: bool = False           # away team's home stadium is a dome
     is_outdoor_venue: bool = True     # today's venue is outdoor (matters for dome teams)
     is_division_game: bool = False    # intra-division matchup
+
+    # NCAAF
+    game_title: str = ""              # full game title — used to detect rivalry/bowl keywords
+    ncaaf_book_count: int = 0         # number of books in all_book_odds for this game
 
     # Injuries (shared, populated by context_fetcher)
     home_injuries: list = field(default_factory=list)  # notable injured players on home team
@@ -920,6 +930,106 @@ def _apply_trend_form(
 
 
 # ---------------------------------------------------------------------------
+# NCAAF adjustments
+# ---------------------------------------------------------------------------
+
+_NCAAF_HOME_FIELD_BOOST = 0.04   # college home field >2× stronger than NFL (~57% → ~62%)
+_NCAAF_SHORT_REST_DAYS  = 6      # flag if either team played within 6 days
+
+_NCAAF_RIVALRY_KEYWORDS = frozenset([
+    "rivalry", "bowl", "championship", "classic", "trophy", "cup",
+])
+
+
+def ncaaf_home_field_adjustment(
+    ctx: GameContext,
+    home_prob: float,
+    away_prob: float,
+    config: dict = ADJUSTMENT_CONFIG,
+) -> tuple:
+    if not config.get("ncaaf_home_field_boost"):
+        return (
+            AdjustedProb(home_prob, home_prob),
+            AdjustedProb(away_prob, away_prob),
+        )
+    boost = _NCAAF_HOME_FIELD_BOOST
+    new_home = min(0.95, home_prob + boost)
+    new_away = max(0.05, away_prob - boost)
+    return (
+        AdjustedProb(home_prob, new_home, flags=[f"NCAAF HFA +{boost*100:.0f}%"]),
+        AdjustedProb(away_prob, new_away),
+    )
+
+
+def ncaaf_rivalry_game_adjustment(
+    ctx: GameContext,
+    home_adj: AdjustedProb,
+    away_adj: AdjustedProb,
+    config: dict = ADJUSTMENT_CONFIG,
+) -> tuple:
+    if not config.get("ncaaf_rivalry_game"):
+        return home_adj, away_adj
+    text = " ".join([ctx.game_title, ctx.home_team, ctx.away_team]).lower()
+    if any(kw in text for kw in _NCAAF_RIVALRY_KEYWORDS):
+        home_adj.flags.append("RIVALRY GAME")
+        away_adj.flags.append("RIVALRY GAME")
+    return home_adj, away_adj
+
+
+def ncaaf_rest_flag(
+    ctx: GameContext,
+    home_adj: AdjustedProb,
+    away_adj: AdjustedProb,
+    config: dict = ADJUSTMENT_CONFIG,
+) -> tuple:
+    if not config.get("ncaaf_rest_flag"):
+        return home_adj, away_adj
+    if ctx.home_rest_days < _NCAAF_SHORT_REST_DAYS:
+        home_adj.flags.append(f"HOME SHORT REST ({ctx.home_rest_days}d)")
+    if ctx.away_rest_days < _NCAAF_SHORT_REST_DAYS:
+        away_adj.flags.append(f"AWAY SHORT REST ({ctx.away_rest_days}d)")
+    return home_adj, away_adj
+
+
+def ncaaf_thin_market_flag(
+    ctx: GameContext,
+    home_adj: AdjustedProb,
+    away_adj: AdjustedProb,
+    config: dict = ADJUSTMENT_CONFIG,
+) -> tuple:
+    """Downgrade confidence and add THIN MARKET flag when < 3 books are present."""
+    if not config.get("ncaaf_sharp_signal_threshold"):
+        return home_adj, away_adj
+    if ctx.ncaaf_book_count > 0 and ctx.ncaaf_book_count < 3:
+        home_adj.confidence_multiplier *= 0.80
+        away_adj.confidence_multiplier *= 0.80
+        home_adj.flags.append(f"THIN MARKET ({ctx.ncaaf_book_count} books)")
+        away_adj.flags.append(f"THIN MARKET ({ctx.ncaaf_book_count} books)")
+    return home_adj, away_adj
+
+
+def apply_ncaaf_adjustments(
+    ctx: GameContext,
+    home_prob: float,
+    away_prob: float,
+    config: dict = ADJUSTMENT_CONFIG,
+) -> tuple:
+    home_adj, away_adj = ncaaf_home_field_adjustment(ctx, home_prob, away_prob, config)
+    home_adj, away_adj = ncaaf_rivalry_game_adjustment(ctx, home_adj, away_adj, config)
+    home_adj, away_adj = ncaaf_rest_flag(ctx, home_adj, away_adj, config)
+    home_adj, away_adj = ncaaf_thin_market_flag(ctx, home_adj, away_adj, config)
+    home_adj, away_adj = apply_injury_adjustment(ctx, home_adj, away_adj, config)
+    home_adj_t, away_adj_t = _apply_trend_form(
+        home_adj.effective_prob, away_adj.effective_prob, ctx, config
+    )
+    home_adj.adjusted_prob = home_adj_t.adjusted_prob
+    away_adj.adjusted_prob = away_adj_t.adjusted_prob
+    home_adj.flags.extend(home_adj_t.flags)
+    away_adj.flags.extend(away_adj_t.flags)
+    return home_adj, away_adj
+
+
+# ---------------------------------------------------------------------------
 # Unified dispatcher
 # ---------------------------------------------------------------------------
 
@@ -1014,6 +1124,19 @@ def apply_adjustments(
             return {"adjusted_probs": probs, "flags": [], "warnings": ["Not enough probs for NFL"], "extra": {}}
         home_prob, away_prob = probs[0], probs[1]
         home_adj, away_adj = apply_nfl_adjustments(ctx, home_prob, away_prob, config)
+        return {
+            "adjusted_probs": [home_adj.effective_prob, away_adj.effective_prob],
+            "flags": home_adj.flags + away_adj.flags,
+            "warnings": home_adj.warnings + away_adj.warnings,
+            "confidence_multipliers": [home_adj.confidence_multiplier, away_adj.confidence_multiplier],
+            "extra": {},
+        }
+
+    elif sport == "americanfootball_ncaaf":
+        if len(probs) < 2:
+            return {"adjusted_probs": probs, "flags": [], "warnings": ["Not enough probs for NCAAF"], "extra": {}}
+        home_prob, away_prob = probs[0], probs[1]
+        home_adj, away_adj = apply_ncaaf_adjustments(ctx, home_prob, away_prob, config)
         return {
             "adjusted_probs": [home_adj.effective_prob, away_adj.effective_prob],
             "flags": home_adj.flags + away_adj.flags,

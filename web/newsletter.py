@@ -484,6 +484,11 @@ def get_top_ev_bet() -> Optional[EVBetCache]:
             if not candidates:
                 return None
 
+            # Apply NCAAF-specific eligibility filter (stricter: S/A grade, consensus ≥65)
+            candidates = [b for b in candidates if _ncaaf_eligible(b)]
+            if not candidates:
+                return None
+
             # Drop any bet whose model projection contradicts the bet direction
             # (e.g. Blue Jays ML when the model projects the Yankees to win).
             # Only filters when projections are present — never penalises missing data.
@@ -514,6 +519,14 @@ def get_top_ev_bet() -> Optional[EVBetCache]:
         non_prop   = [EVBetCache.is_prop == False]                 # noqa: E712
         model_conf = non_prop + [EVBetCache.proj_home_score != None]  # noqa: E711
         ev_pos     = [EVBetCache.ev_percent > 0]
+
+        def _ncaaf_eligible(b) -> bool:
+            """NCAAF bets require S/A sharp grade + consensus ≥ 65 (thin markets)."""
+            if getattr(b, "league", "") != "americanfootball_ncaaf":
+                return True
+            grade = getattr(b, "sharp_grade", "") or ""
+            cscore = getattr(b, "consensus_score", 0) or 0
+            return grade in ("S", "A") and cscore >= 65
 
         # Tier 1: model-confirmed, today, true_prob floor applied
         bet = _best(model_conf + ev_pos + today_filters, "model+today")
@@ -698,6 +711,13 @@ def _generate_synopsis(bet: EVBetCache) -> str:
             if is_pm else ""
         )
 
+        ncaaf_note = (
+            "  This is a college football pick. Include the teams' conference affiliation "
+            "if known, mention if this is a rivalry or bowl game context, and note that "
+            "college markets are less efficient than NFL which contributes to the edge.\n"
+            if league == "americanfootball_ncaaf" else ""
+        )
+
         prompt = (
             f"You are a sports betting analyst writing for an email newsletter. "
             f"Write exactly 4-5 sentences (plain English, no markdown, no bullet points) "
@@ -708,6 +728,7 @@ def _generate_synopsis(bet: EVBetCache) -> str:
             f"  Market: {market}\n"
             f"  Platform ({platform_label}): {book}\n"
             f"{pm_note}"
+            f"{ncaaf_note}"
             f"  American odds: {odds_str}\n"
             f"  True probability (model): {true_prob:.1%}\n"
             f"  Expected value edge: +{ev_pct:.1f}%\n\n"
@@ -921,13 +942,24 @@ def send_daily_newsletter() -> dict:
     5. Return summary dict {"sent": int, "failed": int, "total": int}.
     """
     date_str = datetime.now(LOCAL_TZ).strftime("%B %-d, %Y")
-    subject  = f"Posit+EV | Your Free Pick \u2014 {date_str}"
 
-    # 1. Top bet
+    # 1. Top bet (fetch first so we can build a league-aware subject line)
     bet = get_top_ev_bet()
     if not bet:
         log.warning("send_daily_newsletter: no bets in EVBetCache — skipping send.")
         return {"sent": 0, "failed": 0, "total": 0}
+
+    # Build a league-aware subject line
+    _bet_league = getattr(bet, "league", "") or ""
+    _bet_grade  = getattr(bet, "sharp_grade", "") or ""
+    if _bet_league == "americanfootball_ncaaf":
+        subject = (
+            f"Posit+EV | 🏈 College Football S-Tier Pick — {date_str}"
+            if _bet_grade == "S" else
+            f"Posit+EV | 🏈 College Football Pick — {date_str}"
+        )
+    else:
+        subject = f"Posit+EV | Your Free Pick — {date_str}"
 
     # 2. AI synopsis
     synopsis = _generate_synopsis(bet)
