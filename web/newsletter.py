@@ -485,9 +485,12 @@ def get_top_ev_bet() -> Optional[EVBetCache]:
                 return None
 
             # Apply NCAAF-specific eligibility filter (stricter: S/A grade, consensus ≥65)
-            candidates = [b for b in candidates if _ncaaf_eligible(b)]
-            if not candidates:
-                return None
+            # Only enforced when prob_floor=True (tiers 1–4); tier 5 (last resort) bypasses
+            # so the newsletter always has a pick even on thin-market NCAAF-only days.
+            if prob_floor:
+                candidates = [b for b in candidates if _ncaaf_eligible(b)]
+                if not candidates:
+                    return None
 
             # Drop any bet whose model projection contradicts the bet direction
             # (e.g. Blue Jays ML when the model projects the Yankees to win).
