@@ -1488,22 +1488,24 @@ async def on_startup() -> None:
         misfire_grace_time=120,
         replace_existing=True,
     )
-    # Pre-newsletter refresh — runs at 7:59 AM CT so the cache is fresh
-    # for the 8:00 AM newsletter send
+    # Pre-newsletter refresh — runs at 7:50 AM CT so the cache is fresh
+    # for the 8:10 AM newsletter send. 20-min gap avoids the race between
+    # the cache DELETE (committed immediately) and the subsequent INSERT.
     scheduler.add_job(
         refresh_ev_cache,
-        trigger=CronTrigger(hour=7, minute=59, timezone="America/Chicago"),
+        trigger=CronTrigger(hour=7, minute=50, timezone="America/Chicago"),
         id="ev_cache_prenewsletter",
-        name="Refresh EV bet cache (pre-newsletter 7:59 AM CT)",
+        name="Refresh EV bet cache (pre-newsletter 7:50 AM CT)",
         replace_existing=True,
-        misfire_grace_time=60,
+        misfire_grace_time=300,
     )
-    # Schedule daily newsletter at 8:00 AM CT
+    # Schedule daily newsletter at 8:10 AM CT (20 min after pre-newsletter
+    # refresh starts — ensures pipeline completes before the pick is fetched)
     scheduler.add_job(
         send_daily_newsletter,
-        trigger=CronTrigger(hour=8, minute=0, timezone="America/Chicago"),
+        trigger=CronTrigger(hour=8, minute=10, timezone="America/Chicago"),
         id="daily_newsletter",
-        name="Daily newsletter at 8 AM CT",
+        name="Daily newsletter at 8:10 AM CT",
         replace_existing=True,
         misfire_grace_time=3600,
     )
