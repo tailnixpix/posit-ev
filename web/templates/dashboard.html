@@ -2664,13 +2664,6 @@ main { max-width: none !important; padding: 0 !important; }
 .consensus-meta { display:flex; flex-direction:column; gap:2px; }
 .consensus-label { font-size:11px; color:var(--d-sub); }
 .consensus-grade { font-size:12px; font-weight:600; }
-/* ── Value expiry timer ── */
-.expiry-wrap { padding:8px 0; border-top:1px solid var(--d-border); }
-.expiry-bar-track { height:4px; border-radius:2px; background:var(--d-border); margin-bottom:6px; overflow:hidden; }
-.expiry-bar-fill { height:100%; border-radius:2px; transition:width 0.3s ease; }
-.expiry-meta { display:flex; align-items:center; gap:6px; font-size:11px; }
-.expiry-label { color:var(--d-sub); flex:1; }
-.expiry-val { font-weight:600; color:var(--d-text); }
 /* ── Model vs market divergence badge ── */
 .divergence-badge { display:inline-flex; align-items:center; font-size:11px; font-weight:500; color:#a78bfa; background:rgba(83,74,183,0.15); border-radius:4px; padding:2px 6px; }
 /* ── Sharp book heatmap ── */
@@ -3181,10 +3174,6 @@ main { max-width: none !important; padding: 0 !important; }
           {% set _implied_pct = ((100 / (bet.odds + 100) * 100) if bet.odds > 0 else ((-bet.odds) / (-bet.odds + 100) * 100)) | round(1) %}
           {% set _consensus_color = '#0F6E56' if bet.consensus_score >= 80 else ('#534AB7' if bet.consensus_score >= 60 else ('#FAC775' if bet.consensus_score >= 40 else '#f87171')) %}
           {% set _consensus_grade = 'Strong' if bet.consensus_score >= 80 else ('Good' if bet.consensus_score >= 60 else ('Moderate' if bet.consensus_score >= 40 else 'Weak')) %}
-          {% set _expiry_pct_raw = ((bet.value_expiry_minutes | float) / 240.0 * 100.0) | int %}
-          {% set _expiry_pct = 100 if _expiry_pct_raw > 100 else _expiry_pct_raw %}
-          {% set _expiry_color = '#0F6E56' if bet.value_expiry_minutes >= 120 else ('#FAC775' if bet.value_expiry_minutes >= 60 else '#f87171') %}
-          {% if bet.value_expiry_minutes >= 60 %}{% set _expiry_display = (bet.value_expiry_minutes // 60) | string ~ 'h ' ~ (bet.value_expiry_minutes % 60) | string ~ 'm' %}{% else %}{% set _expiry_display = bet.value_expiry_minutes | string ~ 'm' %}{% endif %}
 
           <div class="bet-card {{ tier }}{{ ' prop-card' if bet.is_prop else '' }}"
                id="card-{{ bet.id }}"
@@ -3387,17 +3376,7 @@ main { max-width: none !important; padding: 0 !important; }
                 </div>
               </div>
 
-              {# — Value expiry timer — #}
-              <div class="expiry-wrap">
-                <div class="expiry-bar-track">
-                  <div class="expiry-bar-fill" style="width:{{ _expiry_pct }}%;background:{{ _expiry_color }};"></div>
-                </div>
-                <div class="expiry-meta">
-                  <span>⏱</span>
-                  <span class="expiry-label"><span class="tooltip-wrap">Edge window<span class="tooltip-icon">?</span><span class="tooltip-box">An estimate of how long this edge is likely to remain before the market corrects. Based on market type, sharp action, and time to game start. Act sooner on shorter windows.</span></span></span>
-                  <span class="expiry-val" data-expiry-min="{{ bet.value_expiry_minutes }}">{{ _expiry_display }}</span>
-                </div>
-              </div>
+
 
               {# — Sharp book heatmap — #}
               {% if bet.sharp_book_heatmap and bet.sharp_book_heatmap.sharp_avg_prob is not none and bet.sharp_book_heatmap.soft_avg_prob is not none %}
@@ -6756,34 +6735,6 @@ function initTooltips() {
   });
 }
 
-// ── Value expiry countdown ─────────────────────────────────────────────────
-setInterval(function() {
-  document.querySelectorAll('[data-expiry-min]').forEach(function(el) {
-    var mins = parseInt(el.dataset.expiryMin || '0', 10);
-    if (mins <= 0) return;
-    mins = Math.max(0, mins - 1);
-    el.dataset.expiryMin = mins;
-    el.textContent = mins >= 60
-      ? (Math.floor(mins / 60) + 'h ' + (mins % 60) + 'm')
-      : (mins + 'm');
-    var wrap = el.closest('.expiry-wrap');
-    if (wrap) {
-      var fill = wrap.querySelector('.expiry-bar-fill');
-      if (fill) {
-        fill.style.width = Math.min(100, Math.round(mins / 240 * 100)) + '%';
-        fill.style.background = mins >= 120 ? '#0F6E56' : (mins >= 60 ? '#FAC775' : '#f87171');
-      }
-    }
-    if (mins === 0) {
-      var card = el.closest('.bet-card');
-      if (card) {
-        card.style.transition = 'opacity 0.5s ease';
-        card.style.opacity = '0';
-        setTimeout(function() { card.style.display = 'none'; applyFilters(); }, 500);
-      }
-    }
-  });
-}, 60000);
 
 // ── Middles pill ───────────────────────────────────────────────────────────
 const middlesPill = document.getElementById('middlesPill');
