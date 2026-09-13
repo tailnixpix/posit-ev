@@ -55,7 +55,7 @@ main { max-width: none !important; padding: 0 !important; }
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 20px;
+  padding: 8px 24px;
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -582,9 +582,9 @@ main { max-width: none !important; padding: 0 !important; }
 .dash-chips-row { display: contents; }
 /* Desktop: controls-row is transparent — controls behave as direct flex children */
 .dash-controls-row { display: contents; }
-.stat-chip { background: var(--d-card); border: 1px solid var(--d-border); border-radius: 8px; padding: 8px 14px; display: flex; flex-direction: column; gap: 1px; min-width: 80px; }
-.stat-chip .sc-val { font-size: 1rem; font-weight: 700; color: var(--d-green); line-height: 1.2; }
-.stat-chip .sc-lbl { font-size: 0.6rem; color: var(--d-sub); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 0; }
+.stat-chip { background: var(--d-card); border: 1px solid var(--d-border); border-radius: 8px; padding: 8px 14px; display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 80px; }
+.stat-chip .sc-val { font-size: 1rem; font-weight: 700; color: var(--d-green); line-height: 1.2; text-align: center; }
+.stat-chip .sc-lbl { font-size: 0.6rem; color: var(--d-sub); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 0; text-align: center; }
 
 /* View toggle */
 .view-toggle {
@@ -1497,11 +1497,11 @@ main { max-width: none !important; padding: 0 !important; }
 
 /* ── Top Pick featured banner ── */
 .featured-pick-wrap {
-  margin-bottom: 18px;
+  margin-bottom: 16px;
   background: linear-gradient(135deg, rgba(0,214,143,0.05) 0%, rgba(124,58,237,0.05) 100%);
   border: 1px solid rgba(0,214,143,0.22);
   border-radius: 14px;
-  padding: 14px 0;
+  padding: 14px 16px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -1696,7 +1696,8 @@ main { max-width: none !important; padding: 0 !important; }
   .sidebar { display: none; }
   .dash-main { padding: 16px 16px 60px; }
   .cards-grid { grid-template-columns: 1fr; gap: 14px; }
-  .sport-bar { top: 46px; padding: 8px 12px; }
+  .sport-bar { top: 46px; padding: 8px 16px; }
+
   .dash-layout { min-height: auto; }
 
   /* ── Card layout fixes for narrow screens ── */
@@ -1782,6 +1783,13 @@ main { max-width: none !important; padding: 0 !important; }
 }
 @media (min-width: 769px) {
   .bottom-nav { display: none; }
+}
+/* ── Tablet layout (sidebar hidden, content fills width) ── */
+@media (max-width: 1024px) and (min-width: 769px) {
+  .sidebar { display: none; }
+  .dash-main { padding: 16px 20px 60px; }
+  .cards-grid { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+  .sport-bar { padding: 8px 20px; }
 }
 /* count badges on filter chips */
 .chip-count {
@@ -2774,18 +2782,18 @@ main { max-width: none !important; padding: 0 !important; }
 @media (max-width: 768px) { .dash-main { padding: 16px 16px 60px; } }
 @media (max-width: 600px) { .dash-main { padding: 12px 10px 60px; } }
 
+
 /* ── Middles grid responsive ── */
 @media (max-width: 768px) { .middles-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); } }
 @media (max-width: 600px) { .middles-grid { grid-template-columns: 1fr; gap: 12px; } }
 
 /* ── Mobile dashboard fixes ── */
 @media (max-width: 600px) {
-  .sport-bar { padding: 8px 12px; gap: 5px; }
+  .sport-bar { padding: 8px 10px; gap: 5px; }
   .sport-pill { padding: 4px 10px; font-size: 0.7rem; }
   .pill-group-label { display: none; }
   .pill-group-divider { margin: 0 8px; }
   .clear-all-btn { font-size: 10px; padding: 3px 10px; }
-  .dash-subheader { padding: 10px 10px 0; }
   .stat-chip { padding: 8px 12px; }
   .stat-chip .sc-val { font-size: 1rem; }
   .evlb-card { width: 130px; }

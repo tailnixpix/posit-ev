@@ -201,6 +201,8 @@ main { max-width: none; padding: 0; }
   .hero-copy { display: flex; flex-direction: column; align-items: center; }
   .hero-mockup-col { max-width: 480px; margin: 0 auto; width: 100%; }
   .announce-pill { display: none; }
+  .hero h1 { text-align: center; }
+  .hero-sub { text-align: center; }
 }
 @media (max-width: 768px) {
   .hero-inner { grid-template-columns: 1fr; text-align: center; gap: 32px; }
@@ -240,7 +242,6 @@ main { max-width: none; padding: 0; }
   font-size: 1rem;
   margin: 0 0 32px;
   line-height: 1.7;
-  text-align: center;
 }
 .hero-actions { display: flex; gap: var(--space-3); flex-wrap: wrap; }
 .hero-trust {
@@ -492,7 +493,7 @@ main { max-width: none; padding: 0; }
 /* ── AI Engine Feature Section ────────────────────────────────────── */
 .ai-feature-section {
   background: #F5F3FF;
-  padding: 80px var(--space-5);
+  padding: 72px var(--space-5);
   border-top: 1px solid #DDD8F8;
 }
 .ai-feature-grid {
@@ -743,11 +744,6 @@ main { max-width: none; padding: 0; }
 }
 
 /* ── Newsletter ───────────────────────────────────────────────────── */
-.nl-inner {
-  max-width: 640px;
-  margin: 0 auto;
-  text-align: center;
-}
 .nl-icon-row {
   display: flex;
   align-items: center;
@@ -886,7 +882,7 @@ main { max-width: none; padding: 0; }
   gap: var(--space-5);
 }
 @media (max-width: 720px) { .steps-grid { grid-template-columns: 1fr; } }
-.apart-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:20px; max-width:860px; margin:0 auto; }
+.apart-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:20px; max-width:1080px; margin:0 auto; }
 @media (max-width: 600px) { .apart-grid { grid-template-columns:1fr; } }
 .step-card {
   background: #fff;
@@ -1115,7 +1111,7 @@ main { max-width: none; padding: 0; }
 /* ── Final CTA ────────────────────────────────────────────────────── */
 .cta-section {
   background: linear-gradient(135deg, #0F0C2E 0%, #1A1450 40%, #534AB7 100%);
-  padding: 88px var(--space-5);
+  padding: 72px var(--space-5);
   text-align: center;
   position: relative;
   overflow: hidden;
@@ -1574,7 +1570,7 @@ html { background: #060A14; }
 .faq-ans   { color: #94a3b8; }
 
 /* ── Bettor tools section ───────────────────────────────────────────────── */
-.bettor-tools-section { max-width: 900px; margin: 0 auto; padding: 80px 20px; }
+.bettor-tools-section { max-width: 1080px; margin: 0 auto; padding: 72px 24px; }
 .bt-block { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; margin-bottom: 64px; }
 .bt-reverse { direction: rtl; }
 .bt-reverse > * { direction: ltr; }
@@ -2553,7 +2549,7 @@ html { background: #060A14; }
 </section>
 
 {# ── Multi-Signal Sharp Intelligence ─────────────────────────────────── #}
-<section class="section section-white" id="sharp-signals" style="padding: var(--space-10) 0;">
+<section class="section section-white" id="sharp-signals" style="padding: 72px 24px;">
   <div class="container">
     <p class="section-label" style="text-align:center;">Multi-Signal Sharp Intelligence</p>
     <h2 class="section-title" style="text-align:center; margin:0 auto var(--space-3); max-width:680px;">
@@ -2611,7 +2607,7 @@ html { background: #060A14; }
 
     {# ── 7 signals grid ── #}
     <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                gap: var(--space-5); max-width:900px; margin:0 auto;">
+                gap: var(--space-5); max-width:1080px; margin:0 auto;">
 
       <div style="background:#0F1923; border:1px solid #1A2740; border-radius:12px; padding:20px;">
         <div style="font-size:1.5rem; margin-bottom:8px;">🔄</div>
@@ -2802,7 +2798,7 @@ html { background: #060A14; }
 </section>
 
 {# ── Free vs Pro comparison ────────────────────────────────────────────── #}
-<section class="section compare-section" style="padding-top:60px; padding-bottom:72px;">
+<section class="section compare-section" style="padding-top:72px; padding-bottom:72px;">
   <div class="container compare-wrap">
     <p class="section-label" style="text-align:center;">Plans</p>
     <h2 class="section-title" style="text-align:center; margin:0 auto var(--space-6);">
@@ -2894,7 +2890,7 @@ html { background: #060A14; }
 </section>
 
 {# ── Pricing ───────────────────────────────────────────────────────────── #}
-<section style="background:#060A14; padding:88px var(--space-5); border-top:1px solid rgba(255,255,255,.05); position:relative; overflow:hidden;" id="pricing">
+<section style="background:#060A14; padding:72px var(--space-5); border-top:1px solid rgba(255,255,255,.05); position:relative; overflow:hidden;" id="pricing">
   {# Grid texture #}
   <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px);background-size:60px 60px;pointer-events:none;z-index:0;"></div>
   {# Radial glow #}
@@ -3162,7 +3158,7 @@ html { background: #060A14; }
 </section>
 
 {# ── Track Record ───────────────────────────────────────────────────────── #}
-<section class="section section-white" id="track-record" style="padding-top:80px;padding-bottom:80px;">
+<section class="section section-white" id="track-record" style="padding-top:72px;padding-bottom:72px;">
   <div class="container">
     <p class="section-label" style="text-align:center;">Verified Results</p>
     <h2 class="section-title" style="text-align:center; margin:0 auto var(--space-4);">
