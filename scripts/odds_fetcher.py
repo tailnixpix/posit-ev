@@ -73,19 +73,19 @@ SPORT_SEASONS: dict = {
 
 def get_active_sports() -> list[str]:
     """Return the subset of SPORT_KEYS that are currently in season."""
-    today = datetime.now()
+    today = datetime.now(timezone.utc)
     active = []
     for sport, season in SPORT_SEASONS.items():
         if sport not in SPORT_KEYS:
             continue
         s_month, s_day = season["start"]
         e_month, e_day = season["end"]
-        start = datetime(today.year, s_month, s_day)
+        start = datetime(today.year, s_month, s_day, tzinfo=timezone.utc)
         # Season crosses year boundary (e.g. NFL Oct → Feb)
         if e_month < s_month:
-            end = datetime(today.year + 1, e_month, e_day)
+            end = datetime(today.year + 1, e_month, e_day, tzinfo=timezone.utc)
         else:
-            end = datetime(today.year, e_month, e_day)
+            end = datetime(today.year, e_month, e_day, tzinfo=timezone.utc)
         if start <= today <= end:
             active.append(sport)
     log.info(

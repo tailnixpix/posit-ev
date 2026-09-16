@@ -26,7 +26,9 @@ Run:
 """
 
 import csv
+import html as _html
 import json
+import threading
 import logging
 import math
 import os
@@ -175,9 +177,9 @@ async def contact_support(
     import resend as _resend
     _resend.api_key = os.getenv("RESEND_API_KEY", "")
 
-    safe_name  = name.strip() or "(not provided)"
-    safe_email = email.strip()
-    safe_msg   = message.strip()
+    safe_name  = _html.escape(name.strip() or "(not provided)")
+    safe_email = _html.escape(email.strip())
+    safe_msg   = _html.escape(message.strip())
 
     subject = f"[Posit+EV Support] Message from {safe_name}"
     html_body = (
@@ -320,6 +322,7 @@ _cache_status: dict = {
     "last_error": None,   # error message string, or None if last run succeeded
     "running":    False,  # True while a refresh is in progress
 }
+_cache_lock = threading.Lock()
 
 
 def refresh_ev_cache() -> int:
@@ -340,17 +343,19 @@ def refresh_ev_cache() -> int:
     """
     global _cache_status
 
-    if _cache_status["running"]:
-        log.warning("EV cache refresh already in progress — skipping.")
-        return 0
+    with _cache_lock:
+        if _cache_status["running"]:
+            log.warning("EV cache refresh already in progress — skipping.")
+            return 0
+        _cache_status["running"] = True
 
     # Credit brake — halt if monthly or daily budget is exceeded
     from scripts.odds_fetcher import credit_brake_check as _credit_brake
     if not _credit_brake("ev_cache_refresh"):
+        with _cache_lock:
+            _cache_status["running"] = False
         log.warning("EV cache refresh blocked by credit brake.")
         return 0
-
-    _cache_status["running"] = True
     log.info("EV cache refresh: starting pipeline...")
 
     try:
@@ -577,8 +582,22 @@ def refresh_ev_cache() -> int:
             ))
         if history_rows:
             db.bulk_save_objects(history_rows)
-            db.flush()   # make rows visible for _get_opening_odds queries within this session
+            db.flush()   # make rows visible for opening-odds lookups within this session
             log.info("OddsHistory: appended %d snapshot rows.", len(history_rows))
+
+        # ── Batch-fetch opening odds to avoid N+1 queries per row ────────────
+        _batch_game_ids = list({str(r.get("game_id", "")) for _, r in ev_df.iterrows() if r.get("game_id")})
+        _opening_odds_raw = (
+            db.query(OddsHistory.game_id, OddsHistory.book, OddsHistory.market, OddsHistory.team, OddsHistory.odds)
+            .filter(OddsHistory.game_id.in_(_batch_game_ids))
+            .order_by(OddsHistory.captured_at.asc())
+            .all()
+        )
+        _opening_odds_map: dict = {}
+        for _oh in _opening_odds_raw:
+            _key = (_oh.game_id, _oh.book, _oh.market, _oh.team)
+            if _key not in _opening_odds_map:
+                _opening_odds_map[_key] = _oh.odds
 
         rows = []
         for _, row in ev_df.iterrows():
@@ -642,7 +661,7 @@ def refresh_ev_cache() -> int:
             row_book    = str(row.get("bookmaker", ""))
             row_market  = str(row.get("market", ""))
             row_team    = str(row.get("outcome_name", ""))
-            opening_odds_val = _get_opening_odds(db, row_game_id, row_book, row_market, row_team)
+            opening_odds_val = _opening_odds_map.get((row_game_id, row_book, row_market, row_team))
 
             # handle / sharp money data
             _hk = (str(row.get("game", "") or ""), row_market, row_team)
@@ -1699,7 +1718,7 @@ app.add_middleware(
     secret_key=_secret_key,
     session_cookie="positev_admin_session",
     max_age=86400 * 7,   # 7-day session
-    https_only=False,    # Railway terminates TLS at the proxy layer
+    https_only=True,     # Railway terminates TLS; cookies set Secure via this flag
     same_site="lax",
 )
 

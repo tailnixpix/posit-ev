@@ -20,6 +20,7 @@ Environment variables:
     ANTHROPIC_API_KEY   — claude-sonnet-4-20250514 synopsis generation
 """
 
+import json
 import logging
 import os
 import sys
@@ -218,19 +219,26 @@ def _bet_card_html(bet) -> str:
 
 def _send(to: str, subject: str, html: str) -> bool:
     """Send a single email via Resend. Returns True on success."""
+    import concurrent.futures
     api_key = os.getenv("RESEND_API_KEY", "")
     if not api_key or api_key in ("re_xxx", ""):
         log.warning("RESEND_API_KEY not configured — email to %s not sent.", to)
         return False
+    params = {
+        "from":    FROM_ADDRESS,
+        "to":      [to],
+        "subject": subject,
+        "html":    html,
+    }
     try:
-        resend.Emails.send({
-            "from":    FROM_ADDRESS,
-            "to":      [to],
-            "subject": subject,
-            "html":    html,
-        })
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as _ex:
+            future = _ex.submit(resend.Emails.send, params)
+            future.result(timeout=30)
         log.info("Email sent to %s: %r", to, subject)
         return True
+    except concurrent.futures.TimeoutError:
+        log.error("Resend timeout for %s — email not sent.", to)
+        return False
     except Exception as exc:
         log.error("Resend failed for %s: %s", to, exc)
         return False
@@ -524,12 +532,18 @@ def get_top_ev_bet() -> Optional[EVBetCache]:
         ev_pos     = [EVBetCache.ev_percent > 0]
 
         def _ncaaf_eligible(b) -> bool:
-            """NCAAF bets require S/A sharp grade + consensus ≥ 65 (thin markets)."""
+            """NCAAF bets require S/A sharp grade and positive EV (thin markets).
+            consensus_score is a transient dashboard attribute — never stored in DB,
+            so it cannot be used here."""
             if getattr(b, "league", "") != "americanfootball_ncaaf":
                 return True
             grade = getattr(b, "sharp_grade", "") or ""
-            cscore = getattr(b, "consensus_score", 0) or 0
-            return grade in ("S", "A") and cscore >= 65
+            ev    = float(getattr(b, "ev_percent", 0) or 0)
+            try:
+                book_count = len(json.loads(getattr(b, "all_book_odds", None) or "{}"))
+            except Exception:
+                book_count = 0
+            return grade in ("S", "A") and ev > 0 and book_count >= 3
 
         # Tier 1: model-confirmed, today, true_prob floor applied
         bet = _best(model_conf + ev_pos + today_filters, "model+today")
@@ -575,6 +589,8 @@ def _build_data_synopsis(bet: EVBetCache) -> str:
     Covers: EV edge, win probability gap, sharp money, line movement,
     team recent form, and model projections.
     """
+    away_t    = ''
+    home_t    = ''
     ev_pct    = float(getattr(bet, "ev_percent", 0) or 0)
     true_prob = float(getattr(bet, "true_prob", 0) or 0)
     implied   = float(getattr(bet, "implied_prob", 0) or 0)
@@ -745,6 +761,7 @@ def _generate_synopsis(bet: EVBetCache) -> str:
         message  = client.messages.create(
             model      = "claude-sonnet-4-20250514",
             max_tokens = 300,
+            timeout    = 30.0,
             messages   = [{"role": "user", "content": prompt}],
         )
         synopsis = message.content[0].text.strip()

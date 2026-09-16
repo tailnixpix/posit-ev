@@ -3871,6 +3871,12 @@ main { max-width: none !important; padding: 0 !important; }
 
 {% block scripts %}
 <script>
+// ── HTML escape helper (prevents XSS when interpolating API data into innerHTML) ──
+function escHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
 // ── TZ helper ──────────────────────────────────────────────────────────────
 function _tz() { return window.PEV_TZ || 'America/Chicago'; }
 
@@ -3935,8 +3941,9 @@ function _updateCountdowns() {
     }
   });
 }
-setInterval(_updateCountdowns, 30000);
+const _countdownTimer = setInterval(_updateCountdowns, 30000);
 _updateCountdowns();
+window.addEventListener('beforeunload', () => clearInterval(_countdownTimer));
 
 // ── Parlay Builder ──────────────────────────────────────────────────────────
 let _parlayMode = false;
@@ -4334,11 +4341,13 @@ function halfKelly(prob, americanOdds) {
 // ── Bankroll ───────────────────────────────────────────────────────────────
 const bankrollInput = document.getElementById('bankrollInput');
 const bankrollHint  = document.getElementById('bankrollHint');
-const _saved = localStorage.getItem('positplusev_bankroll');
-if (_saved) bankrollInput.value = _saved;
+if (bankrollInput) {
+  const _saved = localStorage.getItem('positplusev_bankroll');
+  if (_saved) bankrollInput.value = _saved;
+}
 
 function updateKellyDisplays() {
-  const bankroll = parseFloat(bankrollInput.value);
+  const bankroll = parseFloat(bankrollInput ? bankrollInput.value : '0');
   const hasBr    = bankroll > 0;
   const frac     = _getKellyFrac();
   const label    = _kellyFracLabel(frac);
@@ -4359,11 +4368,13 @@ function updateKellyDisplays() {
   if (hintLabel) hintLabel.textContent = label;
   if (bankrollHint) bankrollHint.textContent = hasBr ? '→ unit sizes shown in green' : `Enter → see ${label} on each pick`;
 }
-bankrollInput.addEventListener('input', () => {
-  const v = bankrollInput.value;
-  v && parseFloat(v) > 0 ? localStorage.setItem('positplusev_bankroll', v) : localStorage.removeItem('positplusev_bankroll');
-  updateKellyDisplays();
-});
+if (bankrollInput) {
+  bankrollInput.addEventListener('input', () => {
+    const v = bankrollInput.value;
+    v && parseFloat(v) > 0 ? localStorage.setItem('positplusev_bankroll', v) : localStorage.removeItem('positplusev_bankroll');
+    updateKellyDisplays();
+  });
+}
 
 // ── Kelly selector init ─────────────────────────────────────────────────────
 (function initKellySelectors() {
@@ -5719,8 +5730,8 @@ function _buildProjHtml(d) {
     const aw = parseFloat(d.away_score_mean) > parseFloat(d.home_score_mean);
     const aTs = parseFloat(d.away_score_mean).toFixed(1);
     const hTs = parseFloat(d.home_score_mean).toFixed(1);
-    const away = d.away_display || d.away_team || '?';
-    const home = d.home_display || d.home_team || '?';
+    const away = escHtml(d.away_display || d.away_team || '?');
+    const home = escHtml(d.home_display || d.home_team || '?');
     h += `<div class="proj-scoreline">
       <div class="proj-team"><div class="proj-score${aw?' winner':''}">${aTs}</div><div class="proj-name">${away.split(' ').pop()}</div></div>
       <div class="proj-sep">–</div>
@@ -5732,31 +5743,31 @@ function _buildProjHtml(d) {
   // Stats row — shown even when individual scores aren't available (e.g. NHL/soccer)
   const stats = [];
   if (d.total_mean != null) stats.push(['O/U', parseFloat(d.total_mean).toFixed(1), '']);
-  if (d.home_win_probability != null) { const fh = d.home_win_probability >= 0.5; const wp = fh ? d.home_win_probability : 1 - d.home_win_probability; const lbl = (fh ? (d.home_display||d.home_team||'Home') : (d.away_display||d.away_team||'Away')).split(' ').pop(); stats.push(['Win%', Math.round(wp*100)+'%', lbl+' fav']); }
+  if (d.home_win_probability != null) { const fh = d.home_win_probability >= 0.5; const wp = fh ? d.home_win_probability : 1 - d.home_win_probability; const lbl = escHtml((fh ? (d.home_display||d.home_team||'Home') : (d.away_display||d.away_team||'Away'))).split(' ').pop(); stats.push(['Win%', Math.round(wp*100)+'%', lbl+' fav']); }
   if (d.consensus_line != null) stats.push(['Spread', (d.consensus_line>0?'+':'')+d.consensus_line, 'consensus']);
-  if (stats.length && !h.includes('proj-stats')) h += '<div class="proj-stats">' + stats.map(([l,v,s]) => `<div class="proj-stat"><div class="ps-val">${v}</div><div class="ps-lbl">${l}</div>${s?`<div style="font-size:0.55rem;color:var(--d-muted);">${s}</div>`:''}</div>`).join('') + '</div>';
-  const away = d.away_team||'?', home = d.home_team||'?';
+  if (stats.length && !h.includes('proj-stats')) h += '<div class="proj-stats">' + stats.map(([l,v,s]) => `<div class="proj-stat"><div class="ps-val">${v}</div><div class="ps-lbl">${l}</div>${s?`<div style="font-size:0.55rem;color:var(--d-muted);">${escHtml(s)}</div>`:''}</div>`).join('') + '</div>';
+  const away = escHtml(d.away_team||'?'), home = escHtml(d.home_team||'?');
   const aSh = away.split(' ').pop(), hSh = home.split(' ').pop();
   if (d.away_record || d.home_record) {
     h += '<div class="proj-ctx-row">';
-    if (d.away_record) h += `<span class="pctx-team">${aSh}</span><span class="pctx-val">${d.away_record}${d.away_streak?' <span class="pctx-streak">'+d.away_streak+'</span>':''}</span>`;
+    if (d.away_record) h += `<span class="pctx-team">${aSh}</span><span class="pctx-val">${escHtml(d.away_record)}${d.away_streak?' <span class="pctx-streak">'+escHtml(d.away_streak)+'</span>':''}</span>`;
     if (d.away_record && d.home_record) h += '<span style="color:var(--d-muted);">·</span>';
-    if (d.home_record) h += `<span class="pctx-team">${hSh}</span><span class="pctx-val">${d.home_record}${d.home_streak?' <span class="pctx-streak">'+d.home_streak+'</span>':''}</span>`;
+    if (d.home_record) h += `<span class="pctx-team">${hSh}</span><span class="pctx-val">${escHtml(d.home_record)}${d.home_streak?' <span class="pctx-streak">'+escHtml(d.home_streak)+'</span>':''}</span>`;
     h += '</div>';
   }
   if (d.away_last10 || d.home_last10) {
     h += '<div class="proj-ctx-row">';
-    if (d.away_last10) h += `<span style="color:var(--d-muted);font-size:0.62rem;">L10 ${aSh}:</span> <span class="pctx-val">${d.away_last10}</span>${d.away_pts!=null?` <span class="pctx-pts">${d.away_pts} pts</span>`:''}`;
+    if (d.away_last10) h += `<span style="color:var(--d-muted);font-size:0.62rem;">L10 ${aSh}:</span> <span class="pctx-val">${escHtml(d.away_last10)}</span>${d.away_pts!=null?` <span class="pctx-pts">${escHtml(String(d.away_pts))} pts</span>`:''}`;
     if (d.away_last10 && d.home_last10) h += '<span style="color:var(--d-muted);">·</span>';
-    if (d.home_last10) h += `<span style="color:var(--d-muted);font-size:0.62rem;">L10 ${hSh}:</span> <span class="pctx-val">${d.home_last10}</span>${d.home_pts!=null?` <span class="pctx-pts">${d.home_pts} pts</span>`:''}`;
+    if (d.home_last10) h += `<span style="color:var(--d-muted);font-size:0.62rem;">L10 ${hSh}:</span> <span class="pctx-val">${escHtml(d.home_last10)}</span>${d.home_pts!=null?` <span class="pctx-pts">${escHtml(String(d.home_pts))} pts</span>`:''}`;
     h += '</div>';
   }
-  if (d.away_playoff_note || d.home_playoff_note) h += `<div class="proj-ctx-row">${d.away_playoff_note?`<span>📋 ${aSh}: ${d.away_playoff_note}</span>`:''}${d.home_playoff_note?`<span>📋 ${hSh}: ${d.home_playoff_note}</span>`:''}</div>`;
-  if (d.away_playoff_seed || d.home_playoff_seed) h += `<div class="proj-ctx-row">${d.away_playoff_seed?`<span>${aSh}: #${d.away_playoff_seed} seed</span>`:''}${d.home_playoff_seed?`<span>${hSh}: #${d.home_playoff_seed} seed</span>`:''}</div>`;
-  if (d.away_goalie || d.home_goalie) h += `<div class="proj-ctx-row">${d.away_goalie?`<span style="color:var(--d-muted);">🥅 ${aSh}:</span> <span class="pctx-val">${d.away_goalie}${d.away_goalie_confirmed?' ✓':' (unconf.)'}</span>`:''}${d.home_goalie?`<span style="color:var(--d-muted);">🥅 ${hSh}:</span> <span class="pctx-val">${d.home_goalie}${d.home_goalie_confirmed?' ✓':' (unconf.)'}</span>`:''}</div>`;
-  if (d.away_pitcher || d.home_pitcher) h += `<div class="proj-ctx-row">${d.away_pitcher?`<span style="color:var(--d-muted);">⚾ ${aSh}:</span> <span class="pctx-val">${d.away_pitcher}</span>`:''}${d.home_pitcher?`<span style="color:var(--d-muted);">⚾ ${hSh}:</span> <span class="pctx-val">${d.home_pitcher}</span>`:''}</div>`;
+  if (d.away_playoff_note || d.home_playoff_note) h += `<div class="proj-ctx-row">${d.away_playoff_note?`<span>📋 ${aSh}: ${escHtml(d.away_playoff_note)}</span>`:''}${d.home_playoff_note?`<span>📋 ${hSh}: ${escHtml(d.home_playoff_note)}</span>`:''}</div>`;
+  if (d.away_playoff_seed || d.home_playoff_seed) h += `<div class="proj-ctx-row">${d.away_playoff_seed?`<span>${aSh}: #${escHtml(String(d.away_playoff_seed))} seed</span>`:''}${d.home_playoff_seed?`<span>${hSh}: #${escHtml(String(d.home_playoff_seed))} seed</span>`:''}</div>`;
+  if (d.away_goalie || d.home_goalie) h += `<div class="proj-ctx-row">${d.away_goalie?`<span style="color:var(--d-muted);">🥅 ${aSh}:</span> <span class="pctx-val">${escHtml(d.away_goalie)}${d.away_goalie_confirmed?' ✓':' (unconf.)'}</span>`:''}${d.home_goalie?`<span style="color:var(--d-muted);">🥅 ${hSh}:</span> <span class="pctx-val">${escHtml(d.home_goalie)}${d.home_goalie_confirmed?' ✓':' (unconf.)'}</span>`:''}</div>`;
+  if (d.away_pitcher || d.home_pitcher) h += `<div class="proj-ctx-row">${d.away_pitcher?`<span style="color:var(--d-muted);">⚾ ${aSh}:</span> <span class="pctx-val">${escHtml(d.away_pitcher)}</span>`:''}${d.home_pitcher?`<span style="color:var(--d-muted);">⚾ ${hSh}:</span> <span class="pctx-val">${escHtml(d.home_pitcher)}</span>`:''}</div>`;
   const awInj = d.away_injuries||[], hwInj = d.home_injuries||[];
-  if (awInj.length || hwInj.length) h += `<div class="proj-ctx-row pctx-inj"><span style="font-size:0.62rem;font-weight:700;">🚑 Out/DTD:</span> ${[awInj.length?aSh+': '+awInj.join(', '):'', hwInj.length?hSh+': '+hwInj.join(', '):''].filter(Boolean).join(' · ')}</div>`;
+  if (awInj.length || hwInj.length) h += `<div class="proj-ctx-row pctx-inj"><span style="font-size:0.62rem;font-weight:700;">🚑 Out/DTD:</span> ${[awInj.length?aSh+': '+awInj.map(escHtml).join(', '):'', hwInj.length?hSh+': '+hwInj.map(escHtml).join(', '):''].filter(Boolean).join(' · ')}</div>`;
   if (!h.includes('proj-scoreline') && !h.includes('proj-ctx-row')) h += '<div style="padding:8px 12px;font-size:0.72rem;color:var(--d-muted);">No context data yet.</div>';
   return h;
 }
@@ -6078,31 +6089,34 @@ function _buildSimHtml(d) {
   const scoreUnit = d.sport_key === 'baseball_mlb' ? 'runs' : 'goals';
   const confCls   = d.confidence >= 65 ? 'sim-conf-high' : d.confidence >= 55 ? 'sim-conf-med' : 'sim-conf-low';
 
+  const homeTeamE = escHtml(d.home_team||'?');
+  const awayTeamE = escHtml(d.away_team||'?');
+
   // Outcome distribution bars
   let bars = `<div class="sim-dist-bars">`;
-  bars += _simBar(d.home_team, d.home_win_pct, 'sim-fill-home', d.projected_outcome === 'Home Win');
+  bars += _simBar(homeTeamE, d.home_win_pct, 'sim-fill-home', d.projected_outcome === 'Home Win');
   if (isSoccer) bars += _simBar('Draw', d.draw_pct, 'sim-fill-draw', d.projected_outcome === 'Draw');
-  bars += _simBar(d.away_team, d.away_win_pct, 'sim-fill-away', d.projected_outcome === 'Away Win');
+  bars += _simBar(awayTeamE, d.away_win_pct, 'sim-fill-away', d.projected_outcome === 'Away Win');
   bars += `</div>`;
 
   // Stats row
   let stats = `<div class="sim-stats-strip">
     <div class="sim-stat-cell">
       <div class="sim-stat-val">${d.avg_home_score.toFixed(1)}</div>
-      <div class="sim-stat-lbl">Avg ${scoreUnit}<br>${d.home_team}</div>
+      <div class="sim-stat-lbl">Avg ${escHtml(scoreUnit)}<br>${homeTeamE}</div>
     </div>
     <div class="sim-stat-cell">
       <div class="sim-stat-val">${d.avg_away_score.toFixed(1)}</div>
-      <div class="sim-stat-lbl">Avg ${scoreUnit}<br>${d.away_team}</div>
+      <div class="sim-stat-lbl">Avg ${escHtml(scoreUnit)}<br>${awayTeamE}</div>
     </div>`;
   if (d.total_line != null && d.over_pct != null) {
     stats += `<div class="sim-stat-cell">
       <div class="sim-stat-val">${Math.round(d.over_pct)}%</div>
-      <div class="sim-stat-lbl">Over ${d.total_line}</div>
+      <div class="sim-stat-lbl">Over ${escHtml(String(d.total_line))}</div>
     </div>
     <div class="sim-stat-cell">
       <div class="sim-stat-val">${Math.round(d.under_pct)}%</div>
-      <div class="sim-stat-lbl">Under ${d.total_line}</div>
+      <div class="sim-stat-lbl">Under ${escHtml(String(d.total_line))}</div>
     </div>`;
   }
   stats += `</div>`;
@@ -6119,13 +6133,13 @@ function _buildSimHtml(d) {
     const simLeader = d.home_win_pct > d.away_win_pct ? d.home_team : d.away_team;
     const mktSimAligned = mktLeader === simLeader;
     mktNote += `<div class="sim-mkt-note" style="opacity:0.7;font-size:0.68rem;">
-      ${mktSimAligned ? '✓ Market aligned with sim' : '⚠ Market diverges from sim'} — ${d.home_team} ${d.market_home_win_prob}% · ${d.away_team} ${d.market_away_win_prob}%
+      ${mktSimAligned ? '✓ Market aligned with sim' : '⚠ Market diverges from sim'} — ${homeTeamE} ${escHtml(String(d.market_home_win_prob))}% · ${awayTeamE} ${escHtml(String(d.market_away_win_prob))}%
     </div>`;
   }
 
   // AI summary
   const summaryHtml = d.summary
-    ? `<div class="sim-summary">"${d.summary}"</div>`
+    ? `<div class="sim-summary">"${escHtml(d.summary)}"</div>`
     : '';
 
   const updatedAt = d.updated_at
