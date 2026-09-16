@@ -3584,6 +3584,22 @@ async def dashboard(
                             o1_str = f'+{o1}' if o1 > 0 else str(o1)
                             o2_str = f'+{o2}' if o2 > 0 else str(o2)
 
+                            # Build explicit pick labels so users know exactly what to bet
+                            if mkt == 'spreads':
+                                _pt1 = b1.point
+                                _pt2 = b2.point
+                                _p1s = (f'{_pt1:+.1f}' if _pt1 is not None else '')
+                                _p2s = (f'{_pt2:+.1f}' if _pt2 is not None else '')
+                                pick1 = f'{b1.team or ""} {_p1s}'.strip()
+                                pick2 = f'{b2.team or ""} {_p2s}'.strip()
+                            else:  # totals
+                                _side1 = (b1.team or '').strip().capitalize()
+                                _side2 = (b2.team or '').strip().capitalize()
+                                _pt1   = b1.point
+                                _pt2   = b2.point
+                                pick1  = f'{_side1} {_pt1}' if _pt1 is not None else _side1
+                                pick2  = f'{_side2} {_pt2}' if _pt2 is not None else _side2
+
                             middles_out.append({
                                 'middle_window':       round(window, 1),
                                 'middle_win_prob':     round(mid_win_prob, 4),
@@ -3596,11 +3612,11 @@ async def dashboard(
                                 'game_time':           game_time,
                                 'market_display':      'Spread' if mkt == 'spreads' else 'Total',
                                 'leg1_book':           b1.book or '',
-                                'leg1_pick':           b1.team or '',
+                                'leg1_pick':           pick1,
                                 'leg1_odds':           o1,
                                 'leg1_odds_str':       o1_str,
                                 'leg2_book':           b2.book or '',
-                                'leg2_pick':           b2.team or '',
+                                'leg2_pick':           pick2,
                                 'leg2_odds':           o2,
                                 'leg2_odds_str':       o2_str,
                             })
