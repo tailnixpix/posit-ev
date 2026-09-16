@@ -564,9 +564,15 @@ def refresh_ev_cache() -> int:
                 except Exception:
                     h_ct = None
 
+            # Skip rows with no real game_id — str(None) produces "None" which
+            # would contaminate CLV lookups by matching any pick whose game_id
+            # was also stored as the literal string "None".
+            _h_gid_raw = row.get("game_id")
+            if not _h_gid_raw or str(_h_gid_raw) in ("None", "nan"):
+                continue
             h_implied = _american_to_implied(h_odds) if h_odds else None
             history_rows.append(OddsHistory(
-                game_id      = str(row.get("game_id", "")),
+                game_id      = str(_h_gid_raw),
                 league       = str(row.get("sport_key", "")),
                 market       = str(row.get("market", "")),
                 team         = str(row.get("outcome_name", "")),
@@ -1327,6 +1333,15 @@ async def on_startup() -> None:
         except Exception:
             _db.rollback()
 
+    # Migrate: add closing_odds and clv_pct to daily_picks for persistent CLV storage
+    with SessionLocal() as _db:
+        try:
+            _db.execute(text("ALTER TABLE daily_picks ADD COLUMN IF NOT EXISTS closing_odds INTEGER"))
+            _db.execute(text("ALTER TABLE daily_picks ADD COLUMN IF NOT EXISTS clv_pct FLOAT"))
+            _db.commit()
+        except Exception:
+            _db.rollback()
+
     # Migrate: create odds_history table (append-only CLV ledger)
     with SessionLocal() as _db:
         try:
@@ -1751,7 +1766,8 @@ def compute_clv(db: Session, pick) -> Optional[float]:
 
     Returns None if no OddsHistory data is available (e.g. first day of deploy).
     """
-    if not getattr(pick, "game_id", None) or not pick.commence_time:
+    _gid = getattr(pick, "game_id", None)
+    if not _gid or str(_gid) in ("None", "nan") or not pick.commence_time:
         return None
 
     def _american_to_implied(odds: int) -> float:
@@ -1759,15 +1775,18 @@ def compute_clv(db: Session, pick) -> Optional[float]:
             return 100 / (odds + 100)
         return abs(odds) / (abs(odds) + 100)
 
+    _filters = [
+        OddsHistory.game_id == _gid,
+        OddsHistory.book    == pick.book,
+        OddsHistory.market  == pick.market,
+        OddsHistory.team    == pick.team,
+        OddsHistory.captured_at < pick.commence_time,
+    ]
+    if getattr(pick, "point", None) is not None:
+        _filters.append(OddsHistory.point == pick.point)
     closing = (
         db.query(OddsHistory.odds, OddsHistory.implied_prob)
-        .filter(
-            OddsHistory.game_id == pick.game_id,
-            OddsHistory.book    == pick.book,
-            OddsHistory.market  == pick.market,
-            OddsHistory.team    == pick.team,
-            OddsHistory.captured_at < pick.commence_time,
-        )
+        .filter(*_filters)
         .order_by(OddsHistory.captured_at.desc())
         .first()
     )
@@ -3953,7 +3972,33 @@ async def admin_dashboard(
     picks_clv = {}
     for pick in daily_picks_all:
         if pick.commence_time and pick.commence_time < _now_utc:
-            clv_val = compute_clv(db, pick)
+            # Use cached value if already persisted; otherwise compute and persist
+            if pick.clv_pct is not None:
+                clv_val = pick.clv_pct
+            else:
+                clv_val = compute_clv(db, pick)
+                if clv_val is not None:
+                    try:
+                        from sqlalchemy import text as _text
+                        _closing_row = (
+                            db.query(OddsHistory.odds)
+                            .filter(
+                                OddsHistory.game_id == pick.game_id,
+                                OddsHistory.book == pick.book,
+                                OddsHistory.market == pick.market,
+                                OddsHistory.team == pick.team,
+                                OddsHistory.captured_at < pick.commence_time,
+                            )
+                            .order_by(OddsHistory.captured_at.desc())
+                            .first()
+                        )
+                        pick.clv_pct = clv_val
+                        if _closing_row:
+                            pick.closing_odds = _closing_row[0]
+                        db.commit()
+                    except Exception as _e:
+                        db.rollback()
+                        log.warning("CLV write-back failed for pick %s: %s", pick.id, _e)
             picks_clv[pick.id] = clv_val
         else:
             picks_clv[pick.id] = None

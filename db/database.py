@@ -230,6 +230,8 @@ class DailyPick(Base):
     game_id       = Column(String, nullable=True)  # Odds API game ID — used for CLV closing line lookup
     player_name   = Column(String, nullable=True)  # player name for prop picks
     is_prop       = Column(Boolean, nullable=True, default=False)
+    closing_odds  = Column(Integer, nullable=True)  # last recorded American odds before game start
+    clv_pct       = Column(Float,   nullable=True)  # (closing_implied - pick_implied) * 100
 
     def __repr__(self) -> str:
         return (
