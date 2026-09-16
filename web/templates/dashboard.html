@@ -2594,6 +2594,14 @@ main { max-width: none !important; padding: 0 !important; }
   transition: color 0.12s, border-color 0.12s;
 }
 .btn-parlay-clear:hover { color: var(--d-text); border-color: var(--d-sub); }
+/* Wager input row */
+.parlay-wager-row { display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-top: 1px solid var(--d-border); }
+.pw-label { font-size: 0.72rem; color: var(--d-sub); white-space: nowrap; }
+.pw-input { width: 72px; background: var(--d-bg); border: 1px solid var(--d-border); border-radius: 8px; color: var(--d-text); font-size: 0.82rem; font-family: inherit; padding: 5px 8px; outline: none; }
+.pw-input:focus { border-color: var(--d-purple); }
+.pw-payout-wrap { margin-left: auto; text-align: right; }
+.pw-payout-val { font-size: 1rem; font-weight: 700; color: var(--d-green); }
+.pw-payout-lbl { font-size: 0.62rem; color: var(--d-sub); margin-top: 1px; }
 
 @media (max-width: 768px) {
   .parlay-panel { bottom: 72px; }
@@ -3861,6 +3869,14 @@ main { max-width: none !important; padding: 0 !important; }
       <div class="ps-lbl">¼ Kelly</div>
     </div>
   </div>
+  <div class="parlay-wager-row">
+    <label class="pw-label" for="parlayWagerInput">Wager $</label>
+    <input type="number" id="parlayWagerInput" class="pw-input" placeholder="0" min="0" step="1" oninput="_renderParlayPanel()" />
+    <div class="pw-payout-wrap">
+      <div class="pw-payout-val" id="pl-payout">—</div>
+      <div class="pw-payout-lbl">Potential payout</div>
+    </div>
+  </div>
   <div class="parlay-footer">
     <span class="parlay-warn hidden" id="parlayWarn"></span>
     <button class="btn-parlay-clear" onclick="clearParlayLegs()">Clear All</button>
@@ -3998,8 +4014,7 @@ function _computeParlayStats() {
 
 /* ── Card click → toggle parlay leg ─────────────────────────── */
 function _getLegId(card) {
-  const btn = card.querySelector('[id^="analyze-btn-"]');
-  return btn ? btn.id.replace('analyze-btn-', '') : null;
+  return card.dataset.betId || null;
 }
 
 function _onBetCardClick(e, card) {
@@ -4047,8 +4062,7 @@ function removeParlayLeg(id) {
   const idx = _parlayLegs.findIndex(l => l.id === id);
   if (idx === -1) return;
   _parlayLegs.splice(idx, 1);
-  const _aBtn = document.getElementById('analyze-btn-' + id);
-  const card = _aBtn ? _aBtn.closest('.bet-card') : null;
+  const card = document.getElementById('card-' + id);
   if (card) card.classList.remove('parlay-selected');
   _renderParlayPanel();
 }
@@ -4069,6 +4083,7 @@ function _renderParlayPanel() {
   const probEl   = document.getElementById('pl-prob');
   const evEl     = document.getElementById('pl-ev');
   const kellyEl  = document.getElementById('pl-kelly');
+  const payoutEl = document.getElementById('pl-payout');
   const warnEl   = document.getElementById('parlayWarn');
 
   badgeEl.textContent = n === 1 ? '1 leg' : `${n} legs`;
@@ -4104,6 +4119,7 @@ function _renderParlayPanel() {
       el.textContent = '—';
       el.className   = 'ps-val';
     });
+    if (payoutEl) { payoutEl.textContent = '—'; payoutEl.title = ''; }
   } else {
     const oddsStr = stats.american >= 0 ? `+${stats.american}` : String(stats.american);
     oddsEl.textContent = oddsStr;
@@ -4127,6 +4143,21 @@ function _renderParlayPanel() {
       kellyEl.title = '';
     }
     kellyEl.className = 'ps-val ' + (stats.fracKelly > 0 ? 'ps-green' : 'ps-orange');
+
+    // Payout = wager × decimal odds (includes stake return)
+    const wagerEl = document.getElementById('parlayWagerInput');
+    const wager = parseFloat(wagerEl ? wagerEl.value : '') || 0;
+    if (payoutEl) {
+      if (wager > 0) {
+        const payout = wager * stats.dec;
+        const profit = payout - wager;
+        payoutEl.textContent = `$${payout.toFixed(2)}`;
+        payoutEl.title = `Profit: $${profit.toFixed(2)} on $${wager} wager`;
+      } else {
+        payoutEl.textContent = '—';
+        payoutEl.title = '';
+      }
+    }
   }
 
   // Warnings
