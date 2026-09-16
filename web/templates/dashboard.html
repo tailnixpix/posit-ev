@@ -6413,60 +6413,45 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')hideSharpPopover();}
       .filter(([, o]) => typeof o === 'number' && isFinite(o))
       .sort((a, b) => b[1] - a[1]);   // highest American odds first = best price first
 
-    if (entries.length < 2) return;   // nothing to compare
-
     const currentBook = (card.dataset.book || '').toLowerCase();
     const currentOdds = parseInt(card.dataset.odds, 10);
 
-    // Determine which pill is "ours" — prefer book match, fall back to odds match
-    const isBest = ([book, odds]) =>
+    // Identify the card's own book/odds so we can exclude it from the comparison
+    const isOurs = ([book, odds]) =>
       book.toLowerCase() === currentBook || odds === currentOdds;
 
-    // Show up to 4 pills: current book always shown, rest are best alternatives
-    const MAX = 4;
-    let shown = [];
-    // Always include the current book entry first (will be highlighted)
-    const ourEntry = entries.find(isBest) || [currentBook, currentOdds];
-    shown.push(ourEntry);
-    for (const e of entries) {
-      if (shown.length >= MAX) break;
-      if (!isBest(e)) shown.push(e);
-    }
-    // Sort shown: our book first, rest by odds desc
-    shown = [ourEntry, ...shown.filter(e => !isBest(e))];
+    // Comparison shows only the *other* books — the card header already names ours
+    const alts = entries.filter(e => !isOurs(e));
+    if (alts.length < 1) return;   // no alternatives to compare against
 
-    // Pills HTML
+    // Show up to 4 alternative pills, best price first
+    const shown = alts.slice(0, 4);
+
+    // Pills HTML — no highlighting needed since the card's book is excluded
     const pillsHtml = shown.map(([book, odds]) => {
-      const best = isBest([book, odds]);
       const name = NAMES[book.toLowerCase()] || (book.charAt(0).toUpperCase() + book.slice(1));
       const label = name.length > 11 ? name.slice(0, 10) + '…' : name;
-      return `<div class="oc-pill${best ? ' oc-best' : ''}">
-        <span class="oc-book">${label}${best ? ' ✓' : ''}</span>
+      return `<div class="oc-pill">
+        <span class="oc-book">${label}</span>
         <span class="oc-odds">${fmtOdds(odds)}</span>
       </div>`;
     }).join('');
 
-    // Savings note: compare our price to the next-best alternative
+    // Savings note: compare our price to the best alternative
     let noteHtml = '';
-    const alts = entries.filter(e => !isBest(e));
-    if (alts.length > 0) {
-      const [nextBook, nextOdds] = alts[0];
-      const gap = currentOdds - nextOdds;  // positive = we have better price
-      const nextName = NAMES[nextBook.toLowerCase()] || nextBook;
-      if (gap > 0) {
-        noteHtml = `<div class="odds-compare-note">
-          <span class="oc-note-pos">+${gap} pts</span> better than ${nextName} (${fmtOdds(nextOdds)})
-        </div>`;
-      } else if (gap < 0) {
-        // Our book isn't the best — show best available
-        const [bestBook, bestOdds] = entries[0];
-        const bestName = NAMES[bestBook.toLowerCase()] || bestBook;
-        noteHtml = `<div class="odds-compare-note">
-          ${bestName} has <span class="oc-note-pos">${fmtOdds(bestOdds)}</span> — best price available
-        </div>`;
-      } else {
-        noteHtml = `<div class="odds-compare-note">Matched best price across ${entries.length} books</div>`;
-      }
+    const [nextBook, nextOdds] = alts[0];
+    const gap = currentOdds - nextOdds;  // positive = we have the better price
+    const nextName = NAMES[nextBook.toLowerCase()] || nextBook;
+    if (gap > 0) {
+      noteHtml = `<div class="odds-compare-note">
+        <span class="oc-note-pos">+${gap} pts</span> better than ${nextName} (${fmtOdds(nextOdds)})
+      </div>`;
+    } else if (gap < 0) {
+      noteHtml = `<div class="odds-compare-note">
+        ${nextName} has <span class="oc-note-pos">${fmtOdds(nextOdds)}</span> — best available
+      </div>`;
+    } else {
+      noteHtml = `<div class="odds-compare-note">Same price at ${nextName} — shop for line movement</div>`;
     }
 
     wrap.innerHTML = `
