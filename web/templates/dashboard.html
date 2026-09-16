@@ -5578,12 +5578,99 @@ const _MOBILE_APP_STORES = {
   },
 };
 
+// ── Deep-link / event URL builder ─────────────────────────────────────────
+// Returns the most specific URL we can construct for the given book + card.
+//
+// Books with true event-level links (no partnership needed):
+//   • Pinnacle   — /en/{sport}/{league}/matchups/{away-slug}-vs-{home-slug}
+//   • Kalshi     — /markets?query={search} (search-scoped to their market list)
+//   • Polymarket — /sports/live?query={search}
+//
+// Books that need an affiliate partnership for event-level links:
+//   • DraftKings  — join affiliates.draftkings.com → event IDs exposed in feed
+//   • FanDuel     — join fanduelaffiliate.com       → event-level betslip links
+//   • BetMGM      — Commission Junction (CJ)        → event-level links
+//   • Caesars     — Commission Junction (CJ)        → event-level links
+//   • BetRivers   — Betrivers affiliate program     → event-level links
+//   • ESPN Bet    — ESPN affiliate program          → event-level links
+// Until those partnerships are in place, those books open the sport section
+// + the search clipboard helper tells the user what to find.
+
+const _PINNACLE_LEAGUE_PATH = {
+  baseball_mlb:                    'baseball/mlb',
+  basketball_nba:                  'basketball/nba',
+  icehockey_nhl:                   'hockey/nhl',
+  americanfootball_nfl:            'football/nfl',
+  americanfootball_ncaaf:          'football/ncaa',
+  soccer_epl:                      'soccer/england-premier-league',
+  soccer_spain_la_liga:            'soccer/spain-la-liga',
+  soccer_germany_bundesliga:       'soccer/germany-bundesliga',
+  soccer_france_ligue_one:         'soccer/france-ligue-1',
+  soccer_italy_serie_a:            'soccer/italy-serie-a',
+  soccer_usa_mls:                  'soccer/usa-mls',
+  soccer_uefa_champs_league:       'soccer/champions-league',
+  soccer_uefa_europa_league:       'soccer/europa-league',
+  soccer_conmebol_copa_libertadores: 'soccer/copa-libertadores',
+  tennis_atp_us_open:              'tennis/us-open',
+  basketball_ncaab:                'basketball/ncaa',
+  mma_mixed_martial_arts:          'fighting/ufc',
+  boxing_boxing:                   'fighting/boxing',
+};
+
+function _slugify(s) {
+  return (s || '').toLowerCase().trim()
+    .replace(/['']/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+function _buildEventUrl(book, league, card) {
+  const game     = card?.dataset?.game || '';
+  const isProp   = card?.dataset?.isProp === 'true';
+  const mkt      = card?.dataset?.market || '';
+  const team     = card?.dataset?.team || '';
+  const player   = card?.dataset?.playerName || '';
+  const oddsStr  = (parseInt(card?.dataset?.odds, 10) || '');
+
+  // Build a concise search string for books that use it
+  let q = '';
+  if (game.includes(' @ ')) {
+    const [away, home] = game.split(' @ ').map(s => s.trim());
+    q = encodeURIComponent(`${away} vs ${home}`);
+  } else if (isProp && player) {
+    q = encodeURIComponent(player);
+  } else {
+    q = encodeURIComponent(team || game);
+  }
+
+  if (book === 'pinnacle' && game.includes(' @ ') && !isProp) {
+    const [away, home] = game.split(' @ ').map(s => s.trim());
+    const leaguePath   = _PINNACLE_LEAGUE_PATH[league];
+    if (leaguePath) {
+      return `https://www.pinnacle.com/en/${leaguePath}/matchups/${_slugify(away)}-vs-${_slugify(home)}`;
+    }
+  }
+
+  if (book === 'kalshi') {
+    return `https://kalshi.com/markets?query=${q}`;
+  }
+
+  if (book === 'polymarket') {
+    return `https://polymarket.com/sports/live?query=${q}`;
+  }
+
+  if (book === 'betfair_ex_uk' || book === 'betfair_ex_us') {
+    // Betfair search works across their exchange
+    return `https://www.betfair.com/exchange/plus/en/search?q=${q}`;
+  }
+
+  // All other books: fall back to sport-section URL
+  const map = _BOOK_URLS[book];
+  if (!map) return null;
+  return map[league] || map._default || null;
+}
+
 // ── Bet search helper toast ────────────────────────────────────────────────
-// Sportsbook deep links to specific game events require each book's internal
-// event ID, which The Odds API does not expose. Until we have affiliate API
-// access (DraftKings/FanDuel affiliate programs provide event ID feeds), the
-// best UX is: open the correct sport section AND copy the exact bet to
-// clipboard with a clear "search for this" prompt.
 
 function _buildSearchString(card) {
   if (!card) return { search: '', detail: '' };
@@ -5624,10 +5711,10 @@ function _showBetToast(search, detail, copied) {
   const t = document.createElement('div');
   t.className = 'bsh-toast';
   t.innerHTML = `
-    <div class="bsh-label">Find this bet on the app</div>
+    <div class="bsh-label">Bet to place${copied ? ' — copied to clipboard' : ''}</div>
     <div class="bsh-search">${search}</div>
     <div class="bsh-sub">${detail}</div>
-    ${copied ? '<div class="bsh-copied">✓ Copied to clipboard</div>' : ''}
+    ${copied ? '<div class="bsh-copied">✓ Paste to search on the book\'s site</div>' : ''}
   `;
   document.body.appendChild(t);
   setTimeout(() => {
@@ -5674,12 +5761,12 @@ function openBetLink(book, league, btn) {
   }
 
   // Web sportsbooks & prediction markets
-  const map = _BOOK_URLS[book];
-  if (!map) return;
-  const url = map[league] || map._default;
+  const url = _buildEventUrl(book, league, card);
   if (!url) return;
 
-  // Show search helper before opening the book
+  // Show search helper before opening the book.
+  // For books with event-level URLs (Pinnacle, Kalshi, Polymarket, Betfair),
+  // the clipboard content helps the user confirm the right market once they land.
   if (search) _showBetToast(search, detail, copied);
 
   window.open(url, '_blank', 'noopener,noreferrer');
@@ -6452,7 +6539,10 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')hideSharpPopover();}
       book.toLowerCase() === currentBook || odds === currentOdds;
 
     // Comparison shows only the *other* books — the card header already names ours
-    const alts = entries.filter(e => !isOurs(e));
+    // Only show books whose odds are equal-to or worse-than the card's odds.
+    // If another book somehow has a better price, the card should be showing
+    // that book — showing it here would confuse users about where to bet.
+    const alts = entries.filter(e => !isOurs(e) && e[1] <= currentOdds);
     if (alts.length < 1) return;   // no alternatives to compare against
 
     // Show up to 4 alternative pills, best price first
