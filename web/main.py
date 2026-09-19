@@ -2523,6 +2523,19 @@ async def landing(request: Request, db: Session = Depends(get_db)):
     # ROI: profit relative to starting bankroll (same as admin dashboard)
     track_roi = round(total_pl / BANKROLL * 100, 1) if len(settled) > 0 else None
 
+    # Per-sport P&L (same $20 unit formula)
+    sport_pl: dict = {}
+    for _sp in settled:
+        if not _sp.league:
+            continue
+        if _sp.result == "won" and _sp.odds:
+            _sp_pl = UNIT * _sp.odds / 100 if _sp.odds > 0 else UNIT * 100 / abs(_sp.odds)
+        elif _sp.result == "lost":
+            _sp_pl = -UNIT
+        else:
+            _sp_pl = 0.0
+        sport_pl[_sp.league] = round(sport_pl.get(_sp.league, 0.0) + _sp_pl, 2)
+
     # Current win streak (consecutive wins from most recent pick)
     streak_count = _compute_pick_streak(settled)
 
@@ -2567,6 +2580,7 @@ async def landing(request: Request, db: Session = Depends(get_db)):
         "track_units":      total_units,
         "streak_count":     streak_count,
         "track_chart_data": track_chart_data,
+        "track_sport_pl":   sport_pl,
         "hero_picks":       hero_picks,
     })
 

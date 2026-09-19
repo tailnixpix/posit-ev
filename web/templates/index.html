@@ -122,6 +122,13 @@ main { max-width: none; padding: 0; }
 .tr-filter-pill.active {
   background: #534AB7; border-color: #534AB7; color: #fff;
 }
+.tr-pill-pl {
+  font-size: 0.68rem; font-weight: 700; margin-left: 4px;
+  padding: 1px 5px; border-radius: 10px;
+  background: rgba(22,163,74,0.12); color: #15803D;
+}
+.tr-pill-pl.neg { background: rgba(220,38,38,0.10); color: #B91C1C; }
+.tr-filter-pill.active .tr-pill-pl { background: rgba(255,255,255,0.18); color: #fff; }
 .tr-toggle-btn:hover { background:rgba(83,74,183,0.06); border-color:var(--brand-primary); }
 /* ── Streak banner ─────────────────────────────────────────────────── */
 .tr-streak-banner {
@@ -1563,6 +1570,9 @@ html { background: #060A14; }
 .tr-chart-since { color: #64748b !important; }
 .tr-filter-pill { background: rgba(255,255,255,0.04) !important; border-color: rgba(255,255,255,0.1) !important; color: rgba(255,255,255,0.5) !important; }
 .tr-filter-pill.active { background: #534AB7 !important; border-color: #534AB7 !important; color: #fff !important; }
+.tr-filter-pill .tr-pill-pl { background: rgba(74,222,128,0.12); color: #4ade80; }
+.tr-filter-pill .tr-pill-pl.neg { background: rgba(248,113,113,0.12); color: #f87171; }
+.tr-filter-pill.active .tr-pill-pl { background: rgba(255,255,255,0.18) !important; color: #fff !important; }
 
 /* FAQ */
 .faq-section { background: #060A14 !important; }
@@ -3259,9 +3269,10 @@ html { background: #060A14; }
       {% endfor %}
       {% if _unique_leagues.v | length > 1 %}
       <div class="tr-filter-wrap" id="trFilterWrap">
-        <button class="tr-filter-pill active" data-league="all" onclick="filterTrackBySport(this)">All Sports</button>
+        <button class="tr-filter-pill active" data-league="all" onclick="filterTrackBySport(this)">All Sports <span class="tr-pill-pl{% if track_pl < 0 %} neg{% endif %}">{{ '+$' if track_pl >= 0 else '-$' }}{{ '%.0f' | format(track_pl | abs) }}</span></button>
         {% for lg in _unique_leagues.v %}
-        <button class="tr-filter-pill" data-league="{{ lg }}" onclick="filterTrackBySport(this)">{{ _lm_emoji.get(lg, '🏅') }} {{ _lm.get(lg, lg | upper) }}</button>
+        {% set _lg_pl = track_sport_pl.get(lg, 0) %}
+        <button class="tr-filter-pill" data-league="{{ lg }}" onclick="filterTrackBySport(this)">{{ _lm_emoji.get(lg, '🏅') }} {{ _lm.get(lg, lg | upper) }} <span class="tr-pill-pl{% if _lg_pl < 0 %} neg{% endif %}">{{ '+$' if _lg_pl >= 0 else '-$' }}{{ '%.0f' | format(_lg_pl | abs) }}</span></button>
         {% endfor %}
       </div>
       {% endif %}
