@@ -436,9 +436,10 @@ async def register(
         # future daily posts (sent via Beehiiv's API) reach them.
         from web.beehiiv import add_subscriber as _bh_add  # lazy import avoids circular
         _bh_add(email)
-        # Send newsletter welcome email (non-blocking)
+        # Send newsletter welcome email (non-blocking) — registered=True
+        # sends the dashboard/trial welcome, not the single-free-pick email.
         from web.newsletter import send_newsletter_welcome  # lazy import avoids circular
-        send_newsletter_welcome(email)
+        send_newsletter_welcome(email, registered=True)
     except Exception as exc:
         log.error("Auto-newsletter signup failed for %s: %s", email, exc)
 

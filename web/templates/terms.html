@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+
+{% block head %}
+<style>
+:root {
+  --pp-text:    #111827;
+  --pp-sub:     #374151;
+  --pp-muted:   #6B7280;
+  --pp-border:  #E5E7EB;
+  --pp-bg:      #F9FAFB;
+  --pp-accent:  #534AB7;
+}
+.pp-wrap {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 64px 24px 96px;
+}
+.pp-hero {
+  margin-bottom: 48px;
+  border-bottom: 1px solid var(--pp-border);
+  padding-bottom: 32px;
+}
+.pp-hero h1 {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--pp-text);
+  margin: 0 0 8px;
+  letter-spacing: -0.5px;
+}
+.pp-hero p {
+  font-size: 0.88rem;
+  color: var(--pp-muted);
+  margin: 0;
+}
+.pp-section {
+  margin-bottom: 40px;
+}
+.pp-section h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--pp-text);
+  margin: 0 0 12px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--pp-accent);
+  display: inline-block;
+}
+.pp-section p, .pp-section li {
+  font-size: 0.9rem;
+  color: var(--pp-sub);
+  line-height: 1.8;
+  margin: 0 0 12px;
+}
+.pp-section ul {
+  padding-left: 20px;
+  margin: 0 0 12px;
+}
+.pp-section li { margin-bottom: 6px; }
+.pp-section strong { color: var(--pp-text); }
+.pp-contact {
+  background: var(--pp-bg);
+  border: 1px solid var(--pp-border);
+  border-radius: 10px;
+  padding: 24px 28px;
+  margin-top: 48px;
+}
+.pp-contact h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--pp-text);
+  margin: 0 0 8px;
+}
+.pp-contact p {
+  font-size: 0.88rem;
+  color: var(--pp-sub);
+  margin: 0;
+  line-height: 1.7;
+}
+.pp-contact a { color: var(--pp-accent); text-decoration: none; font-weight: 600; }
+.pp-contact a:hover { text-decoration: underline; }
+@media (max-width: 600px) {
+  .pp-wrap { padding: 40px 16px 72px; }
+  .pp-hero h1 { font-size: 1.5rem; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pp-wrap">
+
+  <div class="pp-hero">
+    <h1>Terms of Service</h1>
+    <p>Effective date: April 15, 2026 &nbsp;·&nbsp; Operated by PositEV &nbsp;·&nbsp; <a href="https://www.posit-ev.com" style="color:var(--pp-accent);text-decoration:none;">www.posit-ev.com</a></p>
+  </div>
+
+  <div class="pp-section">
+    <h2>1. Acceptance of Terms</h2>
+    <p>
+      These Terms of Service ("Terms") govern your access to and use of the website
+      <strong>www.posit-ev.com</strong> and the Posit+EV subscription service (together, the
+      "Service"), operated by PositEV ("we," "us," or "our").
+    </p>
+    <p>
+      By creating an account, subscribing to our newsletter, or otherwise using the Service, you
+      agree to be bound by these Terms. If you do not agree, do not use the Service.
+    </p>
+  </div>
+
+  <div class="pp-section">
+    <h2>2. Description of Service</h2>
+    <p>
+      Posit+EV provides sports betting <strong>data and analytics</strong> — including odds
+      comparisons across sportsbooks, prediction markets, and betting exchanges, expected-value
+      (+EV) calculations, model-derived probabilities, and related statistical signals.
+    </p>
+    <p>
+      <strong>Posit+EV is not betting advice, and we are not a licensed sportsbook, bookmaker,
+      or gambling operator.</strong> We do not accept wagers, hold funds, or place bets on your
+      behalf. All betting decisions and any wagers you place are made entirely at your own
+      discretion, with third-party sportsbooks, exchanges, or prediction markets that are not
+      affiliated with us. You are solely responsible for confirming that sports betting is legal
+      in your jurisdiction before using any information from this Service to place a wager.
+    </p>
+  </div>
+
+  <div class="pp-section">
+    <h2>3. Subscription Terms</h2>
+    <p>
+      The Service offers a free tier (one daily pick delivered by email, no account or payment
+      required) and a paid tier, EV Pro, billed at $10/month after a 7-day free trial.
+    </p>
+    <ul>
+      <li><strong>Trial period.</strong> When you start an EV Pro trial, a valid payment method is required at signup. You will not be charged during the 7-day trial.</li>
+      <li><strong>Billing.</strong> If you do not cancel before the trial ends, your payment method will be charged $10 on day 8, and $10/month thereafter until you cancel.</li>
+      <li><strong>Cancellation.</strong> You may cancel at any time from your account page or the Stripe billing portal. Cancelling before the trial ends means you will not be charged.</li>
+      <li><strong>Access period.</strong> A completed payment provides 30 days of access from the date of purchase. If a scheduled renewal payment fails, access may be revoked immediately.</li>
+      <li><strong>Refunds.</strong> Subscription payments are generally non-refundable, including partial billing periods, except as required by applicable law.</li>
+    </ul>
+  </div>
+
+  <div class="pp-section">
+    <h2>4. Disclaimer — No Guarantee of Profit</h2>
+    <p>
+      The Service is provided for <strong>entertainment and informational purposes only</strong>.
+      Expected-value calculations and model probabilities are statistical estimates, not
+      guarantees. <strong>Past performance is not indicative of future results.</strong> Sports
+      betting involves substantial risk, and you may lose some or all of the money you wager,
+      regardless of the information provided by the Service.
+    </p>
+    <p>
+      We make no representation or warranty that using the Service will result in profitable
+      betting outcomes. You should never wager more than you can afford to lose. If you or someone
+      you know has a gambling problem, call or text 1-800-GAMBLER for confidential support.
+    </p>
+  </div>
+
+  <div class="pp-section">
+    <h2>5. Prohibited Uses</h2>
+    <p>You agree not to:</p>
+    <ul>
+      <li>Use the Service if you are under 18, or under the legal age for gambling-related activity in your jurisdiction, whichever is higher.</li>
+      <li>Use the Service in a jurisdiction where sports betting or the receipt of sports betting data is prohibited by law.</li>
+      <li>Access the Service using automated scripts, bots, or scrapers to extract data at scale, or to circumvent subscription access controls.</li>
+      <li>Resell, redistribute, or publicly republish picks, odds data, or analysis obtained through the Service without our written permission.</li>
+      <li>Attempt to interfere with, disrupt, or gain unauthorized access to the Service, its servers, or other users' accounts.</li>
+      <li>Use the Service for any unlawful purpose, including money laundering or evading sportsbook account restrictions through misrepresentation.</li>
+    </ul>
+  </div>
+
+  <div class="pp-section">
+    <h2>6. Intellectual Property</h2>
+    <p>
+      All content on the Service — including the Posit+EV name and logo, the website design,
+      underlying models, methodology, software, and compiled data presentations — is the
+      property of PositEV or its licensors and is protected by copyright, trademark, and other
+      intellectual property laws. Your subscription grants you a limited, non-exclusive,
+      non-transferable license to access and view this content for your personal use. It does
+      not grant you any ownership rights or license to reproduce, distribute, or create
+      derivative works from it.
+    </p>
+    <p>
+      Third-party odds, team names, and league data referenced on the Service remain the
+      property of their respective sportsbooks, leagues, and data providers.
+    </p>
+  </div>
+
+  <div class="pp-section">
+    <h2>7. Limitation of Liability</h2>
+    <p>
+      To the fullest extent permitted by law, PositEV and its owners, employees, and affiliates
+      will not be liable for any indirect, incidental, special, consequential, or punitive
+      damages — including but not limited to lost profits, lost wagers, or lost data — arising
+      out of or related to your use of the Service, even if we have been advised of the
+      possibility of such damages.
+    </p>
+    <p>
+      The Service is provided "as is" and "as available," without warranties of any kind, express
+      or implied, including warranties of accuracy, merchantability, fitness for a particular
+      purpose, or non-infringement. Odds and data may be delayed, incomplete, or inaccurate at
+      any given moment; always verify current odds directly with the relevant sportsbook before
+      placing a wager. Our total aggregate liability to you for any claim arising from these
+      Terms or the Service is limited to the amount you paid us in the 3 months preceding the
+      claim.
+    </p>
+  </div>
+
+  <div class="pp-section">
+    <h2>8. Termination</h2>
+    <p>
+      We may suspend or terminate your access to the Service at any time, with or without notice,
+      for conduct that we believe violates these Terms or is otherwise harmful to other users,
+      us, or third parties. You may stop using the Service and cancel your subscription at any
+      time as described in Section 3.
+    </p>
+  </div>
+
+  <div class="pp-section">
+    <h2>9. Governing Law</h2>
+    <p>
+      These Terms are governed by the laws of the United States and the state in which PositEV
+      operates, without regard to conflict-of-law principles. Any dispute arising from these
+      Terms or the Service will be resolved in the courts of competent jurisdiction in that state.
+    </p>
+  </div>
+
+  <div class="pp-section">
+    <h2>10. Changes to These Terms</h2>
+    <p>
+      We may update these Terms from time to time. When we do, we will revise the effective date
+      at the top of this page. Continued use of the Service after any update constitutes your
+      acceptance of the revised Terms.
+    </p>
+  </div>
+
+  <div class="pp-contact">
+    <h3>Contact Us</h3>
+    <p>
+      If you have questions about these Terms, please contact us at:<br><br>
+      <strong>PositEV</strong><br>
+      Email: <a href="mailto:support.positev@gmail.com">support.positev@gmail.com</a><br>
+      Website: <a href="https://www.posit-ev.com">www.posit-ev.com</a>
+    </p>
+  </div>
+
+</div>
+{% endblock %}

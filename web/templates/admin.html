@@ -407,6 +407,25 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
       <div class="lbl">+EV bets live</div>
       <div class="stat-sub">{% if cache_avg_ev %}avg +{{ cache_avg_ev }}% EV{% else %}cache empty{% endif %}</div>
     </div>
+    <div class="stat-box growth">
+      <div class="num">${{ mrr }}</div>
+      <div class="lbl">MRR</div>
+      <div class="stat-sub">{{ user_paid_stripe }} paying &times; $10/mo</div>
+    </div>
+    <div class="stat-box neutral">
+      <div class="num">{{ recent_cancels }}</div>
+      <div class="lbl">Cancels (30d)</div>
+    </div>
+  </div>
+
+  {# ── Subscriber Growth ── #}
+  <div class="section-card" style="margin-bottom:16px;">
+    <div class="section-card-header">
+      <h2>📈 Subscriber Growth — Last 30 Days</h2>
+    </div>
+    <div style="padding:20px;">
+      <canvas id="growthChart" height="90"></canvas>
+    </div>
   </div>
 
   {# ── Pipeline Health ── #}
@@ -1255,6 +1274,40 @@ tr.pick-row-lost:hover td { background: #FEE2E2; }
 {% endblock %}
 
 {% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+  var growthCtx = document.getElementById('growthChart');
+  if (!growthCtx || !window.Chart) return;
+  var raw = {{ daily_signups | tojson }};
+  new Chart(growthCtx, {
+    type: 'line',
+    data: {
+      labels: raw.map(function (d) { return d.date; }),
+      datasets: [{
+        label: 'New Subscribers',
+        data: raw.map(function (d) { return d.count; }),
+        borderColor: '#534AB7',
+        backgroundColor: 'rgba(83,74,183,0.1)',
+        borderWidth: 2,
+        tension: 0.4,
+        fill: true,
+        pointRadius: 3,
+        pointHoverRadius: 5,
+        pointBackgroundColor: '#534AB7',
+      }],
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: '#F3F4F6' }, ticks: { color: '#6B7280', font: { size: 11 } } },
+        y: { grid: { color: '#F3F4F6' }, ticks: { color: '#6B7280', font: { size: 11 }, stepSize: 1 }, beginAtZero: true },
+      },
+    },
+  });
+})();
+</script>
 <script>
 /* ── Preserve scroll position across form submissions ── */
 (function () {

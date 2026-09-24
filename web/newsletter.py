@@ -1469,19 +1469,56 @@ _PRO_UPSELL_BOX = """
     </table>"""
 
 
-def send_newsletter_welcome(to_email: str) -> bool:
+def send_newsletter_welcome(to_email: str, registered: bool = False) -> bool:
     """
     Send a welcome email to a new newsletter subscriber or newly registered user.
 
-    If today's DailyPick exists and the event hasn't started yet, the pick
-    is included in the email. If the event has already begun (or there is no
-    pick today), the email explains that the first pick arrives tomorrow at 8 AM CT.
+    *registered* distinguishes the two callers:
+      - False (default): /newsletter/subscribe — recipient has no account,
+        just the free daily pick by email. If today's DailyPick exists and
+        the event hasn't started yet, the pick is included in the email;
+        otherwise the email explains the first pick arrives tomorrow.
+      - True: POST /register — recipient has a dashboard account (and,
+        once they check out, a 7-day trial). This gets a distinct email
+        pointing them at the dashboard rather than the single free pick,
+        since they have full access, not just today's one bet.
 
-    Subject: "Welcome to Posit+EV — Here's Today's Pick" (pick present)
-          or "Welcome to Posit+EV — Your First Pick Arrives Tomorrow" (no pick)
+    Subject (registered=False): "Welcome to Posit+EV — Here's Today's Pick"
+          or "Welcome to Posit+EV — Your First Pick Arrives Tomorrow"
+    Subject (registered=True):  "Welcome to Posit+EV — your edge starts now 🎯"
     """
     unsub_token = _make_unsub_token(to_email)
     unsub_url   = f"{_base_url}/newsletter/unsubscribe?token={unsub_token}"
+
+    if registered:
+        subject = "Welcome to Posit+EV — your edge starts now \U0001F3AF"
+        body = f"""
+    <h2>You&rsquo;re in &mdash; your edge starts now.</h2>
+    <p>
+      Your account is live. You now have access to the full Posit+EV dashboard:
+      every +EV bet we find across 10 leagues, updated throughout the day, with
+      sharp money signals, AI analysis, and Kelly-sized stake recommendations
+      on every pick.
+    </p>
+    <p>
+      Your 7-day free trial has started &mdash; explore everything before you&rsquo;re
+      charged anything.
+    </p>
+    <a class="cta-btn" href="{_base_url}/dashboard">
+      Go to your dashboard &rarr;
+    </a>
+    <hr class="divider" />
+    <p style="font-size:13px; color:#7F77DD;">
+      Your card is stored securely and won&rsquo;t be charged until day 8. Cancel
+      any time before then at <a href="{_base_url}/account" style="color:#534AB7;">posit-ev.com/account</a>
+      and you won&rsquo;t pay anything.
+    </p>
+    <hr class="divider" />
+    <p style="font-size:13px; color:#8E8BAA;">
+      Find the edge. Beat the market.
+    </p>"""
+        html = _wrap_email(body, unsubscribe_url=unsub_url)
+        return _send(to_email, subject, html)
 
     pick, status = _get_todays_pick_status()
 
@@ -1555,6 +1592,39 @@ def send_newsletter_welcome(to_email: str) -> bool:
 # ---------------------------------------------------------------------------
 # FastAPI router
 # ---------------------------------------------------------------------------
+
+def send_trial_ending_reminder(email: str, trial_end_date: str, picks_during_trial: int) -> bool:
+    """
+    Send a reminder ~2 days before a user's 7-day trial converts to paid.
+
+    *trial_end_date* is a pre-formatted display string (e.g. "March 29").
+    *picks_during_trial* is the count of distinct +EV picks surfaced since
+    the trial started, used to make the email concrete rather than generic.
+    """
+    subject = f"Your Posit+EV trial ends {trial_end_date} — keep your edge"
+    body = f"""
+    <h2>Your free trial ends {trial_end_date}</h2>
+    <p>
+      During your trial, the Posit+EV model surfaced <strong class="tag-success">{picks_during_trial} +EV picks</strong>
+      across NFL, NBA, MLB, NHL, and Soccer &mdash; mathematically profitable edges the model found before the market corrected.
+    </p>
+    <p>
+      After your trial ends, you&rsquo;ll lose access to the full dashboard, real-time odds, sharp money signals,
+      and all model picks. The free daily pick by email continues regardless.
+    </p>
+    <a class="cta-btn" href="{_base_url}/pricing">
+      Keep my access &rarr;
+    </a>
+    <hr class="divider" />
+    <p style="font-size:13px; color:#7F77DD;">
+      You&rsquo;re currently on the EV Pro plan at $10/month. Your card will be charged on {trial_end_date}
+      unless you cancel before then at <a href="{_base_url}/account" style="color:#534AB7;">posit-ev.com/account</a>.
+    </p>"""
+    html = _wrap_email(body, unsubscribe_url=f"{_base_url}/account")
+    ok = _send(email, subject, html)
+    log.info("Trial reminder %s to %s", "sent" if ok else "failed", email)
+    return ok
+
 
 router = APIRouter()
 
@@ -1752,6 +1822,7 @@ def _unsub_page(success: bool, message: str) -> str:
 # Legacy public API (registered-user welcome + bulk pick sends)
 # ---------------------------------------------------------------------------
 
+# DEPRECATED — use send_newsletter_welcome(to_email, registered=True) instead.
 def send_welcome_email(to_email: str) -> bool:
     """
     Send the welcome email to a newly registered user.

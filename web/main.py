@@ -1390,6 +1390,24 @@ async def on_startup() -> None:
         except Exception:
             _db.rollback()
 
+    # Migrate: add has_seen_welcome to users for the dashboard onboarding modal
+    with SessionLocal() as _db:
+        try:
+            _db.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS has_seen_welcome BOOLEAN DEFAULT FALSE"))
+            _db.commit()
+        except Exception:
+            _db.rollback()
+
+    # Migrate: add updated_at to users for the admin "cancels (30d)" metric.
+    # New column — no historical backfill possible, so churn tracking only
+    # becomes accurate for status changes that happen after this deploy.
+    with SessionLocal() as _db:
+        try:
+            _db.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ"))
+            _db.commit()
+        except Exception:
+            _db.rollback()
+
     # Migrate: create odds_history table (append-only CLV ledger)
     with SessionLocal() as _db:
         try:
@@ -1459,6 +1477,49 @@ async def on_startup() -> None:
             _rmc()
         except Exception as _e:
             log.warning("Monthly credit reset failed: %s", _e)
+
+    def _send_trial_reminders():
+        """
+        Email users whose trial ends 2 calendar days from today (~9 AM CT).
+
+        Matches on trial_ends_at.date() rather than a tight hour-window
+        around "now + 48h": since this job only runs once a day at a fixed
+        time, a narrow +/-1h window would silently skip any user whose
+        trial started at a time of day that doesn't land near this job's
+        run time — most users, in practice. A date match catches everyone
+        exactly once, the day their trial has two days left.
+        """
+        db = SessionLocal()
+        try:
+            target_date = (datetime.now(timezone.utc) + timedelta(days=2)).date()
+            trial_users = (
+                db.query(User)
+                .filter(User.trial_ends_at.isnot(None))
+                .all()
+            )
+            for user in trial_users:
+                if user.trial_ends_at.date() != target_date:
+                    continue
+                trial_start = user.trial_ends_at - timedelta(days=7)
+                picks_count = (
+                    db.query(OddsHistory.game_id, OddsHistory.market, OddsHistory.team)
+                    .filter(OddsHistory.captured_at >= trial_start)
+                    .distinct()
+                    .count()
+                )
+                try:
+                    from web.newsletter import send_trial_ending_reminder as _stred
+                    _stred(
+                        email=user.email,
+                        trial_end_date=user.trial_ends_at.strftime("%B %d"),
+                        picks_during_trial=picks_count,
+                    )
+                except Exception as _e:
+                    log.warning("Trial reminder failed for %s: %s", user.email, _e)
+        except Exception as _e:
+            log.warning("Trial reminder job failed: %s", _e)
+        finally:
+            db.close()
 
     def _fetch_futures_daily():
         """
@@ -1623,6 +1684,15 @@ async def on_startup() -> None:
         trigger=CronTrigger(day=1, hour=0, minute=1, timezone="America/Chicago"),
         id="credit_reset_monthly",
         name="Reset monthly Odds API credit counter (1st of month CT)",
+        replace_existing=True,
+    )
+
+    # Trial-ending reminder — 9 AM CT daily, emails users 2 days from trial end
+    scheduler.add_job(
+        _send_trial_reminders,
+        trigger=CronTrigger(hour=9, minute=0, timezone="America/Chicago"),
+        id="trial_reminder",
+        name="Trial-ending reminder email (daily at 9 AM CT)",
         replace_existing=True,
     )
 
@@ -3060,6 +3130,11 @@ async def privacy(request: Request):
     return templates.TemplateResponse(request, "privacy.html", {})
 
 
+@app.get("/terms", response_class=HTMLResponse)
+async def terms(request: Request):
+    return templates.TemplateResponse(request, "terms.html", {})
+
+
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
     token = get_token_from_request(request)
@@ -3822,7 +3897,7 @@ async def dashboard(
                 "bet_count":            len(bets),
                 "cache_status":         _cache_status,
                 "next_refresh":         next_refresh,
-                "show_welcome":         welcome == "1",
+                "show_welcome":         bool(current_user) and not getattr(current_user, "has_seen_welcome", True),
                 "today_pick":           today_pick,
                 "pick_still_live":      pick_still_live,
                 "trial_days_remaining": trial_days_remaining,
@@ -3876,6 +3951,15 @@ async def admin_logout(request: Request):
     """Clear the admin session."""
     request.session.clear()
     return RedirectResponse(url="/admin/login", status_code=303)
+
+
+@app.post("/api/welcome-seen")
+async def welcome_seen(request: Request, db: Session = Depends(get_db)):
+    """Dismiss the dashboard onboarding modal permanently for this user."""
+    current_user = get_current_user(request, db)
+    current_user.has_seen_welcome = True
+    db.commit()
+    return {"ok": True}
 
 
 # ---------------------------------------------------------------------------
@@ -4018,6 +4102,34 @@ async def admin_dashboard(
     ).count()
     user_paid  = user_paid_stripe + user_comped   # backward-compat total (excl. trial)
     user_free  = user_total - user_paid - user_trial - user_unsubscribed
+
+    # MRR — only Stripe-paying, non-trial subscribers actually generate revenue
+    # (is_subscribed alone would double-count active trials, which aren't billed yet)
+    mrr = user_paid_stripe * 10  # single $10/mo plan
+
+    # Cancels (30d) — approximate: any user currently unsubscribed whose row
+    # was touched in the last 30 days. updated_at is a new column with no
+    # historical backfill, so this is only accurate for changes going forward.
+    from sqlalchemy import func as _func, cast as _cast, Date as _Date
+    _thirty_ago = _now_admin - timedelta(days=30)
+    recent_cancels = db.query(_func.count(User.id)).filter(
+        User.is_subscribed.is_(False),
+        User.updated_at.isnot(None),
+        User.updated_at >= _thirty_ago,
+    ).scalar() or 0
+
+    # Subscriber growth — new registrations per day, last 30 days
+    _daily_signups_raw = (
+        db.query(
+            _cast(User.created_at, _Date).label("date"),
+            _func.count(User.id).label("count"),
+        )
+        .filter(User.created_at >= _thirty_ago)
+        .group_by(_cast(User.created_at, _Date))
+        .order_by("date")
+        .all()
+    )
+    daily_signups = [{"date": row.date.isoformat(), "count": row.count} for row in _daily_signups_raw]
 
     # Build filtered query — tier filter matches the counter logic exactly
     query = db.query(User)
@@ -4204,6 +4316,9 @@ async def admin_dashboard(
             "user_free":         user_free,
             "user_unsubscribed": user_unsubscribed,
             "now_utc_dt":        _now_admin,
+            "mrr":               mrr,
+            "recent_cancels":    recent_cancels,
+            "daily_signups":     daily_signups,
             # Pagination metadata
             "filtered_total":   filtered_total,
             "total_pages":      total_pages,

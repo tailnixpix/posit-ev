@@ -88,7 +88,10 @@ class User(Base):
     stripe_customer_id     = Column(String, nullable=True)
     stripe_subscription_id = Column(String, nullable=True)
     trial_ends_at          = Column(DateTime(timezone=True), nullable=True)
+    has_seen_welcome       = Column(Boolean, default=False, nullable=False)
     created_at             = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at             = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc),
+                                     onupdate=lambda: datetime.now(timezone.utc), nullable=True)
 
     def __repr__(self) -> str:
         return f"<User id={self.id} email={self.email!r} subscribed={self.is_subscribed}>"

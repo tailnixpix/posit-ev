@@ -294,6 +294,30 @@ main { max-width: none !important; padding: 0 !important; }
 }
 .kelly-info-btn:hover { color: var(--d-green); }
 
+/* ── Welcome / onboarding modal ────────────────────────────────── */
+.welcome-overlay { position: fixed; inset: 0; background: rgba(8,12,20,0.85); backdrop-filter: blur(8px); z-index: 99999; display: flex; align-items: center; justify-content: center; padding: 20px; }
+.welcome-modal { background: var(--d-card); border: 1px solid var(--d-primary); border-radius: 20px; width: 100%; max-width: 480px; overflow: hidden; }
+.welcome-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px 0; }
+.welcome-close { background: none; border: none; color: var(--d-muted); cursor: pointer; font-size: 18px; padding: 4px; }
+.welcome-close:hover { color: var(--d-text); }
+.welcome-steps { padding: 24px; min-height: 200px; }
+.welcome-step { display: none; animation: welcomeFadeIn 0.2s ease; }
+.welcome-step.active { display: block; }
+.ws-icon { font-size: 36px; margin-bottom: 12px; }
+.welcome-step h3 { font-size: 1.1rem; font-weight: 700; color: var(--d-text); margin-bottom: 10px; }
+.welcome-step p { font-size: 0.88rem; color: var(--d-sub); line-height: 1.65; }
+.welcome-footer { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px 24px; border-top: 1px solid var(--d-border); margin-top: 8px; }
+.welcome-dots { display: flex; gap: 6px; }
+.wd { width: 8px; height: 8px; border-radius: 50%; background: var(--d-border); transition: background 0.2s; }
+.wd.active { background: var(--d-primary); }
+.welcome-btns { display: flex; gap: 10px; align-items: center; }
+.wbtn-skip { background: none; border: none; color: var(--d-muted); font-size: 13px; cursor: pointer; padding: 8px 12px; }
+.wbtn-skip:hover { color: var(--d-sub); }
+.wbtn-next { background: var(--d-primary); color: #fff; border: none; border-radius: 10px; padding: 8px 20px; font-size: 13px; font-weight: 700; cursor: pointer; transition: background 0.15s; }
+.wbtn-next:hover { background: #6B62D4; }
+@keyframes welcomeFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 600px) { .welcome-modal { border-radius: 16px; } .welcome-steps { padding: 20px; } }
+
 /* ── Kelly info modal ── */
 /* ── Help modal ─────────────────────────────────────────────── */
 .help-modal-overlay {
@@ -1997,6 +2021,17 @@ main { max-width: none !important; padding: 0 !important; }
   flex-shrink: 0;
   flex-wrap: nowrap;
 }
+.watchlist-btn, .share-btn {
+  background: none; border: none; cursor: pointer; color: var(--d-sub);
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; border-radius: 6px; transition: all 0.15s ease;
+  padding: 0; flex-shrink: 0;
+}
+.watchlist-btn:hover { color: #FAC775; background: rgba(250,199,117,0.1); }
+.watchlist-btn.added { color: #FAC775; cursor: default; }
+.watchlist-btn.added svg { fill: #FAC775; }
+.share-btn:hover { color: #534AB7; background: rgba(83,74,183,0.1); }
+.share-btn.copied { color: #00D68F; }
 /* EV + divergence row — second header line */
 .card-ev-row {
   display: flex;
@@ -3250,6 +3285,20 @@ main { max-width: none !important; padding: 0 !important; }
                         title="Odds updated {{ bet.odds_age_minutes|round(0)|int }} min ago"></span>
                   <span class="tooltip-box tip-right">Odds last updated {{ bet.odds_age_minutes|round(0)|int }} min ago. Green = under 15 min, yellow = 15–30 min, red = over 30 min. Always verify at the book before placing.</span>
                 </span>
+                <button class="watchlist-btn" onclick="toggleWatchlist({{ bet.id }}, this)" title="Add to Paper Trail" aria-label="Add to watchlist">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                  </svg>
+                </button>
+                <button class="share-btn" onclick="sharePick({{ bet.id }}, this)" title="Share this pick" aria-label="Share this pick">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <circle cx="11" cy="2.5" r="1.5" stroke="currentColor" stroke-width="1.2"/>
+                    <circle cx="11" cy="11.5" r="1.5" stroke="currentColor" stroke-width="1.2"/>
+                    <circle cx="3" cy="7" r="1.5" stroke="currentColor" stroke-width="1.2"/>
+                    <line x1="4.4" y1="6.2" x2="9.6" y2="3.3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                    <line x1="4.4" y1="7.8" x2="9.6" y2="10.7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                  </svg>
+                </button>
               </div>
             </div>
 
@@ -3886,11 +3935,75 @@ main { max-width: none !important; padding: 0 !important; }
 {% endblock %}
 
 {% block scripts %}
+{% if show_welcome %}
+<div class="welcome-overlay" id="welcomeOverlay">
+  <div class="welcome-modal">
+    <div class="welcome-header">
+      <div class="welcome-logo">
+        <img src="/static/logo-compact.svg" height="28" alt="Posit+EV"/>
+      </div>
+      <button class="welcome-close" onclick="dismissWelcome()">✕</button>
+    </div>
+    <div class="welcome-steps">
+      <div class="welcome-step active" id="wstep-1">
+        <div class="ws-icon">📊</div>
+        <h3>Welcome to Posit+EV</h3>
+        <p>Every pick on this dashboard has positive expected value — meaning the true probability of winning is higher than what the book's odds imply. You have a mathematical edge on every bet you see here.</p>
+      </div>
+      <div class="welcome-step" id="wstep-2">
+        <div class="ws-icon">🃏</div>
+        <h3>Reading a Bet Card</h3>
+        <p>Each card shows the pick, the best available book, EV%, true probability, and your recommended bet size using Kelly Criterion. The green spike means our model sees significant edge.</p>
+      </div>
+      <div class="welcome-step" id="wstep-3">
+        <div class="ws-icon">⭐</div>
+        <h3>Use the Paper Trail</h3>
+        <p>Star any pick to add it to your Paper Trail — track bets without real money to validate the model before committing. Mark results as Win, Loss, or Push to build your personal record.</p>
+      </div>
+      <div class="welcome-step" id="wstep-4">
+        <div class="ws-icon">⚡</div>
+        <h3>Follow Sharp Money</h3>
+        <p>Use the Sharp Flow filter to see only picks where professional money is moving the line. Combine with the Divergence feed to find where our model disagrees most with the market.</p>
+      </div>
+    </div>
+    <div class="welcome-footer">
+      <div class="welcome-dots">
+        <span class="wd active" id="wd-1"></span>
+        <span class="wd" id="wd-2"></span>
+        <span class="wd" id="wd-3"></span>
+        <span class="wd" id="wd-4"></span>
+      </div>
+      <div class="welcome-btns">
+        <button class="wbtn-skip" onclick="dismissWelcome()">Skip</button>
+        <button class="wbtn-next" id="wbtnNext" onclick="nextWelcomeStep()">Next →</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
 <script>
 // ── HTML escape helper (prevents XSS when interpolating API data into innerHTML) ──
 function escHtml(s) {
   if (s == null) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ── Welcome / onboarding modal ───────────────────────────────────────────────
+let _wStep = 1;
+const _wTotal = 4;
+function nextWelcomeStep() {
+  if (_wStep >= _wTotal) { dismissWelcome(); return; }
+  document.getElementById('wstep-' + _wStep).classList.remove('active');
+  document.getElementById('wd-' + _wStep).classList.remove('active');
+  _wStep++;
+  document.getElementById('wstep-' + _wStep).classList.add('active');
+  document.getElementById('wd-' + _wStep).classList.add('active');
+  if (_wStep === _wTotal) document.getElementById('wbtnNext').textContent = 'Get started →';
+}
+function dismissWelcome() {
+  const overlay = document.getElementById('welcomeOverlay');
+  if (overlay) { overlay.style.opacity = '0'; overlay.style.transition = 'opacity 0.2s'; setTimeout(() => overlay.remove(), 200); }
+  fetch('/api/welcome-seen', { method: 'POST', credentials: 'same-origin' }).catch(() => {});
 }
 
 // ── TZ helper ──────────────────────────────────────────────────────────────
@@ -6906,6 +7019,62 @@ function showToast(msg) {
   document.body.appendChild(t);
   setTimeout(() => t.classList.add('toast-show'), 10);
   setTimeout(() => { t.classList.remove('toast-show'); setTimeout(() => t.remove(), 300); }, 2500);
+}
+
+function toggleWatchlist(betId, btn) {
+  console.log('toggleWatchlist fired for bet', betId);
+  if (btn.classList.contains('added') || btn.disabled) return;
+  btn.disabled = true;
+  fetch('/watchlist/add', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ bet_cache_id: betId })
+  }).then(async function (resp) {
+    if (!resp.ok) {
+      console.error('Watchlist failed:', resp.status, await resp.text());
+      btn.disabled = false;
+      showToast('Could not add to Paper Trail');
+      return;
+    }
+    const data = await resp.json();
+    if (data.success) {
+      btn.classList.add('added');
+      btn.title = 'Added to Paper Trail';
+      showToast('⭐ Added to paper trail');
+    } else {
+      btn.disabled = false;
+      showToast('Could not add to Paper Trail');
+    }
+  }).catch(function (err) {
+    console.error('Watchlist failed:', err);
+    btn.disabled = false;
+    showToast('Could not add to Paper Trail');
+  });
+}
+
+function sharePick(betId, btn) {
+  const card = document.querySelector('.bet-card[data-bet-id="' + betId + '"]');
+  if (!card) return;
+  const league = card.querySelector('.badge-league, .badge-nfl, .badge-ncaaf')?.textContent?.trim() || '';
+  const teamEl = card.querySelector('.card-bet-name, .card-matchup');
+  const team = teamEl ? teamEl.textContent.trim().replace(/\s+/g, ' ') : '';
+  const evEl = card.querySelector('.ev-badge');
+  const ev = evEl ? evEl.textContent.trim().split('\n')[0].trim() : '';
+  const bookEl = card.querySelector('.bs-bookname, .best-book-name');
+  const book = bookEl ? bookEl.textContent.trim() : '';
+  const shareText = [league, team, ev, book].filter(Boolean).join(' · ') + ' · posit-ev.com';
+  if (navigator.share) {
+    navigator.share({ title: 'Posit+EV Pick', text: shareText, url: 'https://posit-ev.com' }).catch(() => {});
+  } else {
+    navigator.clipboard.writeText(shareText).then(() => {
+      btn.classList.add('copied');
+      showToast('📋 Pick copied to clipboard');
+      setTimeout(() => btn.classList.remove('copied'), 2000);
+    }).catch(() => {
+      showToast('Could not copy — try manually');
+    });
+  }
 }
 
 // ── Init ───────────────────────────────────────────────────────────────────
