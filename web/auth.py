@@ -270,6 +270,13 @@ def require_auth(
     payload = decode_access_token(token)
     if not payload:
         raise RedirectException(url="/login")
+
+    # SubscriptionMiddleware already fetched this exact user for this exact
+    # request (on /dashboard and /welcome) — reuse it instead of querying again.
+    cached_user = getattr(request.state, "user", None)
+    if cached_user is not None and cached_user.id == int(payload["sub"]):
+        return cached_user
+
     user = db.query(User).filter(User.id == int(payload["sub"])).first()
     if not user:
         raise RedirectException(url="/login")

@@ -45,9 +45,11 @@ import sentry_sdk
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
+from starlette.datastructures import MutableHeaders
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.requests import Request as StarletteRequest
 from starlette.responses import Response
@@ -139,6 +141,49 @@ def _proj_cache_get(key: str) -> Optional[dict]:
 
 def _proj_cache_set(key: str, result: dict) -> None:
     _PROJ_CACHE[key] = {"result": result, "ts": _time.monotonic()}
+
+
+# ---------------------------------------------------------------------------
+# reports/ directory listing — cached, TTL 5 min
+# Avoids an os.listdir() per bet, per dashboard request (get_line_history()
+# runs once per bet and used to re-scan the directory every single call).
+# ---------------------------------------------------------------------------
+
+_REPORTS_CACHE: dict = {"files": [], "ts": 0.0}
+_REPORTS_CACHE_TTL = 300  # 5 minutes
+
+
+def _get_report_files(reports_dir: str) -> list:
+    now = _time.time()
+    if now - _REPORTS_CACHE["ts"] > _REPORTS_CACHE_TTL:
+        try:
+            if os.path.isdir(reports_dir):
+                _REPORTS_CACHE["files"] = sorted(
+                    f for f in os.listdir(reports_dir)
+                    if f.startswith("ev_report_") and f.endswith(".csv")
+                )
+            else:
+                _REPORTS_CACHE["files"] = []
+            _REPORTS_CACHE["ts"] = now
+        except Exception:
+            pass
+    return _REPORTS_CACHE["files"]
+
+
+# ---------------------------------------------------------------------------
+# Perf timing — logs a block's wall-clock time if it exceeds 100ms
+# ---------------------------------------------------------------------------
+
+from contextlib import contextmanager
+
+
+@contextmanager
+def _timer(label: str):
+    _t0 = _time.perf_counter()
+    yield
+    _elapsed = _time.perf_counter() - _t0
+    if _elapsed > 0.1:
+        print(f"[PERF] {label}: {_elapsed:.3f}s")
 
 
 # ---------------------------------------------------------------------------
@@ -373,7 +418,8 @@ def refresh_ev_cache() -> int:
         # Reset exhausted flag so a renewed key works on the very next run
         reset_quota_state()
 
-        ev_df = run_pipeline()
+        with _timer("Odds API: game odds fetch"):
+            ev_df = run_pipeline()
 
         # ── API quota check — alert immediately if credits ran out ────────
         _quota = get_quota_state()
@@ -435,7 +481,8 @@ def refresh_ev_cache() -> int:
         from scripts.odds_fetcher import PROP_SPORTS as _PROP_SPORTS
         log.info("Props fetch: attempting all prop sports: %s", _PROP_SPORTS)
         try:
-            props_df = get_props_df(sport_keys=_PROP_SPORTS)
+            with _timer("Odds API: props fetch"):
+                props_df = get_props_df(sport_keys=_PROP_SPORTS)
             if not props_df.empty:
                 props_ev_df = find_positive_ev_props(props_df)
                 if not props_ev_df.empty:
@@ -750,8 +797,9 @@ def refresh_ev_cache() -> int:
             )
             rows.append(cache_row)
 
-        db.add_all(rows)
-        db.commit()
+        with _timer("DB: write cache"):
+            db.add_all(rows)
+            db.commit()
         count = len(rows)
         log.info("EV cache refresh: wrote %d bets.", count)
         _cache_status.update({
@@ -1717,8 +1765,41 @@ class SubscriptionMiddleware:
         finally:
             db.close()
 
+        # Cache the already-fetched user on request.state so require_auth()
+        # doesn't run an identical query again a few lines later in the route.
+        request.state.user = user
+        request.state.user_id = user.id
+
         # Authorized — pass through with original receive intact.
         await self.app(scope, receive, send)
+
+
+class StaticCacheMiddleware:
+    """
+    Pure ASGI middleware — adds a long-lived Cache-Control header to
+    /static/* responses. Written as raw ASGI (not @app.middleware("http") /
+    BaseHTTPMiddleware) for the same reason as SubscriptionMiddleware above:
+    BaseHTTPMiddleware wraps the ASGI `receive` callable for every request
+    that passes through it, which risks corrupting the raw request body
+    Stripe webhook signature verification needs — even for a middleware
+    that only intends to touch a different path.
+    """
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http" or not scope.get("path", "").startswith("/static/"):
+            await self.app(scope, receive, send)
+            return
+
+        async def _send_with_cache_header(message):
+            if message["type"] == "http.response.start":
+                headers = MutableHeaders(scope=message)
+                headers["Cache-Control"] = "public, max-age=604800, immutable"
+            await send(message)
+
+        await self.app(scope, receive, _send_with_cache_header)
 
 
 app.add_middleware(SubscriptionMiddleware)
@@ -1736,6 +1817,12 @@ app.add_middleware(
     https_only=True,     # Railway terminates TLS; cookies set Secure via this flag
     same_site="lax",
 )
+# GZip must be added LAST: Starlette's add_middleware() inserts each new
+# middleware at the front of the stack, so the most-recently-added one ends
+# up outermost. Adding it here (after Session/Subscription) — not before —
+# is what actually makes it wrap every response.
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+app.add_middleware(StaticCacheMiddleware)
 
 
 # ---------------------------------------------------------------------------
@@ -3018,18 +3105,19 @@ async def dashboard(
         _today_ct.year, _today_ct.month, _today_ct.day,
         tzinfo=_CT2
     ).astimezone(timezone.utc)
-    bets = (
-        db.query(EVBetCache)
-        .filter(
-            (EVBetCache.commence_time == None) |  # noqa: E711
-            (
-                (EVBetCache.commence_time >= _today_midnight_utc) &
-                (EVBetCache.commence_time > _now_utc)
+    with _timer("DB: load bets"):
+        bets = (
+            db.query(EVBetCache)
+            .filter(
+                (EVBetCache.commence_time == None) |  # noqa: E711
+                (
+                    (EVBetCache.commence_time >= _today_midnight_utc) &
+                    (EVBetCache.commence_time > _now_utc)
+                )
             )
+            .order_by(EVBetCache.ev_percent.desc())
+            .all()
         )
-        .order_by(EVBetCache.ev_percent.desc())
-        .all()
-    )
 
     # Remove S-grade picks where the line has moved against the position.
     # opening_odds < odds  →  CLV is negative  →  S grade is contradicted.
@@ -3314,9 +3402,7 @@ async def dashboard(
             results = []
             if not os.path.isdir(_REPORTS_DIR):
                 return []
-            for fname in sorted(os.listdir(_REPORTS_DIR)):
-                if not fname.startswith('ev_report_') or not fname.endswith('.csv'):
-                    continue
+            for fname in _get_report_files(_REPORTS_DIR):
                 date_part = fname[len('ev_report_'):-len('.csv')]
                 fpath = os.path.join(_REPORTS_DIR, fname)
                 try:
@@ -3493,42 +3579,43 @@ async def dashboard(
         else:
             b.sharp_book_heatmap = None
 
-    for _sb in bets:
-        try:
-            _bet_signals(_sb)
-        except Exception as _bse:
-            log.debug("dashboard: _bet_signals failed bet %s: %s", getattr(_sb, 'id', '?'), _bse)
-            _sb.consensus_score          = 50
-            _sb.value_expiry_minutes     = 120
-            _sb.divergence_score         = 0.0
-            _sb.sharp_book_heatmap       = None
-            _sb.consensus_line           = None
-            _sb.consensus_implied_prob   = None
-            _sb.book_deviation           = 0
-            _sb.deviation_flag           = 'consensus'
-            _sb.money_bet_gap            = None
-            _sb.sharp_divergence_signal  = False
-            _sb.fade_signal              = False
-        # Attach line history for sparklines
-        try:
-            _lh = get_line_history(
-                _sb.game_id or '',
-                _sb.market or '',
-                _sb.team or '',
-            )
-            _sb.line_history = json.dumps(_lh)
-        except Exception:
-            _sb.line_history = '[]'
-        # Odds freshness indicator
-        try:
-            _ts = getattr(_sb, 'odds_updated_at', None) or getattr(_sb, 'created_at', None)
-            if _ts:
-                _ts_aware = _ts if _ts.tzinfo else _ts.replace(tzinfo=timezone.utc)
-                _sb.odds_age_minutes = max(0, int((_now_utc - _ts_aware).total_seconds() / 60))
-            else:
+    with _timer("Python: compute signals + line history"):
+        for _sb in bets:
+            try:
+                _bet_signals(_sb)
+            except Exception as _bse:
+                log.debug("dashboard: _bet_signals failed bet %s: %s", getattr(_sb, 'id', '?'), _bse)
+                _sb.consensus_score          = 50
+                _sb.value_expiry_minutes     = 120
+                _sb.divergence_score         = 0.0
+                _sb.sharp_book_heatmap       = None
+                _sb.consensus_line           = None
+                _sb.consensus_implied_prob   = None
+                _sb.book_deviation           = 0
+                _sb.deviation_flag           = 'consensus'
+                _sb.money_bet_gap            = None
+                _sb.sharp_divergence_signal  = False
+                _sb.fade_signal              = False
+            # Attach line history for sparklines
+            try:
+                _lh = get_line_history(
+                    _sb.game_id or '',
+                    _sb.market or '',
+                    _sb.team or '',
+                )
+                _sb.line_history = json.dumps(_lh)
+            except Exception:
+                _sb.line_history = '[]'
+            # Odds freshness indicator
+            try:
+                _ts = getattr(_sb, 'odds_updated_at', None) or getattr(_sb, 'created_at', None)
+                if _ts:
+                    _ts_aware = _ts if _ts.tzinfo else _ts.replace(tzinfo=timezone.utc)
+                    _sb.odds_age_minutes = max(0, int((_now_utc - _ts_aware).total_seconds() / 60))
+                else:
+                    _sb.odds_age_minutes = 999
+            except Exception:
                 _sb.odds_age_minutes = 999
-        except Exception:
-            _sb.odds_age_minutes = 999
 
     # ── find_middles: surface same-game opposite-leg middle opportunities ─────
     def find_middles(bets_list):
@@ -3711,7 +3798,8 @@ async def dashboard(
         result.sort(key=lambda x: x['ev_percent'], reverse=True)
         return result[:6]
 
-    middles      = find_middles(bets)
+    with _timer("Python: find middles"):
+        middles      = find_middles(bets)
     ev_leaderboard = get_ev_leaderboard(bets)
 
     wl_pending_count = 0
@@ -3724,28 +3812,29 @@ async def dashboard(
         except Exception:
             wl_pending_count = 0
 
-    return templates.TemplateResponse(
-        request,
-        "dashboard.html",
-        {
-            "user":                 current_user,
-            "bets":                 bets,
-            "bet_count":            len(bets),
-            "cache_status":         _cache_status,
-            "next_refresh":         next_refresh,
-            "show_welcome":         welcome == "1",
-            "today_pick":           today_pick,
-            "pick_still_live":      pick_still_live,
-            "trial_days_remaining": trial_days_remaining,
-            "trial_ends_at":        trial_ends_at,
-            "hr_picks":             hr_picks,
-            "game_sim_map":         game_sim_map,
-            "fp_bullets":           fp_bullets,
-            "middles":              middles,
-            "ev_leaderboard":       ev_leaderboard,
-            "wl_pending_count":     wl_pending_count,
-        },
-    )
+    with _timer("Template: render"):
+        return templates.TemplateResponse(
+            request,
+            "dashboard.html",
+            {
+                "user":                 current_user,
+                "bets":                 bets,
+                "bet_count":            len(bets),
+                "cache_status":         _cache_status,
+                "next_refresh":         next_refresh,
+                "show_welcome":         welcome == "1",
+                "today_pick":           today_pick,
+                "pick_still_live":      pick_still_live,
+                "trial_days_remaining": trial_days_remaining,
+                "trial_ends_at":        trial_ends_at,
+                "hr_picks":             hr_picks,
+                "game_sim_map":         game_sim_map,
+                "fp_bullets":           fp_bullets,
+                "middles":              middles,
+                "ev_leaderboard":       ev_leaderboard,
+                "wl_pending_count":     wl_pending_count,
+            },
+        )
 
 
 # ---------------------------------------------------------------------------
