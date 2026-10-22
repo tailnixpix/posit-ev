@@ -961,6 +961,10 @@ def send_daily_newsletter() -> dict:
     4. Send individual emails (per-recipient unsubscribe token).
     5. Return summary dict {"sent": int, "failed": int, "total": int}.
     """
+    if os.getenv("MAINTENANCE_MODE", "false").lower() == "true":
+        log.warning("[Newsletter] MAINTENANCE MODE — daily newsletter send suppressed")
+        return {"sent": 0, "failed": 0, "total": 0}
+
     date_str = datetime.now(LOCAL_TZ).strftime("%B %-d, %Y")
 
     # 1. Top bet (fetch first so we can build a league-aware subject line)
@@ -1601,6 +1605,10 @@ def send_trial_ending_reminder(email: str, trial_end_date: str, picks_during_tri
     *picks_during_trial* is the count of distinct +EV picks surfaced since
     the trial started, used to make the email concrete rather than generic.
     """
+    if os.getenv("MAINTENANCE_MODE", "false").lower() == "true":
+        log.warning("[Newsletter] MAINTENANCE MODE — trial reminder to %s suppressed", email)
+        return False
+
     subject = f"Your Posit+EV trial ends {trial_end_date} — keep your edge"
     body = f"""
     <h2>Your free trial ends {trial_end_date}</h2>

@@ -196,6 +196,10 @@ setup_exception_handlers(app)
 
 _WEB_DIR = os.path.dirname(os.path.abspath(__file__))
 
+# Set MAINTENANCE_MODE=true in Railway to serve a 503 page for every request
+# and suspend scheduled jobs / email sends. Read once at process start.
+MAINTENANCE_MODE = os.getenv("MAINTENANCE_MODE", "false").lower() == "true"
+
 app.mount(
     "/static",
     StaticFiles(directory=os.path.join(_WEB_DIR, "static")),
@@ -1696,8 +1700,11 @@ async def on_startup() -> None:
         replace_existing=True,
     )
 
-    scheduler.start()
-    log.info("APScheduler started — EV cache refreshes every 30 min + 7:59 AM CT pre-newsletter, newsletter sends at 8 AM CT.")
+    if MAINTENANCE_MODE:
+        log.warning("[Scheduler] MAINTENANCE MODE — all scheduled jobs suspended (scheduler not started).")
+    else:
+        scheduler.start()
+        log.info("APScheduler started — EV cache refreshes every 30 min + 7:59 AM CT pre-newsletter, newsletter sends at 8 AM CT.")
 
     # TELEGRAM SUSPENDED — reactivate when ready
     # _start_telegram_bot()
@@ -1738,8 +1745,9 @@ def _start_telegram_bot() -> None:
 
 @app.on_event("shutdown")
 async def on_shutdown() -> None:
-    scheduler.shutdown(wait=False)
-    log.info("APScheduler stopped.")
+    if scheduler.running:
+        scheduler.shutdown(wait=False)
+        log.info("APScheduler stopped.")
 
 
 # ---------------------------------------------------------------------------
@@ -1893,6 +1901,45 @@ app.add_middleware(
 # is what actually makes it wrap every response.
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.add_middleware(StaticCacheMiddleware)
+
+
+class MaintenanceMiddleware:
+    """
+    Pure ASGI middleware — when MAINTENANCE_MODE is on, answers every request
+    with a 503 maintenance page. Raw ASGI (not BaseHTTPMiddleware) for the same
+    reason as SubscriptionMiddleware: never touch `receive` on passthrough paths.
+
+    /stripe/webhook is deliberately allowed through: Stripe would otherwise get
+    503s and retry for days, and any subscription/cancellation events during the
+    outage would be applied late or dropped. /health stays up for Railway checks.
+    """
+
+    _ALLOWED_PREFIXES = ("/static/", "/health", "/favicon", "/stripe/webhook")
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+        self._html = ""
+        if MAINTENANCE_MODE:
+            with open(os.path.join(_WEB_DIR, "templates", "maintenance.html"), encoding="utf-8") as f:
+                self._html = f.read()
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if MAINTENANCE_MODE and scope["type"] == "http":
+            path = scope.get("path", "")
+            if not path.startswith(self._ALLOWED_PREFIXES):
+                response = HTMLResponse(
+                    content=self._html,
+                    status_code=503,
+                    headers={"Retry-After": "3600", "Cache-Control": "no-store"},
+                )
+                await response(scope, receive, send)
+                return
+        await self.app(scope, receive, send)
+
+
+# Added last so it is the outermost layer (Starlette inserts each new
+# middleware at the front of the stack).
+app.add_middleware(MaintenanceMiddleware)
 
 
 # ---------------------------------------------------------------------------
