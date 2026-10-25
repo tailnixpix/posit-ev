@@ -16,7 +16,7 @@ uvicorn[standard]
 jinja2
 stripe>=7.0.0,<10.0.0
 resend
-python-jose
+python-jose>=3.5.0
 passlib[bcrypt]
 bcrypt==4.0.1
 sqlalchemy

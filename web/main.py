@@ -1937,9 +1937,53 @@ class MaintenanceMiddleware:
         await self.app(scope, receive, send)
 
 
-# Added last so it is the outermost layer (Starlette inserts each new
-# middleware at the front of the stack).
 app.add_middleware(MaintenanceMiddleware)
+
+
+class SecurityHeadersMiddleware:
+    """
+    Pure ASGI middleware — adds baseline browser security headers to every
+    response (pure ASGI for the same webhook-body reason as the others).
+
+    The CSP is deliberately narrow (framing, <base>, plugins only). The pages
+    lean heavily on inline <script>/<style>, so a script-src policy would need
+    per-request nonces across every template and would break the site if
+    done half-way; these directives block clickjacking and base-tag/plugin
+    injection without that risk.
+    """
+
+    _HEADERS = {
+        "Strict-Transport-Security": "max-age=31536000",
+        "X-Content-Type-Options":    "nosniff",
+        "X-Frame-Options":           "DENY",
+        "Referrer-Policy":           "strict-origin-when-cross-origin",
+        "Permissions-Policy":        "camera=(), microphone=(), geolocation=(), payment=()",
+        "Content-Security-Policy":   "frame-ancestors 'none'; base-uri 'self'; object-src 'none'",
+    }
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        async def _send_with_headers(message):
+            if message["type"] == "http.response.start":
+                headers = MutableHeaders(scope=message)
+                for k, v in self._HEADERS.items():
+                    if k not in headers:
+                        headers[k] = v
+            await send(message)
+
+        await self.app(scope, receive, _send_with_headers)
+
+
+# Added last so it is the outermost layer (Starlette inserts each new
+# middleware at the front of the stack) — even the 503 maintenance page and
+# gzip'd responses get the headers.
+app.add_middleware(SecurityHeadersMiddleware)
 
 
 # ---------------------------------------------------------------------------
@@ -3971,6 +4015,55 @@ async def admin_login_page(request: Request, error: str = ""):
     return templates.TemplateResponse(request, "admin_login.html", {"error": error})
 
 
+# ── Admin PIN brute-force lockout ──────────────────────────────────────────
+# A 6-digit PIN has only 1M combinations, so failed attempts are capped both
+# per IP and globally. The global cap matters because an attacker rotating IPs
+# sidesteps any per-IP limit; the cost is that sustained guessing can lock the
+# admin out until the window clears. State is in-process, which matches the
+# single-worker deployment (Procfile --workers 1).
+_ADMIN_WINDOW_SEC     = 15 * 60
+_ADMIN_MAX_FAIL_IP    = 5
+_ADMIN_MAX_FAIL_TOTAL = 25
+_admin_fail_by_ip: dict = {}
+_admin_fail_all: list = []
+_admin_fail_lock = threading.Lock()
+
+
+def _admin_client_ip(request: Request) -> str:
+    # Railway's proxy appends the real client IP as the LAST X-Forwarded-For
+    # entry; earlier entries are client-supplied and spoofable.
+    xff = request.headers.get("x-forwarded-for", "")
+    if xff:
+        return xff.split(",")[-1].strip() or "unknown"
+    return request.client.host if request.client else "unknown"
+
+
+def _admin_locked_for(ip: str) -> int:
+    """Seconds until another attempt is allowed (0 = not locked)."""
+    now = _time.time()
+    cutoff = now - _ADMIN_WINDOW_SEC
+    with _admin_fail_lock:
+        _admin_fail_all[:] = [t for t in _admin_fail_all if t > cutoff]
+        ip_fails = [t for t in _admin_fail_by_ip.get(ip, []) if t > cutoff]
+        if ip_fails:
+            _admin_fail_by_ip[ip] = ip_fails
+        else:
+            _admin_fail_by_ip.pop(ip, None)
+        waits = []
+        if len(ip_fails) >= _ADMIN_MAX_FAIL_IP:
+            waits.append(ip_fails[0] + _ADMIN_WINDOW_SEC - now)
+        if len(_admin_fail_all) >= _ADMIN_MAX_FAIL_TOTAL:
+            waits.append(_admin_fail_all[0] + _ADMIN_WINDOW_SEC - now)
+        return int(max(waits)) + 1 if waits else 0
+
+
+def _admin_record_failure(ip: str) -> None:
+    now = _time.time()
+    with _admin_fail_lock:
+        _admin_fail_by_ip.setdefault(ip, []).append(now)
+        _admin_fail_all.append(now)
+
+
 @app.post("/admin/login")
 async def admin_login_submit(request: Request, pin: str = Form(...)):
     """Verify the 6-digit PIN and start an admin session."""
@@ -3981,11 +4074,29 @@ async def admin_login_submit(request: Request, pin: str = Form(...)):
             request, "admin_login.html",
             {"error": "Admin login is not configured. Set ADMIN_PIN in Railway."},
         )
+    ip = _admin_client_ip(request)
+
+    # Checked before comparing the PIN, and a correct PIN does not bypass it —
+    # otherwise an attacker could keep guessing straight through the lockout.
+    wait = _admin_locked_for(ip)
+    if wait:
+        log.warning("Admin login blocked (locked out) from %s for %ds", ip, wait)
+        return templates.TemplateResponse(
+            request, "admin_login.html",
+            {"error": f"Too many failed attempts. Try again in {max(1, wait // 60)} min."},
+            status_code=429,
+            headers={"Retry-After": str(wait)},
+        )
+
     if secrets.compare_digest(pin.strip(), admin_pin.strip()):
+        with _admin_fail_lock:
+            _admin_fail_by_ip.pop(ip, None)
         request.session["admin_authenticated"] = True
-        log.info("Admin session started from %s", request.client.host if request.client else "unknown")
+        log.info("Admin session started from %s", ip)
         return RedirectResponse(url="/admin", status_code=303)
-    log.warning("Failed admin PIN attempt from %s", request.client.host if request.client else "unknown")
+
+    _admin_record_failure(ip)
+    log.warning("Failed admin PIN attempt from %s", ip)
     return templates.TemplateResponse(
         request, "admin_login.html",
         {"error": "Incorrect PIN. Try again."},
