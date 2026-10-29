@@ -217,6 +217,24 @@ def _bet_card_html(bet) -> str:
 # Send helper
 # ---------------------------------------------------------------------------
 
+_EMAIL_HEADER_CID  = "email_header"
+_EMAIL_HEADER_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "email_header.png")
+_email_header_cache: dict = {}
+
+
+def _email_header_b64() -> str:
+    """Base64 of the header banner PNG, read once per process ('' if unreadable)."""
+    if "b64" not in _email_header_cache:
+        try:
+            import base64
+            with open(_EMAIL_HEADER_PATH, "rb") as f:
+                _email_header_cache["b64"] = base64.b64encode(f.read()).decode("ascii")
+        except OSError as exc:
+            log.error("Could not read email header image %s: %s", _EMAIL_HEADER_PATH, exc)
+            _email_header_cache["b64"] = ""
+    return _email_header_cache["b64"]
+
+
 def _send(to: str, subject: str, html: str) -> bool:
     """Send a single email via Resend. Returns True on success."""
     import concurrent.futures
@@ -230,6 +248,23 @@ def _send(to: str, subject: str, html: str) -> bool:
         "subject": subject,
         "html":    html,
     }
+    # Emails reference the header banner as cid:email_header; ship the PNG with
+    # the message so it renders even when posit-ev.com is unreachable or behind
+    # an edge challenge (mail clients/image proxies can't pass a browser check).
+    if f"cid:{_EMAIL_HEADER_CID}" in html:
+        _hdr = _email_header_b64()
+        if _hdr:
+            params["attachments"] = [{
+                "filename":     "email_header.png",
+                "content":      _hdr,
+                "content_type": "image/png",
+                "content_id":   _EMAIL_HEADER_CID,
+            }]
+        else:
+            # Image unreadable: fall back to the hosted copy rather than a dead cid: link.
+            params["html"] = html.replace(
+                f"cid:{_EMAIL_HEADER_CID}", f"{_base_url}/static/email_header.png"
+            )
     try:
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as _ex:
             future = _ex.submit(resend.Emails.send, params)
