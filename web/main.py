@@ -44,7 +44,7 @@ import stripe as _stripe
 import sentry_sdk
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, Form, HTTPException, Request, status
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -67,7 +67,7 @@ _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
-from db.database import DailyPick, EVBetCache, GameSimulation, NewsletterSubscriber, OddsHistory, SessionLocal, User, WatchlistEntry, create_tables, ensure_columns  # noqa: E402
+from db.database import DailyPick, EVBetCache, GameSimulation, NewsletterSubscriber, OddsHistory, PushSubscription, SessionLocal, User, WatchlistEntry, create_tables, ensure_columns  # noqa: E402
 from web.auth import (                                                   # noqa: E402
     router as auth_router,
     create_access_token,
@@ -210,6 +210,8 @@ app.include_router(newsletter_router)
 app.include_router(stripe_router)
 
 templates = Jinja2Templates(directory=os.path.join(_WEB_DIR, "templates"))
+from web.assets import asset as _asset  # noqa: E402
+templates.env.globals["asset"] = _asset
 
 
 # ---------------------------------------------------------------------------
@@ -514,6 +516,11 @@ def refresh_ev_cache() -> int:
         # subsequent insert fails and rolls back, the old stale rows are gone.
         # Without this split, a failed insert rolls back the delete too and stale
         # rows survive indefinitely.
+        _prev_keys = {
+            (r.game, r.market, r.team, r.point, r.book)
+            for r in db.query(EVBetCache.game, EVBetCache.market, EVBetCache.team,
+                              EVBetCache.point, EVBetCache.book).all()
+        }
         deleted = db.query(EVBetCache).delete()
         db.commit()
         log.info("EV cache: cleared %d stale rows (committed).", deleted)
@@ -801,6 +808,15 @@ def refresh_ev_cache() -> int:
             )
             rows.append(cache_row)
 
+        # Detached copies for push alerts — ORM rows expire on commit.
+        from types import SimpleNamespace as _NS
+        from web import push as _push
+        _new_picks = [
+            _NS(ev_percent=r.ev_percent, team=r.team, game=r.game, league=r.league)
+            for r in rows
+            if _prev_keys and (r.game, r.market, r.team, r.point, r.book) not in _prev_keys
+        ] if _push.is_configured() else []
+
         with _timer("DB: write cache"):
             db.add_all(rows)
             db.commit()
@@ -810,6 +826,12 @@ def refresh_ev_cache() -> int:
             "running": False, "last_count": count, "last_error": None,
             "last_run": datetime.now(timezone.utc),
         })
+
+        # Web Push: alert on picks that were not in the previous cache.
+        # Skipped on a cold cache (first run / redeploy) so it never spams.
+        if _new_picks:
+            threading.Thread(target=_push.notify_new_picks, args=(_new_picks,),
+                             name="push-alerts", daemon=True).start()
 
         # Score HR props immediately so the HR Model tab is never empty.
         # Wind data isn't enriched yet (that runs 1 min later), so the first
@@ -3224,6 +3246,157 @@ async def privacy(request: Request):
 @app.get("/terms", response_class=HTMLResponse)
 async def terms(request: Request):
     return templates.TemplateResponse(request, "terms.html", {})
+
+
+# ---------------------------------------------------------------------------
+# PWA: service worker + manifest (served from root so scope covers the site)
+# ---------------------------------------------------------------------------
+
+@app.get("/sw.js", include_in_schema=False)
+async def service_worker():
+    return FileResponse(
+        os.path.join(_WEB_DIR, "static", "sw.js"),
+        media_type="application/javascript",
+        headers={"Cache-Control": "no-cache", "Service-Worker-Allowed": "/"},
+    )
+
+
+@app.get("/manifest.webmanifest", include_in_schema=False)
+async def web_manifest():
+    return FileResponse(
+        os.path.join(_WEB_DIR, "static", "manifest.webmanifest"),
+        media_type="application/manifest+json",
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
+
+
+# ---------------------------------------------------------------------------
+# Web Push alert subscription API
+# ---------------------------------------------------------------------------
+
+@app.get("/api/push/config")
+async def push_config(request: Request, db: Session = Depends(get_db)):
+    from web import push as _push
+    current_user = get_current_user(request, db)
+    sub_count = db.query(PushSubscription).filter(PushSubscription.user_id == current_user.id).count()
+    return {"enabled": _push.is_configured(), "key": _push.public_key(), "devices": sub_count}
+
+
+@app.post("/api/push/subscribe")
+async def push_subscribe(request: Request, db: Session = Depends(get_db)):
+    from web import push as _push
+    current_user = get_current_user(request, db)
+    if not _push.is_configured():
+        raise HTTPException(status_code=503, detail="Alerts are not available yet")
+    body = await request.json()
+    endpoint = (body.get("endpoint") or "").strip()
+    keys = body.get("keys") or {}
+    if not endpoint or not keys.get("p256dh") or not keys.get("auth"):
+        raise HTTPException(status_code=400, detail="Invalid subscription")
+    try:
+        min_ev = float(body.get("min_ev", _push.DEFAULT_MIN_EV))
+    except (TypeError, ValueError):
+        min_ev = _push.DEFAULT_MIN_EV
+    min_ev = max(1.0, min(min_ev, 25.0))
+    row = db.query(PushSubscription).filter(PushSubscription.endpoint == endpoint).first()
+    if row:
+        row.user_id, row.p256dh, row.auth, row.min_ev = current_user.id, keys["p256dh"], keys["auth"], min_ev
+    else:
+        db.add(PushSubscription(user_id=current_user.id, endpoint=endpoint,
+                                p256dh=keys["p256dh"], auth=keys["auth"], min_ev=min_ev))
+    db.commit()
+    return {"ok": True}
+
+
+@app.post("/api/push/unsubscribe")
+async def push_unsubscribe(request: Request, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    body = await request.json()
+    db.query(PushSubscription).filter(
+        PushSubscription.endpoint == (body.get("endpoint") or ""),
+        PushSubscription.user_id == current_user.id,
+    ).delete()
+    db.commit()
+    return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
+# Public track record
+# ---------------------------------------------------------------------------
+
+_TR_LEAGUE_NAMES = {
+    "icehockey_nhl": "NHL", "basketball_nba": "NBA", "baseball_mlb": "MLB",
+    "americanfootball_nfl": "NFL", "americanfootball_ncaaf": "NCAAF",
+    "basketball_ncaab": "NCAAB", "soccer_epl": "EPL", "soccer_spain_la_liga": "La Liga",
+    "soccer_germany_bundesliga": "Bundesliga", "soccer_usa_mls": "MLS",
+    "soccer_uefa_champs_league": "UCL", "soccer_fifa_world_cup": "World Cup",
+}
+
+
+def _pick_units(p) -> float:
+    """Profit of a settled pick in units (1u flat stake)."""
+    if p.result == "won" and p.odds:
+        return p.odds / 100 if p.odds > 0 else 100 / abs(p.odds)
+    if p.result == "lost":
+        return -1.0
+    return 0.0
+
+
+def _tr_bucket(picks: list) -> dict:
+    won = sum(1 for p in picks if p.result == "won")
+    lost = sum(1 for p in picks if p.result == "lost")
+    push = sum(1 for p in picks if p.result == "push")
+    units = round(sum(_pick_units(p) for p in picks), 2)
+    staked = won + lost
+    clvs = [p.clv_pct for p in picks if p.clv_pct is not None]
+    return {
+        "won": won, "lost": lost, "push": push, "total": len(picks),
+        "units": units,
+        "roi": round(units / staked * 100, 1) if staked else None,
+        "win_pct": round(won / staked * 100, 1) if staked else None,
+        "clv_n": len(clvs),
+        "avg_clv": round(sum(clvs) / len(clvs), 2) if clvs else None,
+        "clv_beat_pct": round(sum(1 for c in clvs if c > 0) / len(clvs) * 100) if clvs else None,
+    }
+
+
+@app.get("/track-record", response_class=HTMLResponse)
+async def track_record(request: Request, db: Session = Depends(get_db)):
+    settled = (
+        db.query(DailyPick)
+        .filter(DailyPick.result.in_(("won", "lost", "push")))
+        .order_by(DailyPick.pick_date.asc())
+        .all()
+    )
+    overall = _tr_bucket(settled)
+
+    by_league: dict = {}
+    for p in settled:
+        if p.league:
+            by_league.setdefault(p.league, []).append(p)
+    sports = sorted(
+        ({"name": _TR_LEAGUE_NAMES.get(k, k.split("_")[-1].upper()), **_tr_bucket(v)} for k, v in by_league.items()),
+        key=lambda r: r["units"], reverse=True,
+    )
+
+    cum, curve = 0.0, []
+    for p in settled:
+        cum += _pick_units(p)
+        curve.append({"d": p.pick_date.strftime("%-m/%-d"), "u": round(cum, 2)})
+
+    recent = [
+        {
+            "date": p.pick_date.strftime("%b %-d"),
+            "league": _TR_LEAGUE_NAMES.get(p.league or "", (p.league or "").split("_")[-1].upper()),
+            "team": p.team, "game": p.game, "odds": p.odds, "result": p.result,
+            "units": round(_pick_units(p), 2), "clv": p.clv_pct,
+        }
+        for p in reversed(settled[-25:])
+    ]
+    return templates.TemplateResponse(request, "track_record.html", {
+        "overall": overall, "sports": sports, "recent": recent,
+        "curve_json": json.dumps(curve),
+    })
 
 
 @app.get("/login", response_class=HTMLResponse)

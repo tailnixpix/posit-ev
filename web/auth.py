@@ -125,6 +125,8 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 _WEB_DIR    = os.path.dirname(os.path.abspath(__file__))
 _templates  = Jinja2Templates(directory=os.path.join(_WEB_DIR, "templates"))
+from web.assets import asset as _asset  # noqa: E402
+_templates.env.globals["asset"] = _asset
 
 # ---------------------------------------------------------------------------
 # Password helpers

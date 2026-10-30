@@ -17,7 +17,7 @@ Environment variables:
     RESEND_API_KEY
     BASE_URL            — constructs From address domain + unsubscribe links
     JWT_SECRET          — signs unsubscribe tokens (same secret as auth)
-    ANTHROPIC_API_KEY   — claude-sonnet-4-20250514 synopsis generation
+    ANTHROPIC_API_KEY   — claude-haiku-4-5 synopsis generation
 """
 
 import json
@@ -794,7 +794,7 @@ def _generate_synopsis(bet: EVBetCache) -> str:
 
         client   = anthropic.Anthropic(api_key=api_key)
         message  = client.messages.create(
-            model      = "claude-sonnet-4-20250514",
+            model      = "claude-haiku-4-5-20251001",
             max_tokens = 300,
             timeout    = 30.0,
             messages   = [{"role": "user", "content": prompt}],

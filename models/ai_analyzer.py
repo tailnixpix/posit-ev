@@ -4,7 +4,7 @@ models/ai_analyzer.py — AI-powered bet analysis using Claude + Optimal data.
 For each +EV bet, this module:
 1. Fetches live context from the Optimal Bet MCP server (projections, team
    history, recent form, market consensus).
-2. Calls Claude claude-opus-4-6 with adaptive thinking to generate a structured
+2. Calls Claude claude-haiku-4-5 with adaptive thinking to generate a structured
    analysis including:
    - Improved true probability estimate
    - Confidence score (1–100)
@@ -56,7 +56,7 @@ log = logging.getLogger(__name__)
 # Constants
 # ---------------------------------------------------------------------------
 
-_MODEL = "claude-opus-4-6"
+_MODEL = "claude-haiku-4-5-20251001"
 
 # League → Optimal league key mapping
 _LEAGUE_MAP = {
@@ -1333,7 +1333,7 @@ def generate_card_summary(bet: dict) -> Optional[str]:
             timeout=15.0,
         )
         message = client.messages.create(
-            model="claude-haiku-3-5",
+            model="claude-haiku-4-5-20251001",
             max_tokens=120,
             messages=[{"role": "user", "content": prompt}],
         )

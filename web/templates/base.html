@@ -2,12 +2,25 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#060A14" />
+  <meta name="description" content="{% block meta_desc %}Live +EV sports betting picks across sportsbooks and prediction markets. Find the edge. Beat the market.{% endblock %}" />
+  <meta property="og:site_name" content="Posit+EV" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="{% block og_title %}Posit+EV — Find the edge. Beat the market.{% endblock %}" />
+  <meta property="og:description" content="{{ self.meta_desc() }}" />
+  <meta property="og:image" content="https://www.posit-ev.com/static/icon-512.png" />
+  <meta name="twitter:card" content="summary" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Posit+EV" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>{% block title %}Posit+EV{% endblock %}</title>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
   <link rel="alternate icon" type="image/png" href="/static/favicon-32.png" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/favicon-32.png">
-  <link rel="stylesheet" href="/static/styles.css" />
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+  <link rel="stylesheet" href="{{ asset('styles.css') }}" />
   <style>
     /* ── Support modal ───────────────────────────────────────────────── */
     .support-modal-overlay {
@@ -90,7 +103,7 @@
     }
     .support-form-group label .opt {
       font-weight: 400;
-      color: #9CA3AF;
+      color: #6B7280;
     }
     .support-form-group input,
     .support-form-group textarea {
@@ -172,27 +185,29 @@
   {% block head %}{% endblock %}
 </head>
 <body>
-  <nav>
+  <a href="#main" class="skip-link">Skip to content</a>
+  <nav aria-label="Main">
     <a href="/" class="nav-logo" aria-label="Posit+EV home">
       <img src="/static/logo-compact.svg" height="34" alt="Posit+EV" />
     </a>
     {% block nav_center %}{% endblock %}
     <div class="nav-right">
-      <div class="tz-picker" aria-label="Time zone">
-        <button class="tz-btn" data-tz="America/New_York"  title="Eastern Time">ET</button>
-        <button class="tz-btn" data-tz="America/Chicago"   title="Central Time">CT</button>
-        <button class="tz-btn" data-tz="America/Denver"    title="Mountain Time">MT</button>
-        <button class="tz-btn" data-tz="America/Los_Angeles" title="Pacific Time">PT</button>
+      <div class="tz-picker" role="group" aria-label="Time zone">
+        <button class="tz-btn" data-tz="America/New_York"  title="Eastern Time" aria-label="Eastern Time">ET</button>
+        <button class="tz-btn" data-tz="America/Chicago"   title="Central Time" aria-label="Central Time">CT</button>
+        <button class="tz-btn" data-tz="America/Denver"    title="Mountain Time" aria-label="Mountain Time">MT</button>
+        <button class="tz-btn" data-tz="America/Los_Angeles" title="Pacific Time" aria-label="Pacific Time">PT</button>
       </div>
 
       {% if user is defined and user %}
         <div class="nav-auth">
           {% if not is_admin_page %}
           <div class="nav-group">
-            <a href="/dashboard" class="nav-btn nav-btn-soft">Dashboard</a>
-            <a href="/watchlist" class="nav-btn nav-btn-soft">⭐ Paper Trail<span class="nav-badge">{{ wl_pending_count or '' }}</span></a>
-            <a href="/account" class="nav-btn nav-btn-soft">Account</a>
-            <a href="#" class="nav-btn nav-btn-soft" onclick="openSupportModal(); return false;">Support</a>
+            <a href="/dashboard" class="nav-btn nav-btn-soft nav-dup">Dashboard</a>
+            <a href="/watchlist" class="nav-btn nav-btn-soft nav-dup">⭐ Paper Trail<span class="nav-badge">{{ wl_pending_count or '' }}</span></a>
+            <a href="/account" class="nav-btn nav-btn-soft nav-dup">Account</a>
+            <a href="#" class="nav-btn nav-btn-soft nav-sup" onclick="openSupportModal(); return false;">Support</a>
+            <button type="button" class="nav-btn nav-btn-soft nav-menu-btn" id="navMenuBtn" aria-expanded="false" aria-controls="navMenu">☰ Menu</button>
           </div>
           <div class="nav-divider"></div>
           {% endif %}
@@ -207,6 +222,7 @@
           {% if not is_admin_page %}
           <div class="nav-group">
             <a href="/pricing" class="nav-btn nav-btn-soft">Pricing</a>
+            <a href="/track-record" class="nav-btn nav-btn-soft">Track Record</a>
             <a href="#" class="nav-btn nav-btn-soft" onclick="openSupportModal(); return false;">Support</a>
           </div>
           <div class="nav-divider"></div>
@@ -221,30 +237,50 @@
       {% endif %}
     </div>
   </nav>
-  <main>{% block content %}{% endblock %}</main>
+  {% if user is defined and user and not is_admin_page %}
+  <div class="nav-menu" id="navMenu" hidden>
+    <a href="/dashboard">📊 Picks</a>
+    <a href="/watchlist">⭐ Paper Trail{% if wl_pending_count %} <b class="st-badge">{{ wl_pending_count }}</b>{% endif %}</a>
+    <a href="/track-record">📈 Track Record</a>
+    <a href="/account">👤 Account</a>
+    <a href="#" onclick="openSupportModal(); return false;">💬 Support</a>
+  </div>
+  {% endif %}
+  <main id="main">{% block content %}{% endblock %}</main>
 
   <!-- ── Sitewide footer ─────────────────────────────────────────────── -->
   <footer style="border-top:1px solid #E5E7EB; padding:20px 24px; text-align:center;
                  background:#F9FAFB;">
     <div style="max-width:1080px; margin:0 auto; display:flex; align-items:center;
                 justify-content:center; flex-wrap:wrap; gap:6px 20px;
-                font-size:0.75rem; color:#9CA3AF;">
+                font-size:0.75rem; color:#6B7280;">
       <span>© 2026 PositEV</span>
       <span style="color:#D1D5DB;">·</span>
-      <a href="/privacy" style="color:#9CA3AF; text-decoration:none;"
-         onmouseover="this.style.color='#534AB7'" onmouseout="this.style.color='#9CA3AF'">Privacy Policy</a>
+      <a href="/privacy" style="color:#6B7280; text-decoration:none;"
+         onmouseover="this.style.color='#534AB7'" onmouseout="this.style.color='#6B7280'">Privacy Policy</a>
       <span style="color:#D1D5DB;">·</span>
-      <a href="/terms" style="color:#9CA3AF; text-decoration:none;"
-         onmouseover="this.style.color='#534AB7'" onmouseout="this.style.color='#9CA3AF'">Terms of Service</a>
+      <a href="/terms" style="color:#6B7280; text-decoration:none;"
+         onmouseover="this.style.color='#534AB7'" onmouseout="this.style.color='#6B7280'">Terms of Service</a>
+      <span style="color:#D1D5DB;">·</span>
+      <a href="/track-record" style="color:#6B7280; text-decoration:none;"
+         onmouseover="this.style.color='#534AB7'" onmouseout="this.style.color='#6B7280'">Track Record</a>
       <span style="color:#D1D5DB;">·</span>
       <a href="#" onclick="openSupportModal();return false;"
-         style="color:#9CA3AF; text-decoration:none;"
-         onmouseover="this.style.color='#534AB7'" onmouseout="this.style.color='#9CA3AF'">Contact</a>
+         style="color:#6B7280; text-decoration:none;"
+         onmouseover="this.style.color='#534AB7'" onmouseout="this.style.color='#6B7280'">Contact</a>
       <span style="color:#D1D5DB;">·</span>
       <span>Gambling involves risk. 18+ only. If you have a gambling problem call 1-800-GAMBLER.</span>
     </div>
   </footer>
 
+  {% block site_tabbar %}{% if user is defined and user and not is_admin_page %}
+  <nav class="site-tabbar" aria-label="Quick navigation">
+    <a href="/dashboard"><span class="st-ico" aria-hidden="true">📊</span><span>Picks</span></a>
+    <a href="/watchlist"><span class="st-ico" aria-hidden="true">⭐</span><span>Paper Trail{% if wl_pending_count %}<b class="st-badge">{{ wl_pending_count }}</b>{% endif %}</span></a>
+    <a href="/track-record"><span class="st-ico" aria-hidden="true">📈</span><span>Record</span></a>
+    <a href="/account"><span class="st-ico" aria-hidden="true">👤</span><span>Account</span></a>
+  </nav>
+  {% endif %}{% endblock %}
   <!-- ── Support Modal (sitewide) ───────────────────────────────────── -->
   <div class="support-modal-overlay" id="supportModalOverlay" onclick="closeSupportModal(event)">
     <div class="support-modal" role="dialog" aria-modal="true" aria-labelledby="supportModalTitle">
@@ -259,15 +295,15 @@
         </p>
         <form id="supportForm">
           <div class="support-form-group">
-            <label>Name <span class="opt">(optional)</span></label>
+            <label for="supportName">Name <span class="opt">(optional)</span></label>
             <input type="text" id="supportName" name="name" placeholder="Your name" autocomplete="name" />
           </div>
           <div class="support-form-group">
-            <label>Email <span style="color:#C53030;">*</span></label>
+            <label for="supportEmail">Email <span style="color:#C53030;">*</span></label>
             <input type="email" id="supportEmail" name="email" required placeholder="your@email.com" autocomplete="email" />
           </div>
           <div class="support-form-group">
-            <label>Message <span style="color:#C53030;">*</span></label>
+            <label for="supportMessage">Message <span style="color:#C53030;">*</span></label>
             <textarea id="supportMessage" name="message" required placeholder="What can we help you with?"></textarea>
           </div>
           <div id="supportError"></div>
@@ -277,8 +313,23 @@
     </div>
   </div>
 
-  <script src="/static/js/app.js"></script>
+  <script src="{{ asset('js/app.js') }}"></script>
   <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('/sw.js').catch(function () {});
+      });
+    }
+  </script>
+  <script>
+    (function () {
+      var b = document.getElementById('navMenuBtn'), m = document.getElementById('navMenu');
+      if (!b || !m) return;
+      function set(open) { m.hidden = !open; b.setAttribute('aria-expanded', open ? 'true' : 'false'); }
+      b.addEventListener('click', function (e) { e.stopPropagation(); set(m.hidden); });
+      document.addEventListener('click', function (e) { if (!m.hidden && !m.contains(e.target)) set(false); });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape') set(false); });
+    })();
     // ── Support modal ────────────────────────────────────────────────
     function openSupportModal() {
       const overlay = document.getElementById('supportModalOverlay');
@@ -292,15 +343,15 @@
         </p>
         <form id="supportForm">
           <div class="support-form-group">
-            <label>Name <span class="opt">(optional)</span></label>
+            <label for="supportName">Name <span class="opt">(optional)</span></label>
             <input type="text" id="supportName" name="name" placeholder="Your name" autocomplete="name" />
           </div>
           <div class="support-form-group">
-            <label>Email <span style="color:#C53030;">*</span></label>
+            <label for="supportEmail">Email <span style="color:#C53030;">*</span></label>
             <input type="email" id="supportEmail" name="email" required placeholder="your@email.com" autocomplete="email" />
           </div>
           <div class="support-form-group">
-            <label>Message <span style="color:#C53030;">*</span></label>
+            <label for="supportMessage">Message <span style="color:#C53030;">*</span></label>
             <textarea id="supportMessage" name="message" required placeholder="What can we help you with?"></textarea>
           </div>
           <div id="supportError"></div>

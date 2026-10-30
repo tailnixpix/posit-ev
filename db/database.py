@@ -181,6 +181,20 @@ class EVBetCache(Base):
         )
 
 
+class PushSubscription(Base):
+    """Browser Web Push subscription — one row per user device."""
+
+    __tablename__ = "push_subscriptions"
+
+    id         = Column(Integer, primary_key=True, index=True)
+    user_id    = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    endpoint   = Column(Text, unique=True, nullable=False)
+    p256dh     = Column(String, nullable=False)
+    auth       = Column(String, nullable=False)
+    min_ev     = Column(Float, nullable=False, default=5.0)  # only alert for picks at/above this EV%
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
 class WatchlistEntry(Base):
     """User's paper-trail watchlist of +EV bets they're tracking without real money."""
 

@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}Track Record — Posit+EV{% endblock %}
+{% block meta_desc %}Every daily Posit+EV pick, graded. Record, units, ROI and closing line value by sport — nothing hidden.{% endblock %}
+{% block og_title %}Posit+EV Track Record — every pick, graded{% endblock %}
+
+{% block head %}
+<style>
+  .trk-head { margin-bottom: var(--space-5); }
+  .trk-head h1 { margin-bottom: var(--space-2); }
+  .trk-head p { max-width: 62ch; }
+  .trk-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-5); }
+  .trk-tile { background: #fff; border: 1px solid var(--brand-border); border-radius: var(--radius-lg); padding: var(--space-4); box-shadow: var(--shadow-sm); }
+  .trk-tile .v { font-size: 1.6rem; font-weight: 800; color: var(--brand-dark); font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .trk-tile .l { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-secondary); margin-top: 6px; }
+  .trk-tile .v.pos { color: var(--brand-success); }
+  .trk-tile .v.neg { color: #B42318; }
+  .trk-card { background: #fff; border: 1px solid var(--brand-border); border-radius: var(--radius-lg); padding: var(--space-4); margin-bottom: var(--space-5); box-shadow: var(--shadow-sm); }
+  .trk-card h2 { font-size: 1.05rem; margin-bottom: var(--space-3); }
+  .trk-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .trk-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; font-variant-numeric: tabular-nums; }
+  .trk-table th { text-align: left; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-secondary); padding: 8px 10px; border-bottom: 1px solid var(--brand-border); white-space: nowrap; }
+  .trk-table td { padding: 10px; border-bottom: 1px solid #EEEDFE; white-space: nowrap; }
+  .trk-table td.num, .trk-table th.num { text-align: right; }
+  .pos { color: var(--brand-success); font-weight: 600; }
+  .neg { color: #B42318; font-weight: 600; }
+  .res { display: inline-block; min-width: 44px; text-align: center; padding: 2px 8px; border-radius: 10px; font-size: 0.72rem; font-weight: 700; }
+  .res-won { background: #E3F5EC; color: #0F6E56; }
+  .res-lost { background: #FDE8E6; color: #B42318; }
+  .res-push { background: #EEEDFE; color: #534AB7; }
+  #trkChart { width: 100%; height: auto; display: block; }
+  .trk-note { font-size: 0.8rem; color: var(--text-secondary); max-width: 70ch; }
+  .trk-cta { text-align: center; padding: var(--space-5) 0; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="trk-head">
+  <h1>Track Record</h1>
+  <p>Every daily free pick, graded after the game. We show wins, losses and the closing-line check — including the sports that aren't working.</p>
+</div>
+
+{% if overall.total == 0 %}
+  <div class="trk-card"><p style="margin:0;">No graded picks yet. Check back after tonight's games.</p></div>
+{% else %}
+
+<div class="trk-tiles">
+  <div class="trk-tile"><div class="v">{{ overall.won }}-{{ overall.lost }}{% if overall.push %}-{{ overall.push }}{% endif %}</div><div class="l">Record</div></div>
+  <div class="trk-tile"><div class="v {{ 'pos' if overall.units > 0 else ('neg' if overall.units < 0 else '') }}">{{ '+' if overall.units > 0 else '' }}{{ overall.units }}u</div><div class="l">Profit (1u flat)</div></div>
+  <div class="trk-tile"><div class="v {{ 'pos' if (overall.roi or 0) > 0 else ('neg' if (overall.roi or 0) < 0 else '') }}">{% if overall.roi is not none %}{{ '+' if overall.roi > 0 else '' }}{{ overall.roi }}%{% else %}—{% endif %}</div><div class="l">ROI</div></div>
+  <div class="trk-tile"><div class="v">{% if overall.win_pct is not none %}{{ overall.win_pct }}%{% else %}—{% endif %}</div><div class="l">Win rate</div></div>
+  <div class="trk-tile"><div class="v {{ 'pos' if (overall.avg_clv or 0) > 0 else ('neg' if (overall.avg_clv or 0) < 0 else '') }}">{% if overall.avg_clv is not none %}{{ '+' if overall.avg_clv > 0 else '' }}{{ overall.avg_clv }}%{% else %}—{% endif %}</div><div class="l">Avg CLV ({{ overall.clv_n }} picks)</div></div>
+  <div class="trk-tile"><div class="v">{% if overall.clv_beat_pct is not none %}{{ overall.clv_beat_pct }}%{% else %}—{% endif %}</div><div class="l">Beat closing line</div></div>
+</div>
+
+<section class="trk-card" aria-labelledby="trkCurveH">
+  <h2 id="trkCurveH">Cumulative profit (units)</h2>
+  <svg id="trkChart" viewBox="0 0 640 220" role="img" aria-label="Line chart of cumulative profit in units over time"></svg>
+</section>
+
+<section class="trk-card" aria-labelledby="trkSportH">
+  <h2 id="trkSportH">By sport</h2>
+  <div class="trk-scroll">
+    <table class="trk-table">
+      <thead><tr><th>Sport</th><th class="num">Picks</th><th class="num">Record</th><th class="num">Units</th><th class="num">ROI</th><th class="num">Avg CLV</th></tr></thead>
+      <tbody>
+        {% for s in sports %}
+        <tr>
+          <td><strong>{{ s.name }}</strong></td>
+          <td class="num">{{ s.total }}</td>
+          <td class="num">{{ s.won }}-{{ s.lost }}{% if s.push %}-{{ s.push }}{% endif %}</td>
+          <td class="num {{ 'pos' if s.units > 0 else ('neg' if s.units < 0 else '') }}">{{ '+' if s.units > 0 else '' }}{{ s.units }}</td>
+          <td class="num {{ 'pos' if (s.roi or 0) > 0 else ('neg' if (s.roi or 0) < 0 else '') }}">{% if s.roi is not none %}{{ '+' if s.roi > 0 else '' }}{{ s.roi }}%{% else %}—{% endif %}</td>
+          <td class="num">{% if s.avg_clv is not none %}{{ '+' if s.avg_clv > 0 else '' }}{{ s.avg_clv }}%{% else %}—{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="trk-card" aria-labelledby="trkRecentH">
+  <h2 id="trkRecentH">Latest picks</h2>
+  <div class="trk-scroll">
+    <table class="trk-table">
+      <thead><tr><th>Date</th><th>Sport</th><th>Pick</th><th class="num">Odds</th><th>Result</th><th class="num">Units</th><th class="num">CLV</th></tr></thead>
+      <tbody>
+        {% for r in recent %}
+        <tr>
+          <td>{{ r.date }}</td>
+          <td>{{ r.league }}</td>
+          <td>{{ r.team }}</td>
+          <td class="num">{% if r.odds %}{{ '+' if r.odds > 0 else '' }}{{ r.odds }}{% else %}—{% endif %}</td>
+          <td><span class="res res-{{ r.result }}">{{ r.result | capitalize }}</span></td>
+          <td class="num {{ 'pos' if r.units > 0 else ('neg' if r.units < 0 else '') }}">{{ '+' if r.units > 0 else '' }}{{ r.units }}</td>
+          <td class="num">{% if r.clv is not none %}{{ '+' if r.clv > 0 else '' }}{{ '%.1f'|format(r.clv) }}%{% else %}—{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<p class="trk-note"><strong>How to read this.</strong> Profit assumes a flat 1-unit stake at the odds we published. CLV (closing line value) compares our price to the final price before the game: positive means the market moved toward us, which is the best early sign of a real edge. Small samples swing wildly — judge the process, not a week.</p>
+{% endif %}
+
+<div class="trk-cta">
+  <a class="nav-btn nav-btn-primary" href="/register" style="padding:12px 22px;">Start your free trial</a>
+</div>
+
+<script>
+(function () {
+  var pts = {{ curve_json | safe }};
+  var svg = document.getElementById('trkChart');
+  if (!svg || pts.length < 2) { if (svg) svg.style.display = 'none'; return; }
+  var W = 640, H = 220, L = 40, R = 12, T = 12, B = 24;
+  var vals = pts.map(function (p) { return p.u; }).concat([0]);
+  var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals);
+  if (hi === lo) { hi += 1; lo -= 1; }
+  var x = function (i) { return L + (W - L - R) * i / (pts.length - 1); };
+  var y = function (v) { return T + (H - T - B) * (hi - v) / (hi - lo); };
+  var NS = 'http://www.w3.org/2000/svg';
+  function el(n, a) { var e = document.createElementNS(NS, n); for (var k in a) e.setAttribute(k, a[k]); svg.appendChild(e); return e; }
+  [lo, (lo + hi) / 2, hi].forEach(function (v) {
+    el('line', { x1: L, x2: W - R, y1: y(v), y2: y(v), stroke: '#EEEDFE' });
+    var t = el('text', { x: L - 6, y: y(v) + 4, 'text-anchor': 'end', 'font-size': 13, fill: '#555270' }); t.textContent = v.toFixed(1);
+  });
+  el('line', { x1: L, x2: W - R, y1: y(0), y2: y(0), stroke: '#AFA9EC', 'stroke-dasharray': '4 3' });
+  var d = pts.map(function (p, i) { return (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(p.u).toFixed(1); }).join(' ');
+  var last = pts[pts.length - 1].u;
+  var col = last >= 0 ? '#0F6E56' : '#B42318';
+  el('path', { d: d + ' L' + x(pts.length - 1) + ' ' + y(0) + ' L' + x(0) + ' ' + y(0) + ' Z', fill: col, 'fill-opacity': 0.08 });
+  el('path', { d: d, fill: 'none', stroke: col, 'stroke-width': 2.5, 'stroke-linejoin': 'round' });
+  el('circle', { cx: x(pts.length - 1), cy: y(last), r: 4.5, fill: col });
+  var a = el('text', { x: L, y: H - 6, 'font-size': 13, fill: '#555270' }); a.textContent = pts[0].d;
+  var b = el('text', { x: W - R, y: H - 6, 'text-anchor': 'end', 'font-size': 13, fill: '#555270' }); b.textContent = pts[pts.length - 1].d;
+})();
+</script>
+{% endblock %}

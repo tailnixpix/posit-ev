@@ -683,3 +683,122 @@ input:focus {
   text-align: center;
   margin-top: var(--space-7);
 }
+
+/* ------------------------------------------------------------
+   Accessibility
+   ------------------------------------------------------------ */
+.skip-link {
+  position: absolute;
+  left: 8px;
+  top: -48px;
+  z-index: 2000;
+  background: var(--brand-primary);
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  transition: top 0.15s;
+}
+.skip-link:focus { top: 8px; color: #fff; text-decoration: none; }
+
+:focus-visible {
+  outline: 2px solid var(--brand-primary);
+  outline-offset: 2px;
+}
+nav :focus-visible, .site-tabbar :focus-visible {
+  outline-color: var(--brand-accent);
+}
+.sr-only {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ------------------------------------------------------------
+   Mobile tab bar (site-wide; dashboard has its own filter bar) (signed-in users, phones only)
+   ------------------------------------------------------------ */
+.site-tabbar { display: none; }
+
+@media (max-width: 640px) {
+  .site-tabbar {
+    display: flex;
+    position: fixed;
+    top: auto; left: 0; right: 0; bottom: 0;
+    height: auto;   /* override the global nav{position:sticky;top:0} */
+    z-index: 900;
+    background: #060A14;
+    border-top: 1px solid rgba(255,255,255,.1);
+    padding: 4px 4px calc(4px + env(safe-area-inset-bottom));
+  }
+  .site-tabbar a {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-height: 52px;
+    padding: 4px 2px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: rgba(255,255,255,.7);
+    border-radius: var(--radius-sm);
+  }
+  .site-tabbar a:active { background: rgba(255,255,255,.08); }
+  .site-tabbar a:hover { color: #fff; text-decoration: none; }
+  .st-ico { font-size: 1.25rem; line-height: 1; }
+  .st-badge {
+    margin-left: 4px;
+    background: var(--brand-accent);
+    color: #26215C;
+    border-radius: 8px;
+    padding: 0 5px;
+    font-size: 0.62rem;
+  }
+  /* Room for the bar, plus the footer clearing it */
+  body { padding-bottom: calc(60px + env(safe-area-inset-bottom)); }
+  /* The top nav's text links duplicate the bottom bar on phones */
+  body:has(.site-tabbar) .nav-dup { display: none; }
+  /* Pages without the tab bar (dashboard): collapse the links into a Menu dropdown */
+  body:not(:has(.site-tabbar)) .nav-dup,
+  body:not(:has(.site-tabbar)) .nav-sup { display: none; }
+  body:not(:has(.site-tabbar)) .nav-menu-btn { display: inline-flex; }
+  /* Comfortable touch targets for the top bar */
+  .nav-btn { min-height: 40px; display: inline-flex; align-items: center; }
+  input[type="email"], input[type="password"], input[type="text"] { font-size: 16px; } /* no iOS zoom-on-focus */
+}
+
+/* Standalone (installed PWA): respect the notch */
+@media (display-mode: standalone) {
+  nav { padding-top: calc(var(--space-3) + env(safe-area-inset-top)); }
+}
+
+.nav-menu-btn { display: none; }
+.nav-menu {
+  position: fixed;
+  top: 52px; right: 8px;
+  z-index: 950;
+  min-width: 190px;
+  background: #0D1321;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: var(--radius-md);
+  box-shadow: 0 12px 32px rgba(0,0,0,.5);
+  padding: 6px;
+}
+.nav-menu[hidden] { display: none; }
+.nav-menu a {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 14px; min-height: 44px;
+  color: #E4EAF4; font-size: 0.9rem; font-weight: 600;
+  border-radius: var(--radius-sm);
+}
+.nav-menu a:hover, .nav-menu a:active { background: rgba(255,255,255,.08); text-decoration: none; }
+@media (min-width: 641px) { .nav-menu { display: none !important; } }
