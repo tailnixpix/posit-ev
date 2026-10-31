@@ -20,6 +20,8 @@ works normally during local development before Beehiiv is connected.
 
 import logging
 import os
+import time
+from collections import Counter
 
 import requests
 
@@ -55,13 +57,72 @@ def _headers() -> dict:
 # Subscriber management
 # ---------------------------------------------------------------------------
 
-def add_subscriber(email: str) -> bool:
+_MAX_ATTEMPTS = 4          # 1 try + 3 retries on 429 / 5xx / network errors
+_BULK_DELAY_SEC = 0.4      # ~2.5 req/s — stays under Beehiiv's rate limit
+
+
+def _error_reason(resp: requests.Response) -> str:
+    """Pull the human-readable reason out of a Beehiiv error response."""
+    try:
+        body = resp.json()
+        errs = body.get("errors")
+        if isinstance(errs, list) and errs:
+            first = errs[0]
+            return str(first.get("message") if isinstance(first, dict) else first)[:160]
+        if body.get("message"):
+            return str(body["message"])[:160]
+    except Exception:
+        pass
+    return (resp.text or "").strip()[:160] or f"HTTP {resp.status_code}"
+
+
+def _subscribe(email: str, reactivate: bool = True) -> tuple:
+    """
+    POST one subscription, retrying rate-limit (429), server (5xx) and network
+    failures with backoff. Returns (ok, http_status, reason).
+    """
+    reason, status = "", 0
+    for attempt in range(1, _MAX_ATTEMPTS + 1):
+        try:
+            resp = requests.post(
+                f"{_BASE}/publications/{_pub_id()}/subscriptions",
+                headers=_headers(),
+                json={
+                    "email": email,
+                    "reactivate_existing": reactivate,
+                    "send_welcome_email": False,   # Posit+EV sends its own welcome via Resend
+                    "utm_source": "posit_ev_website",
+                    "utm_medium": "organic",
+                },
+                timeout=10,
+            )
+        except requests.RequestException as exc:
+            status, reason = 0, f"network error: {exc.__class__.__name__}"
+        else:
+            status = resp.status_code
+            if status in (200, 201):
+                return True, status, ""
+            reason = _error_reason(resp)
+            if status != 429 and status < 500:
+                break   # 400/401/403/404 won't improve on retry
+            if status == 429:
+                try:
+                    delay = min(float(resp.headers.get("Retry-After", 0)), 30)
+                except ValueError:
+                    delay = 0
+                time.sleep(delay or 2 * attempt)
+                continue
+        if attempt < _MAX_ATTEMPTS:
+            time.sleep(1.5 * attempt)
+    return False, status, reason
+
+
+def add_subscriber(email: str, reactivate: bool = True) -> bool:
     """
     Add or reactivate a subscriber in Beehiiv.
 
     Called automatically whenever someone signs up via the website form or
-    registers an account. If the email already exists in Beehiiv it is
-    reactivated rather than duplicated.
+    registers an account. Rate-limit and transient failures are retried.
 
     Returns True on success, False on any error (errors are logged but never
     raised — subscriber sync should never block a user-facing request).
@@ -70,32 +131,12 @@ def add_subscriber(email: str) -> bool:
         log.debug("Beehiiv not configured — skipping add_subscriber for %s", email)
         return False
 
-    try:
-        resp = requests.post(
-            f"{_BASE}/publications/{_pub_id()}/subscriptions",
-            headers=_headers(),
-            json={
-                "email": email,
-                "reactivate_existing": True,
-                "send_welcome_email": False,   # Posit+EV sends its own welcome via Resend
-                "utm_source": "posit_ev_website",
-                "utm_medium": "organic",
-            },
-            timeout=10,
-        )
-        if resp.status_code in (200, 201):
-            log.info("Beehiiv: subscriber added/reactivated — %s", email)
-            return True
-
-        log.warning(
-            "Beehiiv add_subscriber failed for %s: HTTP %s — %s",
-            email, resp.status_code, resp.text[:200],
-        )
-        return False
-
-    except Exception as exc:
-        log.error("Beehiiv add_subscriber error for %s: %s", email, exc)
-        return False
+    ok, status, reason = _subscribe(email, reactivate)
+    if ok:
+        log.info("Beehiiv: subscriber added/reactivated — %s", email)
+        return True
+    log.warning("Beehiiv add_subscriber failed for %s: HTTP %s — %s", email, status, reason)
+    return False
 
 
 def remove_subscriber(email: str) -> bool:
@@ -154,25 +195,38 @@ def bulk_sync(emails: list[str]) -> dict:
     """
     Sync a list of email addresses to Beehiiv.
 
-    Used by the admin one-time migration endpoint to push all existing
-    NewsletterSubscribers into Beehiiv in a single call.
+    Used by the admin migration endpoint to push NewsletterSubscribers into
+    Beehiiv. Requests are throttled and retried, and people who already
+    unsubscribed inside Beehiiv are NOT re-subscribed (reactivate=False).
 
-    Returns {"synced": int, "failed": int, "total": int}.
+    Returns {"synced", "failed", "total", "reasons": {reason: count},
+             "failures": [{"email", "status", "reason"}, ...first 50]}.
     """
     if not _enabled():
         log.warning("Beehiiv not configured — bulk_sync skipped.")
-        return {"synced": 0, "failed": 0, "total": len(emails)}
+        return {"synced": 0, "failed": 0, "total": len(emails), "reasons": {}, "failures": []}
 
-    synced = failed = 0
-    for email in emails:
-        ok = add_subscriber(email)
+    synced = 0
+    failures: list = []
+    reasons: Counter = Counter()
+    for i, email in enumerate(emails):
+        if i:
+            time.sleep(_BULK_DELAY_SEC)
+        ok, status, reason = _subscribe(email, reactivate=False)
         if ok:
             synced += 1
         else:
-            failed += 1
+            label = f"HTTP {status}: {reason}" if status else reason
+            reasons[label] += 1
+            if len(failures) < 50:
+                failures.append({"email": email, "status": status, "reason": reason})
+            log.warning("Beehiiv bulk_sync failed for %s: %s", email, label)
 
-    log.info("Beehiiv bulk_sync: %d synced, %d failed out of %d.", synced, failed, len(emails))
-    return {"synced": synced, "failed": failed, "total": len(emails)}
+    failed = len(emails) - synced
+    log.info("Beehiiv bulk_sync: %d synced, %d failed out of %d. Reasons: %s",
+             synced, failed, len(emails), dict(reasons))
+    return {"synced": synced, "failed": failed, "total": len(emails),
+            "reasons": dict(reasons), "failures": failures}
 
 
 # ---------------------------------------------------------------------------

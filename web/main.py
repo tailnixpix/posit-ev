@@ -27,6 +27,7 @@ Run:
 
 import csv
 import html as _html
+import asyncio
 import json
 import threading
 import logging
@@ -5107,7 +5108,8 @@ async def admin_beehiiv_sync(
         .all()
     )
     emails = [s.email for s in active_subs]
-    result = bh_bulk_sync(emails)
+    # Throttled + retried, so it takes a while — run off the event loop.
+    result = await asyncio.to_thread(bh_bulk_sync, emails)
     log.info("Admin Beehiiv bulk sync: %s", result)
     return JSONResponse(result)
 

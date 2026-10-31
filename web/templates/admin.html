@@ -1396,7 +1396,7 @@ async function runBeehiivSync() {
   const btn    = document.getElementById('syncBtn');
   const result = document.getElementById('syncResult');
   btn.disabled = true;
-  btn.textContent = '⏳ Syncing…';
+  btn.textContent = '⏳ Syncing… (can take a few minutes)';
   result.textContent = '';
   try {
     const res  = await fetch('/admin/beehiiv-sync', { method: 'POST' });
@@ -1404,6 +1404,11 @@ async function runBeehiivSync() {
     if (res.ok) {
       result.style.color = '#0F6E56';
       result.textContent = `✓ ${data.synced} synced, ${data.failed} failed out of ${data.total}.`;
+      const rs = Object.entries(data.reasons || {});
+      if (rs.length) {
+        result.style.color = '#B45309';
+        result.textContent += ' Why: ' + rs.map(([r, n]) => `${n}× ${r}`).join(' · ');
+      }
     } else {
       result.style.color = '#C53030';
       result.textContent = 'Sync failed — check server logs.';
