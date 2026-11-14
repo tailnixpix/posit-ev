@@ -24,12 +24,13 @@ def bucket(picks: list) -> dict:
     won = sum(1 for p in picks if p.result == "won")
     lost = sum(1 for p in picks if p.result == "lost")
     push = sum(1 for p in picks if p.result == "push")
-    units = round(sum(pick_units(p) for p in picks), 2)
+    raw_units = sum(pick_units(p) for p in picks)
+    units = round(raw_units, 2)
     staked = won + lost
     clvs = [p.clv_pct for p in picks if p.clv_pct is not None]
     return {
         "won": won, "lost": lost, "push": push, "total": len(picks),
-        "units": units, "dollars": round(units * UNIT_DOLLARS, 2),
+        "units": units, "dollars": round(raw_units * UNIT_DOLLARS, 2),
         "roi": round(units / staked * 100, 1) if staked else None,
         "win_pct": round(won / staked * 100, 1) if staked else None,
         "clv_n": len(clvs),

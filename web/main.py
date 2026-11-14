@@ -3358,7 +3358,7 @@ async def admin_shadow(request: Request, db: Session = Depends(get_db)):
         "today": today,
         "todays": [{"p": p, "facts": _facts(p)} for p in todays],
         "report": picks_engine.last_report,
-        "record": rec, "dollars": round(rec["units"] * 20, 2),
+        "record": rec, "dollars": rec["dollars"],
         "leagues": leagues, "recent": recent,
         "league_names": _TR_LEAGUE_NAMES,
         "cap": picks_engine.TOTAL_CAP,

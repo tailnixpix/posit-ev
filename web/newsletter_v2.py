@@ -200,7 +200,8 @@ def edition_context(db, edition_date: date, status: str = "published", base_url:
     yesterday = [_result_row(p) for p in prev_rows]
     y_bucket = bucket(prev_rows) if prev_rows else None
 
-    record = bucket(settled_picks(db, include_shadow=(status == "shadow")))
+    # Always the real record (legacy + published) — shadow picks never count, even in preview.
+    record = bucket(settled_picks(db))
     return {
         "edition_date": edition_date,
         "date_str": f"{edition_date.strftime('%A, %B')} {edition_date.day}, {edition_date.year}",
