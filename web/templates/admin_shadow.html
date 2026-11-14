@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block title %}Shadow Run — Posit+EV Admin{% endblock %}
+{% block head %}
+<style>
+  .sh-wrap { max-width: 1100px; margin: 0 auto; }
+  .sh-top { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+  .sh-top form { display: inline; }
+  .sh-btn { background: var(--brand-primary); color: #fff; border: none; border-radius: 8px; padding: 10px 16px; font: inherit; font-weight: 600; cursor: pointer; }
+  .sh-btn.alt { background: #fff; color: var(--brand-primary); border: 1.5px solid var(--brand-primary); }
+  .sh-card { background: #fff; border: 1px solid var(--brand-border); border-radius: 12px; padding: 16px; margin-bottom: 18px; }
+  .sh-card h2 { font-size: 1.05rem; margin: 0 0 10px; }
+  .sh-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+  .sh-tile { background: var(--brand-surface); border-radius: 10px; padding: 10px 12px; }
+  .sh-tile b { display: block; font-size: 1.3rem; color: var(--brand-dark); font-variant-numeric: tabular-nums; }
+  .sh-tile span { font-size: 0.7rem; text-transform: uppercase; letter-spacing: .05em; color: var(--text-secondary); font-weight: 600; }
+  .sh-scroll { overflow-x: auto; }
+  table.sh { width: 100%; border-collapse: collapse; font-size: 0.84rem; font-variant-numeric: tabular-nums; }
+  table.sh th { text-align: left; font-size: 0.68rem; text-transform: uppercase; letter-spacing: .05em; color: var(--text-secondary); padding: 6px 8px; border-bottom: 1px solid var(--brand-border); white-space: nowrap; }
+  table.sh td { padding: 8px; border-bottom: 1px solid #EEEDFE; vertical-align: top; }
+  .pr { display: inline-block; width: 22px; height: 22px; line-height: 22px; text-align: center; border-radius: 50%; font-size: 0.7rem; font-weight: 700; margin-right: 3px; }
+  .pr.y { background: #E3F5EC; color: #0F6E56; } .pr.n { background: #FDE8E6; color: #B42318; } .pr.u { background: #EEE; color: #888; }
+  .res-won { color: #0F6E56; font-weight: 700; } .res-lost { color: #B42318; font-weight: 700; } .res-push { color: #534AB7; font-weight: 700; }
+  .potd { background: #FFF8E6; }
+  details summary { cursor: pointer; color: var(--brand-primary); font-weight: 600; }
+  .expl { white-space: pre-line; max-width: 70ch; margin: 8px 0 0; color: var(--text-secondary); line-height: 1.55; }
+  .muted { color: var(--text-secondary); font-size: 0.82rem; }
+  .pos { color: #0F6E56; font-weight: 600; } .neg { color: #B42318; font-weight: 600; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="sh-wrap">
+  <div class="sh-top">
+    <div>
+      <h1 style="margin:0;">New pick system — shadow run</h1>
+      <p class="muted" style="margin:4px 0 0;">Test only. These picks are not emailed, not public, and not in the record. Hard cap {{ cap }}/day. Runs automatically at 7:55 AM CT.</p>
+    </div>
+    <div>
+      <form method="post" action="/admin/shadow/run"><button class="sh-btn">▶ Run edition now</button></form>
+      <form method="post" action="/admin/shadow/grade"><button class="sh-btn alt">✓ Grade now</button></form>
+    </div>
+  </div>
+
+  <section class="sh-card">
+    <h2>Hypothetical record (shadow picks, $20 units)</h2>
+    {% if record.total %}
+    <div class="sh-tiles">
+      <div class="sh-tile"><b>{{ record.won }}-{{ record.lost }}-{{ record.push }}</b><span>Record</span></div>
+      <div class="sh-tile"><b class="{{ 'pos' if dollars > 0 else ('neg' if dollars < 0 else '') }}">{{ '+' if dollars > 0 else '' }}${{ '%.0f'|format(dollars) }}</b><span>Profit</span></div>
+      <div class="sh-tile"><b>{{ record.units }}u</b><span>Units</span></div>
+      <div class="sh-tile"><b>{{ record.roi if record.roi is not none else '—' }}{{ '%' if record.roi is not none else '' }}</b><span>ROI</span></div>
+      <div class="sh-tile"><b>{{ record.avg_clv if record.avg_clv is not none else '—' }}</b><span>Avg CLV ({{ record.clv_n }})</span></div>
+    </div>
+    {% if leagues %}
+    <div class="sh-scroll" style="margin-top:12px;"><table class="sh">
+      <thead><tr><th>League</th><th>Picks</th><th>Record</th><th>Units</th><th>ROI</th></tr></thead>
+      <tbody>{% for l in leagues %}<tr><td>{{ l.name }}</td><td>{{ l.total }}</td><td>{{ l.won }}-{{ l.lost }}-{{ l.push }}</td>
+        <td class="{{ 'pos' if l.units > 0 else ('neg' if l.units < 0 else '') }}">{{ l.units }}</td><td>{{ l.roi if l.roi is not none else '—' }}</td></tr>{% endfor %}</tbody>
+    </table></div>
+    {% endif %}
+    {% else %}<p class="muted">No graded shadow picks yet — grading happens after games finish.</p>{% endif %}
+  </section>
+
+  <section class="sh-card">
+    <h2>Today's edition ({{ today }}) — {{ todays|length }} of {{ cap }} max</h2>
+    {% if report and report.funnel %}
+    <p class="muted">Funnel: {{ report.funnel.candidates }} candidates → {{ report.funnel.math }} pass math → {{ report.funnel.market }} pass market → {{ report.funnel.all_three }} pass all three. Last run {{ report.ran_at[:16].replace('T',' ') }} UTC.</p>
+    {% else %}<p class="muted">No run since the last restart — click “Run edition now”.</p>{% endif %}
+    {% if todays %}
+    <div class="sh-scroll"><table class="sh">
+      <thead><tr><th>#</th><th>League</th><th>Pick</th><th>Odds</th><th>EV</th><th>Prongs</th><th>Market</th></tr></thead>
+      <tbody>
+      {% for r in todays %}{% set p = r.p %}{% set f = r.facts %}
+      <tr class="{{ 'potd' if p.is_potd else '' }}">
+        <td>{{ p.rank }}{% if p.is_potd %} ⭐{% endif %}</td>
+        <td>{{ league_names.get(p.league, p.league) }}</td>
+        <td><strong>{{ p.team }}{% if p.point is not none and p.market != 'h2h' %} {{ '%+g'|format(p.point) if p.market == 'spreads' else '%g'|format(p.point) }}{% endif %}</strong>
+            <div class="muted">{{ p.game }} · {{ p.market }} · {{ p.book }}</div>
+            <details><summary>Why</summary><div class="expl">{{ p.explanation }}</div></details></td>
+        <td>{{ '+' ~ p.odds if p.odds > 0 else p.odds }}</td>
+        <td>{{ p.ev_percent }}%</td>
+        <td><span class="pr y">M</span><span class="pr y">H</span><span class="pr y">L</span></td>
+        <td>{{ f.market.state if f.market else '' }}{% if f.market and f.market.move_pts is not none %} ({{ '%+.1f'|format(f.market.move_pts) }}){% endif %}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+    {% elif report and report.funnel %}
+    <p><strong>No pick passed all three prongs today.</strong> This is the "no play" case — see near-misses below.</p>
+    {% endif %}
+  </section>
+
+  {% if report and report.near_misses %}
+  <section class="sh-card">
+    <h2>Near-misses (why bets didn't make it)</h2>
+    <p class="muted">M = math, H = history, L = line movement. Gray = not evaluated (earlier prong already failed).</p>
+    <div class="sh-scroll"><table class="sh">
+      <thead><tr><th>League</th><th>Bet</th><th>Odds</th><th>EV</th><th>M H L</th><th>Reason</th></tr></thead>
+      <tbody>
+      {% for n in report.near_misses %}
+      <tr>
+        <td>{{ league_names.get(n.league, n.league) }}</td>
+        <td>{{ n.team }}{% if n.point is not none and n.market != 'h2h' %} {{ n.point }}{% endif %}<div class="muted">{{ n.game }} · {{ n.market }}</div></td>
+        <td>{{ '+' ~ n.odds if n.odds > 0 else n.odds }}</td><td>{{ n.ev }}%</td>
+        <td><span class="pr {{ 'y' if n.math else 'n' }}">M</span><span class="pr {{ 'u' if n.history is none else ('y' if n.history else 'n') }}">H</span><span class="pr {{ 'y' if n.market_ok else 'n' }}">L</span></td>
+        <td class="muted">{{ n.reasons | join('; ') }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+  </section>
+  {% endif %}
+
+  {% if recent %}
+  <section class="sh-card">
+    <h2>Past shadow picks</h2>
+    <div class="sh-scroll"><table class="sh">
+      <thead><tr><th>Date</th><th>League</th><th>Pick</th><th>Odds</th><th>Result</th><th>Final</th><th>Units</th><th>CLV</th></tr></thead>
+      <tbody>
+      {% for r in recent %}{% set p = r.p %}
+      <tr>
+        <td>{{ p.edition_date }}</td><td>{{ league_names.get(p.league, p.league) }}</td>
+        <td>{{ p.team }}{% if p.point is not none and p.market != 'h2h' %} {{ p.point }}{% endif %}<div class="muted">{{ p.game }}</div></td>
+        <td>{{ '+' ~ p.odds if p.odds > 0 else p.odds }}</td>
+        <td class="res-{{ p.result }}">{{ p.result or 'pending' }}</td>
+        <td class="muted">{{ p.final_score or '' }}</td>
+        <td>{{ r.units if p.result else '' }}</td>
+        <td>{{ '%+.1f'|format(p.clv_pct) if p.clv_pct is not none else '' }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

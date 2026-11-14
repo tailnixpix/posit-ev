@@ -68,7 +68,7 @@ _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
-from db.database import DailyPick, EVBetCache, GameSimulation, NewsletterSubscriber, OddsHistory, PushSubscription, SessionLocal, User, WatchlistEntry, create_tables, ensure_columns  # noqa: E402
+from db.database import DailyPick, EVBetCache, GameSimulation, NewsletterSubscriber, OddsHistory, Pick, PushSubscription, SessionLocal, User, WatchlistEntry, create_tables, ensure_columns  # noqa: E402
 from web.auth import (                                                   # noqa: E402
     router as auth_router,
     create_access_token,
@@ -1723,6 +1723,25 @@ async def on_startup() -> None:
         replace_existing=True,
     )
 
+    # ── New pick system (shadow test run) ───────────────────────────────────
+    # Builds the three-prong edition after the 7:50 AM cache refresh, without
+    # sending or publishing it. Grading runs overnight and mid-morning.
+    scheduler.add_job(
+        _run_shadow_edition,
+        trigger=CronTrigger(hour=7, minute=55, timezone="America/Chicago"),
+        id="shadow_edition",
+        name="Shadow edition: three-prong picks (7:55 AM CT)",
+        replace_existing=True,
+    )
+    for _gh, _gm, _gid in ((1, 30, "grade_picks_night"), (9, 30, "grade_picks_morning")):
+        scheduler.add_job(
+            _grade_picks_job,
+            trigger=CronTrigger(hour=_gh, minute=_gm, timezone="America/Chicago"),
+            id=_gid,
+            name=f"Auto-grade picks ({_gh}:{_gm:02d} CT)",
+            replace_existing=True,
+        )
+
     if MAINTENANCE_MODE:
         log.warning("[Scheduler] MAINTENANCE MODE — all scheduled jobs suspended (scheduler not started).")
     else:
@@ -3247,6 +3266,120 @@ async def privacy(request: Request):
 @app.get("/terms", response_class=HTMLResponse)
 async def terms(request: Request):
     return templates.TemplateResponse(request, "terms.html", {})
+
+
+# ---------------------------------------------------------------------------
+# New pick system — shadow run, grading, admin test-run page
+# ---------------------------------------------------------------------------
+
+def _run_shadow_edition() -> None:
+    try:
+        from web import picks_engine
+        picks_engine.run_edition()
+    except Exception as exc:
+        log.error("Shadow edition failed: %s", exc, exc_info=True)
+
+
+def _fill_pick_clv() -> None:
+    """Record closing-line value for picks whose games have started."""
+    db = SessionLocal()
+    try:
+        now = datetime.now(timezone.utc)
+        rows = (
+            db.query(Pick)
+            .filter(Pick.clv_pct.is_(None), Pick.commence_time.isnot(None), Pick.commence_time < now)
+            .all()
+        )
+        for p in rows:
+            val = compute_clv(db, p)
+            if val is None:
+                continue
+            p.clv_pct = val
+            close = (
+                db.query(OddsHistory.odds)
+                .filter(OddsHistory.game_id == p.game_id, OddsHistory.book == p.book,
+                        OddsHistory.market == p.market, OddsHistory.team == p.team,
+                        OddsHistory.captured_at < p.commence_time)
+                .order_by(OddsHistory.captured_at.desc()).first()
+            )
+            if close:
+                p.closing_odds = close[0]
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        log.warning("Pick CLV fill failed: %s", exc)
+    finally:
+        db.close()
+
+
+def _grade_picks_job() -> None:
+    try:
+        from web import grader
+        grader.grade_pending()
+        _fill_pick_clv()
+    except Exception as exc:
+        log.error("Pick grading failed: %s", exc, exc_info=True)
+
+
+@app.get("/admin/shadow", response_class=HTMLResponse)
+async def admin_shadow(request: Request, db: Session = Depends(get_db)):
+    if not _is_admin(request):
+        return RedirectResponse(url="/admin/login", status_code=303)
+    from web import picks_engine
+    from zoneinfo import ZoneInfo
+    today = datetime.now(ZoneInfo("America/Chicago")).date()
+
+    def _facts(p):
+        try:
+            return json.loads(p.facts or "{}")
+        except ValueError:
+            return {}
+
+    todays = (
+        db.query(Pick).filter(Pick.status == "shadow", Pick.edition_date == today)
+        .order_by(Pick.rank.asc()).all()
+    )
+    all_shadow = db.query(Pick).filter(Pick.status == "shadow").order_by(Pick.edition_date.desc(), Pick.rank.asc()).all()
+    graded = [p for p in all_shadow if p.result in ("won", "lost", "push")]
+    rec = _tr_bucket(graded)
+    by_league: dict = {}
+    for p in graded:
+        by_league.setdefault(p.league, []).append(p)
+    leagues = sorted(
+        ({"name": _TR_LEAGUE_NAMES.get(k, k), **_tr_bucket(v)} for k, v in by_league.items()),
+        key=lambda r: r["units"], reverse=True,
+    )
+    recent = [
+        {"p": p, "facts": _facts(p), "units": round(_pick_units(p), 2)}
+        for p in all_shadow if p.edition_date != today
+    ][:60]
+    return templates.TemplateResponse(request, "admin_shadow.html", {
+        "is_admin_page": True,
+        "today": today,
+        "todays": [{"p": p, "facts": _facts(p)} for p in todays],
+        "report": picks_engine.last_report,
+        "record": rec, "dollars": round(rec["units"] * 20, 2),
+        "leagues": leagues, "recent": recent,
+        "league_names": _TR_LEAGUE_NAMES,
+        "cap": picks_engine.TOTAL_CAP,
+    })
+
+
+@app.post("/admin/shadow/run")
+async def admin_shadow_run(request: Request):
+    if not _is_admin(request):
+        return RedirectResponse(url="/admin/login", status_code=303)
+    from web import picks_engine
+    await asyncio.to_thread(picks_engine.run_edition)
+    return RedirectResponse(url="/admin/shadow", status_code=303)
+
+
+@app.post("/admin/shadow/grade")
+async def admin_shadow_grade(request: Request):
+    if not _is_admin(request):
+        return RedirectResponse(url="/admin/login", status_code=303)
+    await asyncio.to_thread(_grade_picks_job)
+    return RedirectResponse(url="/admin/shadow", status_code=303)
 
 
 # ---------------------------------------------------------------------------
