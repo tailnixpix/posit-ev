@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}Today's Picks — {{ date_str }} — Posit+EV{% endblock %}
+{% block meta_desc %}{% if potd %}Pick of the Day: {{ potd.label }} ({{ potd.odds }}). {{ count }} picks across {{ sports_count }} sport{{ 's' if sports_count != 1 }}, each with the math, history and line-movement behind it.{% else %}Today's Posit+EV picks, with the math, history and line movement behind every one.{% endif %}{% endblock %}
+{% block head %}
+<style>
+  .ed-head { margin-bottom: var(--space-5); }
+  .ed-date { font-size: .8rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-secondary); }
+  .ed-banner { background: #FFF8E6; border: 1px solid #F3D9A0; color: #7A4A06; padding: 10px 14px; border-radius: 10px; margin-bottom: var(--space-4); font-size: .85rem; }
+  .ed-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-5); }
+  .ed-tile { background: #fff; border: 1px solid var(--brand-border); border-radius: var(--radius-lg); padding: var(--space-3) var(--space-4); }
+  .ed-tile b { display: block; font-size: 1.35rem; color: var(--brand-dark); font-variant-numeric: tabular-nums; }
+  .ed-tile span { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-secondary); }
+  .pos { color: var(--brand-success) !important; } .neg { color: #B42318 !important; }
+  .potd { background: #fff; border: 2px solid var(--brand-primary); border-radius: var(--radius-xl); overflow: hidden; margin-bottom: var(--space-6); box-shadow: var(--shadow-md); }
+  .potd-top { background: #26215C; color: #fff; padding: var(--space-4) var(--space-5); }
+  .potd-top .kicker { font-size: .72rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--brand-accent); }
+  .potd-top h2 { color: #fff; font-size: 1.7rem; margin: 6px 0 4px; }
+  .potd-top .meta { color: #D9D6F5; font-size: .92rem; }
+  .potd-body { padding: var(--space-4) var(--space-5) var(--space-5); }
+  .prong { display: flex; gap: 12px; margin-bottom: var(--space-3); }
+  .mark { flex: 0 0 22px; height: 22px; border-radius: 50%; color: #fff; font-size: .75rem; font-weight: 800; display: flex; align-items: center; justify-content: center; margin-top: 2px; }
+  .mark.y { background: var(--brand-success); } .mark.n { background: #B42318; }
+  .prong p { margin: 0; color: var(--text-primary); line-height: 1.55; }
+  .risk { background: #FFF8E6; color: #7A4A06; padding: 10px 14px; border-radius: 10px; font-size: .88rem; margin-top: var(--space-3); }
+  .sport-h { font-size: 1.05rem; margin: var(--space-5) 0 var(--space-3); padding-bottom: 6px; border-bottom: 2px solid var(--brand-light); }
+  .pick { background: #fff; border: 1px solid var(--brand-border); border-radius: var(--radius-lg); padding: var(--space-4); margin-bottom: var(--space-3); }
+  .pick-row { display: flex; justify-content: space-between; gap: var(--space-3); align-items: flex-start; }
+  .pick h3 { font-size: 1.05rem; margin: 0 0 2px; }
+  .pick .sub { font-size: .82rem; color: var(--text-secondary); }
+  .pick .px { text-align: right; white-space: nowrap; }
+  .pick .px b { display: block; font-size: 1.1rem; color: var(--brand-dark); }
+  .pick .px span { font-size: .8rem; font-weight: 700; color: var(--brand-success); }
+  .pick details { margin-top: var(--space-3); }
+  .pick summary { cursor: pointer; font-weight: 600; color: var(--brand-primary); }
+  .pill-res { display: inline-block; padding: 2px 9px; border-radius: 10px; font-size: .72rem; font-weight: 800; }
+  .pill-won { background: #E3F5EC; color: #0F6E56; } .pill-lost { background: #FDE8E6; color: #B42318; } .pill-push { background: #EEEDFE; color: #534AB7; }
+  .res-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+  .res-table td { padding: 9px 4px; border-bottom: 1px solid var(--brand-light); }
+  .lesson { background: var(--brand-light); border-radius: var(--radius-lg); padding: var(--space-4) var(--space-5); margin: var(--space-6) 0; }
+  .lesson h3 { margin: 4px 0 6px; }
+  .noplay { border: 2px dashed var(--brand-border); border-radius: var(--radius-xl); padding: var(--space-5); background: #fff; margin-bottom: var(--space-5); }
+  .signup { text-align: center; padding: var(--space-5) 0; }
+</style>
+{% endblock %}
+
+{% macro marker(ok) %}<span class="mark {{ 'y' if ok else 'n' }}" aria-label="{{ 'passed' if ok else 'failed' }}">{{ '✓' if ok else '✕' }}</span>{% endmacro %}
+
+{% block content %}
+<div class="ed-head">
+  <div class="ed-date">{{ date_str }}</div>
+  <h1>Today's picks</h1>
+  <p>Every pick below passed three tests: the math, the team's history, and the line movement. Read why before you bet.</p>
+</div>
+
+{% if preview %}<div class="ed-banner"><strong>Admin preview.</strong> This is the shadow edition — not sent to subscribers and not in the public record.</div>{% endif %}
+
+<div class="ed-tiles">
+  <div class="ed-tile"><b>{{ record.won }}-{{ record.lost }}{% if record.push %}-{{ record.push }}{% endif %}</b><span>All-time record</span></div>
+  <div class="ed-tile"><b class="{{ 'pos' if record.units > 0 else ('neg' if record.units < 0 else '') }}">{{ '+' if record.units > 0 else '' }}{{ record.units }}u</b><span>Units ({{ '+' if record.dollars > 0 else '' }}${{ '%.0f'|format(record.dollars) }} at $20)</span></div>
+  <div class="ed-tile"><b>{{ count }}</b><span>Picks today</span></div>
+  <div class="ed-tile"><b>{{ record.avg_clv if record.avg_clv is not none else '—' }}</b><span>Avg closing line value</span></div>
+</div>
+
+{% if potd %}
+<section class="potd" aria-labelledby="potdH">
+  <div class="potd-top">
+    <div class="kicker">⭐ Pick of the Day</div>
+    <h2 id="potdH">{{ potd.label }}</h2>
+    <div class="meta">{{ potd.emoji }} {{ potd.league_label }} · {{ potd.game }}{% if potd.start %} · {{ potd.start }}{% endif %}<br>
+      {{ potd.market }} · <strong>{{ potd.odds }}</strong> at {{ potd.book }} · <strong>{{ potd.ev }} EV</strong></div>
+  </div>
+  <div class="potd-body">
+    {% for t in potd.prongs %}
+    <div class="prong">{{ marker(t.ok) }}<p><strong>{{ t.name }}.</strong> {% for l in t.lines %}{{ l }} {% endfor %}</p></div>
+    {% endfor %}
+    <p><strong>Why it's worth taking.</strong> {{ potd.story }}</p>
+    <div class="risk">⚠️ <strong>Risk:</strong> {{ potd.risk }}</div>
+  </div>
+</section>
+
+{% for g in by_sport %}
+  {% set rows = g.picks | rejectattr('is_potd') | list %}
+  {% if rows %}
+  <h2 class="sport-h">{{ g.emoji }} {{ g.sport }}</h2>
+  {% for p in rows %}
+  <article class="pick">
+    <div class="pick-row">
+      <div><h3>{{ p.label }}</h3><div class="sub">{% if g.sport == 'Soccer' %}{{ p.league_label }} · {% endif %}{{ p.game }}{% if p.start %} · {{ p.start }}{% endif %}<br>{{ p.market }} at {{ p.book }}</div></div>
+      <div class="px"><b>{{ p.odds }}</b><span>{{ p.ev }} EV</span></div>
+    </div>
+    <p style="margin:10px 0 0;">{{ p.blurb }}</p>
+    <details><summary>Why this passed all three tests</summary>
+      {% for t in p.prongs %}<div class="prong" style="margin-top:10px;">{{ marker(t.ok) }}<p><strong>{{ t.name }}.</strong> {% for l in t.lines %}{{ l }} {% endfor %}</p></div>{% endfor %}
+      <div class="risk">⚠️ <strong>Risk:</strong> {{ p.risk }}</div>
+    </details>
+  </article>
+  {% endfor %}
+  {% endif %}
+{% endfor %}
+{% else %}
+<div class="noplay"><h2 style="margin-top:0;">No play today.</h2>
+  <p>We only publish a bet when it passes three tests: the math (a certain +EV), the team's recent and head-to-head history, and the line movement. Nothing cleared all three. Skipping weak bets is how the good ones stay good.</p></div>
+{% endif %}
+
+{% if yesterday %}
+<section aria-labelledby="yH"><h2 id="yH" class="sport-h">Yesterday's results{% if yesterday_summary %} · {{ yesterday_summary.won }}-{{ yesterday_summary.lost }}{% if yesterday_summary.push %}-{{ yesterday_summary.push }}{% endif %}, {{ '+' if yesterday_summary.units > 0 else '' }}{{ yesterday_summary.units }}u{% endif %}</h2>
+  <table class="res-table">
+    {% for r in yesterday %}<tr><td>{{ r.emoji }} <strong>{{ r.label }}</strong> ({{ r.odds }}){% if r.final %}<br><span class="sub" style="font-size:.78rem;color:var(--text-secondary);">{{ r.final }}</span>{% endif %}</td>
+      <td style="text-align:right;white-space:nowrap;"><span class="pill-res pill-{{ r.result }}">{{ r.result|upper }}</span> <span class="{{ 'pos' if r.units > 0 else ('neg' if r.units < 0 else '') }}">{{ '+' if r.units > 0 else '' }}{{ r.units }}u</span></td></tr>{% endfor %}
+  </table>
+</section>
+{% endif %}
+
+{% if lesson %}
+<aside class="lesson"><div class="ed-date">🎓 Edge Education</div><h3>{{ lesson.title }}</h3><p style="margin:0;">{{ lesson.body }}</p></aside>
+{% endif %}
+
+<div class="signup">
+  <p style="margin-bottom:10px;"><strong>Get the full card in your inbox every morning — free.</strong></p>
+  <a class="nav-btn nav-btn-primary" href="/register" style="padding:12px 22px;">Subscribe free</a>
+  <p style="margin-top:14px;font-size:.78rem;">Picks are information, not guarantees. Bet only what you can afford to lose, if you're of legal age where you live. Gambling problem? Call or text 1-800-GAMBLER.</p>
+</div>
+{% endblock %}

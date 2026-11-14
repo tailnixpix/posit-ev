@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<!--
+  Posit+EV Daily Edition v2 — newsletter_v2.html
+  Rendered by web/newsletter_v2.render_email(). Table layout + inline styles for
+  Gmail/Outlook/Apple Mail. Kept lean: Gmail clips messages near 102 KB, so the
+  email carries compact cards and links to {{ picks_url }} for the full breakdowns.
+-->
+{% macro mark(ok) -%}
+<span style="display:inline-block;width:18px;height:18px;line-height:18px;border-radius:9px;text-align:center;font-size:11px;font-weight:700;color:#ffffff;background:{{ '#0F6E56' if ok else '#B42318' }};">{{ '&#10003;'|safe if ok else '&#10005;'|safe }}</span>
+{%- endmacro %}
+{% macro money(units) -%}
+{{ '+' if units > 0 else '' }}{{ '%.2f'|format(units) }}u
+{%- endmacro %}
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="x-apple-disable-message-reformatting" />
+  <meta name="color-scheme" content="light" />
+  <title>Posit+EV — {{ date_str }}</title>
+  <style type="text/css">
+    table, td { border-collapse: collapse; mso-table-lspace: 0; mso-table-rspace: 0; }
+    img { border: 0; outline: none; text-decoration: none; -ms-interpolation-mode: bicubic; }
+    a { color: #534AB7; }
+    @media only screen and (max-width: 620px) {
+      .wrap { width: 100% !important; }
+      .pad { padding-left: 18px !important; padding-right: 18px !important; }
+      .stack { display: block !important; width: 100% !important; }
+      .stack-gap { padding-bottom: 10px !important; }
+      .big { font-size: 24px !important; }
+    }
+  </style>
+</head>
+<body style="margin:0;padding:0;background-color:#ECEAFE;width:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;color:#1A1733;-webkit-text-size-adjust:100%;">
+
+<div style="display:none;font-size:1px;color:#ECEAFE;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">
+  {% if potd %}Pick of the Day: {{ potd.label }} ({{ potd.odds }}) + {{ count - 1 }} more across {{ sports_count }} sport{{ 's' if sports_count != 1 }}{% else %}No bet cleared all three tests today — here's why that's a feature{% endif %}
+  &zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;
+</div>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#ECEAFE;">
+<tr><td align="center" style="padding:24px 10px 36px;">
+<table role="presentation" class="wrap" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;">
+
+  <!-- Header -->
+  <tr><td align="center" style="background-color:#1E1A47;border-radius:16px 16px 0 0;">
+    <img src="cid:email_header" alt="Posit+EV — Find the edge. Beat the market." width="600"
+         style="display:block;width:600px;max-width:100%;height:auto;border-radius:16px 16px 0 0;font-size:20px;font-weight:700;line-height:1.4;color:#ffffff;text-align:center;" />
+  </td></tr>
+  <tr><td align="center" style="background-color:#1E1A47;padding:8px 24px 16px;font-size:11px;font-weight:600;letter-spacing:2px;color:#A9A3E0;text-transform:uppercase;">
+    {{ date_str }}
+  </td></tr>
+
+  <!-- Scoreboard strip -->
+  <tr><td class="pad" style="background-color:#ffffff;padding:20px 28px 6px;border-left:1px solid #DDD9FB;border-right:1px solid #DDD9FB;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+      <td width="33%" valign="top" style="padding-right:4px;">
+        <div style="background:#F7F6FE;border-radius:10px;padding:10px 12px;">
+          <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#6B6890;text-transform:uppercase;">Record</div>
+          <div style="font-size:20px;font-weight:800;color:#26215C;">{{ record.won }}-{{ record.lost }}{% if record.push %}-{{ record.push }}{% endif %}</div>
+        </div>
+      </td>
+      <td width="33%" valign="top" style="padding:0 2px;">
+        <div style="background:#F7F6FE;border-radius:10px;padding:10px 12px;">
+          <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#6B6890;text-transform:uppercase;">Units</div>
+          <div style="font-size:20px;font-weight:800;color:{{ '#0F6E56' if record.units >= 0 else '#B42318' }};">{{ money(record.units) }}</div>
+        </div>
+      </td>
+      <td width="34%" valign="top" style="padding-left:4px;">
+        <div style="background:#F7F6FE;border-radius:10px;padding:10px 12px;">
+          <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#6B6890;text-transform:uppercase;">Today's card</div>
+          <div style="font-size:20px;font-weight:800;color:#26215C;">{{ count }} pick{{ 's' if count != 1 }}</div>
+        </div>
+      </td>
+    </tr></table>
+  </td></tr>
+
+{% if potd %}
+  <!-- Pick of the Day -->
+  <tr><td class="pad" style="background-color:#ffffff;padding:18px 28px 6px;border-left:1px solid #DDD9FB;border-right:1px solid #DDD9FB;">
+    <div style="font-size:11px;font-weight:800;letter-spacing:2px;color:#92400E;text-transform:uppercase;">&#11088; Pick of the Day</div>
+    <div style="margin-top:8px;border:1.5px solid #534AB7;border-radius:14px;overflow:hidden;">
+      <div style="background:#26215C;padding:16px 18px;">
+        <div style="font-size:12px;color:#A9A3E0;font-weight:600;">{{ potd.emoji }} {{ potd.league_label }} &middot; {{ potd.game }}{% if potd.start %} &middot; {{ potd.start }}{% endif %}</div>
+        <div class="big" style="font-size:28px;font-weight:800;color:#ffffff;margin-top:4px;line-height:1.2;">{{ potd.label }}</div>
+        <div style="font-size:14px;color:#D9D6F5;margin-top:6px;">{{ potd.market }} &middot; <strong style="color:#ffffff;">{{ potd.odds }}</strong> at {{ potd.book }} &middot; <strong style="color:#7CE0B8;">{{ potd.ev }} EV</strong></div>
+      </div>
+      <div style="padding:14px 18px 6px;">
+        <div style="font-size:11px;font-weight:800;letter-spacing:1.5px;color:#6B6890;text-transform:uppercase;margin-bottom:8px;">Passed all three tests</div>
+        {% for t in potd.prongs %}
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:10px;"><tr>
+          <td width="28" valign="top" style="padding-top:2px;">{{ mark(t.ok) }}</td>
+          <td valign="top" style="font-size:14px;line-height:1.55;color:#1A1733;">
+            <strong style="color:#26215C;">{{ t.name }}.</strong>
+            {% for l in t.lines %}{{ l }} {% endfor %}
+          </td>
+        </tr></table>
+        {% endfor %}
+      </div>
+      <div style="padding:2px 18px 14px;font-size:14px;line-height:1.65;color:#3B3858;">
+        <strong style="color:#26215C;">Why it's worth taking.</strong>
+        {{ potd.story }}
+        <div style="margin-top:10px;padding:10px 12px;background:#FFF8E6;border-radius:8px;font-size:13px;color:#7A4A06;">
+          &#9888;&#65039; <strong>Risk:</strong> {{ potd.risk }}
+        </div>
+        <div style="margin-top:10px;font-size:12px;color:#6B6890;">Suggested stake: 1 unit (the record counts every pick as 1 unit = $20).</div>
+      </div>
+    </div>
+  </td></tr>
+
+  {% if others %}
+  <!-- Today's card -->
+  <tr><td class="pad" style="background-color:#ffffff;padding:18px 28px 4px;border-left:1px solid #DDD9FB;border-right:1px solid #DDD9FB;">
+    <div style="font-size:11px;font-weight:800;letter-spacing:2px;color:#534AB7;text-transform:uppercase;">Today's card &mdash; every pick that passed</div>
+  </td></tr>
+  {% for g in by_sport %}
+    {% set rows = g.picks | rejectattr('is_potd') | list %}
+    {% if rows %}
+  <tr><td class="pad" style="background-color:#ffffff;padding:10px 28px 0;border-left:1px solid #DDD9FB;border-right:1px solid #DDD9FB;">
+    <div style="font-size:13px;font-weight:800;color:#26215C;border-bottom:2px solid #EEEDFE;padding-bottom:5px;">{{ g.emoji }} {{ g.sport }}</div>
+    {% for p in rows %}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:10px 0 2px;border:1px solid #E7E4FB;border-radius:10px;"><tr><td style="padding:12px 14px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+        <td valign="top">
+          <div style="font-size:16px;font-weight:800;color:#1A1733;line-height:1.3;">{{ p.label }}</div>
+          <div style="font-size:12px;color:#6B6890;margin-top:2px;">{% if g.sport == 'Soccer' %}{{ p.league_label }} &middot; {% endif %}{{ p.game }}{% if p.start %} &middot; {{ p.start }}{% endif %}</div>
+        </td>
+        <td valign="top" align="right" style="white-space:nowrap;">
+          <div style="font-size:16px;font-weight:800;color:#26215C;">{{ p.odds }}</div>
+          <div style="font-size:12px;color:#0F6E56;font-weight:700;">{{ p.ev }} EV</div>
+        </td>
+      </tr></table>
+      <div style="margin-top:8px;font-size:13px;line-height:1.55;color:#3B3858;">{{ p.blurb }}</div>
+      <div style="margin-top:6px;font-size:12px;color:#6B6890;">
+        {{ p.market }} at {{ p.book }} &nbsp;&middot;&nbsp;
+        {% for t in p.prongs %}{{ t.name }} {{ mark(t.ok) }}{% if not loop.last %}&nbsp; {% endif %}{% endfor %}
+      </div>
+    </td></tr></table>
+    {% endfor %}
+  </td></tr>
+    {% endif %}
+  {% endfor %}
+  {% endif %}
+
+  <tr><td class="pad" align="center" style="background-color:#ffffff;padding:16px 28px 8px;border-left:1px solid #DDD9FB;border-right:1px solid #DDD9FB;">
+    <a href="{{ picks_url }}" style="display:inline-block;background:#534AB7;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:13px 26px;border-radius:10px;">See the full breakdown for every pick &rarr;</a>
+  </td></tr>
+{% else %}
+  <!-- No-play day -->
+  <tr><td class="pad" style="background-color:#ffffff;padding:22px 28px 10px;border-left:1px solid #DDD9FB;border-right:1px solid #DDD9FB;">
+    <div style="border:1.5px dashed #AFA9EC;border-radius:14px;padding:20px 20px;background:#F7F6FE;">
+      <div style="font-size:18px;font-weight:800;color:#26215C;">No play today.</div>
+      <div style="margin-top:8px;font-size:14px;line-height:1.65;color:#3B3858;">
+        We only publish a bet when it passes three tests: the math (a certain +EV), the team's recent and head-to-head history, and the line movement. Nothing cleared all three today. Skipping weak bets is how the good ones stay good &mdash; your bankroll is better off on the sidelines.
+      </div>
+    </div>
+  </td></tr>
+{% endif %}
+
+{% if yesterday %}
+  <!-- Yesterday -->
+  <tr><td class="pad" style="background-color:#ffffff;padding:18px 28px 6px;border-left:1px solid #DDD9FB;border-right:1px solid #DDD9FB;">
+    <div style="font-size:11px;font-weight:800;letter-spacing:2px;color:#534AB7;text-transform:uppercase;">Yesterday's results
+      {% if yesterday_summary %}<span style="color:#6B6890;font-weight:700;letter-spacing:0;text-transform:none;">&nbsp;&middot; {{ yesterday_summary.won }}-{{ yesterday_summary.lost }}{% if yesterday_summary.push %}-{{ yesterday_summary.push }}{% endif %}, {{ money(yesterday_summary.units) }}</span>{% endif %}
+    </div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:8px;">
+      {% for r in yesterday %}
+      <tr>
+        <td style="padding:7px 0;border-bottom:1px solid #F0EEFC;font-size:13px;color:#1A1733;">
+          {{ r.emoji }} <strong>{{ r.label }}</strong> <span style="color:#6B6890;">({{ r.odds }})</span>
+          {% if r.final %}<div style="font-size:11px;color:#8C89A8;margin-top:1px;">{{ r.final }}</div>{% endif %}
+        </td>
+        <td align="right" style="padding:7px 0;border-bottom:1px solid #F0EEFC;font-size:13px;font-weight:800;white-space:nowrap;color:{{ '#0F6E56' if r.result == 'won' else ('#B42318' if r.result == 'lost' else '#534AB7') }};">
+          {{ r.result|upper }} &nbsp;{{ money(r.units) }}
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  </td></tr>
+{% endif %}
+
+{% if lesson %}
+  <!-- Edge Education -->
+  <tr><td class="pad" style="background-color:#ffffff;padding:18px 28px 6px;border-left:1px solid #DDD9FB;border-right:1px solid #DDD9FB;">
+    <div style="background:#F3F1FF;border-radius:12px;padding:16px 18px;">
+      <div style="font-size:11px;font-weight:800;letter-spacing:2px;color:#534AB7;text-transform:uppercase;">&#127891; Edge Education</div>
+      <div style="font-size:17px;font-weight:800;color:#26215C;margin-top:6px;line-height:1.3;">{{ lesson.title }}</div>
+      <div style="font-size:14px;line-height:1.65;color:#3B3858;margin-top:6px;">{{ lesson.body }}</div>
+    </div>
+  </td></tr>
+{% endif %}
+
+{% if sponsor %}
+  <!-- Partner slot (renders only when a sponsor/affiliate is configured) -->
+  <tr><td class="pad" style="background-color:#ffffff;padding:16px 28px 6px;border-left:1px solid #DDD9FB;border-right:1px solid #DDD9FB;">
+    <div style="border:1px solid #E7E4FB;border-radius:12px;padding:14px 16px;">
+      <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:#8C89A8;text-transform:uppercase;">Sponsored</div>
+      <div style="font-size:15px;font-weight:800;color:#1A1733;margin-top:4px;">{{ sponsor.name }}</div>
+      <div style="font-size:13px;line-height:1.55;color:#3B3858;margin-top:4px;">{{ sponsor.blurb }}</div>
+      <div style="margin-top:8px;"><a href="{{ sponsor.url }}" style="font-size:13px;font-weight:700;">{{ sponsor.cta or 'Learn more' }} &rarr;</a></div>
+    </div>
+  </td></tr>
+{% endif %}
+
+  <!-- Footer -->
+  <tr><td style="background-color:#ffffff;height:14px;border-left:1px solid #DDD9FB;border-right:1px solid #DDD9FB;font-size:0;line-height:0;">&nbsp;</td></tr>
+  <tr><td align="center" style="background-color:#2B2560;border-radius:0 0 16px 16px;padding:22px 30px 26px;">
+    <div style="font-size:14px;font-weight:600;color:#C9C5F2;">Posit<span style="color:#9B8EFF;">+</span>EV</div>
+    <div style="margin-top:10px;font-size:11px;line-height:1.7;color:#A9A3E0;">
+      Picks are information, not guarantees &mdash; even +EV bets lose often. Bet only what you can afford to lose, and only if you're of legal betting age where you live.
+      Gambling problem? Call or text <strong style="color:#D9D6F5;">1-800-GAMBLER</strong>.
+    </div>
+    <div style="margin-top:10px;font-size:11px;color:#8F89CC;">
+      &copy; 2026 Posit+EV &nbsp;&middot;&nbsp;
+      <a href="{{ base_url }}/track-record" style="color:#B5AFEA;">Track record</a> &nbsp;&middot;&nbsp;
+      <a href="{{ unsubscribe_url }}" style="color:#B5AFEA;">Unsubscribe</a>
+    </div>
+  </td></tr>
+
+</table>
+</td></tr>
+</table>
+</body>
+</html>

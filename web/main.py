@@ -3382,6 +3382,50 @@ async def admin_shadow_grade(request: Request):
     return RedirectResponse(url="/admin/shadow", status_code=303)
 
 
+def _edition_response(request: Request, db: Session, edition_date, preview: bool):
+    from web import newsletter_v2
+    status = "shadow" if preview else "published"
+    ctx = newsletter_v2.edition_context(db, edition_date, status, os.getenv("BASE_URL", ""))
+    ctx.update(preview=preview, request=request)
+    return templates.TemplateResponse(request, "picks_edition.html", ctx)
+
+
+@app.get("/picks", response_class=HTMLResponse)
+async def picks_today(request: Request, db: Session = Depends(get_db)):
+    """Latest published edition (read-only 'today's picks' page)."""
+    preview = request.query_params.get("preview") == "1" and _is_admin(request)
+    from zoneinfo import ZoneInfo
+    today = datetime.now(ZoneInfo("America/Chicago")).date()
+    return _edition_response(request, db, today, preview)
+
+
+@app.get("/picks/{edition_date}", response_class=HTMLResponse)
+async def picks_by_date(edition_date: str, request: Request, db: Session = Depends(get_db)):
+    try:
+        d = datetime.strptime(edition_date, "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Not found")
+    preview = request.query_params.get("preview") == "1" and _is_admin(request)
+    return _edition_response(request, db, d, preview)
+
+
+@app.get("/admin/shadow/email", response_class=HTMLResponse)
+async def admin_shadow_email(request: Request, db: Session = Depends(get_db)):
+    """Admin-only: the shadow edition rendered as the email (not sent)."""
+    if not _is_admin(request):
+        return RedirectResponse(url="/admin/login", status_code=303)
+    from web import newsletter_v2
+    from zoneinfo import ZoneInfo
+    raw = request.query_params.get("date")
+    d = datetime.strptime(raw, "%Y-%m-%d").date() if raw else datetime.now(ZoneInfo("America/Chicago")).date()
+    base = os.getenv("BASE_URL", "")
+    ctx = newsletter_v2.edition_context(db, d, "shadow", base)
+    html = newsletter_v2.render_email(ctx, unsubscribe_url="#")
+    # The email references an inline CID image; show the hosted file in the browser.
+    html = html.replace("cid:email_header", "/static/email_header.png")
+    return HTMLResponse(html)
+
+
 # ---------------------------------------------------------------------------
 # PWA: service worker + manifest (served from root so scope covers the site)
 # ---------------------------------------------------------------------------
@@ -3467,31 +3511,7 @@ _TR_LEAGUE_NAMES = {
 }
 
 
-def _pick_units(p) -> float:
-    """Profit of a settled pick in units (1u flat stake)."""
-    if p.result == "won" and p.odds:
-        return p.odds / 100 if p.odds > 0 else 100 / abs(p.odds)
-    if p.result == "lost":
-        return -1.0
-    return 0.0
-
-
-def _tr_bucket(picks: list) -> dict:
-    won = sum(1 for p in picks if p.result == "won")
-    lost = sum(1 for p in picks if p.result == "lost")
-    push = sum(1 for p in picks if p.result == "push")
-    units = round(sum(_pick_units(p) for p in picks), 2)
-    staked = won + lost
-    clvs = [p.clv_pct for p in picks if p.clv_pct is not None]
-    return {
-        "won": won, "lost": lost, "push": push, "total": len(picks),
-        "units": units,
-        "roi": round(units / staked * 100, 1) if staked else None,
-        "win_pct": round(won / staked * 100, 1) if staked else None,
-        "clv_n": len(clvs),
-        "avg_clv": round(sum(clvs) / len(clvs), 2) if clvs else None,
-        "clv_beat_pct": round(sum(1 for c in clvs if c > 0) / len(clvs) * 100) if clvs else None,
-    }
+from web.record import pick_units as _pick_units, bucket as _tr_bucket  # noqa: E402
 
 
 @app.get("/track-record", response_class=HTMLResponse)

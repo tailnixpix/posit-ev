@@ -221,9 +221,10 @@
         <div class="nav-auth">
           {% if not is_admin_page %}
           <div class="nav-group">
-            <a href="/pricing" class="nav-btn nav-btn-soft">Pricing</a>
-            <a href="/track-record" class="nav-btn nav-btn-soft">Track Record</a>
-            <a href="#" class="nav-btn nav-btn-soft" onclick="openSupportModal(); return false;">Support</a>
+            <a href="/pricing" class="nav-btn nav-btn-soft nav-dup">Pricing</a>
+            <a href="/track-record" class="nav-btn nav-btn-soft nav-dup">Track Record</a>
+            <a href="#" class="nav-btn nav-btn-soft nav-sup" onclick="openSupportModal(); return false;">Support</a>
+            <button type="button" class="nav-btn nav-btn-soft nav-menu-btn" id="navMenuBtn" aria-expanded="false" aria-controls="navMenu">☰ Menu</button>
           </div>
           <div class="nav-divider"></div>
           {% endif %}
@@ -243,6 +244,12 @@
     <a href="/watchlist">⭐ Paper Trail{% if wl_pending_count %} <b class="st-badge">{{ wl_pending_count }}</b>{% endif %}</a>
     <a href="/track-record">📈 Track Record</a>
     <a href="/account">👤 Account</a>
+    <a href="#" onclick="openSupportModal(); return false;">💬 Support</a>
+  </div>
+  {% elif not is_admin_page %}
+  <div class="nav-menu" id="navMenu" hidden>
+    <a href="/track-record">📈 Track Record</a>
+    <a href="/pricing">💳 Pricing</a>
     <a href="#" onclick="openSupportModal(); return false;">💬 Support</a>
   </div>
   {% endif %}
